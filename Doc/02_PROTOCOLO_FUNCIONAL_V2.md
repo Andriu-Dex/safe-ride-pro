@@ -1,4 +1,4 @@
-﻿# SafeRidePro - Protocolo funcional V2
+# SafeRidePro - Protocolo funcional V2
 ## 1. Esta version se enfoca en:
 
 - flujo de registro y acceso

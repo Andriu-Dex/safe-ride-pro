@@ -1,0 +1,22 @@
+{
+  "name": "@saferidepro/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "echo \"Shared types tests will be added soon\"",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "format": "prettier --check \"src/**/*.ts\""
+  },
+  "devDependencies": {
+    "@saferidepro/eslint-config": "workspace:*",
+    "@saferidepro/tsconfig": "workspace:*",
+    "@types/node": "^22.13.0",
+    "eslint": "^9.21.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.8.0"
+  }
+}

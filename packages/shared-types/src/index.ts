@@ -1,0 +1,61 @@
+export enum GlobalUserRole {
+  User = 'USER',
+  SuperAdmin = 'SUPER_ADMIN',
+}
+
+export enum AccountStatus {
+  PendingEmailVerification = 'PENDING_EMAIL_VERIFICATION',
+  Active = 'ACTIVE',
+  Suspended = 'SUSPENDED',
+}
+
+export enum InstitutionMembershipRole {
+  Student = 'STUDENT',
+  InstitutionAdmin = 'INSTITUTION_ADMIN',
+}
+
+export enum MembershipStatus {
+  Active = 'ACTIVE',
+  Inactive = 'INACTIVE',
+  Suspended = 'SUSPENDED',
+}
+
+export enum DriverVerificationStatus {
+  NotRequested = 'NOT_REQUESTED',
+  PendingVerification = 'PENDING_VERIFICATION',
+  Approved = 'APPROVED',
+  Rejected = 'REJECTED',
+  Suspended = 'SUSPENDED',
+}
+
+export enum DocumentType {
+  NationalId = 'NATIONAL_ID',
+  Passport = 'PASSPORT',
+}
+
+export enum VehicleType {
+  Motorcycle = 'MOTORCYCLE',
+  Car = 'CAR',
+  PickupTruck = 'PICKUP_TRUCK',
+}
+
+export enum LuggagePolicy {
+  NotAllowed = 'NOT_ALLOWED',
+  SmallOnly = 'SMALL_ONLY',
+  UpToMedium = 'UP_TO_MEDIUM',
+  LargeAllowed = 'LARGE_ALLOWED',
+}
+
+export enum TripRouteMode {
+  DirectRoute = 'DIRECT_ROUTE',
+  PlannedDetour = 'PLANNED_DETOUR',
+}
+
+export enum TripStatus {
+  Draft = 'DRAFT',
+  Published = 'PUBLISHED',
+  Full = 'FULL',
+  InProgress = 'IN_PROGRESS',
+  Completed = 'COMPLETED',
+  Cancelled = 'CANCELLED',
+}

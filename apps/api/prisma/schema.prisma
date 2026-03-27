@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GlobalUserRole {
+  USER
+  SUPER_ADMIN
+}
+
+enum AccountStatus {
+  PENDING_EMAIL_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum MembershipRole {
+  STUDENT
+  INSTITUTION_ADMIN
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum DriverVerificationStatus {
+  NOT_REQUESTED
+  PENDING_VERIFICATION
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum DocumentType {
+  NATIONAL_ID
+  PASSPORT
+}
+
+model Institution {
+  id          String                    @id @default(uuid())
+  name        String
+  code        String                    @unique
+  isActive    Boolean                   @default(true)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  domains     InstitutionDomain[]
+  memberships UserInstitutionMembership[]
+
+  @@map("institutions")
+}
+
+model InstitutionDomain {
+  id            String      @id @default(uuid())
+  institutionId String
+  domain        String      @unique
+  isPrimary     Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, domain])
+  @@map("institution_domains")
+}
+
+model User {
+  id                     String                    @id @default(uuid())
+  email                  String                    @unique
+  passwordHash           String
+  fullName               String
+  phone                  String?
+  documentType           DocumentType
+  documentNumber         String
+  profilePhotoUrl        String?
+  globalRole             GlobalUserRole            @default(USER)
+  accountStatus          AccountStatus             @default(PENDING_EMAIL_VERIFICATION)
+  emailVerifiedAt        DateTime?
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  memberships            UserInstitutionMembership[]
+  emailVerificationCodes EmailVerificationCode[]
+
+  @@unique([documentType, documentNumber])
+  @@map("users")
+}
+
+model UserInstitutionMembership {
+  id                       String                   @id @default(uuid())
+  userId                   String
+  institutionId            String
+  role                     MembershipRole           @default(STUDENT)
+  membershipStatus         MembershipStatus         @default(ACTIVE)
+  studentCode              String
+  isDefault                Boolean                  @default(false)
+  driverVerificationStatus DriverVerificationStatus @default(NOT_REQUESTED)
+  joinedAt                 DateTime                 @default(now())
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  user                     User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution              Institution              @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, institutionId])
+  @@unique([institutionId, studentCode])
+  @@map("user_institution_memberships")
+}
+
+model EmailVerificationCode {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_codes")
+}

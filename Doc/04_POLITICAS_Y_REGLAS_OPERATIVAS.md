@@ -1,4 +1,4 @@
-﻿# SafeRidePro - Politicas y reglas operativas
+# SafeRidePro - Politicas y reglas operativas
 
 ## 1. Contenido
 
