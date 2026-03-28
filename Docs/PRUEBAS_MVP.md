@@ -205,6 +205,10 @@ Resultado esperado:
 
 El backend ya cuenta con una primera base de pruebas unitarias para reglas criticas de negocio:
 
+- `auth`
+- `drivers`
+- `vehicles`
+- transiciones clave de `trips`
 - `trip-requests`
 - `ratings`
 - `reports`
@@ -212,8 +216,7 @@ El backend ya cuenta con una primera base de pruebas unitarias para reglas criti
 
 La siguiente tanda recomendable de automatizacion es:
 
-- `auth`
-- `drivers`
-- `vehicles`
-- transiciones de estado de `trips`
 - ajuste de cupos en `trip-requests`
+- `create-trip` y validaciones de solapamiento desde origen
+- `institutions` y `users`
+- pruebas de integracion HTTP para endpoints criticos
