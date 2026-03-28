@@ -36,3 +36,4 @@ export function clearStoredSession(): void {
 
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
 }
+

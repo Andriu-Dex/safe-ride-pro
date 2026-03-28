@@ -617,3 +617,124 @@ main {
     grid-template-columns: 1fr;
   }
 }
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.form-success {
+  border: 1px solid rgba(31, 122, 74, 0.2);
+  border-radius: 14px;
+  background: rgba(31, 122, 74, 0.08);
+  color: var(--color-success);
+  padding: 0.85rem 1rem;
+  line-height: 1.55;
+}
+
+.panel-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.page-grid-wide {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+
+.detail-list,
+.list-stack {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.detail-list {
+  margin: 0;
+}
+
+.detail-list div {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.48);
+  padding: 0.9rem 1rem;
+}
+
+.detail-list dt {
+  color: var(--color-text-soft);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.detail-list dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.field-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.52);
+  padding: 0.95rem;
+}
+
+.field-inline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.text-action {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary-strong);
+  font-weight: 700;
+}
+
+.list-card {
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 1rem;
+}
+
+.list-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.compact-loading-state {
+  min-height: 28vh;
+}
+
+@media (max-width: 720px) {
+  .form-grid-2,
+  .form-grid-3,
+  .page-grid-wide {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-header-row,
+  .field-inline-header,
+  .list-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
