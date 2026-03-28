@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 import { AuthProvider } from '../modules/auth/components/auth-provider';
@@ -17,12 +17,10 @@ export default function RootLayout({
   children,
 }: RootLayoutProps) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
 }
-
-
