@@ -5,6 +5,8 @@ import {
   TripRouteMode,
 } from '@saferidepro/shared-types';
 
+import { AuditService } from '../../../audit/application/services/audit.service';
+import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
 import {
   CreateTripInput,
   TRIPS_REPOSITORY,
@@ -31,13 +33,14 @@ export class CreateTripUseCase {
   constructor(
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   async execute(command: CreateTripCommand) {
     const membership = await this.tripsRepository.findDefaultMembershipByUserId(command.userId);
 
     if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
-      throw new ForbiddenException('No tienes una membresía activa para crear viajes.');
+      throw new ForbiddenException('No tienes una membresia activa para crear viajes.');
     }
 
     if (membership.driverVerificationStatus !== DriverVerificationStatus.Approved) {
@@ -50,18 +53,18 @@ export class CreateTripUseCase {
     );
 
     if (!vehicle || !vehicle.isActive) {
-      throw new BadRequestException('El vehículo seleccionado no existe o no se encuentra activo.');
+      throw new BadRequestException('El vehiculo seleccionado no existe o no se encuentra activo.');
     }
 
     if (command.seatCount < 1 || command.seatCount > vehicle.seatCount) {
-      throw new BadRequestException('La cantidad de cupos no puede superar la capacidad del vehículo.');
+      throw new BadRequestException('La cantidad de cupos no puede superar la capacidad del vehiculo.');
     }
 
     const departureAt = new Date(command.departureAt);
     const estimatedArrivalAt = new Date(command.estimatedArrivalAt);
 
     if (Number.isNaN(departureAt.getTime()) || Number.isNaN(estimatedArrivalAt.getTime())) {
-      throw new BadRequestException('Las fechas del viaje no son válidas.');
+      throw new BadRequestException('Las fechas del viaje no son validas.');
     }
 
     if (departureAt <= new Date()) {
@@ -77,7 +80,7 @@ export class CreateTripUseCase {
       command.detourSurchargeReference &&
       command.detourSurchargeReference > 0
     ) {
-      throw new BadRequestException('La ruta directa no admite recargo por desvío.');
+      throw new BadRequestException('La ruta directa no admite recargo por desvio.');
     }
 
     const trip = await this.tripsRepository.createTrip({
@@ -100,6 +103,18 @@ export class CreateTripUseCase {
       basePriceReference: command.basePriceReference,
       detourSurchargeReference: command.detourSurchargeReference,
       notes: command.notes?.trim() || undefined,
+    });
+
+    await this.auditService.record({
+      institutionId: membership.institutionId,
+      actorUserId: command.userId,
+      action: AuditAction.TripCreated,
+      entityType: AuditEntityType.Trip,
+      entityId: trip.id,
+      metadata: {
+        routeMode: trip.routeMode,
+        departureAt: trip.departureAt.toISOString(),
+      },
     });
 
     return {

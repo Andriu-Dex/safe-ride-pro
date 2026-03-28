@@ -4,6 +4,8 @@ import {
   MembershipStatus,
 } from '@saferidepro/shared-types';
 
+import { AuditService } from '../../../audit/application/services/audit.service';
+import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
 import {
   DRIVERS_REPOSITORY,
   DriversRepository,
@@ -23,6 +25,7 @@ export class SubmitDriverApplicationUseCase {
   constructor(
     @Inject(DRIVERS_REPOSITORY)
     private readonly driversRepository: DriversRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   async execute(command: SubmitDriverApplicationCommand) {
@@ -62,6 +65,17 @@ export class SubmitDriverApplicationUseCase {
       licenseExpiresAt,
       identityDocumentFileKey: command.identityDocumentFileKey?.trim() || undefined,
       licenseDocumentFileKey: command.licenseDocumentFileKey?.trim() || undefined,
+    });
+
+    await this.auditService.record({
+      institutionId: membership.institutionId,
+      actorUserId: command.userId,
+      action: AuditAction.DriverApplicationSubmitted,
+      entityType: AuditEntityType.DriverProfile,
+      entityId: driverProfile.membershipId,
+      metadata: {
+        driverVerificationStatus: driverProfile.driverVerificationStatus,
+      },
     });
 
     return {

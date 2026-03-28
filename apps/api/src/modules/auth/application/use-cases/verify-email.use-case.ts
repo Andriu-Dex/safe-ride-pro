@@ -1,6 +1,8 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 
+import { AuditService } from '../../../audit/application/services/audit.service';
+import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
 import {
   AUTH_USER_REPOSITORY,
   AuthUserRepository,
@@ -11,6 +13,7 @@ export class VerifyEmailUseCase {
   constructor(
     @Inject(AUTH_USER_REPOSITORY)
     private readonly authUserRepository: AuthUserRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   async execute(token: string): Promise<{ message: string }> {
@@ -24,11 +27,25 @@ export class VerifyEmailUseCase {
       throw new BadRequestException('El token de verificacion es invalido o ha expirado.');
     }
 
-    await this.authUserRepository.markEmailAsVerified(
+    const verifiedUser = await this.authUserRepository.markEmailAsVerified(
       verificationRecord.userId,
       verificationRecord.id,
       new Date(),
     );
+
+    const defaultMembership = verifiedUser.memberships.find((membership) => membership.isDefault)
+      ?? verifiedUser.memberships[0];
+
+    await this.auditService.record({
+      institutionId: defaultMembership?.institutionId,
+      actorUserId: verifiedUser.id,
+      action: AuditAction.AuthEmailVerified,
+      entityType: AuditEntityType.User,
+      entityId: verifiedUser.id,
+      metadata: {
+        email: verifiedUser.email,
+      },
+    });
 
     return {
       message: 'Correo verificado correctamente.',

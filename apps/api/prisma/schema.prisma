@@ -83,6 +83,31 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum AuditAction {
+  AUTH_REGISTERED
+  AUTH_EMAIL_VERIFIED
+  AUTH_LOGIN_SUCCEEDED
+  AUTH_LOGIN_FAILED
+  DRIVER_APPLICATION_SUBMITTED
+  DRIVER_APPLICATION_APPROVED
+  DRIVER_APPLICATION_REJECTED
+  TRIP_CREATED
+  TRIP_PUBLISHED
+  TRIP_STARTED
+  TRIP_COMPLETED
+  TRIP_CANCELLED
+  REPORT_CREATED
+  REPORT_REVIEWED
+}
+
+enum AuditEntityType {
+  USER
+  DRIVER_PROFILE
+  TRIP
+  REPORT
+  AUTH_SESSION
+}
+
 model Institution {
   id          String                      @id @default(uuid())
   name        String
@@ -93,6 +118,7 @@ model Institution {
   domains     InstitutionDomain[]
   memberships UserInstitutionMembership[]
   trips       Trip[]
+  auditEvents AuditEvent[]
 
   @@map("institutions")
 }
@@ -129,6 +155,7 @@ model User {
   emailVerificationCodes EmailVerificationCode[]
   reviewedDriverProfiles DriverProfile[]             @relation("DriverProfileReviewedBy")
   reviewedReports        Report[]                    @relation("ReportReviewedBy")
+  auditEvents            AuditEvent[]                @relation("AuditActor")
 
   @@unique([documentType, documentNumber])
   @@map("users")
@@ -367,4 +394,22 @@ model Report {
   @@index([reportedMembershipId, createdAt])
   @@index([tripId, createdAt])
   @@map("reports")
+}
+model AuditEvent {
+  id            String          @id @default(uuid())
+  institutionId String?
+  actorUserId   String?
+  action        AuditAction
+  entityType    AuditEntityType
+  entityId      String?
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  institution   Institution?    @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  actorUser     User?           @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([institutionId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@map("audit_events")
 }

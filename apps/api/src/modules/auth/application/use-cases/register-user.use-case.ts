@@ -2,6 +2,8 @@ import { BadRequestException, ConflictException, Inject, Injectable } from '@nes
 import { DocumentType } from '@saferidepro/shared-types';
 import { createHash, randomBytes } from 'node:crypto';
 
+import { AuditService } from '../../../audit/application/services/audit.service';
+import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
 import { EnvironmentService } from '../../../../shared/infrastructure/config/environment.service';
 import {
   AUTH_USER_REPOSITORY,
@@ -37,6 +39,7 @@ export class RegisterUserUseCase {
     @Inject(PASSWORD_HASHER)
     private readonly passwordHasher: PasswordHasher,
     private readonly environmentService: EnvironmentService,
+    private readonly auditService: AuditService,
   ) {}
 
   async execute(input: RegisterUserInput): Promise<RegisterUserOutput> {
@@ -86,6 +89,17 @@ export class RegisterUserUseCase {
       verificationTokenHash,
       expiresAt,
     );
+
+    await this.auditService.record({
+      institutionId: institution.id,
+      actorUserId: createdUser.id,
+      action: AuditAction.AuthRegistered,
+      entityType: AuditEntityType.User,
+      entityId: createdUser.id,
+      metadata: {
+        email: createdUser.email,
+      },
+    });
 
     return {
       message: 'Cuenta creada correctamente. Verifica tu correo para activarla.',

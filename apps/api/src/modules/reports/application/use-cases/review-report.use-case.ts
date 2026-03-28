@@ -7,6 +7,8 @@ import {
 } from '@saferidepro/shared-types';
 
 import { CurrentUserContext } from '../../../auth/application/types/current-user-context.type';
+import { AuditService } from '../../../audit/application/services/audit.service';
+import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
 import {
   REPORTS_REPOSITORY,
   ReportsRepository,
@@ -23,6 +25,7 @@ export class ReviewReportUseCase {
   constructor(
     @Inject(REPORTS_REPOSITORY)
     private readonly reportsRepository: ReportsRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   async execute(currentUser: CurrentUserContext, command: ReviewReportCommand) {
@@ -61,11 +64,25 @@ export class ReviewReportUseCase {
       throw new BadRequestException('Debes indicar el motivo para desestimar el reporte.');
     }
 
+    const previousStatus = report.status;
+
     const updatedReport = await this.reportsRepository.reviewReport({
       reportId: report.id,
       reviewerUserId: currentUser.id,
       status: command.status,
       reviewNote: command.reviewNote?.trim() || undefined,
+    });
+
+    await this.auditService.record({
+      institutionId: report.institutionId,
+      actorUserId: currentUser.id,
+      action: AuditAction.ReportReviewed,
+      entityType: AuditEntityType.Report,
+      entityId: report.id,
+      metadata: {
+        previousStatus,
+        currentStatus: updatedReport.status,
+      },
     });
 
     return {

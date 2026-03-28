@@ -4,6 +4,8 @@ import {
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { AuditService } from '../../../audit/application/services/audit.service';
+import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
 import {
   REPORTS_REPOSITORY,
   ReportsRepository,
@@ -23,6 +25,7 @@ export class CreateReportUseCase {
   constructor(
     @Inject(REPORTS_REPOSITORY)
     private readonly reportsRepository: ReportsRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   async execute(command: CreateReportCommand) {
@@ -87,6 +90,18 @@ export class CreateReportUseCase {
       reason: command.reason.trim(),
       description: command.description?.trim() || undefined,
       evidenceFileKey: command.evidenceFileKey?.trim() || undefined,
+    });
+
+    await this.auditService.record({
+      institutionId: membership.institutionId,
+      actorUserId: command.userId,
+      action: AuditAction.ReportCreated,
+      entityType: AuditEntityType.Report,
+      entityId: report.id,
+      metadata: {
+        tripId: trip.id,
+        reportedMembershipId: command.reportedMembershipId,
+      },
     });
 
     return {
