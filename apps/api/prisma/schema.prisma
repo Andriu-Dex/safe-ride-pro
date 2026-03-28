@@ -42,13 +42,26 @@ enum DocumentType {
   PASSPORT
 }
 
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+  PICKUP_TRUCK
+}
+
+enum LuggagePolicy {
+  NOT_ALLOWED
+  SMALL_ONLY
+  UP_TO_MEDIUM
+  LARGE_ALLOWED
+}
+
 model Institution {
-  id          String                    @id @default(uuid())
+  id          String                      @id @default(uuid())
   name        String
-  code        String                    @unique
-  isActive    Boolean                   @default(true)
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
+  code        String                      @unique
+  isActive    Boolean                     @default(true)
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
   domains     InstitutionDomain[]
   memberships UserInstitutionMembership[]
 
@@ -70,21 +83,22 @@ model InstitutionDomain {
 }
 
 model User {
-  id                     String                    @id @default(uuid())
-  email                  String                    @unique
+  id                     String                      @id @default(uuid())
+  email                  String                      @unique
   passwordHash           String
   fullName               String
   phone                  String?
   documentType           DocumentType
   documentNumber         String
   profilePhotoUrl        String?
-  globalRole             GlobalUserRole            @default(USER)
-  accountStatus          AccountStatus             @default(PENDING_EMAIL_VERIFICATION)
+  globalRole             GlobalUserRole              @default(USER)
+  accountStatus          AccountStatus               @default(PENDING_EMAIL_VERIFICATION)
   emailVerifiedAt        DateTime?
-  createdAt              DateTime                  @default(now())
-  updatedAt              DateTime                  @updatedAt
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
   memberships            UserInstitutionMembership[]
   emailVerificationCodes EmailVerificationCode[]
+  reviewedDriverProfiles DriverProfile[]             @relation("DriverProfileReviewedBy")
 
   @@unique([documentType, documentNumber])
   @@map("users")
@@ -104,6 +118,8 @@ model UserInstitutionMembership {
   updatedAt                DateTime                 @updatedAt
   user                     User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   institution              Institution              @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  driverProfile            DriverProfile?
+  vehicles                 Vehicle[]
 
   @@unique([userId, institutionId])
   @@unique([institutionId, studentCode])
@@ -120,4 +136,93 @@ model EmailVerificationCode {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("email_verification_codes")
+}
+
+model LicenseType {
+  id             String          @id @default(uuid())
+  code           String          @unique
+  name           String
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  driverProfiles DriverProfile[]
+
+  @@map("license_types")
+}
+
+model DriverProfile {
+  id                      String                    @id @default(uuid())
+  membershipId            String                    @unique
+  licenseTypeId           String
+  licenseNumber           String                    @unique
+  licenseExpiresAt        DateTime
+  identityDocumentFileKey String?
+  licenseDocumentFileKey  String?
+  reviewNotes             String?
+  submittedAt             DateTime                  @default(now())
+  reviewedAt              DateTime?
+  reviewedByUserId        String?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  membership              UserInstitutionMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  licenseType             LicenseType               @relation(fields: [licenseTypeId], references: [id], onDelete: Restrict)
+  reviewedByUser          User?                     @relation("DriverProfileReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([licenseTypeId])
+  @@map("driver_profiles")
+}
+
+model VehicleBrand {
+  id        String         @id @default(uuid())
+  name      String         @unique
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  models    VehicleModel[]
+  vehicles  Vehicle[]
+
+  @@map("vehicle_brands")
+}
+
+model VehicleModel {
+  id          String      @id @default(uuid())
+  brandId     String
+  name        String
+  vehicleType VehicleType
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  brand       VehicleBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  vehicles    Vehicle[]
+
+  @@unique([brandId, name, vehicleType])
+  @@index([brandId, vehicleType, isActive])
+  @@map("vehicle_models")
+}
+
+model Vehicle {
+  id                          String                    @id @default(uuid())
+  membershipId                String
+  vehicleType                 VehicleType
+  brandId                     String?
+  modelId                     String?
+  customBrandName             String?
+  customModelName             String?
+  year                        Int
+  color                       String
+  plate                       String                    @unique
+  seatCount                   Int
+  luggagePolicy               LuggagePolicy
+  registrationDocumentFileKey String?
+  isActive                    Boolean                   @default(true)
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+  membership                  UserInstitutionMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  brand                       VehicleBrand?             @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  model                       VehicleModel?             @relation(fields: [modelId], references: [id], onDelete: SetNull)
+
+  @@index([membershipId, isActive])
+  @@index([brandId])
+  @@index([modelId])
+  @@map("vehicles")
 }

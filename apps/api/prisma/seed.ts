@@ -6,9 +6,46 @@ import {
   MembershipRole,
   MembershipStatus,
   PrismaClient,
+  VehicleType,
 } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+const licenseTypeSeeds = [
+  { code: 'A', name: 'Licencia tipo A' },
+  { code: 'B', name: 'Licencia tipo B' },
+  { code: 'C', name: 'Licencia tipo C' },
+] as const;
+
+const vehicleCatalogSeeds = [
+  {
+    brand: 'Toyota',
+    models: [
+      { name: 'Corolla', vehicleType: VehicleType.CAR },
+      { name: 'Yaris', vehicleType: VehicleType.CAR },
+      { name: 'Hilux', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
+  },
+  {
+    brand: 'Chevrolet',
+    models: [
+      { name: 'Aveo', vehicleType: VehicleType.CAR },
+      { name: 'D-Max', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
+  },
+  {
+    brand: 'Kia',
+    models: [{ name: 'Rio', vehicleType: VehicleType.CAR }],
+  },
+  {
+    brand: 'Honda',
+    models: [{ name: 'CB125F', vehicleType: VehicleType.MOTORCYCLE }],
+  },
+  {
+    brand: 'Yamaha',
+    models: [{ name: 'MT-03', vehicleType: VehicleType.MOTORCYCLE }],
+  },
+] as const;
 
 async function main(): Promise<void> {
   const institutionName = process.env.DEFAULT_INSTITUTION_NAME ?? 'Universidad Tecnica de Ambato';
@@ -103,10 +140,61 @@ async function main(): Promise<void> {
     });
   }
 
+  for (const licenseTypeSeed of licenseTypeSeeds) {
+    await prisma.licenseType.upsert({
+      where: { code: licenseTypeSeed.code },
+      update: {
+        name: licenseTypeSeed.name,
+        isActive: true,
+      },
+      create: {
+        code: licenseTypeSeed.code,
+        name: licenseTypeSeed.name,
+        isActive: true,
+      },
+    });
+  }
+
+  for (const vehicleCatalogSeed of vehicleCatalogSeeds) {
+    const brand = await prisma.vehicleBrand.upsert({
+      where: { name: vehicleCatalogSeed.brand },
+      update: {
+        isActive: true,
+      },
+      create: {
+        name: vehicleCatalogSeed.brand,
+        isActive: true,
+      },
+    });
+
+    for (const modelSeed of vehicleCatalogSeed.models) {
+      await prisma.vehicleModel.upsert({
+        where: {
+          brandId_name_vehicleType: {
+            brandId: brand.id,
+            name: modelSeed.name,
+            vehicleType: modelSeed.vehicleType,
+          },
+        },
+        update: {
+          isActive: true,
+        },
+        create: {
+          brandId: brand.id,
+          name: modelSeed.name,
+          vehicleType: modelSeed.vehicleType,
+          isActive: true,
+        },
+      });
+    }
+  }
+
   console.log('Seed completed successfully.');
   console.log(`Institution: ${institution.name} (${institution.code})`);
   console.log(`Domain: ${institutionDomain}`);
   console.log(`Super admin: ${superAdmin.email}`);
+  console.log(`License types: ${licenseTypeSeeds.length}`);
+  console.log(`Vehicle brands: ${vehicleCatalogSeeds.length}`);
 }
 
 main()
