@@ -223,10 +223,18 @@ Tambien ya existen pruebas HTTP de integracion ligera para endpoints criticos:
 - `POST /api/trips`
 - `GET /api/trips`
 - `PATCH /api/trips/:tripId/publish`
+- `POST /api/trip-requests`
+- `GET /api/trip-requests/me`
+- `PATCH /api/trip-requests/:requestId/accept`
+- `POST /api/ratings`
+- `GET /api/ratings/me`
+- `POST /api/reports`
+- `GET /api/reports/me`
+- `GET /api/reports/inbox`
+- `PATCH /api/reports/:reportId/review`
 
 La siguiente tanda recomendable de automatizacion es:
 
-- validaciones HTTP de `trip-requests`, `reports` y `ratings`
 - pruebas de integracion mas profundas con modulos reales y base de datos de prueba
 - `institutions` y `users`
 - pipeline de despliegue cuando ya exista ambiente objetivo

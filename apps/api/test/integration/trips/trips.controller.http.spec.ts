@@ -1,5 +1,4 @@
 import { INestApplication } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import {
   AccountStatus,
@@ -13,7 +12,6 @@ import {
 } from '@saferidepro/shared-types';
 
 import { CurrentUserContext } from '../../../src/modules/auth/application/types/current-user-context.type';
-import { JwtAuthGuard } from '../../../src/modules/auth/presentation/guards/jwt-auth.guard';
 import { CancelTripUseCase } from '../../../src/modules/trips/application/use-cases/cancel-trip.use-case';
 import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-cases/complete-trip.use-case';
 import { CreateTripUseCase } from '../../../src/modules/trips/application/use-cases/create-trip.use-case';
@@ -22,7 +20,7 @@ import { ListTripsUseCase } from '../../../src/modules/trips/application/use-cas
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../../src/modules/trips/application/use-cases/start-trip.use-case';
 import { TripsController } from '../../../src/modules/trips/presentation/controllers/trips.controller';
-import { PrismaService } from '../../../src/shared/infrastructure/database/prisma.service';
+import { createAuthenticatedHttpContext } from '../../helpers/create-authenticated-http-context';
 import { createHttpTestApp } from '../../helpers/create-test-app';
 
 describe('TripsController HTTP', () => {
@@ -48,14 +46,6 @@ describe('TripsController HTTP', () => {
   const cancelTripUseCase = {
     execute: jest.fn(),
   };
-  const jwtService = {
-    verifyAsync: jest.fn(),
-  };
-  const prismaService = {
-    user: {
-      findUnique: jest.fn(),
-    },
-  };
 
   const authenticatedUser: CurrentUserContext = {
     id: 'user-1',
@@ -76,6 +66,7 @@ describe('TripsController HTTP', () => {
       },
     ],
   };
+  const authenticatedHttpContext = createAuthenticatedHttpContext(authenticatedUser);
 
   beforeAll(async () => {
     const testApp = await createHttpTestApp({
@@ -109,15 +100,7 @@ describe('TripsController HTTP', () => {
           provide: CancelTripUseCase,
           useValue: cancelTripUseCase,
         },
-        JwtAuthGuard,
-        {
-          provide: JwtService,
-          useValue: jwtService,
-        },
-        {
-          provide: PrismaService,
-          useValue: prismaService,
-        },
+        ...authenticatedHttpContext.guardProviders,
       ],
     });
 
@@ -132,25 +115,7 @@ describe('TripsController HTTP', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jwtService.verifyAsync.mockResolvedValue({
-      sub: 'user-1',
-    });
-    prismaService.user.findUnique.mockResolvedValue({
-      id: authenticatedUser.id,
-      email: authenticatedUser.email,
-      fullName: authenticatedUser.fullName,
-      globalRole: authenticatedUser.globalRole,
-      accountStatus: authenticatedUser.accountStatus,
-      memberships: [
-        {
-          ...authenticatedUser.memberships[0],
-          joinedAt: new Date('2030-01-01T08:00:00.000Z'),
-          institution: {
-            name: authenticatedUser.memberships[0].institutionName,
-          },
-        },
-      ],
-    });
+    authenticatedHttpContext.applyAuthenticatedUser();
   });
 
   it('creates a trip through HTTP using the authenticated user context', async () => {
