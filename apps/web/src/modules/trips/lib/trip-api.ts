@@ -1,4 +1,4 @@
-import type { CreateTripInput, TripRecord } from '../types/trip';
+import type { CreateTripInput, TripFilters, TripRecord } from '../types/trip';
 import { apiRequest } from '../../../lib/api-client';
 
 type TripMutationResponse = {
@@ -6,18 +6,37 @@ type TripMutationResponse = {
   trip: TripRecord;
 };
 
-export async function listMyTrips(accessToken: string): Promise<TripRecord[]> {
+function mapTripFilters(filters?: TripFilters): Record<string, string | undefined> {
+  return {
+    origin: filters?.origin?.trim() || undefined,
+    destination: filters?.destination?.trim() || undefined,
+    dateFrom: filters?.dateFrom || undefined,
+    dateTo: filters?.dateTo || undefined,
+    routeMode: filters?.routeMode,
+    vehicleType: filters?.vehicleType,
+  };
+}
+
+export async function listMyTrips(
+  accessToken: string,
+  filters?: TripFilters,
+): Promise<TripRecord[]> {
   return apiRequest<TripRecord[]>('/trips', {
     accessToken,
     searchParams: {
       mine: 'true',
+      ...mapTripFilters(filters),
     },
   });
 }
 
-export async function listAvailableTrips(accessToken: string): Promise<TripRecord[]> {
+export async function listAvailableTrips(
+  accessToken: string,
+  filters?: TripFilters,
+): Promise<TripRecord[]> {
   return apiRequest<TripRecord[]>('/trips', {
     accessToken,
+    searchParams: mapTripFilters(filters),
   });
 }
 

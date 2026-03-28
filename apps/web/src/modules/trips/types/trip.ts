@@ -1,7 +1,5 @@
 import {
-  LuggagePolicy,
   TripRouteMode,
-  TripStatus,
   VehicleType,
 } from '@saferidepro/shared-types';
 
@@ -14,7 +12,7 @@ export type TripRecord = {
   vehicleId: string;
   vehiclePlate: string;
   vehicleDisplayName: string;
-  status: TripStatus;
+  status: import('@saferidepro/shared-types').TripStatus;
   routeMode: TripRouteMode;
   originLabel: string;
   destinationLabel: string;
@@ -23,11 +21,20 @@ export type TripRecord = {
   seatCount: number;
   availableSeats: number;
   vehicleTypeSnapshot: VehicleType;
-  luggagePolicySnapshot: LuggagePolicy;
+  luggagePolicySnapshot: import('@saferidepro/shared-types').LuggagePolicy;
   basePriceReference: number;
   detourSurchargeReference: number | null;
   notes: string | null;
   createdAt: string;
+};
+
+export type TripFilters = {
+  origin?: string;
+  destination?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  routeMode?: TripRouteMode;
+  vehicleType?: VehicleType;
 };
 
 export type CreateTripInput = {
