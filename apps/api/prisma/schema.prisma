@@ -55,6 +55,20 @@ enum LuggagePolicy {
   LARGE_ALLOWED
 }
 
+enum TripStatus {
+  DRAFT
+  PUBLISHED
+  FULL
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TripRouteMode {
+  DIRECT_ROUTE
+  PLANNED_DETOUR
+}
+
 model Institution {
   id          String                      @id @default(uuid())
   name        String
@@ -64,6 +78,7 @@ model Institution {
   updatedAt   DateTime                    @updatedAt
   domains     InstitutionDomain[]
   memberships UserInstitutionMembership[]
+  trips       Trip[]
 
   @@map("institutions")
 }
@@ -120,6 +135,7 @@ model UserInstitutionMembership {
   institution              Institution              @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   driverProfile            DriverProfile?
   vehicles                 Vehicle[]
+  driverTrips              Trip[]
 
   @@unique([userId, institutionId])
   @@unique([institutionId, studentCode])
@@ -185,14 +201,14 @@ model VehicleBrand {
 }
 
 model VehicleModel {
-  id          String      @id @default(uuid())
+  id          String         @id @default(uuid())
   brandId     String
   name        String
   vehicleType VehicleType
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  brand       VehicleBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  brand       VehicleBrand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
   vehicles    Vehicle[]
 
   @@unique([brandId, name, vehicleType])
@@ -220,9 +236,44 @@ model Vehicle {
   membership                  UserInstitutionMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
   brand                       VehicleBrand?             @relation(fields: [brandId], references: [id], onDelete: SetNull)
   model                       VehicleModel?             @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  trips                       Trip[]
 
   @@index([membershipId, isActive])
   @@index([brandId])
   @@index([modelId])
   @@map("vehicles")
+}
+
+model Trip {
+  id                       String                    @id @default(uuid())
+  institutionId            String
+  driverMembershipId       String
+  vehicleId                String
+  status                   TripStatus                @default(DRAFT)
+  routeMode                TripRouteMode
+  originLabel              String
+  destinationLabel         String
+  originLatitude           Float                     @db.DoublePrecision
+  originLongitude          Float                     @db.DoublePrecision
+  destinationLatitude      Float                     @db.DoublePrecision
+  destinationLongitude     Float                     @db.DoublePrecision
+  departureAt              DateTime
+  estimatedArrivalAt       DateTime
+  seatCount                Int
+  availableSeats           Int
+  vehicleTypeSnapshot      VehicleType
+  luggagePolicySnapshot    LuggagePolicy
+  basePriceReference       Decimal                   @db.Decimal(10, 2)
+  detourSurchargeReference Decimal?                  @db.Decimal(10, 2)
+  notes                    String?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  institution              Institution               @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  driverMembership         UserInstitutionMembership @relation(fields: [driverMembershipId], references: [id], onDelete: Cascade)
+  vehicle                  Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@index([institutionId, status, departureAt])
+  @@index([driverMembershipId, departureAt, estimatedArrivalAt])
+  @@index([vehicleId, departureAt])
+  @@map("trips")
 }
