@@ -1,0 +1,51 @@
+name: Quality Checks
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --dir apps/api prisma:generate
+
+      - name: Build shared types
+        run: pnpm --filter @saferidepro/shared-types build
+
+      - name: Run API tests
+        run: pnpm --dir apps/api test
+
+      - name: Typecheck API
+        run: pnpm --dir apps/api typecheck
+
+      - name: Build API
+        run: pnpm --dir apps/api build
+
+      - name: Typecheck web
+        run: pnpm --dir apps/web typecheck
+
+      - name: Build web
+        run: pnpm --dir apps/web build
