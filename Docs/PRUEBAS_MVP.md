@@ -209,14 +209,24 @@ El backend ya cuenta con una primera base de pruebas unitarias para reglas criti
 - `drivers`
 - `vehicles`
 - transiciones clave de `trips`
+- `create-trip`
+- ajuste de cupos y decisiones en `trip-requests`
 - `trip-requests`
 - `ratings`
 - `reports`
 - `revision administrativa`
 
+Tambien ya existen pruebas HTTP de integracion ligera para endpoints criticos:
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/trips`
+- `GET /api/trips`
+- `PATCH /api/trips/:tripId/publish`
+
 La siguiente tanda recomendable de automatizacion es:
 
-- ajuste de cupos en `trip-requests`
-- `create-trip` y validaciones de solapamiento desde origen
+- validaciones HTTP de `trip-requests`, `reports` y `ratings`
+- pruebas de integracion mas profundas con modulos reales y base de datos de prueba
 - `institutions` y `users`
-- pruebas de integracion HTTP para endpoints criticos
+- pipeline de despliegue cuando ya exista ambiente objetivo
