@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { AppEnvironment, getAppEnvironment } from './app-environment';
 
@@ -20,5 +20,9 @@ export class EnvironmentService {
 
   get emailVerificationTokenTtlMinutes(): number {
     return this.environment.emailVerificationTokenTtlMinutes;
+  }
+
+  get webAppOrigins(): string[] {
+    return this.environment.webAppOrigins;
   }
 }

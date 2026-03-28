@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "corepack pnpm --filter @saferidepro/shared-types build",
     "dev": "next dev --port 3000",
+    "prebuild": "corepack pnpm --filter @saferidepro/shared-types build",
     "build": "next build",
+    "prestart": "corepack pnpm --filter @saferidepro/shared-types build",
     "start": "next start --port 3000",
     "lint": "eslint .",
     "test": "echo \"Web tests will be added soon\"",

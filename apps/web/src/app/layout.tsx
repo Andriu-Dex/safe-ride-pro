@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { AuthProvider } from '../modules/auth/components/auth-provider';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'SafeRidePro',
-  description: 'Transporte seguro compartido para estudiantes.',
+  description: 'Plataforma web para transporte seguro compartido entre estudiantes.',
 };
 
 type RootLayoutProps = Readonly<{
@@ -14,10 +15,13 @@ type RootLayoutProps = Readonly<{
 
 export default function RootLayout({
   children,
-}: RootLayoutProps): JSX.Element {
+}: RootLayoutProps) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
+

@@ -1,4 +1,4 @@
-﻿import { existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export type AppEnvironment = {
@@ -6,6 +6,7 @@ export type AppEnvironment = {
   databaseUrl: string;
   jwtSecret: string;
   emailVerificationTokenTtlMinutes: number;
+  webAppOrigins: string[];
 };
 
 const ENV_PATH_CANDIDATES = [
@@ -60,6 +61,25 @@ function getPositiveInteger(name: string, fallback: number): number {
   return parsedValue;
 }
 
+function getStringList(name: string, fallback: string[]): string[] {
+  const rawValue = process.env[name]?.trim();
+
+  if (!rawValue) {
+    return fallback;
+  }
+
+  const values = rawValue
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  if (values.length === 0) {
+    throw new Error(`Environment variable ${name} must contain at least one origin.`);
+  }
+
+  return values;
+}
+
 export function getAppEnvironment(): AppEnvironment {
   if (cachedEnvironment) {
     return cachedEnvironment;
@@ -75,6 +95,7 @@ export function getAppEnvironment(): AppEnvironment {
       'EMAIL_VERIFICATION_TOKEN_TTL_MINUTES',
       30,
     ),
+    webAppOrigins: getStringList('WEB_APP_ORIGINS', ['http://localhost:3000']),
   };
 
   return cachedEnvironment;
