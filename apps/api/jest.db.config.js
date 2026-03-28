@@ -1,8 +1,7 @@
 module.exports = {
   rootDir: '.',
   testEnvironment: 'node',
-  testMatch: ['<rootDir>/test/**/*.spec.ts'],
-  testPathIgnorePatterns: ['<rootDir>/test/db/'],
+  testMatch: ['<rootDir>/test/db/**/*.spec.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
     '^.+\\.ts$': [
@@ -13,9 +12,5 @@ module.exports = {
     ],
   },
   clearMocks: true,
-  collectCoverageFrom: [
-    'src/modules/**/*.ts',
-    '!src/**/*.module.ts',
-    '!src/main.ts',
-  ],
+  testTimeout: 60000,
 };

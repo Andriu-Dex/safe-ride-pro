@@ -233,8 +233,24 @@ Tambien ya existen pruebas HTTP de integracion ligera para endpoints criticos:
 - `GET /api/reports/inbox`
 - `PATCH /api/reports/:reportId/review`
 
+Ademas, el backend ya cuenta con pruebas de integracion con base de datos real en un schema aislado de PostgreSQL para flujos criticos del MVP:
+
+- registro, verificacion, login y consulta de perfil con persistencia real
+- solicitud de conductor y aprobacion administrativa
+- registro de vehiculo y creacion/publicacion de viaje
+- solicitud de cupo, aceptacion, inicio y finalizacion del viaje
+- calificacion, reporte y revision administrativa del reporte
+
+Comando:
+
+```powershell
+corepack pnpm --dir apps/api test:db
+```
+
+Por seguridad, `test:db` no usa el schema principal. Si no defines `TEST_DATABASE_URL`, el runner deriva uno a partir de `DATABASE_URL` usando `TEST_DATABASE_SCHEMA=integration_tests`.
+
 La siguiente tanda recomendable de automatizacion es:
 
-- pruebas de integracion mas profundas con modulos reales y base de datos de prueba
 - `institutions` y `users`
+- llevar `test:db` al pipeline cuando ya se provisionen servicios de PostgreSQL en CI
 - pipeline de despliegue cuando ya exista ambiente objetivo
