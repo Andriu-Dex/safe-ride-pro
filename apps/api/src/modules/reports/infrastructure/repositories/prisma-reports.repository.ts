@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import {
   CreateReportInput,
+  ListReviewableReportsInput,
   ReportMembershipRecord,
   ReportRecord,
   ReportsRepository,
@@ -145,6 +146,28 @@ export class PrismaReportsRepository implements ReportsRepository {
       where: { reporterMembershipId },
       include: this.reportInclude(),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    return reports.map((reportRecord) => this.mapReport(reportRecord));
+  }
+
+  async listReviewableReports(input: ListReviewableReportsInput): Promise<ReportRecord[]> {
+    const reports = await this.client.report.findMany({
+      where: {
+        ...(input.institutionIds?.length
+          ? {
+              trip: {
+                institutionId: {
+                  in: input.institutionIds,
+                },
+              },
+            }
+          : {}),
+        ...(input.status ? { status: input.status } : {}),
+      },
+      include: this.reportInclude(),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: input.limit ?? 50,
     });
 
     return reports.map((reportRecord) => this.mapReport(reportRecord));

@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/conductor', label: 'Conductor' },
   { href: '/vehiculos', label: 'Vehiculos' },
   { href: '/viajes', label: 'Viajes' },
+  { href: '/confianza', label: 'Confianza' },
   { href: '/auditoria', label: 'Auditoria' },
 ] as const;
 
@@ -63,7 +64,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         <section className="sidebar-note">
           <p className="sidebar-label">Estado del MVP</p>
           <strong>Backend operativo</strong>
-          <p>Ya puedes autenticarte, consultar tu perfil y revisar auditoria desde el panel web.</p>
+          <p>Ya puedes gestionar viajes, registrar calificaciones y revisar auditoria desde el panel web.</p>
         </section>
 
         <div className="sidebar-spacer" />

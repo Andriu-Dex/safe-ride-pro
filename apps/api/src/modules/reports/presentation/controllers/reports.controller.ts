@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -14,8 +15,10 @@ import { CurrentUserContext } from '../../../auth/application/types/current-user
 import { JwtAuthGuard } from '../../../auth/presentation/guards/jwt-auth.guard';
 import { CreateReportUseCase } from '../../application/use-cases/create-report.use-case';
 import { ListMyReportsUseCase } from '../../application/use-cases/list-my-reports.use-case';
+import { ListReviewableReportsUseCase } from '../../application/use-cases/list-reviewable-reports.use-case';
 import { ReviewReportUseCase } from '../../application/use-cases/review-report.use-case';
 import { CreateReportRequestDto } from '../dto/create-report.request.dto';
+import { ListReviewableReportsQueryDto } from '../dto/list-reviewable-reports.query.dto';
 import { ReviewReportRequestDto } from '../dto/review-report.request.dto';
 
 @Controller('reports')
@@ -24,6 +27,7 @@ export class ReportsController {
   constructor(
     private readonly createReportUseCase: CreateReportUseCase,
     private readonly listMyReportsUseCase: ListMyReportsUseCase,
+    private readonly listReviewableReportsUseCase: ListReviewableReportsUseCase,
     private readonly reviewReportUseCase: ReviewReportUseCase,
   ) {}
 
@@ -45,6 +49,19 @@ export class ReportsController {
   @Get('me')
   listMyReports(@CurrentUser() currentUser: CurrentUserContext) {
     return this.listMyReportsUseCase.execute(currentUser.id);
+  }
+
+  @Get('inbox')
+  listReviewableReports(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Query() query: ListReviewableReportsQueryDto,
+  ) {
+    return this.listReviewableReportsUseCase.execute({
+      currentUser,
+      institutionId: query.institutionId,
+      status: query.status,
+      limit: query.limit,
+    });
   }
 
   @Patch(':reportId/review')

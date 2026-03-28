@@ -71,6 +71,12 @@ export type ReviewReportInput = {
   reviewNote?: string;
 };
 
+export type ListReviewableReportsInput = {
+  institutionIds?: string[];
+  status?: ReportStatus;
+  limit?: number;
+};
+
 export interface ReportsRepository {
   findDefaultMembershipByUserId(userId: string): Promise<ReportMembershipRecord | null>;
   findTripById(tripId: string): Promise<ReportTripRecord | null>;
@@ -83,5 +89,6 @@ export interface ReportsRepository {
   ): Promise<ReportRecord | null>;
   createReport(input: CreateReportInput): Promise<ReportRecord>;
   listReportsByReporterMembershipId(reporterMembershipId: string): Promise<ReportRecord[]>;
+  listReviewableReports(input: ListReviewableReportsInput): Promise<ReportRecord[]>;
   reviewReport(input: ReviewReportInput): Promise<ReportRecord>;
 }
