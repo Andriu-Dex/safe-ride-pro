@@ -38,7 +38,7 @@ export class LoginUseCase {
     const user = await this.authUserRepository.findUserByEmail(normalizedEmail);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials.');
+      throw new UnauthorizedException('Credenciales invalidas.');
     }
 
     const passwordMatches = await this.passwordHasher.compare(
@@ -47,15 +47,15 @@ export class LoginUseCase {
     );
 
     if (!passwordMatches) {
-      throw new UnauthorizedException('Invalid credentials.');
+      throw new UnauthorizedException('Credenciales invalidas.');
     }
 
     if (!user.emailVerifiedAt || user.accountStatus === AccountStatus.PendingEmailVerification) {
-      throw new ForbiddenException('Verify your email before signing in.');
+      throw new ForbiddenException('Debes verificar tu correo antes de iniciar sesion.');
     }
 
     if (user.accountStatus === AccountStatus.Suspended) {
-      throw new ForbiddenException('This account is suspended.');
+      throw new ForbiddenException('Esta cuenta se encuentra suspendida.');
     }
 
     const accessToken = await this.accessTokenService.sign(user.id, user.globalRole);

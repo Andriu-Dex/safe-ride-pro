@@ -1,0 +1,80 @@
+﻿import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+
+import { CurrentUser } from '../../../../shared/presentation/decorators/current-user.decorator';
+import { CurrentUserContext } from '../../../auth/application/types/current-user-context.type';
+import { JwtAuthGuard } from '../../../auth/presentation/guards/jwt-auth.guard';
+import { AcceptTripRequestUseCase } from '../../application/use-cases/accept-trip-request.use-case';
+import { CancelTripRequestUseCase } from '../../application/use-cases/cancel-trip-request.use-case';
+import { CreateTripRequestUseCase } from '../../application/use-cases/create-trip-request.use-case';
+import { ListMyTripRequestsUseCase } from '../../application/use-cases/list-my-trip-requests.use-case';
+import { RejectTripRequestUseCase } from '../../application/use-cases/reject-trip-request.use-case';
+import { CreateTripRequestRequestDto } from '../dto/create-trip-request.request.dto';
+import { ReviewTripRequestRequestDto } from '../dto/review-trip-request.request.dto';
+
+@Controller('trip-requests')
+@UseGuards(JwtAuthGuard)
+export class TripRequestsController {
+  constructor(
+    private readonly createTripRequestUseCase: CreateTripRequestUseCase,
+    private readonly listMyTripRequestsUseCase: ListMyTripRequestsUseCase,
+    private readonly acceptTripRequestUseCase: AcceptTripRequestUseCase,
+    private readonly rejectTripRequestUseCase: RejectTripRequestUseCase,
+    private readonly cancelTripRequestUseCase: CancelTripRequestUseCase,
+  ) {}
+
+  @Post()
+  createTripRequest(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Body() body: CreateTripRequestRequestDto,
+  ) {
+    return this.createTripRequestUseCase.execute({
+      userId: currentUser.id,
+      tripId: body.tripId,
+      requestedPickupLatitude: body.requestedPickupLatitude,
+      requestedPickupLongitude: body.requestedPickupLongitude,
+      requestedDropoffLatitude: body.requestedDropoffLatitude,
+      requestedDropoffLongitude: body.requestedDropoffLongitude,
+      requestMessage: body.requestMessage,
+    });
+  }
+
+  @Get('me')
+  listMyTripRequests(@CurrentUser() currentUser: CurrentUserContext) {
+    return this.listMyTripRequestsUseCase.execute(currentUser.id);
+  }
+
+  @Patch(':requestId/accept')
+  acceptTripRequest(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Body() body: ReviewTripRequestRequestDto,
+  ) {
+    return this.acceptTripRequestUseCase.execute(currentUser.id, requestId, body.reviewNote);
+  }
+
+  @Patch(':requestId/reject')
+  rejectTripRequest(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Body() body: ReviewTripRequestRequestDto,
+  ) {
+    return this.rejectTripRequestUseCase.execute(currentUser.id, requestId, body.reviewNote);
+  }
+
+  @Patch(':requestId/cancel')
+  cancelTripRequest(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+  ) {
+    return this.cancelTripRequestUseCase.execute(currentUser.id, requestId);
+  }
+}

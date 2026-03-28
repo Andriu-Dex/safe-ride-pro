@@ -59,3 +59,10 @@ export enum TripStatus {
   Completed = 'COMPLETED',
   Cancelled = 'CANCELLED',
 }
+
+export enum TripRequestStatus {
+  Pending = 'PENDING',
+  Accepted = 'ACCEPTED',
+  Rejected = 'REJECTED',
+  Cancelled = 'CANCELLED',
+}

@@ -1,4 +1,4 @@
-﻿import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import { DocumentType } from '@saferidepro/shared-types';
 import { createHash, randomBytes } from 'node:crypto';
 
@@ -45,19 +45,19 @@ export class RegisterUserUseCase {
     const domain = emailParts.at(1)?.trim().toLowerCase();
 
     if (!domain) {
-      throw new BadRequestException('A valid institutional email is required.');
+      throw new BadRequestException('Se requiere un correo institucional valido.');
     }
 
     const institution = await this.authUserRepository.findInstitutionByDomain(domain);
 
     if (!institution) {
-      throw new BadRequestException('The email domain is not allowed for any active institution.');
+      throw new BadRequestException('El dominio del correo no esta permitido para ninguna institucion activa.');
     }
 
     const existingUser = await this.authUserRepository.findUserByEmail(normalizedEmail);
 
     if (existingUser) {
-      throw new ConflictException('An account with this email already exists.');
+      throw new ConflictException('Ya existe una cuenta registrada con este correo.');
     }
 
     const passwordHash = await this.passwordHasher.hash(input.password);
@@ -88,7 +88,7 @@ export class RegisterUserUseCase {
     );
 
     return {
-      message: 'Account created successfully. Verify your email to activate it.',
+      message: 'Cuenta creada correctamente. Verifica tu correo para activarla.',
       verificationToken,
       user: {
         id: createdUser.id,

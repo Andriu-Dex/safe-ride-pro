@@ -69,6 +69,13 @@ enum TripRouteMode {
   PLANNED_DETOUR
 }
 
+enum TripRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
 model Institution {
   id          String                      @id @default(uuid())
   name        String
@@ -136,6 +143,7 @@ model UserInstitutionMembership {
   driverProfile            DriverProfile?
   vehicles                 Vehicle[]
   driverTrips              Trip[]
+  passengerTripRequests    TripRequest[]
 
   @@unique([userId, institutionId])
   @@unique([institutionId, studentCode])
@@ -271,9 +279,32 @@ model Trip {
   institution              Institution               @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   driverMembership         UserInstitutionMembership @relation(fields: [driverMembershipId], references: [id], onDelete: Cascade)
   vehicle                  Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  tripRequests             TripRequest[]
 
   @@index([institutionId, status, departureAt])
   @@index([driverMembershipId, departureAt, estimatedArrivalAt])
   @@index([vehicleId, departureAt])
   @@map("trips")
+}
+model TripRequest {
+  id                       String                    @id @default(uuid())
+  tripId                   String
+  passengerMembershipId    String
+  status                   TripRequestStatus         @default(PENDING)
+  requestedPickupLatitude  Float?                    @db.DoublePrecision
+  requestedPickupLongitude Float?                    @db.DoublePrecision
+  requestedDropoffLatitude Float?                    @db.DoublePrecision
+  requestedDropoffLongitude Float?                   @db.DoublePrecision
+  requestMessage           String?
+  reviewNote               String?
+  createdAt                DateTime                  @default(now())
+  reviewedAt               DateTime?
+  cancelledAt              DateTime?
+  trip                     Trip                      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passengerMembership      UserInstitutionMembership @relation(fields: [passengerMembershipId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, status, createdAt])
+  @@index([passengerMembershipId, status, createdAt])
+  @@index([tripId, passengerMembershipId])
+  @@map("trip_requests")
 }

@@ -21,7 +21,7 @@ export class VerifyEmailUseCase {
     );
 
     if (!verificationRecord) {
-      throw new BadRequestException('The verification token is invalid or expired.');
+      throw new BadRequestException('El token de verificacion es invalido o ha expirado.');
     }
 
     await this.authUserRepository.markEmailAsVerified(
@@ -31,7 +31,7 @@ export class VerifyEmailUseCase {
     );
 
     return {
-      message: 'Email verified successfully.',
+      message: 'Correo verificado correctamente.',
     };
   }
 }
