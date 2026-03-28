@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   MembershipStatus,
   TripRequestStatus,
@@ -110,6 +110,22 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
   ): Promise<TripRequestRecord[]> {
     const tripRequests = await this.prisma.tripRequest.findMany({
       where: { passengerMembershipId },
+      include: this.tripRequestInclude(),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    return tripRequests.map((tripRequest) => this.mapTripRequest(tripRequest));
+  }
+
+  async listTripRequestsByDriverMembershipId(
+    driverMembershipId: string,
+  ): Promise<TripRequestRecord[]> {
+    const tripRequests = await this.prisma.tripRequest.findMany({
+      where: {
+        trip: {
+          driverMembershipId,
+        },
+      },
       include: this.tripRequestInclude(),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });

@@ -1,4 +1,4 @@
-﻿import {
+import {
   MembershipStatus,
   TripRequestStatus,
   TripRouteMode,
@@ -85,6 +85,9 @@ export interface TripRequestsRepository {
   createTripRequest(input: CreateTripRequestInput): Promise<TripRequestRecord>;
   listTripRequestsByPassengerMembershipId(
     passengerMembershipId: string,
+  ): Promise<TripRequestRecord[]>;
+  listTripRequestsByDriverMembershipId(
+    driverMembershipId: string,
   ): Promise<TripRequestRecord[]>;
   acceptTripRequest(requestId: string, reviewNote?: string): Promise<TripRequestRecord | null>;
   rejectTripRequest(requestId: string, reviewNote?: string): Promise<TripRequestRecord | null>;

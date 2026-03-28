@@ -289,10 +289,10 @@ export default function VehiclesPage() {
                         <StatusPill label={vehicle.isActive ? 'Activo' : 'Inactivo'} tone={vehicle.isActive ? 'success' : 'warning'} />
                       </div>
                       <p className="panel-text">
-                        {getVehicleTypeLabel(vehicle.vehicleType)} · {vehicle.year} · {vehicle.color} · {vehicle.plate}
+                        {getVehicleTypeLabel(vehicle.vehicleType)} Â· {vehicle.year} Â· {vehicle.color} Â· {vehicle.plate}
                       </p>
                       <p className="panel-text">
-                        Capacidad: {vehicle.seatCount} · Equipaje: {getLuggagePolicyLabel(vehicle.luggagePolicy)}
+                        Capacidad: {vehicle.seatCount} Â· Equipaje: {getLuggagePolicyLabel(vehicle.luggagePolicy)}
                       </p>
                     </div>
                   ))}

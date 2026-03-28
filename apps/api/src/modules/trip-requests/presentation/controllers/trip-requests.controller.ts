@@ -1,4 +1,4 @@
-﻿import {
+import {
   Body,
   Controller,
   Get,
@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../../../auth/presentation/guards/jwt-auth.guard';
 import { AcceptTripRequestUseCase } from '../../application/use-cases/accept-trip-request.use-case';
 import { CancelTripRequestUseCase } from '../../application/use-cases/cancel-trip-request.use-case';
 import { CreateTripRequestUseCase } from '../../application/use-cases/create-trip-request.use-case';
+import { ListDriverTripRequestsUseCase } from '../../application/use-cases/list-driver-trip-requests.use-case';
 import { ListMyTripRequestsUseCase } from '../../application/use-cases/list-my-trip-requests.use-case';
 import { RejectTripRequestUseCase } from '../../application/use-cases/reject-trip-request.use-case';
 import { CreateTripRequestRequestDto } from '../dto/create-trip-request.request.dto';
@@ -26,6 +27,7 @@ export class TripRequestsController {
   constructor(
     private readonly createTripRequestUseCase: CreateTripRequestUseCase,
     private readonly listMyTripRequestsUseCase: ListMyTripRequestsUseCase,
+    private readonly listDriverTripRequestsUseCase: ListDriverTripRequestsUseCase,
     private readonly acceptTripRequestUseCase: AcceptTripRequestUseCase,
     private readonly rejectTripRequestUseCase: RejectTripRequestUseCase,
     private readonly cancelTripRequestUseCase: CancelTripRequestUseCase,
@@ -50,6 +52,11 @@ export class TripRequestsController {
   @Get('me')
   listMyTripRequests(@CurrentUser() currentUser: CurrentUserContext) {
     return this.listMyTripRequestsUseCase.execute(currentUser.id);
+  }
+
+  @Get('driver')
+  listDriverTripRequests(@CurrentUser() currentUser: CurrentUserContext) {
+    return this.listDriverTripRequestsUseCase.execute(currentUser.id);
   }
 
   @Patch(':requestId/accept')
