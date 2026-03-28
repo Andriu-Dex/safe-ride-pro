@@ -76,6 +76,13 @@ enum TripRequestStatus {
   CANCELLED
 }
 
+enum ReportStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
 model Institution {
   id          String                      @id @default(uuid())
   name        String
@@ -121,6 +128,7 @@ model User {
   memberships            UserInstitutionMembership[]
   emailVerificationCodes EmailVerificationCode[]
   reviewedDriverProfiles DriverProfile[]             @relation("DriverProfileReviewedBy")
+  reviewedReports        Report[]                    @relation("ReportReviewedBy")
 
   @@unique([documentType, documentNumber])
   @@map("users")
@@ -144,6 +152,10 @@ model UserInstitutionMembership {
   vehicles                 Vehicle[]
   driverTrips              Trip[]
   passengerTripRequests    TripRequest[]
+  ratingsGiven             Rating[]                 @relation("RatingAuthor")
+  ratingsReceived          Rating[]                 @relation("RatingTarget")
+  reportsCreated           Report[]                 @relation("ReportReporter")
+  reportsReceived          Report[]                 @relation("ReportReported")
 
   @@unique([userId, institutionId])
   @@unique([institutionId, studentCode])
@@ -280,6 +292,8 @@ model Trip {
   driverMembership         UserInstitutionMembership @relation(fields: [driverMembershipId], references: [id], onDelete: Cascade)
   vehicle                  Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   tripRequests             TripRequest[]
+  ratings                  Rating[]
+  reports                  Report[]
 
   @@index([institutionId, status, departureAt])
   @@index([driverMembershipId, departureAt, estimatedArrivalAt])
@@ -307,4 +321,50 @@ model TripRequest {
   @@index([passengerMembershipId, status, createdAt])
   @@index([tripId, passengerMembershipId])
   @@map("trip_requests")
+}
+
+model Rating {
+  id                 String                    @id @default(uuid())
+  tripId             String
+  authorMembershipId String
+  targetMembershipId String
+  score              Int
+  comment            String?
+  createdAt          DateTime                  @default(now())
+  trip               Trip                      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  authorMembership   UserInstitutionMembership @relation("RatingAuthor", fields: [authorMembershipId], references: [id], onDelete: Cascade)
+  targetMembership   UserInstitutionMembership @relation("RatingTarget", fields: [targetMembershipId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, authorMembershipId, targetMembershipId])
+  @@index([authorMembershipId, createdAt])
+  @@index([targetMembershipId, createdAt])
+  @@index([tripId, createdAt])
+  @@map("ratings")
+}
+
+model Report {
+  id                   String                    @id @default(uuid())
+  tripId               String
+  reporterMembershipId String
+  reportedMembershipId String
+  status               ReportStatus              @default(PENDING)
+  reason               String
+  description          String?
+  evidenceFileKey      String?
+  reviewNote           String?
+  reviewedAt           DateTime?
+  reviewedByUserId     String?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  trip                 Trip                      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  reporterMembership   UserInstitutionMembership @relation("ReportReporter", fields: [reporterMembershipId], references: [id], onDelete: Cascade)
+  reportedMembership   UserInstitutionMembership @relation("ReportReported", fields: [reportedMembershipId], references: [id], onDelete: Cascade)
+  reviewedByUser       User?                     @relation("ReportReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tripId, reporterMembershipId, reportedMembershipId])
+  @@index([status, createdAt])
+  @@index([reporterMembershipId, createdAt])
+  @@index([reportedMembershipId, createdAt])
+  @@index([tripId, createdAt])
+  @@map("reports")
 }

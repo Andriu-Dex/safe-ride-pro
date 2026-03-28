@@ -1,0 +1,97 @@
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  MembershipStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
+
+import {
+  REPORTS_REPOSITORY,
+  ReportsRepository,
+} from '../ports/reports.repository';
+
+export type CreateReportCommand = {
+  userId: string;
+  tripId: string;
+  reportedMembershipId: string;
+  reason: string;
+  description?: string;
+  evidenceFileKey?: string;
+};
+
+@Injectable()
+export class CreateReportUseCase {
+  constructor(
+    @Inject(REPORTS_REPOSITORY)
+    private readonly reportsRepository: ReportsRepository,
+  ) {}
+
+  async execute(command: CreateReportCommand) {
+    const membership = await this.reportsRepository.findDefaultMembershipByUserId(command.userId);
+
+    if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
+      throw new ForbiddenException('No tienes una membresia activa para registrar reportes.');
+    }
+
+    const trip = await this.reportsRepository.findTripById(command.tripId);
+
+    if (!trip) {
+      throw new NotFoundException('El viaje indicado no existe.');
+    }
+
+    if (trip.institutionId !== membership.institutionId) {
+      throw new ForbiddenException('Solo puedes reportar viajes de tu institucion activa.');
+    }
+
+    if (trip.status !== TripStatus.Completed) {
+      throw new BadRequestException('Solo puedes reportar incidentes en viajes completados.');
+    }
+
+    if (command.reportedMembershipId === membership.id) {
+      throw new BadRequestException('No puedes reportarte a ti mismo.');
+    }
+
+    const reporterIsDriver = trip.driverMembershipId === membership.id;
+    const reporterIsAcceptedPassenger = await this.reportsRepository.hasAcceptedTripRequest(
+      trip.id,
+      membership.id,
+    );
+
+    if (!reporterIsDriver && !reporterIsAcceptedPassenger) {
+      throw new ForbiddenException('No participaste en este viaje como conductor o pasajero confirmado.');
+    }
+
+    const reportedIsDriver = trip.driverMembershipId === command.reportedMembershipId;
+    const reportedIsAcceptedPassenger = await this.reportsRepository.hasAcceptedTripRequest(
+      trip.id,
+      command.reportedMembershipId,
+    );
+
+    if (!reportedIsDriver && !reportedIsAcceptedPassenger) {
+      throw new BadRequestException('Solo puedes reportar a participantes confirmados de este viaje.');
+    }
+
+    const existingReport = await this.reportsRepository.findExistingReport(
+      trip.id,
+      membership.id,
+      command.reportedMembershipId,
+    );
+
+    if (existingReport) {
+      throw new BadRequestException('Ya registraste un reporte para esta persona en el viaje indicado.');
+    }
+
+    const report = await this.reportsRepository.createReport({
+      tripId: trip.id,
+      reporterMembershipId: membership.id,
+      reportedMembershipId: command.reportedMembershipId,
+      reason: command.reason.trim(),
+      description: command.description?.trim() || undefined,
+      evidenceFileKey: command.evidenceFileKey?.trim() || undefined,
+    });
+
+    return {
+      message: 'Reporte registrado correctamente.',
+      report,
+    };
+  }
+}
