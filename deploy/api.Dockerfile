@@ -17,7 +17,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 RUN pnpm exec tsc --project packages/shared-types/tsconfig.json
-RUN pnpm --filter @saferidepro/api exec prisma generate
+RUN node scripts/run-api-prisma.js generate
 RUN pnpm --dir apps/api build
 
 FROM node:24-alpine AS runner
@@ -31,4 +31,4 @@ COPY --from=builder /app /app
 ENV NODE_ENV=production
 EXPOSE 3001
 
-CMD ["sh", "-c", "pnpm --filter @saferidepro/api exec prisma migrate deploy && pnpm --filter @saferidepro/api exec prisma db seed && node apps/api/dist/main.js"]
+CMD ["sh", "-c", "node scripts/run-api-prisma.js migrate deploy && node scripts/run-api-prisma.js db seed && node apps/api/dist/main.js"]

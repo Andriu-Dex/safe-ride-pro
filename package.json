@@ -12,6 +12,7 @@
     "format": "turbo run format"
   },
   "devDependencies": {
+    "prisma": "^6.6.0",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0"
   }
