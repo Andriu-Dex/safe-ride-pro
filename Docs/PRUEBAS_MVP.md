@@ -240,6 +240,9 @@ Ademas, el backend ya cuenta con pruebas de integracion con base de datos real e
 - registro de vehiculo y creacion/publicacion de viaje
 - solicitud de cupo, aceptacion, inicio y finalizacion del viaje
 - calificacion, reporte y revision administrativa del reporte
+- listado y creacion de instituciones con permisos reales
+- actualizacion de perfil y lectura de membresias multiples
+- validacion basica del modelo multiinstitucional con un usuario global y dos memberships
 
 Comando:
 
@@ -248,6 +251,8 @@ corepack pnpm --dir apps/api test:db
 ```
 
 Por seguridad, `test:db` no usa el schema principal. Si no defines `TEST_DATABASE_URL`, el runner deriva uno a partir de `DATABASE_URL` usando `TEST_DATABASE_SCHEMA=integration_tests`.
+
+En CI, este comando ya puede ejecutarse con un servicio efimero de PostgreSQL en GitHub Actions.
 
 La siguiente tanda recomendable de automatizacion es:
 

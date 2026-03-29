@@ -61,7 +61,7 @@ export class PrismaUsersRepository implements UsersRepository {
     }).catch(() => null);
 
     if (!user) {
-      throw new NotFoundException('The requested user was not found.');
+      throw new NotFoundException('El usuario solicitado no existe.');
     }
 
     return this.mapUser(user);

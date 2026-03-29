@@ -13,7 +13,7 @@ export class GetCurrentUserUseCase {
     const user = await this.usersRepository.findById(userId);
 
     if (!user) {
-      throw new NotFoundException('The requested user was not found.');
+      throw new NotFoundException('El usuario solicitado no existe.');
     }
 
     return user;

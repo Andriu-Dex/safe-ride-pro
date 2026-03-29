@@ -9,7 +9,7 @@ export class SuperAdminGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{ user: CurrentUserContext }>();
 
     if (request.user.globalRole !== GlobalUserRole.SuperAdmin) {
-      throw new ForbiddenException('This action requires SUPER_ADMIN privileges.');
+      throw new ForbiddenException('Esta accion requiere privilegios de SUPER_ADMIN.');
     }
 
     return true;

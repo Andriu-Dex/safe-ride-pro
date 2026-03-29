@@ -10,6 +10,34 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: safe_ride_pro_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d safe_ride_pro_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/safe_ride_pro_ci
+      TEST_DATABASE_SCHEMA: integration_tests
+      JWT_SECRET: ci-jwt-secret
+      EMAIL_VERIFICATION_TOKEN_TTL_MINUTES: 30
+      WEB_APP_ORIGINS: http://localhost:3000
+      DEFAULT_INSTITUTION_NAME: Universidad Tecnica de Ambato
+      DEFAULT_INSTITUTION_CODE: UTA
+      DEFAULT_INSTITUTION_DOMAIN: uta.edu.ec
+      SUPER_ADMIN_EMAIL: admin@uta.edu.ec
+      SUPER_ADMIN_PASSWORD: ChangeMe123!
+      SUPER_ADMIN_FULL_NAME: SafeRidePro Super Admin
+      SUPER_ADMIN_DOCUMENT_TYPE: NATIONAL_ID
+      SUPER_ADMIN_DOCUMENT_NUMBER: "0000000000"
 
     steps:
       - name: Checkout repository
@@ -37,6 +65,9 @@ jobs:
 
       - name: Run API tests
         run: pnpm --dir apps/api test
+
+      - name: Run API real DB tests
+        run: pnpm --dir apps/api test:db
 
       - name: Typecheck API
         run: pnpm --dir apps/api typecheck

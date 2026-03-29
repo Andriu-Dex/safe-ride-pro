@@ -18,7 +18,7 @@ export class CreateInstitutionUseCase {
       .filter(Boolean);
 
     if (normalizedDomains.length === 0) {
-      throw new BadRequestException('At least one active institutional domain is required.');
+      throw new BadRequestException('Debes registrar al menos un dominio institucional activo.');
     }
 
     return this.institutionsRepository.create({
