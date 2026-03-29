@@ -40,11 +40,25 @@ Copy-Item .env.qa.example .env.qa
 docker compose --env-file .env.qa -f docker-compose.qa.yml up --build
 ```
 
+Tambien puedes usar los scripts del proyecto:
+
+```powershell
+corepack pnpm qa:up:build
+corepack pnpm qa:ps
+corepack pnpm qa:logs
+corepack pnpm qa:down
+```
+
 ## Puertos esperados
 
 - web: `http://localhost:3000`
 - api: `http://localhost:3001`
 - postgres: `localhost:5432`
+
+Healthchecks:
+
+- web: `http://localhost:3000/healthz`
+- api: `http://localhost:3001/api/health`
 
 ## Comportamiento esperado
 
@@ -54,6 +68,14 @@ Al iniciar el contenedor de `api`, el entorno:
 - aplica migraciones con `db:deploy`
 - ejecuta el seed inicial
 - levanta el backend
+
+El archivo `docker-compose.qa.yml` ahora incluye `healthchecks` para:
+
+- `postgres`
+- `api`
+- `web`
+
+Esto permite que `web` espere a que `api` este realmente lista antes de iniciar.
 
 Esto permite tener el entorno listo para pruebas sin pasos manuales extra.
 
@@ -74,3 +96,12 @@ Este entorno esta pensado para:
 - pruebas funcionales del MVP
 
 No reemplaza todavia una estrategia final de produccion.
+
+## Buenas practicas incluidas
+
+En esta version del entorno QA se deja aplicado lo siguiente:
+
+- ejecucion de contenedores de aplicacion con usuario no root
+- healthchecks de servicios
+- scripts reproducibles desde la raiz del proyecto
+- semilla inicial automatica para entorno de prueba

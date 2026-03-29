@@ -6,6 +6,7 @@ RUN corepack enable
 
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json apps/api/package.json
@@ -28,10 +29,13 @@ WORKDIR /app
 
 RUN corepack enable
 
-COPY --from=builder /app /app
+COPY --from=builder --chown=node:node /app /app
 
 ENV NODE_ENV=production
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
 EXPOSE 3000
+
+USER node
 
 CMD ["pnpm", "--dir", "apps/web", "start"]

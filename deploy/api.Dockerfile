@@ -26,9 +26,12 @@ WORKDIR /app
 
 RUN corepack enable
 
-COPY --from=builder /app /app
+COPY --from=builder --chown=node:node /app /app
 
 ENV NODE_ENV=production
+ENV PRISMA_HIDE_UPDATE_MESSAGE=true
 EXPOSE 3001
+
+USER node
 
 CMD ["sh", "-c", "node scripts/run-api-prisma.js migrate deploy && node scripts/run-api-prisma.js db seed && node apps/api/dist/main.js"]

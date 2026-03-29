@@ -9,7 +9,13 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "format": "turbo run format"
+    "format": "turbo run format",
+    "qa:up": "docker compose --env-file .env.qa -f docker-compose.qa.yml up -d",
+    "qa:up:build": "docker compose --env-file .env.qa -f docker-compose.qa.yml up --build -d",
+    "qa:down": "docker compose --env-file .env.qa -f docker-compose.qa.yml down",
+    "qa:reset": "docker compose --env-file .env.qa -f docker-compose.qa.yml down -v",
+    "qa:logs": "docker compose --env-file .env.qa -f docker-compose.qa.yml logs -f",
+    "qa:ps": "docker compose --env-file .env.qa -f docker-compose.qa.yml ps"
   },
   "devDependencies": {
     "prisma": "^6.6.0",
