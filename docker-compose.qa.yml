@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-safe_ride_pro_qa}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_qa_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-safe_ride_pro_qa}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/api.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-safe_ride_pro_qa}
+      JWT_SECRET: ${JWT_SECRET:-qa-jwt-secret}
+      EMAIL_VERIFICATION_TOKEN_TTL_MINUTES: ${EMAIL_VERIFICATION_TOKEN_TTL_MINUTES:-30}
+      WEB_APP_ORIGINS: ${WEB_APP_ORIGINS:-http://localhost:3000}
+      DEFAULT_INSTITUTION_NAME: ${DEFAULT_INSTITUTION_NAME:-Universidad Tecnica de Ambato}
+      DEFAULT_INSTITUTION_CODE: ${DEFAULT_INSTITUTION_CODE:-UTA}
+      DEFAULT_INSTITUTION_DOMAIN: ${DEFAULT_INSTITUTION_DOMAIN:-uta.edu.ec}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-admin@uta.edu.ec}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-Admin12345}
+      SUPER_ADMIN_FULL_NAME: ${SUPER_ADMIN_FULL_NAME:-SafeRidePro Super Admin}
+      SUPER_ADMIN_DOCUMENT_TYPE: ${SUPER_ADMIN_DOCUMENT_TYPE:-NATIONAL_ID}
+      SUPER_ADMIN_DOCUMENT_NUMBER: ${SUPER_ADMIN_DOCUMENT_NUMBER:-0000000000}
+    ports:
+      - "${API_PORT:-3001}:3001"
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001/api}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001/api}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  postgres_qa_data:

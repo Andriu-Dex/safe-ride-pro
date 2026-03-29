@@ -233,6 +233,14 @@ Tambien ya existen pruebas HTTP de integracion ligera para endpoints criticos:
 - `GET /api/reports/inbox`
 - `PATCH /api/reports/:reportId/review`
 
+En frontend ya existen pruebas automaticas con `Vitest + Testing Library` para piezas criticas del panel web:
+
+- `auth-storage`
+- `AuthProvider`
+- `LoginForm`
+- `ProtectedRoute`
+- `TripFiltersPanel`
+
 Ademas, el backend ya cuenta con pruebas de integracion con base de datos real en un schema aislado de PostgreSQL para flujos criticos del MVP:
 
 - registro, verificacion, login y consulta de perfil con persistencia real
@@ -256,6 +264,6 @@ En CI, este comando ya puede ejecutarse con un servicio efimero de PostgreSQL en
 
 La siguiente tanda recomendable de automatizacion es:
 
-- `institutions` y `users`
-- llevar `test:db` al pipeline cuando ya se provisionen servicios de PostgreSQL en CI
+- smoke tests end-to-end con navegador para el flujo principal
+- verificacion del entorno de QA/deploy con contenedores
 - pipeline de despliegue cuando ya exista ambiente objetivo

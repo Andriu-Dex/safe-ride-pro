@@ -1,0 +1,13 @@
+node_modules
+.pnpm-store
+.turbo
+.next
+dist
+dist-test
+coverage
+.git
+.github
+Dockerfile*
+docker-compose*.yml
+*.log
+apps/api/prisma/dev.db
