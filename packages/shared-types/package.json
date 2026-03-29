@@ -11,11 +11,11 @@
     }
   },
   "scripts": {
-    "build": "corepack pnpm exec tsc --project tsconfig.json",
-    "dev": "corepack pnpm exec tsc --project tsconfig.json --watch",
+    "build": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json",
+    "dev": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "echo \"Shared types tests will be added soon\"",
-    "typecheck": "corepack pnpm exec tsc --project tsconfig.json --noEmit",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit",
     "format": "prettier --check \"src/**/*.ts\""
   },
   "devDependencies": {
