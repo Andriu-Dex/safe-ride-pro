@@ -13,6 +13,7 @@ import { listAuditEvents } from '../../../modules/audit/lib/audit-api';
 import { getAuditActionLabel, getAuditEntityTypeLabel } from '../../../modules/audit/lib/audit-labels';
 import type { AuditEventRecord, AuditFilters } from '../../../modules/audit/types/audit';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { listReviewableReports, reviewReport } from '../../../modules/reports/lib/report-api';
 import { getReportReasonLabel, getReportStatusLabel, getReportStatusTone } from '../../../modules/reports/lib/report-labels';
 import type { ReportRecord } from '../../../modules/reports/types/report';
@@ -50,6 +51,10 @@ function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
 }
 
+function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
+  return error instanceof ApiError ? error.message : fallbackMessage;
+}
+
 export default function AuditPage() {
   const { authSession, isHydrated } = useAuth();
   const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
@@ -60,6 +65,7 @@ export default function AuditPage() {
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isReviewingReportId, setIsReviewingReportId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -98,6 +104,28 @@ export default function AuditPage() {
 
     setAuditEvents(auditItems);
     setReviewableReports(reportItems);
+  };
+
+  const refreshData = async (showSpinner = false) => {
+    if (!authSession || !canAccessAdminView) {
+      return;
+    }
+
+    if (showSpinner) {
+      setIsRefreshingData(true);
+    }
+
+    try {
+      await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
+    } catch (error) {
+      setErrorMessage(
+        getApiErrorMessage(error, 'No fue posible sincronizar auditoria y reportes administrativos.'),
+      );
+    } finally {
+      if (showSpinner) {
+        setIsRefreshingData(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -146,6 +174,16 @@ export default function AuditPage() {
     };
   }, [appliedAuditFilters, authSession, canAccessAdminView, isHydrated, reportStatusFilter]);
 
+  useAutoRefresh(
+    async () => {
+      await refreshData();
+    },
+    {
+      enabled: Boolean(authSession && isHydrated && canAccessAdminView),
+      intervalMs: 20_000,
+    },
+  );
+
   const handleFilterChange = (field: keyof AuditFilters, value: string) => {
     setAuditFilterValues((currentFilters) => ({
       ...currentFilters,
@@ -192,8 +230,11 @@ export default function AuditPage() {
 
     const reviewNote = reviewNotes[reportId]?.trim();
 
-    if (status === ReportStatus.Dismissed && !reviewNote) {
-      setErrorMessage('Debes indicar un motivo antes de desestimar un reporte.');
+    if (
+      (status === ReportStatus.Resolved || status === ReportStatus.Dismissed) &&
+      !reviewNote
+    ) {
+      setErrorMessage('Debes indicar una nota administrativa antes de cerrar el reporte.');
       return;
     }
 
@@ -214,11 +255,8 @@ export default function AuditPage() {
         [reportId]: '',
       }));
     } catch (error) {
-      setErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : 'No fue posible actualizar el reporte.',
-      );
+      setErrorMessage(getApiErrorMessage(error, 'No fue posible actualizar el reporte.'));
+      await refreshData();
     } finally {
       setIsReviewingReportId(null);
     }
@@ -278,10 +316,19 @@ export default function AuditPage() {
             Supervisa eventos criticos del sistema y revisa los reportes abiertos de tus instituciones.
           </p>
         </div>
-        <StatusPill
-          label={openReportsCount ? `${openReportsCount} reportes abiertos` : 'Bandeja al dia'}
-          tone={openReportsCount ? 'warning' : 'success'}
-        />
+        <div className="topbar-actions">
+          <Button
+            disabled={isRefreshingData}
+            onClick={() => void refreshData(true)}
+            variant="secondary"
+          >
+            {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
+          </Button>
+          <StatusPill
+            label={openReportsCount ? `${openReportsCount} reportes abiertos` : 'Bandeja al dia'}
+            tone={openReportsCount ? 'warning' : 'success'}
+          />
+        </div>
       </header>
 
       <section className="content-grid">
@@ -411,7 +458,7 @@ export default function AuditPage() {
                             </Button>
                           ) : null}
                           <Button
-                            disabled={isReviewingReportId === report.id}
+                            disabled={isReviewingReportId === report.id || !(reviewNotes[report.id]?.trim())}
                             onClick={() => void handleReviewReport(report.id, ReportStatus.Resolved)}
                           >
                             Resolver

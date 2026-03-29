@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { TripStatus } from '@saferidepro/shared-types';
+import { DriverLicenseStatus, DriverVerificationStatus, MembershipStatus, TripStatus } from '@saferidepro/shared-types';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
@@ -19,8 +19,18 @@ export class PublishTripUseCase {
   async execute(userId: string, tripId: string) {
     const membership = await this.tripsRepository.findDefaultMembershipByUserId(userId);
 
-    if (!membership) {
+    if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
       throw new ForbiddenException('No tienes una membresia activa para publicar viajes.');
+    }
+
+    if (membership.driverVerificationStatus !== DriverVerificationStatus.Approved) {
+      throw new ForbiddenException('Solo un conductor aprobado puede publicar viajes.');
+    }
+
+    if (membership.licenseStatus === DriverLicenseStatus.Expired) {
+      throw new ForbiddenException(
+        'Tu licencia vencio. Debes actualizarla antes de publicar viajes.',
+      );
     }
 
     const trip = await this.tripsRepository.findTripById(tripId);
@@ -39,6 +49,23 @@ export class PublishTripUseCase {
 
     if (trip.availableSeats > trip.seatCount) {
       throw new BadRequestException('Los cupos disponibles no pueden superar la capacidad del viaje.');
+    }
+
+    if (trip.departureAt <= new Date()) {
+      throw new BadRequestException('No puedes publicar un viaje cuya salida ya vencio.');
+    }
+
+    if (trip.estimatedArrivalAt <= trip.departureAt) {
+      throw new BadRequestException('La llegada estimada del viaje debe ser posterior a la salida.');
+    }
+
+    const vehicle = await this.tripsRepository.findVehicleByIdForMembership(
+      membership.id,
+      trip.vehicleId,
+    );
+
+    if (!vehicle || !vehicle.isActive) {
+      throw new BadRequestException('No puedes publicar un viaje con un vehiculo inactivo.');
     }
 
     const overlappingTrips = await this.tripsRepository.findOverlappingTrips(

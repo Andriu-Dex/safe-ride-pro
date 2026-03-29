@@ -1,5 +1,6 @@
 import {
   AccountStatus,
+  DriverLicenseStatus,
   DriverVerificationStatus,
   DocumentType,
   GlobalUserRole,
@@ -16,6 +17,10 @@ export type AuthMembership = {
   studentCode: string;
   isDefault: boolean;
   driverVerificationStatus: DriverVerificationStatus;
+  effectiveDriverVerificationStatus?: DriverVerificationStatus;
+  licenseExpiresAt?: string | null;
+  licenseStatus?: DriverLicenseStatus;
+  licenseExpiresInDays?: number | null;
 };
 
 export type AuthUser = {

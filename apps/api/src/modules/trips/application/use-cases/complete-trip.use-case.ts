@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { TripStatus } from '@saferidepro/shared-types';
+import { MembershipStatus, TripStatus } from '@saferidepro/shared-types';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
@@ -19,7 +19,7 @@ export class CompleteTripUseCase {
   async execute(userId: string, tripId: string) {
     const membership = await this.tripsRepository.findDefaultMembershipByUserId(userId);
 
-    if (!membership) {
+    if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
       throw new ForbiddenException('No tienes una membresia activa para finalizar viajes.');
     }
 

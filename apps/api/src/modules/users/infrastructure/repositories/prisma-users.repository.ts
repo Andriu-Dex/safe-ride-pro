@@ -9,6 +9,12 @@ import {
 } from '@prisma/client';
 import {
   AccountStatus as SharedAccountStatus,
+  CancellationTiming,
+  CANCELLATION_LATE_WINDOW_MINUTES,
+  getCancellationTiming,
+  getDaysUntilDriverLicenseExpiration,
+  getDriverLicenseStatus,
+  getEffectiveDriverVerificationStatus,
   DriverVerificationStatus as SharedDriverVerificationStatus,
   GlobalUserRole as SharedGlobalUserRole,
   InstitutionMembershipRole,
@@ -17,6 +23,7 @@ import {
 
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import {
+  TrustSummary,
   UpdateUserProfileInput,
   UserProfile,
   UsersRepository,
@@ -33,6 +40,11 @@ export class PrismaUsersRepository implements UsersRepository {
         memberships: {
           include: {
             institution: true,
+            driverProfile: {
+              select: {
+                licenseExpiresAt: true,
+              },
+            },
           },
           orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
         },
@@ -54,6 +66,11 @@ export class PrismaUsersRepository implements UsersRepository {
         memberships: {
           include: {
             institution: true,
+            driverProfile: {
+              select: {
+                licenseExpiresAt: true,
+              },
+            },
           },
           orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
         },
@@ -65,6 +82,121 @@ export class PrismaUsersRepository implements UsersRepository {
     }
 
     return this.mapUser(user);
+  }
+
+  async getTrustSummary(membershipId: string): Promise<TrustSummary> {
+    const computedAt = new Date();
+
+    const [
+      ratingAggregate,
+      completedTripsAsDriver,
+      completedTripsAsPassenger,
+      cancelledTripsAsDriver,
+      cancelledTripRequestsAsPassenger,
+      passengerNoShows,
+      resolvedReportsReceived,
+    ] = await Promise.all([
+      this.prisma.rating.aggregate({
+        where: {
+          targetMembershipId: membershipId,
+        },
+        _avg: {
+          score: true,
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.trip.count({
+        where: {
+          driverMembershipId: membershipId,
+          status: 'COMPLETED',
+        },
+      }),
+      this.prisma.tripRequest.count({
+        where: {
+          passengerMembershipId: membershipId,
+          status: 'ACCEPTED',
+          trip: {
+            status: 'COMPLETED',
+          },
+        },
+      }),
+      this.prisma.trip.findMany({
+        where: {
+          driverMembershipId: membershipId,
+          status: 'CANCELLED',
+          cancelledAt: {
+            not: null,
+          },
+        },
+        select: {
+          departureAt: true,
+          cancelledAt: true,
+        },
+      }),
+      this.prisma.tripRequest.findMany({
+        where: {
+          passengerMembershipId: membershipId,
+          status: 'CANCELLED',
+          cancelledAt: {
+            not: null,
+          },
+        },
+        select: {
+          cancelledAt: true,
+          trip: {
+            select: {
+              departureAt: true,
+            },
+          },
+        },
+      }),
+      this.prisma.tripRequest.count({
+        where: {
+          passengerMembershipId: membershipId,
+          status: 'NO_SHOW',
+        },
+      }),
+      this.prisma.report.count({
+        where: {
+          reportedMembershipId: membershipId,
+          status: 'RESOLVED',
+        },
+      }),
+    ]);
+
+    const lateDriverTripCancellations = cancelledTripsAsDriver.filter((trip) =>
+      getCancellationTiming({
+        departureAt: trip.departureAt,
+        cancelledAt: trip.cancelledAt,
+      }) === CancellationTiming.Late,
+    ).length;
+
+    const latePassengerTripRequestCancellations = cancelledTripRequestsAsPassenger.filter(
+      (tripRequest) =>
+        getCancellationTiming({
+          departureAt: tripRequest.trip.departureAt,
+          cancelledAt: tripRequest.cancelledAt,
+        }) === CancellationTiming.Late,
+    ).length;
+
+    return {
+      membershipId,
+      averageRatingReceived:
+        ratingAggregate._avg.score === null ? null : Number(ratingAggregate._avg.score),
+      totalRatingsReceived: ratingAggregate._count._all,
+      completedTripsAsDriver,
+      completedTripsAsPassenger,
+      lateDriverTripCancellations,
+      latePassengerTripRequestCancellations,
+      passengerNoShows,
+      resolvedReportsReceived,
+      cancellationPolicy: {
+        lateWindowMinutes: CANCELLATION_LATE_WINDOW_MINUTES,
+        lastComputedAt: computedAt,
+      },
+    };
   }
 
   private mapUser(user: {
@@ -86,6 +218,9 @@ export class PrismaUsersRepository implements UsersRepository {
       studentCode: string;
       isDefault: boolean;
       driverVerificationStatus: DriverVerificationStatus;
+      driverProfile?: {
+        licenseExpiresAt: Date;
+      } | null;
       institution: { name: string };
     }[];
   }): UserProfile {
@@ -110,6 +245,15 @@ export class PrismaUsersRepository implements UsersRepository {
         isDefault: membership.isDefault,
         driverVerificationStatus:
           membership.driverVerificationStatus as unknown as SharedDriverVerificationStatus,
+        effectiveDriverVerificationStatus: getEffectiveDriverVerificationStatus(
+          membership.driverVerificationStatus as unknown as SharedDriverVerificationStatus,
+          membership.driverProfile?.licenseExpiresAt ?? null,
+        ) as SharedDriverVerificationStatus,
+        licenseExpiresAt: membership.driverProfile?.licenseExpiresAt ?? null,
+        licenseStatus: getDriverLicenseStatus(membership.driverProfile?.licenseExpiresAt ?? null),
+        licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(
+          membership.driverProfile?.licenseExpiresAt ?? null,
+        ),
       })),
     };
   }

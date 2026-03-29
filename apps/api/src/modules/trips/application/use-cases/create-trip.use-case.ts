@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   MembershipStatus,
   TripRouteMode,
@@ -47,6 +48,12 @@ export class CreateTripUseCase {
       throw new ForbiddenException('Solo un conductor aprobado puede crear viajes.');
     }
 
+    if (membership.licenseStatus === DriverLicenseStatus.Expired) {
+      throw new ForbiddenException(
+        'Tu licencia vencio. Debes actualizarla antes de crear nuevos viajes.',
+      );
+    }
+
     const vehicle = await this.tripsRepository.findVehicleByIdForMembership(
       membership.id,
       command.vehicleId,
@@ -58,6 +65,24 @@ export class CreateTripUseCase {
 
     if (command.seatCount < 1 || command.seatCount > vehicle.seatCount) {
       throw new BadRequestException('La cantidad de cupos no puede superar la capacidad del vehiculo.');
+    }
+
+    const originLabel = command.originLabel.trim();
+    const destinationLabel = command.destinationLabel.trim();
+
+    if (!originLabel || !destinationLabel) {
+      throw new BadRequestException('Debes indicar origen y destino del viaje.');
+    }
+
+    if (originLabel.localeCompare(destinationLabel, 'es', { sensitivity: 'base' }) === 0) {
+      throw new BadRequestException('El origen y el destino no pueden ser iguales.');
+    }
+
+    if (
+      command.originLatitude === command.destinationLatitude &&
+      command.originLongitude === command.destinationLongitude
+    ) {
+      throw new BadRequestException('El origen y el destino no pueden compartir las mismas coordenadas.');
     }
 
     const departureAt = new Date(command.departureAt);
@@ -88,8 +113,8 @@ export class CreateTripUseCase {
       driverMembershipId: membership.id,
       vehicleId: vehicle.id,
       routeMode: command.routeMode,
-      originLabel: command.originLabel.trim(),
-      destinationLabel: command.destinationLabel.trim(),
+      originLabel,
+      destinationLabel,
       originLatitude: command.originLatitude,
       originLongitude: command.originLongitude,
       destinationLatitude: command.destinationLatitude,

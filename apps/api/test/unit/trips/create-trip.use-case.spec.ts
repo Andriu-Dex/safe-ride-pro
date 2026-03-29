@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
@@ -26,6 +27,8 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
     updateTripStatus: jest.fn(),
+    cancelTripAndActiveRequests: jest.fn(),
+    startTripAndClosePendingRequests: jest.fn(),
   };
 }
 
@@ -56,6 +59,8 @@ function buildCreatedTrip(input: CreateTripInput): TripRecord {
     basePriceReference: input.basePriceReference,
     detourSurchargeReference: input.detourSurchargeReference ?? null,
     notes: input.notes ?? null,
+    cancelledAt: null,
+    cancellationTiming: null,
     createdAt: new Date('2030-01-01T09:00:00.000Z'),
   };
 }
@@ -144,6 +149,52 @@ describe('CreateTripUseCase', () => {
     );
   });
 
+  it('rejects trips with equal labels or coordinates for origin and destination', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new CreateTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findVehicleByIdForMembership.mockResolvedValue({
+      id: 'vehicle-1',
+      membershipId: 'membership-1',
+      isActive: true,
+      seatCount: 4,
+      luggagePolicy: LuggagePolicy.UpToMedium,
+      vehicleType: VehicleType.Car,
+      plate: 'ABC-123',
+      displayName: 'Toyota Yaris',
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        vehicleId: 'vehicle-1',
+        routeMode: TripRouteMode.DirectRoute,
+        originLabel: '  Campus  ',
+        destinationLabel: 'campus',
+        originLatitude: -1.25,
+        originLongitude: -78.62,
+        destinationLatitude: -1.25,
+        destinationLongitude: -78.62,
+        departureAt: '2030-01-01T10:00:00.000Z',
+        estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+        seatCount: 3,
+        basePriceReference: 2.5,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('El origen y el destino no pueden ser iguales.'),
+    );
+  });
+
   it('creates a trip draft using vehicle snapshots and records audit', async () => {
     const repository = createTripsRepositoryMock();
     const auditService = {
@@ -221,5 +272,46 @@ describe('CreateTripUseCase', () => {
         departureAt: '2030-01-01T10:00:00.000Z',
       },
     });
+  });
+
+  it('blocks creating a trip when the approved driver license is expired', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new CreateTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+      licenseStatus: DriverLicenseStatus.Expired,
+      licenseExpiresAt: new Date('2020-01-01T10:00:00.000Z'),
+      licenseExpiresInDays: -1,
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        vehicleId: 'vehicle-1',
+        routeMode: TripRouteMode.DirectRoute,
+        originLabel: 'Huachi',
+        destinationLabel: 'Centro',
+        originLatitude: -1.25,
+        originLongitude: -78.62,
+        destinationLatitude: -1.24,
+        destinationLongitude: -78.61,
+        departureAt: '2030-01-01T10:00:00.000Z',
+        estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+        seatCount: 3,
+        basePriceReference: 2.5,
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'Tu licencia vencio. Debes actualizarla antes de crear nuevos viajes.',
+      ),
+    );
   });
 });

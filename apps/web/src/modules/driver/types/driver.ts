@@ -1,4 +1,9 @@
-import { DriverVerificationStatus, InstitutionMembershipRole, MembershipStatus } from '@saferidepro/shared-types';
+import {
+  DriverLicenseStatus,
+  DriverVerificationStatus,
+  InstitutionMembershipRole,
+  MembershipStatus,
+} from '@saferidepro/shared-types';
 
 export type DriverMembership = {
   id: string;
@@ -10,6 +15,10 @@ export type DriverMembership = {
   studentCode: string;
   isDefault: boolean;
   driverVerificationStatus: DriverVerificationStatus;
+  effectiveDriverVerificationStatus?: DriverVerificationStatus;
+  licenseExpiresAt?: string | null;
+  licenseStatus?: DriverLicenseStatus;
+  licenseExpiresInDays?: number | null;
 };
 
 export type DriverProfile = {
@@ -24,8 +33,11 @@ export type DriverProfile = {
   };
   licenseNumber: string;
   licenseExpiresAt: string;
+  licenseStatus?: DriverLicenseStatus;
+  licenseExpiresInDays?: number | null;
   identityDocumentFileKey: string | null;
   licenseDocumentFileKey: string | null;
+  hasRequiredDocuments?: boolean;
   reviewNotes: string | null;
   reviewedAt: string | null;
   reviewedByUserId: string | null;

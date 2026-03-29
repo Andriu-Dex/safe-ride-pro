@@ -37,10 +37,14 @@ describe('Critical MVP flow real DB integration', () => {
 
   it('completes the driver, trip, trust and report review flow against PostgreSQL', async () => {
     const uniqueSuffix = Date.now().toString();
+    const departureAt = new Date(Date.now() + 10 * 60_000).toISOString();
+    const estimatedArrivalAt = new Date(Date.now() + 40 * 60_000).toISOString();
     const driverPassword = 'DriverPass123!';
     const passengerPassword = 'PassengerPass123!';
+    const waitingPassengerPassword = 'WaitingPassenger123!';
     const driverEmail = `driver.${uniqueSuffix}@uta.edu.ec`;
     const passengerEmail = `passenger.${uniqueSuffix}@uta.edu.ec`;
+    const waitingPassengerEmail = `waiting.${uniqueSuffix}@uta.edu.ec`;
 
     const driverSession = await registerVerifyAndLoginUser(app, {
       email: driverEmail,
@@ -56,10 +60,18 @@ describe('Critical MVP flow real DB integration', () => {
       documentNumber: `19${uniqueSuffix.slice(-8)}`,
       studentCode: `PAS-${uniqueSuffix.slice(-6)}`,
     });
+    const waitingPassengerSession = await registerVerifyAndLoginUser(app, {
+      email: waitingPassengerEmail,
+      password: waitingPassengerPassword,
+      fullName: 'Pasajero Pendiente DB Real',
+      documentNumber: `17${uniqueSuffix.slice(-8)}`,
+      studentCode: `PEN-${uniqueSuffix.slice(-6)}`,
+    });
     const adminSession = await loginSeedAdmin(app);
 
     const driverToken = driverSession.login.accessToken as string;
     const passengerToken = passengerSession.login.accessToken as string;
+    const waitingPassengerToken = waitingPassengerSession.login.accessToken as string;
     const adminToken = adminSession.body.accessToken as string;
     const driverMembershipId = driverSession.login.user.memberships[0].id as string;
     const passengerMembershipId = passengerSession.login.user.memberships[0].id as string;
@@ -147,8 +159,8 @@ describe('Critical MVP flow real DB integration', () => {
         originLongitude: -78.6282,
         destinationLatitude: -1.2417,
         destinationLongitude: -78.6194,
-        departureAt: '2035-06-01T13:00:00.000Z',
-        estimatedArrivalAt: '2035-06-01T13:35:00.000Z',
+        departureAt,
+        estimatedArrivalAt,
         seatCount: 2,
         basePriceReference: 2.5,
         notes: 'Salida puntual desde el campus.',
@@ -173,6 +185,16 @@ describe('Critical MVP flow real DB integration', () => {
       })
       .expect(201);
     const tripRequestId = tripRequestResponse.body.tripRequest.id as string;
+
+    const pendingTripRequestResponse = await request(app.getHttpServer())
+      .post('/api/trip-requests')
+      .set('Authorization', `Bearer ${waitingPassengerToken}`)
+      .send({
+        tripId,
+        requestMessage: 'Quedo pendiente para la misma ruta.',
+      })
+      .expect(201);
+    const pendingTripRequestId = pendingTripRequestResponse.body.tripRequest.id as string;
 
     const acceptRequestResponse = await request(app.getHttpServer())
       .patch(`/api/trip-requests/${tripRequestId}/accept`)
@@ -240,11 +262,24 @@ describe('Critical MVP flow real DB integration', () => {
       })
       .expect(200);
 
+    const passengerTrustSummaryResponse = await request(app.getHttpServer())
+      .get('/api/users/me/trust-summary')
+      .set('Authorization', `Bearer ${passengerToken}`)
+      .expect(200);
+
+    const driverTrustSummaryResponse = await request(app.getHttpServer())
+      .get('/api/users/me/trust-summary')
+      .set('Authorization', `Bearer ${driverToken}`)
+      .expect(200);
+
     const storedTrip = await prisma.trip.findUnique({
       where: { id: tripId },
     });
     const storedRequest = await prisma.tripRequest.findUnique({
       where: { id: tripRequestId },
+    });
+    const storedPendingRequest = await prisma.tripRequest.findUnique({
+      where: { id: pendingTripRequestId },
     });
     const storedRating = await prisma.rating.findFirst({
       where: {
@@ -280,8 +315,20 @@ describe('Critical MVP flow real DB integration', () => {
     expect(storedTrip?.status).toBe(TripStatus.Completed);
     expect(storedTrip?.availableSeats).toBe(1);
     expect(storedRequest?.status).toBe('ACCEPTED');
+    expect(storedPendingRequest?.status).toBe('REJECTED');
+    expect(storedPendingRequest?.reviewNote).toBe(
+      'Solicitud cerrada automaticamente porque el viaje ya inicio.',
+    );
     expect(storedRating?.score).toBe(5);
     expect(storedReport?.status).toBe(ReportStatus.UNDER_REVIEW);
+    expect(passengerTrustSummaryResponse.body.completedTripsAsPassenger).toBe(1);
+    expect(passengerTrustSummaryResponse.body.totalRatingsReceived).toBe(0);
+    expect(passengerTrustSummaryResponse.body.latePassengerTripRequestCancellations).toBe(0);
+    expect(passengerTrustSummaryResponse.body.passengerNoShows).toBe(0);
+    expect(driverTrustSummaryResponse.body.completedTripsAsDriver).toBe(1);
+    expect(driverTrustSummaryResponse.body.totalRatingsReceived).toBe(1);
+    expect(driverTrustSummaryResponse.body.averageRatingReceived).toBe(5);
+    expect(driverTrustSummaryResponse.body.resolvedReportsReceived).toBe(0);
     expect(auditEvents.map((event) => event.action)).toEqual(
       expect.arrayContaining([
         AuditAction.DriverApplicationSubmitted,

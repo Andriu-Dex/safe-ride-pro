@@ -48,6 +48,16 @@ export class ReviewReportUseCase {
       throw new ForbiddenException('No tienes permisos para revisar reportes de esta institucion.');
     }
 
+    const isInstitutionAdminReviewer = currentUser.globalRole !== GlobalUserRole.SuperAdmin;
+    const hasConflictOfInterest =
+      currentUser.id === report.reporterUserId || currentUser.id === report.reportedUserId;
+
+    if (isInstitutionAdminReviewer && hasConflictOfInterest) {
+      throw new ForbiddenException(
+        'No puedes revisar un reporte en el que participas directamente.',
+      );
+    }
+
     if (report.status === ReportStatus.Resolved || report.status === ReportStatus.Dismissed) {
       throw new BadRequestException('El reporte ya fue cerrado y no puede cambiar de estado.');
     }
@@ -60,8 +70,15 @@ export class ReviewReportUseCase {
       throw new BadRequestException('El reporte ya se encuentra en el estado indicado.');
     }
 
-    if (command.status === ReportStatus.Dismissed && !command.reviewNote?.trim()) {
-      throw new BadRequestException('Debes indicar el motivo para desestimar el reporte.');
+    const normalizedReviewNote = command.reviewNote?.trim();
+
+    if (
+      (command.status === ReportStatus.Resolved || command.status === ReportStatus.Dismissed) &&
+      !normalizedReviewNote
+    ) {
+      throw new BadRequestException(
+        'Debes indicar una nota administrativa antes de cerrar el reporte.',
+      );
     }
 
     const previousStatus = report.status;
@@ -70,7 +87,7 @@ export class ReviewReportUseCase {
       reportId: report.id,
       reviewerUserId: currentUser.id,
       status: command.status,
-      reviewNote: command.reviewNote?.trim() || undefined,
+      reviewNote: normalizedReviewNote || undefined,
     });
 
     await this.auditService.record({

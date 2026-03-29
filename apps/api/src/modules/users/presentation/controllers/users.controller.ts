@@ -4,6 +4,7 @@ import { CurrentUser } from '../../../../shared/presentation/decorators/current-
 import { CurrentUserContext } from '../../../auth/application/types/current-user-context.type';
 import { JwtAuthGuard } from '../../../auth/presentation/guards/jwt-auth.guard';
 import { GetCurrentUserUseCase } from '../../application/use-cases/get-current-user.use-case';
+import { GetCurrentUserTrustSummaryUseCase } from '../../application/use-cases/get-current-user-trust-summary.use-case';
 import { UpdateCurrentUserUseCase } from '../../application/use-cases/update-current-user.use-case';
 import { UpdateCurrentUserRequestDto } from '../dto/update-current-user.request.dto';
 
@@ -12,12 +13,18 @@ import { UpdateCurrentUserRequestDto } from '../dto/update-current-user.request.
 export class UsersController {
   constructor(
     private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
+    private readonly getCurrentUserTrustSummaryUseCase: GetCurrentUserTrustSummaryUseCase,
     private readonly updateCurrentUserUseCase: UpdateCurrentUserUseCase,
   ) {}
 
   @Get('me')
   getCurrentUser(@CurrentUser() currentUser: CurrentUserContext) {
     return this.getCurrentUserUseCase.execute(currentUser.id);
+  }
+
+  @Get('me/trust-summary')
+  getCurrentUserTrustSummary(@CurrentUser() currentUser: CurrentUserContext) {
+    return this.getCurrentUserTrustSummaryUseCase.execute(currentUser.id);
   }
 
   @Patch('me')

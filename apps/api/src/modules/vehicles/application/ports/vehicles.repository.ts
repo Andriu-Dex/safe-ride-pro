@@ -1,4 +1,5 @@
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
@@ -13,6 +14,10 @@ export type VehicleMembershipRecord = {
   institutionName: string;
   membershipStatus: MembershipStatus;
   driverVerificationStatus: DriverVerificationStatus;
+  effectiveDriverVerificationStatus?: DriverVerificationStatus;
+  licenseExpiresAt?: Date | null;
+  licenseStatus?: DriverLicenseStatus;
+  licenseExpiresInDays?: number | null;
 };
 
 export type LicenseTypeCatalogItem = {

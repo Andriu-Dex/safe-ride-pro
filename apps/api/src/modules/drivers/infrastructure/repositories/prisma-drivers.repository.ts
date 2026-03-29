@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
+  getDaysUntilDriverLicenseExpiration,
+  getDriverLicenseStatus,
+  getEffectiveDriverVerificationStatus,
   InstitutionMembershipRole,
   MembershipStatus,
 } from '@saferidepro/shared-types';
@@ -26,6 +30,11 @@ export class PrismaDriversRepository implements DriversRepository {
       },
       include: {
         institution: true,
+        driverProfile: {
+          select: {
+            licenseExpiresAt: true,
+          },
+        },
       },
     });
 
@@ -37,6 +46,11 @@ export class PrismaDriversRepository implements DriversRepository {
       where: { id: membershipId },
       include: {
         institution: true,
+        driverProfile: {
+          select: {
+            licenseExpiresAt: true,
+          },
+        },
       },
     });
 
@@ -168,8 +182,14 @@ export class PrismaDriversRepository implements DriversRepository {
     studentCode: string;
     isDefault: boolean;
     driverVerificationStatus: string;
+    driverProfile?: {
+      licenseExpiresAt: Date;
+    } | null;
     institution: { name: string };
   }): DriverMembershipRecord {
+    const licenseExpiresAt = membership.driverProfile?.licenseExpiresAt ?? null;
+    const licenseStatus = getDriverLicenseStatus(licenseExpiresAt);
+
     return {
       id: membership.id,
       userId: membership.userId,
@@ -181,6 +201,13 @@ export class PrismaDriversRepository implements DriversRepository {
       isDefault: membership.isDefault,
       driverVerificationStatus:
         membership.driverVerificationStatus as DriverVerificationStatus,
+      effectiveDriverVerificationStatus: getEffectiveDriverVerificationStatus(
+        membership.driverVerificationStatus as DriverVerificationStatus,
+        licenseExpiresAt,
+      ) as DriverVerificationStatus,
+      licenseExpiresAt,
+      licenseStatus,
+      licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(licenseExpiresAt),
     };
   }
 
@@ -216,8 +243,13 @@ export class PrismaDriversRepository implements DriversRepository {
       licenseType: driverProfile.licenseType,
       licenseNumber: driverProfile.licenseNumber,
       licenseExpiresAt: driverProfile.licenseExpiresAt,
+      licenseStatus: getDriverLicenseStatus(driverProfile.licenseExpiresAt),
+      licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(driverProfile.licenseExpiresAt),
       identityDocumentFileKey: driverProfile.identityDocumentFileKey,
       licenseDocumentFileKey: driverProfile.licenseDocumentFileKey,
+      hasRequiredDocuments:
+        Boolean(driverProfile.identityDocumentFileKey) &&
+        Boolean(driverProfile.licenseDocumentFileKey),
       reviewNotes: driverProfile.reviewNotes,
       reviewedAt: driverProfile.reviewedAt,
       reviewedByUserId: driverProfile.reviewedByUserId,

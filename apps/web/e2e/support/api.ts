@@ -98,13 +98,8 @@ async function apiRequest<T>(
   return parsedResponse as T;
 }
 
-function buildLocalDateTime(offsetDays: number, offsetHours: number): string {
-  const targetDate = new Date();
-  targetDate.setDate(targetDate.getDate() + offsetDays);
-  targetDate.setHours(targetDate.getHours() + offsetHours, 0, 0, 0);
-
-  const localDateTime = new Date(targetDate.getTime() - targetDate.getTimezoneOffset() * 60_000);
-  return localDateTime.toISOString().slice(0, 16);
+function buildIsoDateFromMinutes(minutesFromNow: number): string {
+  return new Date(Date.now() + minutesFromNow * 60_000).toISOString();
 }
 
 export async function loginSeedAdmin(): Promise<LoginResponse> {
@@ -234,8 +229,8 @@ export async function createPublishedTrip(accessToken: string, vehicleId: string
       originLongitude: -78.61675,
       destinationLatitude: -1.26184,
       destinationLongitude: -78.62089,
-      departureAt: new Date(`${buildLocalDateTime(2, 2)}:00`).toISOString(),
-      estimatedArrivalAt: new Date(`${buildLocalDateTime(2, 3)}:00`).toISOString(),
+      departureAt: buildIsoDateFromMinutes(10),
+      estimatedArrivalAt: buildIsoDateFromMinutes(40),
       seatCount: 2,
       basePriceReference: 2.5,
       notes: `Viaje E2E ${suffix}`,

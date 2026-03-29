@@ -15,6 +15,7 @@ import { CancelTripRequestUseCase } from '../../../src/modules/trip-requests/app
 import { CreateTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/create-trip-request.use-case';
 import { ListDriverTripRequestsUseCase } from '../../../src/modules/trip-requests/application/use-cases/list-driver-trip-requests.use-case';
 import { ListMyTripRequestsUseCase } from '../../../src/modules/trip-requests/application/use-cases/list-my-trip-requests.use-case';
+import { MarkTripRequestNoShowUseCase } from '../../../src/modules/trip-requests/application/use-cases/mark-trip-request-no-show.use-case';
 import { RejectTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/reject-trip-request.use-case';
 import { TripRequestsController } from '../../../src/modules/trip-requests/presentation/controllers/trip-requests.controller';
 import { createAuthenticatedHttpContext } from '../../helpers/create-authenticated-http-context';
@@ -38,6 +39,9 @@ describe('TripRequestsController HTTP', () => {
     execute: jest.fn(),
   };
   const cancelTripRequestUseCase = {
+    execute: jest.fn(),
+  };
+  const markTripRequestNoShowUseCase = {
     execute: jest.fn(),
   };
 
@@ -110,6 +114,10 @@ describe('TripRequestsController HTTP', () => {
         {
           provide: CancelTripRequestUseCase,
           useValue: cancelTripRequestUseCase,
+        },
+        {
+          provide: MarkTripRequestNoShowUseCase,
+          useValue: markTripRequestNoShowUseCase,
         },
         ...authenticatedHttpContext.guardProviders,
       ],

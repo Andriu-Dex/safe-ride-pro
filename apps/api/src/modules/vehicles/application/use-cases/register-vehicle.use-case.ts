@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   MembershipStatus,
   VehicleType,
@@ -51,6 +52,15 @@ export class RegisterVehicleUseCase {
     ) {
       throw new ForbiddenException(
         'Debes haber iniciado o aprobado tu proceso de conductor para registrar vehiculos.',
+      );
+    }
+
+    if (
+      membership.driverVerificationStatus === DriverVerificationStatus.Approved &&
+      membership.licenseStatus === DriverLicenseStatus.Expired
+    ) {
+      throw new ForbiddenException(
+        'Tu licencia vencio. Debes actualizarla antes de registrar vehiculos.',
       );
     }
 

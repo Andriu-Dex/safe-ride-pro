@@ -1,5 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
@@ -10,6 +11,7 @@ import {
 
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
+import { CancelTripUseCase } from '../../../src/modules/trips/application/use-cases/cancel-trip.use-case';
 import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-cases/complete-trip.use-case';
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../../src/modules/trips/application/use-cases/start-trip.use-case';
@@ -24,6 +26,8 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
     updateTripStatus: jest.fn(),
+    cancelTripAndActiveRequests: jest.fn(),
+    startTripAndClosePendingRequests: jest.fn(),
   };
 }
 
@@ -54,8 +58,23 @@ function buildTrip(status: TripStatus, overrides: Partial<TripRecord> = {}): Tri
     basePriceReference: 2.5,
     detourSurchargeReference: null,
     notes: null,
+    cancelledAt: null,
+    cancellationTiming: null,
     createdAt: new Date('2030-01-01T09:00:00.000Z'),
     ...overrides,
+  };
+}
+
+function buildVehicle(isActive = true) {
+  return {
+    id: 'vehicle-1',
+    membershipId: 'membership-1',
+    isActive,
+    seatCount: 4,
+    luggagePolicy: LuggagePolicy.UpToMedium,
+    vehicleType: VehicleType.Car,
+    plate: 'ABC-123',
+    displayName: 'Toyota Yaris',
   };
 }
 
@@ -75,6 +94,7 @@ describe('Trip status transition use cases', () => {
       driverVerificationStatus: DriverVerificationStatus.Approved,
     });
     repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Draft));
+    repository.findVehicleByIdForMembership.mockResolvedValue(buildVehicle());
     repository.findOverlappingTrips.mockResolvedValue([
       buildTrip(TripStatus.Published, { id: 'trip-overlap' }),
     ]);
@@ -105,6 +125,7 @@ describe('Trip status transition use cases', () => {
     repository.findTripById.mockResolvedValue(
       buildTrip(TripStatus.Draft, { availableSeats: 0 }),
     );
+    repository.findVehicleByIdForMembership.mockResolvedValue(buildVehicle());
     repository.findOverlappingTrips.mockResolvedValue([]);
     repository.updateTripStatus.mockResolvedValue(buildTrip(TripStatus.Full, { availableSeats: 0 }));
 
@@ -124,6 +145,61 @@ describe('Trip status transition use cases', () => {
     });
   });
 
+  it('rejects publishing a trip when the vehicle is inactive or the departure time already passed', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new PublishTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(
+      buildTrip(TripStatus.Draft, {
+        departureAt: new Date('2020-01-01T10:00:00.000Z'),
+      }),
+    );
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new BadRequestException('No puedes publicar un viaje cuya salida ya vencio.'),
+    );
+
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Draft));
+    repository.findVehicleByIdForMembership.mockResolvedValue(buildVehicle(false));
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new BadRequestException('No puedes publicar un viaje con un vehiculo inactivo.'),
+    );
+  });
+
+  it('blocks publishing a trip when the approved driver license is expired', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new PublishTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+      licenseStatus: DriverLicenseStatus.Expired,
+      licenseExpiresAt: new Date('2020-01-01T10:00:00.000Z'),
+      licenseExpiresInDays: -1,
+    });
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new ForbiddenException('Tu licencia vencio. Debes actualizarla antes de publicar viajes.'),
+    );
+  });
+
   it('starts a published trip and records audit', async () => {
     const repository = createTripsRepositoryMock();
     const auditService = {
@@ -138,13 +214,21 @@ describe('Trip status transition use cases', () => {
       membershipStatus: MembershipStatus.Active,
       driverVerificationStatus: DriverVerificationStatus.Approved,
     });
-    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Published));
-    repository.updateTripStatus.mockResolvedValue(buildTrip(TripStatus.InProgress));
+    repository.findTripById.mockResolvedValue(
+      buildTrip(TripStatus.Published, {
+        departureAt: new Date(Date.now() + 10 * 60_000),
+        estimatedArrivalAt: new Date(Date.now() + 40 * 60_000),
+      }),
+    );
+    repository.startTripAndClosePendingRequests.mockResolvedValue(buildTrip(TripStatus.InProgress));
 
     const response = await useCase.execute('user-1', 'trip-1');
 
     expect(response.message).toBe('Viaje iniciado correctamente.');
-    expect(repository.updateTripStatus).toHaveBeenCalledWith('trip-1', TripStatus.InProgress);
+    expect(repository.startTripAndClosePendingRequests).toHaveBeenCalledWith(
+      'trip-1',
+      'Solicitud cerrada automaticamente porque el viaje ya inicio.',
+    );
     expect(auditService.record).toHaveBeenCalledWith({
       institutionId: 'institution-1',
       actorUserId: 'user-1',
@@ -155,6 +239,68 @@ describe('Trip status transition use cases', () => {
         status: TripStatus.InProgress,
       },
     });
+  });
+
+  it('rejects starting a trip too early or after its estimated arrival time', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new StartTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById
+      .mockResolvedValueOnce(
+        buildTrip(TripStatus.Published, {
+          departureAt: new Date('2999-01-01T10:00:00.000Z'),
+          estimatedArrivalAt: new Date('2999-01-01T10:30:00.000Z'),
+        }),
+      )
+      .mockResolvedValueOnce(
+        buildTrip(TripStatus.Published, {
+          departureAt: new Date('2020-01-01T10:00:00.000Z'),
+          estimatedArrivalAt: new Date('2020-01-01T10:30:00.000Z'),
+        }),
+      );
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new BadRequestException(
+        'Solo puedes iniciar el viaje dentro de los 30 minutos previos a la salida programada.',
+      ),
+    );
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new BadRequestException('No puedes iniciar un viaje cuya llegada estimada ya vencio.'),
+    );
+  });
+
+  it('blocks starting a trip when the approved driver license is expired', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new StartTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+      licenseStatus: DriverLicenseStatus.Expired,
+      licenseExpiresAt: new Date('2020-01-01T10:00:00.000Z'),
+      licenseExpiresInDays: -1,
+    });
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new ForbiddenException('Tu licencia vencio. Debes actualizarla antes de iniciar viajes.'),
+    );
   });
 
   it('completes an in-progress trip and records audit', async () => {
@@ -186,6 +332,39 @@ describe('Trip status transition use cases', () => {
       entityId: 'trip-1',
       metadata: {
         status: TripStatus.Completed,
+      },
+    });
+  });
+
+  it('cancels a trip and cascades active trip requests', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new CancelTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Published));
+    repository.cancelTripAndActiveRequests.mockResolvedValue(buildTrip(TripStatus.Cancelled));
+
+    const response = await useCase.execute('user-1', 'trip-1');
+
+    expect(response.message).toBe('Viaje cancelado correctamente.');
+    expect(repository.cancelTripAndActiveRequests).toHaveBeenCalledWith('trip-1');
+    expect(auditService.record).toHaveBeenCalledWith({
+      institutionId: 'institution-1',
+      actorUserId: 'user-1',
+      action: AuditAction.TripCancelled,
+      entityType: AuditEntityType.Trip,
+      entityId: 'trip-1',
+      metadata: {
+        status: TripStatus.Cancelled,
       },
     });
   });

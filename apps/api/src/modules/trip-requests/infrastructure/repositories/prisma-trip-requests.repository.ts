@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CancellationTiming,
+  getCancellationTiming,
   MembershipStatus,
   TripRequestStatus,
   TripRouteMode,
@@ -340,6 +342,49 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
     }
   }
 
+  async markTripRequestAsNoShow(
+    requestId: string,
+    reviewNote: string,
+  ): Promise<TripRequestRecord | null> {
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const requestUpdateResult = await transaction.tripRequest.updateMany({
+          where: {
+            id: requestId,
+            status: TripRequestStatus.Accepted,
+          },
+          data: {
+            status: TripRequestStatus.NoShow,
+            reviewNote,
+            reviewedAt: new Date(),
+            cancelledAt: null,
+          },
+        });
+
+        if (requestUpdateResult.count !== 1) {
+          throw new Error(TRIP_REQUEST_CONFLICT);
+        }
+
+        const updatedTripRequest = await transaction.tripRequest.findUnique({
+          where: { id: requestId },
+          include: this.tripRequestInclude(),
+        });
+
+        if (!updatedTripRequest) {
+          throw new Error(TRIP_REQUEST_CONFLICT);
+        }
+
+        return this.mapTripRequest(updatedTripRequest);
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === TRIP_REQUEST_CONFLICT) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
   private tripInclude() {
     return {
       institution: true,
@@ -473,6 +518,10 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       createdAt: tripRequest.createdAt,
       reviewedAt: tripRequest.reviewedAt,
       cancelledAt: tripRequest.cancelledAt,
+      cancellationTiming: getCancellationTiming({
+        departureAt: tripRequest.trip.departureAt,
+        cancelledAt: tripRequest.cancelledAt,
+      }),
     };
   }
 }

@@ -20,6 +20,7 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
     acceptTripRequest: jest.fn(),
     rejectTripRequest: jest.fn(),
     cancelTripRequest: jest.fn(),
+    markTripRequestAsNoShow: jest.fn(),
   };
 }
 

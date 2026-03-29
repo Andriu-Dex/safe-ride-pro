@@ -1,4 +1,5 @@
 import {
+  CancellationTiming,
   TripRouteMode,
   VehicleType,
 } from '@saferidepro/shared-types';
@@ -25,6 +26,8 @@ export type TripRecord = {
   basePriceReference: number;
   detourSurchargeReference: number | null;
   notes: string | null;
+  cancelledAt: string | null;
+  cancellationTiming: CancellationTiming | null;
   createdAt: string;
 };
 

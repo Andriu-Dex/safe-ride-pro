@@ -1,4 +1,6 @@
 import {
+  CancellationTiming,
+  DriverLicenseStatus,
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
@@ -15,6 +17,10 @@ export type TripMembershipRecord = {
   institutionName: string;
   membershipStatus: MembershipStatus;
   driverVerificationStatus: DriverVerificationStatus;
+  effectiveDriverVerificationStatus?: DriverVerificationStatus;
+  licenseExpiresAt?: Date | null;
+  licenseStatus?: DriverLicenseStatus;
+  licenseExpiresInDays?: number | null;
 };
 
 export type TripVehicleRecord = {
@@ -54,6 +60,8 @@ export type TripRecord = {
   basePriceReference: number;
   detourSurchargeReference: number | null;
   notes: string | null;
+  cancelledAt: Date | null;
+  cancellationTiming?: CancellationTiming | null;
   createdAt: Date;
 };
 
@@ -104,4 +112,6 @@ export interface TripsRepository {
     excludeTripId?: string,
   ): Promise<TripRecord[]>;
   updateTripStatus(tripId: string, status: TripStatus): Promise<TripRecord>;
+  cancelTripAndActiveRequests(tripId: string): Promise<TripRecord>;
+  startTripAndClosePendingRequests(tripId: string, autoReviewNote: string): Promise<TripRecord>;
 }

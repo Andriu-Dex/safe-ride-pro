@@ -78,6 +78,8 @@ export class ListTripsUseCase {
       basePriceReference: trip.basePriceReference,
       detourSurchargeReference: trip.detourSurchargeReference,
       notes: trip.notes,
+      cancelledAt: trip.cancelledAt,
+      cancellationTiming: trip.cancellationTiming,
       createdAt: trip.createdAt,
     }));
   }

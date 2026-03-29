@@ -1,4 +1,5 @@
 import {
+  CancellationTiming,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -33,6 +34,7 @@ export type TripRequestRecord = {
   createdAt: string;
   reviewedAt: string | null;
   cancelledAt: string | null;
+  cancellationTiming: CancellationTiming | null;
 };
 
 export type CreateTripRequestInput = {

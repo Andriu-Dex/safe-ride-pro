@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
+  getDaysUntilDriverLicenseExpiration,
+  getDriverLicenseStatus,
+  getEffectiveDriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
   VehicleType,
@@ -29,6 +33,11 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
       },
       include: {
         institution: true,
+        driverProfile: {
+          select: {
+            licenseExpiresAt: true,
+          },
+        },
       },
     });
 
@@ -43,6 +52,15 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
       membershipStatus: membership.membershipStatus as MembershipStatus,
       driverVerificationStatus:
         membership.driverVerificationStatus as DriverVerificationStatus,
+      effectiveDriverVerificationStatus: getEffectiveDriverVerificationStatus(
+        membership.driverVerificationStatus as DriverVerificationStatus,
+        membership.driverProfile?.licenseExpiresAt ?? null,
+      ) as DriverVerificationStatus,
+      licenseExpiresAt: membership.driverProfile?.licenseExpiresAt ?? null,
+      licenseStatus: getDriverLicenseStatus(membership.driverProfile?.licenseExpiresAt ?? null),
+      licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(
+        membership.driverProfile?.licenseExpiresAt ?? null,
+      ),
     };
   }
 

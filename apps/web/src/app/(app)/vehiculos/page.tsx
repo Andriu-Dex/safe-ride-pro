@@ -1,13 +1,17 @@
 'use client';
 
-import { DriverVerificationStatus, LuggagePolicy, VehicleType } from '@saferidepro/shared-types';
+import { DriverLicenseStatus, DriverVerificationStatus, LuggagePolicy, VehicleType } from '@saferidepro/shared-types';
 import { useEffect, useState } from 'react';
 
 import { ApiError } from '../../../lib/api-client';
 import { InfoCard } from '../../../components/ui/info-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
-import { getDriverStatusLabel, getDriverStatusTone } from '../../../modules/driver/lib/driver-status';
+import {
+  getDriverLicenseAlertMessage,
+  getDriverStatusLabel,
+  getDriverStatusTone,
+} from '../../../modules/driver/lib/driver-status';
 import { VehicleRegistrationForm } from '../../../modules/vehicles/components/vehicle-registration-form';
 import {
   canRegisterVehicles,
@@ -209,8 +213,16 @@ export default function VehiclesPage() {
     }
   };
 
-  const driverStatus = vehicleOverview?.membership?.driverVerificationStatus ?? DriverVerificationStatus.NotRequested;
-  const registrationEnabled = canRegisterVehicles(driverStatus);
+  const driverStatus =
+    vehicleOverview?.membership?.effectiveDriverVerificationStatus
+    ?? vehicleOverview?.membership?.driverVerificationStatus
+    ?? DriverVerificationStatus.NotRequested;
+  const licenseStatus = vehicleOverview?.membership?.licenseStatus ?? DriverLicenseStatus.Missing;
+  const registrationEnabled = canRegisterVehicles(driverStatus, licenseStatus);
+  const licenseAlertMessage = getDriverLicenseAlertMessage(
+    licenseStatus,
+    vehicleOverview?.membership?.licenseExpiresInDays,
+  );
 
   return (
     <>
@@ -254,7 +266,15 @@ export default function VehiclesPage() {
 
           {!registrationEnabled ? (
             <div className="form-helper">
-              Debes iniciar o aprobar tu proceso de conductor antes de registrar vehiculos.
+              {licenseStatus === DriverLicenseStatus.Expired
+                ? 'Tu licencia vencio. Debes actualizar tu solicitud de conductor antes de registrar nuevos vehiculos.'
+                : 'Debes iniciar o aprobar tu proceso de conductor antes de registrar vehiculos.'}
+            </div>
+          ) : null}
+
+          {licenseAlertMessage ? (
+            <div className="form-helper">
+              {licenseAlertMessage}
             </div>
           ) : null}
 
@@ -283,16 +303,19 @@ export default function VehiclesPage() {
                     <div key={vehicle.id} className="list-card">
                       <div className="list-card-header">
                         <strong>
-                          {vehicle.customBrandName ?? vehicle.brandName ?? 'Marca'} {' '}
+                          {vehicle.customBrandName ?? vehicle.brandName ?? 'Marca'}{' '}
                           {vehicle.customModelName ?? vehicle.modelName ?? 'Modelo'}
                         </strong>
-                        <StatusPill label={vehicle.isActive ? 'Activo' : 'Inactivo'} tone={vehicle.isActive ? 'success' : 'warning'} />
+                        <StatusPill
+                          label={vehicle.isActive ? 'Activo' : 'Inactivo'}
+                          tone={vehicle.isActive ? 'success' : 'warning'}
+                        />
                       </div>
                       <p className="panel-text">
-                        {getVehicleTypeLabel(vehicle.vehicleType)} Â· {vehicle.year} Â· {vehicle.color} Â· {vehicle.plate}
+                        {getVehicleTypeLabel(vehicle.vehicleType)} | {vehicle.year} | {vehicle.color} | {vehicle.plate}
                       </p>
                       <p className="panel-text">
-                        Capacidad: {vehicle.seatCount} Â· Equipaje: {getLuggagePolicyLabel(vehicle.luggagePolicy)}
+                        Capacidad: {vehicle.seatCount} | Equipaje: {getLuggagePolicyLabel(vehicle.luggagePolicy)}
                       </p>
                     </div>
                   ))}
@@ -309,5 +332,3 @@ export default function VehiclesPage() {
     </>
   );
 }
-
-

@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CancellationTiming,
+  DriverLicenseStatus,
   DriverVerificationStatus,
+  getCancellationTiming,
+  getDaysUntilDriverLicenseExpiration,
+  getDriverLicenseStatus,
+  getEffectiveDriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
+  TripRequestStatus,
   TripRouteMode,
   TripStatus,
   VehicleType,
@@ -30,6 +37,11 @@ export class PrismaTripsRepository implements TripsRepository {
       },
       include: {
         institution: true,
+        driverProfile: {
+          select: {
+            licenseExpiresAt: true,
+          },
+        },
       },
     });
 
@@ -44,6 +56,15 @@ export class PrismaTripsRepository implements TripsRepository {
       membershipStatus: membership.membershipStatus as MembershipStatus,
       driverVerificationStatus:
         membership.driverVerificationStatus as DriverVerificationStatus,
+      effectiveDriverVerificationStatus: getEffectiveDriverVerificationStatus(
+        membership.driverVerificationStatus as DriverVerificationStatus,
+        membership.driverProfile?.licenseExpiresAt ?? null,
+      ) as DriverVerificationStatus,
+      licenseExpiresAt: membership.driverProfile?.licenseExpiresAt ?? null,
+      licenseStatus: getDriverLicenseStatus(membership.driverProfile?.licenseExpiresAt ?? null),
+      licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(
+        membership.driverProfile?.licenseExpiresAt ?? null,
+      ),
     };
   }
 
@@ -184,6 +205,65 @@ export class PrismaTripsRepository implements TripsRepository {
     return this.mapTrip(trip);
   }
 
+  async cancelTripAndActiveRequests(tripId: string): Promise<TripRecord> {
+    const trip = await this.prisma.$transaction(async (transaction) => {
+      const cancellationDate = new Date();
+
+      await transaction.tripRequest.updateMany({
+        where: {
+          tripId,
+          status: {
+            in: [TripRequestStatus.Pending, TripRequestStatus.Accepted],
+          },
+        },
+        data: {
+          status: TripRequestStatus.Cancelled,
+          cancelledAt: cancellationDate,
+        },
+      });
+
+      return transaction.trip.update({
+        where: { id: tripId },
+        data: {
+          status: TripStatus.Cancelled,
+          cancelledAt: cancellationDate,
+        },
+        include: this.tripInclude(),
+      });
+    });
+
+    return this.mapTrip(trip);
+  }
+
+  async startTripAndClosePendingRequests(
+    tripId: string,
+    autoReviewNote: string,
+  ): Promise<TripRecord> {
+    const trip = await this.prisma.$transaction(async (transaction) => {
+      const reviewDate = new Date();
+
+      await transaction.tripRequest.updateMany({
+        where: {
+          tripId,
+          status: TripRequestStatus.Pending,
+        },
+        data: {
+          status: TripRequestStatus.Rejected,
+          reviewNote: autoReviewNote,
+          reviewedAt: reviewDate,
+        },
+      });
+
+      return transaction.trip.update({
+        where: { id: tripId },
+        data: { status: TripStatus.InProgress },
+        include: this.tripInclude(),
+      });
+    });
+
+    return this.mapTrip(trip);
+  }
+
   private tripInclude() {
     return {
       institution: true,
@@ -223,6 +303,7 @@ export class PrismaTripsRepository implements TripsRepository {
     basePriceReference: { toString(): string };
     detourSurchargeReference: { toString(): string } | null;
     notes: string | null;
+    cancelledAt: Date | null;
     createdAt: Date;
     institution: { name: string };
     driverMembership: {
@@ -264,6 +345,11 @@ export class PrismaTripsRepository implements TripsRepository {
         ? Number.parseFloat(trip.detourSurchargeReference.toString())
         : null,
       notes: trip.notes,
+      cancelledAt: trip.cancelledAt,
+      cancellationTiming: getCancellationTiming({
+        departureAt: trip.departureAt,
+        cancelledAt: trip.cancelledAt,
+      }),
       createdAt: trip.createdAt,
     };
   }
@@ -274,7 +360,7 @@ export class PrismaTripsRepository implements TripsRepository {
     customBrandName?: string | null;
     customModelName?: string | null;
   }): string {
-    const brandName = vehicle.brand?.name ?? vehicle.customBrandName ?? 'Vehículo';
+    const brandName = vehicle.brand?.name ?? vehicle.customBrandName ?? 'Vehiculo';
     const modelName = vehicle.model?.name ?? vehicle.customModelName ?? '';
 
     return `${brandName} ${modelName}`.trim();

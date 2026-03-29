@@ -1,4 +1,5 @@
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   InstitutionMembershipRole,
   MembershipStatus,
@@ -16,6 +17,10 @@ export type DriverMembershipRecord = {
   studentCode: string;
   isDefault: boolean;
   driverVerificationStatus: DriverVerificationStatus;
+  effectiveDriverVerificationStatus?: DriverVerificationStatus;
+  licenseExpiresAt?: Date | null;
+  licenseStatus?: DriverLicenseStatus;
+  licenseExpiresInDays?: number | null;
 };
 
 export type DriverProfileRecord = {
@@ -30,8 +35,11 @@ export type DriverProfileRecord = {
   };
   licenseNumber: string;
   licenseExpiresAt: Date;
+  licenseStatus?: DriverLicenseStatus;
+  licenseExpiresInDays?: number | null;
   identityDocumentFileKey: string | null;
   licenseDocumentFileKey: string | null;
+  hasRequiredDocuments?: boolean;
   reviewNotes: string | null;
   reviewedAt: Date | null;
   reviewedByUserId: string | null;

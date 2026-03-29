@@ -5,7 +5,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AccountStatus, GlobalUserRole } from '@saferidepro/shared-types';
+import {
+  AccountStatus,
+  getDaysUntilDriverLicenseExpiration,
+  getDriverLicenseStatus,
+  getEffectiveDriverVerificationStatus,
+  GlobalUserRole,
+} from '@saferidepro/shared-types';
 
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import { CurrentUserContext } from '../../application/types/current-user-context.type';
@@ -41,6 +47,11 @@ export class JwtAuthGuard implements CanActivate {
         memberships: {
           include: {
             institution: true,
+            driverProfile: {
+              select: {
+                licenseExpiresAt: true,
+              },
+            },
           },
           orderBy: {
             joinedAt: 'asc',
@@ -72,6 +83,15 @@ export class JwtAuthGuard implements CanActivate {
         studentCode: membership.studentCode,
         isDefault: membership.isDefault,
         driverVerificationStatus: membership.driverVerificationStatus as never,
+        effectiveDriverVerificationStatus: getEffectiveDriverVerificationStatus(
+          membership.driverVerificationStatus as never,
+          membership.driverProfile?.licenseExpiresAt ?? null,
+        ) as never,
+        licenseExpiresAt: membership.driverProfile?.licenseExpiresAt ?? null,
+        licenseStatus: getDriverLicenseStatus(membership.driverProfile?.licenseExpiresAt ?? null) as never,
+        licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(
+          membership.driverProfile?.licenseExpiresAt ?? null,
+        ),
       })),
     };
 

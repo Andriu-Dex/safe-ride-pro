@@ -1,5 +1,6 @@
 import {
   AccountStatus,
+  DriverLicenseStatus,
   DriverVerificationStatus,
   GlobalUserRole,
   InstitutionMembershipRole,
@@ -28,6 +29,10 @@ export type UserProfile = {
     studentCode: string;
     isDefault: boolean;
     driverVerificationStatus: DriverVerificationStatus;
+    effectiveDriverVerificationStatus?: DriverVerificationStatus;
+    licenseExpiresAt?: Date | null;
+    licenseStatus?: DriverLicenseStatus;
+    licenseExpiresInDays?: number | null;
   }[];
 };
 
@@ -37,7 +42,24 @@ export type UpdateUserProfileInput = {
   profilePhotoUrl?: string;
 };
 
+export type TrustSummary = {
+  membershipId: string;
+  averageRatingReceived: number | null;
+  totalRatingsReceived: number;
+  completedTripsAsDriver: number;
+  completedTripsAsPassenger: number;
+  lateDriverTripCancellations: number;
+  latePassengerTripRequestCancellations: number;
+  passengerNoShows: number;
+  resolvedReportsReceived: number;
+  cancellationPolicy: {
+    lateWindowMinutes: number;
+    lastComputedAt: Date;
+  };
+};
+
 export interface UsersRepository {
   findById(userId: string): Promise<UserProfile | null>;
   updateProfile(userId: string, input: UpdateUserProfileInput): Promise<UserProfile>;
+  getTrustSummary(membershipId: string): Promise<TrustSummary>;
 }

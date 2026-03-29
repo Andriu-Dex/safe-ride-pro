@@ -4,6 +4,9 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -20,27 +23,29 @@ export class CreateTripRequestDto {
   routeMode!: TripRouteMode;
 
   @IsString()
+  @IsNotEmpty()
   @MaxLength(120)
   originLabel!: string;
 
   @IsString()
+  @IsNotEmpty()
   @MaxLength(120)
   destinationLabel!: string;
 
   @Type(() => Number)
-  @IsNumber()
+  @IsLatitude()
   originLatitude!: number;
 
   @Type(() => Number)
-  @IsNumber()
+  @IsLongitude()
   originLongitude!: number;
 
   @Type(() => Number)
-  @IsNumber()
+  @IsLatitude()
   destinationLatitude!: number;
 
   @Type(() => Number)
-  @IsNumber()
+  @IsLongitude()
   destinationLongitude!: number;
 
   @IsDateString()

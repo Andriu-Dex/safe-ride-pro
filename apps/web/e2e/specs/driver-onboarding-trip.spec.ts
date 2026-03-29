@@ -21,6 +21,8 @@ test('un conductor puede enviar solicitud, registrar vehiculo y publicar un viaj
   await page.getByLabel('Tipo de licencia').selectOption({ index: 1 });
   await page.getByLabel('Numero de licencia').fill(`DRV-${suffix}`);
   await page.getByLabel('Fecha de expiracion').fill('2030-12-31');
+  await page.getByLabel('Clave del documento de identidad').fill(`identity-${suffix}`);
+  await page.getByLabel('Clave del documento de licencia').fill(`license-${suffix}`);
   await page.getByRole('button', { name: /Enviar solicitud|Actualizar solicitud|Reenviar solicitud/ }).click();
   await expect(page.getByText('Tu solicitud de conductor fue enviada y esta pendiente de revision.')).toBeVisible();
 

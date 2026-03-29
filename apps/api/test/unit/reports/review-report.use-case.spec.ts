@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   AccountStatus,
   DriverVerificationStatus,
@@ -81,7 +81,7 @@ function buildReport(status: ReportStatus): ReportRecord {
 }
 
 describe('ReviewReportUseCase', () => {
-  it('requires an administrative note to dismiss a report', async () => {
+  it('requires an administrative note to close a report', async () => {
     const repository = createReportsRepositoryMock();
     const auditService = {
       record: jest.fn(),
@@ -96,7 +96,16 @@ describe('ReviewReportUseCase', () => {
         status: ReportStatus.Dismissed,
       }),
     ).rejects.toThrow(
-      new BadRequestException('Debes indicar el motivo para desestimar el reporte.'),
+      new BadRequestException('Debes indicar una nota administrativa antes de cerrar el reporte.'),
+    );
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        reportId: 'report-1',
+        status: ReportStatus.Resolved,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('Debes indicar una nota administrativa antes de cerrar el reporte.'),
     );
 
     expect(repository.reviewReport).not.toHaveBeenCalled();
@@ -136,5 +145,35 @@ describe('ReviewReportUseCase', () => {
         currentStatus: ReportStatus.Resolved,
       },
     });
+  });
+
+  it('blocks institution admins from reviewing reports where they participate directly', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewReportUseCase(repository, auditService);
+
+    repository.findReportById.mockResolvedValue(
+      buildReport(ReportStatus.Pending),
+    );
+
+    await expect(
+      useCase.execute(
+        {
+          ...buildAdminUser(),
+          id: 'user-passenger',
+        },
+        {
+          reportId: 'report-1',
+          status: ReportStatus.UnderReview,
+          reviewNote: 'Revisando',
+        },
+      ),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'No puedes revisar un reporte en el que participas directamente.',
+      ),
+    );
   });
 });

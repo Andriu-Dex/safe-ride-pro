@@ -1,6 +1,6 @@
 'use client';
 
-import { DriverVerificationStatus } from '@saferidepro/shared-types';
+import { DriverLicenseStatus, DriverVerificationStatus } from '@saferidepro/shared-types';
 import { useEffect, useState } from 'react';
 
 import { InfoCard } from '../../../components/ui/info-card';
@@ -8,7 +8,13 @@ import { StatusPill } from '../../../components/ui/status-pill';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
 import { DriverApplicationForm } from '../../../modules/driver/components/driver-application-form';
 import { getDriverOverview, listDriverLicenseTypes, submitDriverApplication } from '../../../modules/driver/lib/driver-api';
-import { getDriverStatusLabel, getDriverStatusTone } from '../../../modules/driver/lib/driver-status';
+import {
+  getDriverLicenseAlertMessage,
+  getDriverLicenseStatusLabel,
+  getDriverLicenseStatusTone,
+  getDriverStatusLabel,
+  getDriverStatusTone,
+} from '../../../modules/driver/lib/driver-status';
 import type { DriverOverview, LicenseTypeCatalogItem } from '../../../modules/driver/types/driver';
 import { ApiError } from '../../../lib/api-client';
 
@@ -134,7 +140,17 @@ export default function DriverPage() {
     }
   };
 
-  const currentStatus = driverOverview?.membership?.driverVerificationStatus ?? DriverVerificationStatus.NotRequested;
+  const currentStatus =
+    driverOverview?.membership?.effectiveDriverVerificationStatus
+    ?? driverOverview?.membership?.driverVerificationStatus
+    ?? DriverVerificationStatus.NotRequested;
+  const licenseStatus = driverOverview?.driverProfile?.licenseStatus
+    ?? driverOverview?.membership?.licenseStatus
+    ?? DriverLicenseStatus.Missing;
+  const licenseAlertMessage = getDriverLicenseAlertMessage(
+    licenseStatus,
+    driverOverview?.driverProfile?.licenseExpiresInDays ?? driverOverview?.membership?.licenseExpiresInDays,
+  );
 
   return (
     <>
@@ -170,11 +186,23 @@ export default function DriverPage() {
               value={getDriverStatusLabel(currentStatus)}
             />
             <InfoCard
-              description="Cuando exista una revision administrativa, aparecera aqui y dentro del detalle de la solicitud."
-              label="Ultima revision"
-              value={driverOverview?.driverProfile?.reviewedAt ? 'Registrada' : 'Pendiente'}
+              description="La vigencia de la licencia afecta automaticamente el acceso a vehiculos y viajes."
+              label="Vigencia"
+              value={getDriverLicenseStatusLabel(licenseStatus)}
             />
           </div>
+
+          {licenseAlertMessage ? (
+            <div className="form-helper">
+              {licenseAlertMessage}
+            </div>
+          ) : null}
+
+          {driverOverview?.driverProfile && !driverOverview.driverProfile.hasRequiredDocuments ? (
+            <div className="form-helper">
+              Para aprobar la solicitud debes contar con clave del documento de identidad y clave del documento de licencia.
+            </div>
+          ) : null}
 
           <div className="page-grid page-grid-wide">
             <DriverApplicationForm
@@ -192,24 +220,41 @@ export default function DriverPage() {
             <article className="panel panel-stack">
               <h2 className="panel-title">Resumen de la solicitud</h2>
               {driverOverview?.driverProfile ? (
-                <dl className="detail-list">
-                  <div>
-                    <dt>Tipo de licencia</dt>
-                    <dd>{driverOverview.driverProfile.licenseType.name}</dd>
+                <>
+                  <div className="panel-header-row">
+                    <h3 className="panel-title panel-title-sm">Estado documental</h3>
+                    <StatusPill
+                      label={getDriverLicenseStatusLabel(driverOverview.driverProfile.licenseStatus)}
+                      tone={getDriverLicenseStatusTone(driverOverview.driverProfile.licenseStatus)}
+                    />
                   </div>
-                  <div>
-                    <dt>Numero de licencia</dt>
-                    <dd>{driverOverview.driverProfile.licenseNumber}</dd>
-                  </div>
-                  <div>
-                    <dt>Expira el</dt>
-                    <dd>{new Date(driverOverview.driverProfile.licenseExpiresAt).toLocaleDateString('es-EC')}</dd>
-                  </div>
-                  <div>
-                    <dt>Enviada el</dt>
-                    <dd>{new Date(driverOverview.driverProfile.submittedAt).toLocaleString('es-EC')}</dd>
-                  </div>
-                </dl>
+                  <dl className="detail-list">
+                    <div>
+                      <dt>Tipo de licencia</dt>
+                      <dd>{driverOverview.driverProfile.licenseType.name}</dd>
+                    </div>
+                    <div>
+                      <dt>Numero de licencia</dt>
+                      <dd>{driverOverview.driverProfile.licenseNumber}</dd>
+                    </div>
+                    <div>
+                      <dt>Expira el</dt>
+                      <dd>{new Date(driverOverview.driverProfile.licenseExpiresAt).toLocaleDateString('es-EC')}</dd>
+                    </div>
+                    <div>
+                      <dt>Enviada el</dt>
+                      <dd>{new Date(driverOverview.driverProfile.submittedAt).toLocaleString('es-EC')}</dd>
+                    </div>
+                    <div>
+                      <dt>Documento de identidad</dt>
+                      <dd>{driverOverview.driverProfile.identityDocumentFileKey ? 'Registrado' : 'Pendiente'}</dd>
+                    </div>
+                    <div>
+                      <dt>Documento de licencia</dt>
+                      <dd>{driverOverview.driverProfile.licenseDocumentFileKey ? 'Registrado' : 'Pendiente'}</dd>
+                    </div>
+                  </dl>
+                </>
               ) : (
                 <p className="panel-text">
                   Aun no has enviado una solicitud. Completa el formulario para activar tu proceso de conductor.

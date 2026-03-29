@@ -59,3 +59,17 @@ export async function cancelTripRequest(accessToken: string, requestId: string):
     accessToken,
   });
 }
+
+export async function markTripRequestAsNoShow(
+  accessToken: string,
+  requestId: string,
+  reviewNote: string,
+): Promise<TripRequestMutationResponse> {
+  return apiRequest<TripRequestMutationResponse>(`/trip-requests/${requestId}/no-show`, {
+    method: 'PATCH',
+    accessToken,
+    body: {
+      reviewNote,
+    },
+  });
+}

@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   AccountStatus,
+  DriverLicenseStatus,
   DriverVerificationStatus,
   GlobalUserRole,
   InstitutionMembershipRole,
@@ -66,6 +67,7 @@ function buildTargetMembership(): DriverMembershipRecord {
 
 function buildDriverProfile(
   status: DriverVerificationStatus,
+  overrides: Partial<DriverProfileRecord> = {},
 ): DriverProfileRecord {
   return {
     membershipId: 'membership-target',
@@ -79,12 +81,16 @@ function buildDriverProfile(
     },
     licenseNumber: 'ABC-123',
     licenseExpiresAt: new Date('2030-01-01T10:00:00.000Z'),
-    identityDocumentFileKey: null,
-    licenseDocumentFileKey: null,
+    licenseStatus: DriverLicenseStatus.Valid,
+    licenseExpiresInDays: 120,
+    identityDocumentFileKey: 'identity-file',
+    licenseDocumentFileKey: 'license-file',
+    hasRequiredDocuments: true,
     reviewNotes: null,
     reviewedAt: null,
     reviewedByUserId: null,
     submittedAt: new Date('2030-01-01T09:00:00.000Z'),
+    ...overrides,
   };
 }
 
@@ -150,6 +156,52 @@ describe('ReviewDriverApplicationUseCase', () => {
     });
   });
 
+  it('blocks approving an expired license or incomplete documents', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewDriverApplicationUseCase(repository, auditService);
+
+    repository.findMembershipById.mockResolvedValue(buildTargetMembership());
+    repository.findDriverProfileByMembershipId
+      .mockResolvedValueOnce(
+        buildDriverProfile(DriverVerificationStatus.PendingVerification, {
+          licenseStatus: DriverLicenseStatus.Expired,
+          licenseExpiresInDays: -1,
+          licenseExpiresAt: new Date('2020-01-01T10:00:00.000Z'),
+        }),
+      )
+      .mockResolvedValueOnce(
+        buildDriverProfile(DriverVerificationStatus.PendingVerification, {
+          identityDocumentFileKey: null,
+          hasRequiredDocuments: false,
+        }),
+      );
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        membershipId: 'membership-target',
+        decision: DriverVerificationStatus.Approved,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('No puedes aprobar una solicitud con la licencia vencida.'),
+    );
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        membershipId: 'membership-target',
+        decision: DriverVerificationStatus.Approved,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'Debes contar con documento de identidad y licencia adjuntos antes de aprobar la solicitud.',
+      ),
+    );
+
+    expect(repository.reviewDriverApplication).not.toHaveBeenCalled();
+  });
+
   it('rejects reviewers without access to the institution', async () => {
     const repository = createDriversRepositoryMock();
     const auditService = {
@@ -178,6 +230,44 @@ describe('ReviewDriverApplicationUseCase', () => {
     ).rejects.toThrow(
       new ForbiddenException(
         'No tienes permisos para revisar solicitudes de esta institucion.',
+      ),
+    );
+  });
+
+  it('blocks self-review and inactive target memberships', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewDriverApplicationUseCase(repository, auditService);
+
+    repository.findMembershipById
+      .mockResolvedValueOnce({
+        ...buildTargetMembership(),
+        userId: 'admin-1',
+      })
+      .mockResolvedValueOnce({
+        ...buildTargetMembership(),
+        membershipStatus: MembershipStatus.Suspended,
+      });
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        membershipId: 'membership-target',
+        decision: DriverVerificationStatus.Approved,
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException('No puedes revisar tu propia solicitud de conductor.'),
+    );
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        membershipId: 'membership-target',
+        decision: DriverVerificationStatus.Approved,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'Solo puedes revisar solicitudes asociadas a membresias activas.',
       ),
     );
   });

@@ -9,6 +9,9 @@ import {
 } from '@prisma/client';
 import {
   AccountStatus as SharedAccountStatus,
+  getDaysUntilDriverLicenseExpiration,
+  getDriverLicenseStatus,
+  getEffectiveDriverVerificationStatus,
   DriverVerificationStatus as SharedDriverVerificationStatus,
   GlobalUserRole as SharedGlobalUserRole,
   InstitutionMembershipRole,
@@ -60,6 +63,11 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
         memberships: {
           include: {
             institution: true,
+            driverProfile: {
+              select: {
+                licenseExpiresAt: true,
+              },
+            },
           },
           orderBy: {
             joinedAt: 'asc',
@@ -97,6 +105,11 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
         memberships: {
           include: {
             institution: true,
+            driverProfile: {
+              select: {
+                licenseExpiresAt: true,
+              },
+            },
           },
         },
       },
@@ -165,11 +178,16 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
           accountStatus: AccountStatus.ACTIVE,
         },
         include: {
-          memberships: {
-            include: {
-              institution: true,
+        memberships: {
+          include: {
+            institution: true,
+            driverProfile: {
+              select: {
+                licenseExpiresAt: true,
+              },
             },
           },
+        },
         },
       }),
     ]);
@@ -193,6 +211,9 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
       studentCode: string;
       isDefault: boolean;
       driverVerificationStatus: DriverVerificationStatus;
+      driverProfile?: {
+        licenseExpiresAt: Date;
+      } | null;
       institution: { name: string };
     }[];
   }): AuthUserRecord {
@@ -214,6 +235,15 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
         isDefault: membership.isDefault,
         driverVerificationStatus:
           membership.driverVerificationStatus as unknown as SharedDriverVerificationStatus,
+        effectiveDriverVerificationStatus: getEffectiveDriverVerificationStatus(
+          membership.driverVerificationStatus as unknown as SharedDriverVerificationStatus,
+          membership.driverProfile?.licenseExpiresAt ?? null,
+        ) as SharedDriverVerificationStatus,
+        licenseExpiresAt: membership.driverProfile?.licenseExpiresAt ?? null,
+        licenseStatus: getDriverLicenseStatus(membership.driverProfile?.licenseExpiresAt ?? null),
+        licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(
+          membership.driverProfile?.licenseExpiresAt ?? null,
+        ),
       })),
     };
   }

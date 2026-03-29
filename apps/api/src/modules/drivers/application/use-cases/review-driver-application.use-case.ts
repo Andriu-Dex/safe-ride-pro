@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   GlobalUserRole,
   InstitutionMembershipRole,
@@ -48,6 +49,18 @@ export class ReviewDriverApplicationUseCase {
       throw new ForbiddenException('No tienes permisos para revisar solicitudes de esta institucion.');
     }
 
+    if (targetMembership.userId === currentUser.id) {
+      throw new ForbiddenException(
+        'No puedes revisar tu propia solicitud de conductor.',
+      );
+    }
+
+    if (targetMembership.membershipStatus !== MembershipStatus.Active) {
+      throw new BadRequestException(
+        'Solo puedes revisar solicitudes asociadas a membresias activas.',
+      );
+    }
+
     const driverProfile = await this.driversRepository.findDriverProfileByMembershipId(command.membershipId);
 
     if (!driverProfile) {
@@ -59,6 +72,24 @@ export class ReviewDriverApplicationUseCase {
       !command.reviewNotes?.trim()
     ) {
       throw new BadRequestException('Debes indicar el motivo del rechazo.');
+    }
+
+    if (
+      command.decision === DriverVerificationStatus.Approved &&
+      driverProfile.licenseStatus === DriverLicenseStatus.Expired
+    ) {
+      throw new BadRequestException(
+        'No puedes aprobar una solicitud con la licencia vencida.',
+      );
+    }
+
+    if (
+      command.decision === DriverVerificationStatus.Approved &&
+      !driverProfile.hasRequiredDocuments
+    ) {
+      throw new BadRequestException(
+        'Debes contar con documento de identidad y licencia adjuntos antes de aprobar la solicitud.',
+      );
     }
 
     const updatedProfile = await this.driversRepository.reviewDriverApplication({

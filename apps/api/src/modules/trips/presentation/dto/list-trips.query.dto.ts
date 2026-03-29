@@ -1,10 +1,24 @@
-import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import { TripRouteMode, VehicleType } from '@saferidepro/shared-types';
 import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class ListTripsQueryDto {
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (value === 'true') {
+      return true;
+    }
+
+    if (value === 'false') {
+      return false;
+    }
+
+    return value;
+  })
   @IsBoolean()
   mine?: boolean;
 

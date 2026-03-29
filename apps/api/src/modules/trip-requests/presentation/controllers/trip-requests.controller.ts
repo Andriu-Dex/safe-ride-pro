@@ -17,6 +17,7 @@ import { CancelTripRequestUseCase } from '../../application/use-cases/cancel-tri
 import { CreateTripRequestUseCase } from '../../application/use-cases/create-trip-request.use-case';
 import { ListDriverTripRequestsUseCase } from '../../application/use-cases/list-driver-trip-requests.use-case';
 import { ListMyTripRequestsUseCase } from '../../application/use-cases/list-my-trip-requests.use-case';
+import { MarkTripRequestNoShowUseCase } from '../../application/use-cases/mark-trip-request-no-show.use-case';
 import { RejectTripRequestUseCase } from '../../application/use-cases/reject-trip-request.use-case';
 import { CreateTripRequestRequestDto } from '../dto/create-trip-request.request.dto';
 import { ReviewTripRequestRequestDto } from '../dto/review-trip-request.request.dto';
@@ -31,6 +32,7 @@ export class TripRequestsController {
     private readonly acceptTripRequestUseCase: AcceptTripRequestUseCase,
     private readonly rejectTripRequestUseCase: RejectTripRequestUseCase,
     private readonly cancelTripRequestUseCase: CancelTripRequestUseCase,
+    private readonly markTripRequestNoShowUseCase: MarkTripRequestNoShowUseCase,
   ) {}
 
   @Post()
@@ -83,5 +85,18 @@ export class TripRequestsController {
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
   ) {
     return this.cancelTripRequestUseCase.execute(currentUser.id, requestId);
+  }
+
+  @Patch(':requestId/no-show')
+  markTripRequestNoShow(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Body() body: ReviewTripRequestRequestDto,
+  ) {
+    return this.markTripRequestNoShowUseCase.execute(
+      currentUser.id,
+      requestId,
+      body.reviewNote,
+    );
   }
 }

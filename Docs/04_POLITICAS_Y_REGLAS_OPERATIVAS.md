@@ -34,6 +34,9 @@ La verificacion del conductor sera **mixta**:
 ### 2.3 Reglas base
 
 - un conductor no puede publicar viajes sin aprobacion
+- una licencia vencida bloquea automaticamente el registro de nuevos vehiculos, la creacion, publicacion y el inicio de viajes
+- un admin no puede revisar su propia solicitud de conductor
+- solo pueden revisarse solicitudes ligadas a membresias activas
 - todo rechazo debe registrar motivo
 - el usuario puede reenviar documentacion corregida
 - toda decision debe quedar auditada
@@ -77,7 +80,9 @@ Para conductor:
 
 - documento vencido: no se aprueba
 - licencia vencida: el conductor no puede publicar nuevos viajes
+- licencia vencida: el conductor tampoco puede registrar nuevos vehiculos, crear viajes ni iniciar viajes publicados
 - documento proximo a vencer: se genera alerta
+- licencia con menos de 30 dias de vigencia: se considera `EXPIRING_SOON` y debe mostrarse una alerta preventiva
 
 ### 3.4 Estados sugeridos para documentos
 
@@ -95,6 +100,7 @@ Para conductor:
 - validar fecha de expiracion
 - notificar vencimiento proximo
 - bloquear acciones al expirar licencia
+- impedir aprobacion administrativa si faltan respaldo de identidad y respaldo de licencia
 
 ---
 
@@ -152,6 +158,8 @@ Las coordenadas exactas no deben mostrarse a:
 - toda cancelacion debe quedar registrada
 - toda cancelacion debe tener timestamp
 - el sistema debe distinguir entre cancelacion a tiempo, tardia y no-show
+- si el conductor cancela el viaje, las solicitudes `PENDING` y `ACCEPTED` deben cerrarse en cascada
+- si un pasajero aceptado no se presenta, el conductor puede registrar `NO_SHOW` con nota obligatoria
 
 ### 5.4 Consecuencia funcional
 
@@ -162,6 +170,13 @@ La reputacion y las sanciones podran verse afectadas por:
 - reincidencia
 
 La formula exacta queda sujeta a ajustes posteriores.
+
+### 5.5 Regla temporal de inicio del viaje
+
+- un viaje solo puede iniciarse dentro de los 30 minutos previos a la salida programada
+- un viaje no puede iniciarse si la hora estimada de llegada ya vencio
+- si el viaje cambia de estado mientras un usuario lo esta viendo, la interfaz debe refrescar y reflejar el nuevo estado
+- si un viaje inicia, las solicitudes pendientes deben cerrarse automaticamente para evitar estados inconsistentes
 
 ---
 
@@ -216,6 +231,13 @@ Valores posibles:
 - el sistema debe validar que entre en el limite permitido
 - el viaje puede aplicar recargo referencial
 
+### 7.3.1 Reglas operativas sobre solicitudes
+
+- una solicitud solo puede aceptarse mientras el viaje este `PUBLISHED` y todavia tenga cupos disponibles
+- una solicitud pendiente puede rechazarse mientras el viaje siga `PUBLISHED` o `FULL`
+- una solicitud del pasajero solo puede cancelarse mientras el viaje siga `PUBLISHED` o `FULL`
+- si el viaje cambia a `IN_PROGRESS`, `COMPLETED` o `CANCELLED`, la interfaz no debe seguir ofreciendo acciones obsoletas
+
 ### 7.4 Regla critica
 
 Una vez iniciado el viaje:
@@ -259,6 +281,8 @@ En la primera version:
 
 - los viajes solo se comparten entre usuarios de la misma institucion
 - no habra viajes cruzados entre instituciones
+- los admins institucionales solo pueden operar sobre entidades de sus instituciones activas
+- un admin institucional no puede revisar reportes en los que participa como reportante o reportado
 
 ### 8.5 Escalabilidad futura
 
@@ -297,6 +321,19 @@ La formula exacta de reputacion queda pendiente para una version posterior, pero
 - contador de viajes
 - contador de incidentes
 - historial de sanciones
+
+### 9.4 Indicadores minimos ya soportados
+
+El sistema debe poder calcular al menos:
+
+- promedio de calificaciones recibidas
+- total de calificaciones recibidas
+- viajes completados como conductor
+- viajes completados como pasajero
+- cancelaciones tardias de viajes como conductor
+- cancelaciones tardias de solicitudes como pasajero
+- no-show registrados sobre la membresia del pasajero
+- reportes resueltos recibidos
 
 ---
 
@@ -367,6 +404,13 @@ Se recomienda permitir inicialmente:
 - nombres internos aleatorios
 - validacion de tipo y tamano
 - eliminacion o anonimizado al vencer el periodo de retencion
+
+### 11.5 Reglas de revision administrativa
+
+- un reporte pendiente puede pasar a `UNDER_REVIEW`
+- un reporte solo puede cerrarse como `RESOLVED` o `DISMISSED` si existe nota administrativa
+- un reporte cerrado no puede volver a estados abiertos
+- toda revision administrativa debe quedar auditada
 
 ---
 

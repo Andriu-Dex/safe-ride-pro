@@ -1,5 +1,5 @@
 ﻿import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { TripRequestStatus } from '@saferidepro/shared-types';
+import { TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
 
 import {
   TRIP_REQUESTS_REPOSITORY,
@@ -26,6 +26,15 @@ export class RejectTripRequestUseCase {
 
     if (tripRequest.status !== TripRequestStatus.Pending) {
       throw new BadRequestException('Solo las solicitudes pendientes pueden rechazarse.');
+    }
+
+    if (
+      tripRequest.tripStatus !== TripStatus.Published &&
+      tripRequest.tripStatus !== TripStatus.Full
+    ) {
+      throw new BadRequestException(
+        'La solicitud ya no puede rechazarse porque el viaje cambio de estado.',
+      );
     }
 
     const updatedTripRequest = await this.tripRequestsRepository.rejectTripRequest(

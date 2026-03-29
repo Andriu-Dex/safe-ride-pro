@@ -37,6 +37,7 @@ export function DriverApplicationForm({
   onSubmit,
 }: DriverApplicationFormProps) {
   const submitLabel = currentStatus === DriverVerificationStatus.Rejected
+    || currentStatus === DriverVerificationStatus.Suspended
     ? 'Reenviar solicitud'
     : currentStatus === DriverVerificationStatus.PendingVerification
       ? 'Actualizar solicitud'
@@ -95,7 +96,7 @@ export function DriverApplicationForm({
           />
 
           <InputField
-            hint="Opcional por ahora. Mas adelante se conectara carga real de archivos."
+            hint="Necesaria para una aprobacion administrativa completa. Puedes usar una clave de prueba."
             label="Clave del documento de identidad"
             onChange={(event) => onChange('identityDocumentFileKey', event.target.value)}
             placeholder="identity-doc-key"
@@ -104,7 +105,7 @@ export function DriverApplicationForm({
         </div>
 
         <InputField
-          hint="Opcional por ahora. Puedes usar un valor de prueba si deseas dejar evidencia."
+          hint="Necesaria para una aprobacion administrativa completa. Puedes usar una clave de prueba."
           label="Clave del documento de licencia"
           onChange={(event) => onChange('licenseDocumentFileKey', event.target.value)}
           placeholder="license-doc-key"

@@ -6,8 +6,10 @@ import {
 } from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 
+import { Button } from '../../../components/ui/button';
 import { InfoCard } from '../../../components/ui/info-card';
 import { StatusPill } from '../../../components/ui/status-pill';
+import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
 import { RatingOpportunityCard, type RatingOpportunity } from '../../../modules/ratings/components/rating-opportunity-card';
@@ -20,6 +22,8 @@ import { getReportReasonLabel, getReportStatusLabel, getReportStatusTone } from 
 import type { ReportRecord } from '../../../modules/reports/types/report';
 import { listIncomingTripRequests, listMyTripRequests } from '../../../modules/trip-requests/lib/trip-request-api';
 import type { TripRequestRecord } from '../../../modules/trip-requests/types/trip-request';
+import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
+import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 
 type RatingDraft = {
   score: string;
@@ -57,6 +61,14 @@ type ParticipationOpportunity = {
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
+}
+
+function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
+  return error instanceof ApiError ? error.message : fallbackMessage;
+}
+
+function formatAverageScore(score: number | null): string {
+  return score === null ? 'Sin datos' : `${score.toFixed(1)}/5`;
 }
 
 function buildParticipationOpportunities(
@@ -127,6 +139,7 @@ function buildParticipationOpportunities(
 
 export default function TrustPage() {
   const { authSession, isHydrated } = useAuth();
+  const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
   const [ratings, setRatings] = useState<RatingList>({ given: [], received: [] });
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [myRequests, setMyRequests] = useState<TripRequestRecord[]>([]);
@@ -134,6 +147,7 @@ export default function TrustPage() {
   const [ratingDrafts, setRatingDrafts] = useState<Record<string, RatingDraft>>({});
   const [reportDrafts, setReportDrafts] = useState<Record<string, ReportDraft>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isSubmittingRatingId, setIsSubmittingRatingId] = useState<string | null>(null);
   const [isSubmittingReportId, setIsSubmittingReportId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -143,17 +157,39 @@ export default function TrustPage() {
     ?? authSession?.user.memberships[0]?.id;
 
   const loadData = async (accessToken: string) => {
-    const [ratingsData, reportsData, myTripRequests, incomingTripRequests] = await Promise.all([
+    const [trustSummaryData, ratingsData, reportsData, myTripRequests, incomingTripRequests] = await Promise.all([
+      getCurrentUserTrustSummary(accessToken),
       listMyRatings(accessToken),
       listMyReports(accessToken),
       listMyTripRequests(accessToken),
       listIncomingTripRequests(accessToken),
     ]);
 
+    setTrustSummary(trustSummaryData);
     setRatings(ratingsData);
     setReports(reportsData);
     setMyRequests(myTripRequests);
     setIncomingRequests(incomingTripRequests);
+  };
+
+  const refreshData = async (showSpinner = false) => {
+    if (!authSession) {
+      return;
+    }
+
+    if (showSpinner) {
+      setIsRefreshingData(true);
+    }
+
+    try {
+      await loadData(authSession.accessToken);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, 'No fue posible sincronizar calificaciones y reportes.'));
+    } finally {
+      if (showSpinner) {
+        setIsRefreshingData(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -192,6 +228,16 @@ export default function TrustPage() {
       isMounted = false;
     };
   }, [authSession, isHydrated]);
+
+  useAutoRefresh(
+    async () => {
+      await refreshData();
+    },
+    {
+      enabled: Boolean(authSession && isHydrated),
+      intervalMs: 20_000,
+    },
+  );
 
   const participationOpportunities = useMemo(
     () => buildParticipationOpportunities(defaultMembershipId, myRequests, incomingRequests),
@@ -273,11 +319,8 @@ export default function TrustPage() {
         [opportunity.id]: EMPTY_RATING_DRAFT,
       }));
     } catch (error) {
-      setErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : 'No fue posible registrar la calificacion.',
-      );
+      setErrorMessage(getApiErrorMessage(error, 'No fue posible registrar la calificacion.'));
+      await refreshData();
     } finally {
       setIsSubmittingRatingId(null);
     }
@@ -309,11 +352,8 @@ export default function TrustPage() {
         [opportunity.id]: EMPTY_REPORT_DRAFT,
       }));
     } catch (error) {
-      setErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : 'No fue posible registrar el reporte.',
-      );
+      setErrorMessage(getApiErrorMessage(error, 'No fue posible registrar el reporte.'));
+      await refreshData();
     } finally {
       setIsSubmittingReportId(null);
     }
@@ -342,10 +382,19 @@ export default function TrustPage() {
             Revisa tu reputacion, califica a otros participantes y registra incidentes de viajes completados.
           </p>
         </div>
-        <StatusPill
-          label={`${pendingRatingOpportunities.length + pendingReportOpportunities.length} acciones pendientes`}
-          tone={pendingRatingOpportunities.length || pendingReportOpportunities.length ? 'warning' : 'success'}
-        />
+        <div className="topbar-actions">
+          <Button
+            disabled={isRefreshingData}
+            onClick={() => void refreshData(true)}
+            variant="secondary"
+          >
+            {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
+          </Button>
+          <StatusPill
+            label={`${pendingRatingOpportunities.length + pendingReportOpportunities.length} acciones pendientes`}
+            tone={pendingRatingOpportunities.length || pendingReportOpportunities.length ? 'warning' : 'success'}
+          />
+        </div>
       </header>
 
       <section className="content-grid">
@@ -365,7 +414,42 @@ export default function TrustPage() {
             label="Reputacion recibida"
             value={`${ratings.received.length}`}
           />
+          <InfoCard
+            description="Promedio actual de calificaciones recibidas por tu membresia activa."
+            label="Promedio actual"
+            value={formatAverageScore(trustSummary?.averageRatingReceived ?? null)}
+          />
+          <InfoCard
+            description="Viajes completados como conductor desde tu membresia activa."
+            label="Viajes como conductor"
+            value={`${trustSummary?.completedTripsAsDriver ?? 0}`}
+          />
+          <InfoCard
+            description="Viajes completados como pasajero desde tu membresia activa."
+            label="Viajes como pasajero"
+            value={`${trustSummary?.completedTripsAsPassenger ?? 0}`}
+          />
+          <InfoCard
+            description="Cancelaciones tardias registradas en tus viajes como conductor."
+            label="Cancelaciones tardias"
+            value={`${trustSummary?.lateDriverTripCancellations ?? 0}`}
+          />
+          <InfoCard
+            description="Solicitudes canceladas tarde y no-shows registrados en tu membresia activa."
+            label="Riesgos operativos"
+            value={`${
+              (trustSummary?.latePassengerTripRequestCancellations ?? 0) +
+              (trustSummary?.passengerNoShows ?? 0)
+            }`}
+          />
         </div>
+
+        {trustSummary ? (
+          <div className="form-helper">
+            Ventana de cancelacion tardia vigente: {trustSummary.cancellationPolicy.lateWindowMinutes} minutos antes de la salida.
+            Ultimo calculo: {formatDateTime(trustSummary.cancellationPolicy.lastComputedAt)}.
+          </div>
+        ) : null}
 
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}

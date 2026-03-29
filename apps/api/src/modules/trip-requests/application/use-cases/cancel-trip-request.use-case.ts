@@ -35,10 +35,12 @@ export class CancelTripRequestUseCase {
     }
 
     if (
-      tripRequest.tripStatus === TripStatus.InProgress ||
-      tripRequest.tripStatus === TripStatus.Completed
+      tripRequest.tripStatus !== TripStatus.Published &&
+      tripRequest.tripStatus !== TripStatus.Full
     ) {
-      throw new BadRequestException('No se puede cancelar una solicitud cuando el viaje ya inicio o termino.');
+      throw new BadRequestException(
+        'La solicitud ya no puede cancelarse porque el viaje cambio de estado.',
+      );
     }
 
     const updatedTripRequest = await this.tripRequestsRepository.cancelTripRequest(requestId);

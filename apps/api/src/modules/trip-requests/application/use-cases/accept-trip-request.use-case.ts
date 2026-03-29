@@ -31,7 +31,13 @@ export class AcceptTripRequestUseCase {
       throw new BadRequestException('Solo las solicitudes pendientes pueden aceptarse.');
     }
 
-    if (tripRequest.tripStatus !== TripStatus.Published || tripRequest.tripAvailableSeats < 1) {
+    if (tripRequest.tripStatus !== TripStatus.Published) {
+      throw new BadRequestException(
+        'La solicitud ya no puede aceptarse porque el viaje cambio de estado.',
+      );
+    }
+
+    if (tripRequest.tripAvailableSeats < 1) {
       throw new BadRequestException('El viaje ya no tiene cupos disponibles.');
     }
 

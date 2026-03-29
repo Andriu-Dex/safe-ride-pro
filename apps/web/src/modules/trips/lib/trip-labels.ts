@@ -1,4 +1,10 @@
-import { TripRouteMode, TripStatus } from '@saferidepro/shared-types';
+import {
+  CancellationTiming,
+  getTripStartAvailability,
+  TRIP_START_EARLY_WINDOW_MINUTES,
+  TripRouteMode,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
 export function getTripStatusLabel(status: TripStatus): string {
   switch (status) {
@@ -41,5 +47,53 @@ export function getTripRouteModeLabel(routeMode: TripRouteMode): string {
       return 'Ruta con desvio';
     default:
       return routeMode;
+  }
+}
+
+export function getCancellationTimingLabel(
+  cancellationTiming: CancellationTiming | null | undefined,
+): string | null {
+  switch (cancellationTiming) {
+    case CancellationTiming.Late:
+      return 'Cancelacion tardia';
+    case CancellationTiming.OnTime:
+      return 'Cancelacion a tiempo';
+    default:
+      return null;
+  }
+}
+
+export function getCancellationTimingTone(
+  cancellationTiming: CancellationTiming | null | undefined,
+): 'neutral' | 'warning' {
+  return cancellationTiming === CancellationTiming.Late ? 'warning' : 'neutral';
+}
+
+export function canStartTripNow(
+  departureAt: string,
+  estimatedArrivalAt: string,
+): boolean {
+  return getTripStartAvailability({
+    departureAt,
+    estimatedArrivalAt,
+  }) === 'AVAILABLE';
+}
+
+export function getTripStartAvailabilityMessage(
+  departureAt: string,
+  estimatedArrivalAt: string,
+): string | null {
+  const availability = getTripStartAvailability({
+    departureAt,
+    estimatedArrivalAt,
+  });
+
+  switch (availability) {
+    case 'TOO_EARLY':
+      return `Podras iniciar este viaje dentro de los ${TRIP_START_EARLY_WINDOW_MINUTES} minutos previos a la salida programada.`;
+    case 'TOO_LATE':
+      return 'La hora estimada de llegada ya vencio, por lo que este viaje ya no puede iniciarse.';
+    default:
+      return null;
   }
 }

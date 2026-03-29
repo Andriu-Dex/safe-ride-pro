@@ -1,5 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
@@ -176,6 +177,40 @@ describe('RegisterVehicleUseCase', () => {
       }),
     ).rejects.toThrow(
       new BadRequestException('El modelo seleccionado no pertenece a la marca indicada.'),
+    );
+  });
+
+  it('blocks approved drivers whose license is expired', async () => {
+    const repository = createVehiclesRepositoryMock();
+    const useCase = new RegisterVehicleUseCase(repository);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+      licenseStatus: DriverLicenseStatus.Expired,
+      licenseExpiresAt: new Date('2020-01-01T10:00:00.000Z'),
+      licenseExpiresInDays: -1,
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        vehicleType: VehicleType.Car,
+        customBrandName: 'Marca',
+        customModelName: 'Modelo',
+        year: 2025,
+        color: 'Azul',
+        plate: 'ab-123',
+        seatCount: 4,
+        luggagePolicy: LuggagePolicy.UpToMedium,
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'Tu licencia vencio. Debes actualizarla antes de registrar vehiculos.',
+      ),
     );
   });
 });

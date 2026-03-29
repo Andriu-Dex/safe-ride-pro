@@ -1,4 +1,5 @@
 import {
+  CancellationTiming,
   MembershipStatus,
   TripRequestStatus,
   TripRouteMode,
@@ -62,6 +63,7 @@ export type TripRequestRecord = {
   createdAt: Date;
   reviewedAt: Date | null;
   cancelledAt: Date | null;
+  cancellationTiming: CancellationTiming | null;
 };
 
 export type CreateTripRequestInput = {
@@ -92,4 +94,5 @@ export interface TripRequestsRepository {
   acceptTripRequest(requestId: string, reviewNote?: string): Promise<TripRequestRecord | null>;
   rejectTripRequest(requestId: string, reviewNote?: string): Promise<TripRequestRecord | null>;
   cancelTripRequest(requestId: string): Promise<TripRequestRecord | null>;
+  markTripRequestAsNoShow(requestId: string, reviewNote: string): Promise<TripRequestRecord | null>;
 }

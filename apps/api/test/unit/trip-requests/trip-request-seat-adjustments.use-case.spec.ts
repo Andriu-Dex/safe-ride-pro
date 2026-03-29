@@ -22,6 +22,7 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
     acceptTripRequest: jest.fn(),
     rejectTripRequest: jest.fn(),
     cancelTripRequest: jest.fn(),
+    markTripRequestAsNoShow: jest.fn(),
   };
 }
 
@@ -57,6 +58,7 @@ function buildTripRequest(
     createdAt: new Date('2030-01-01T09:00:00.000Z'),
     reviewedAt: null,
     cancelledAt: null,
+    cancellationTiming: null,
     ...overrides,
   };
 }
@@ -101,6 +103,27 @@ describe('Trip request seat adjustment use cases', () => {
     expect(repository.acceptTripRequest).not.toHaveBeenCalled();
   });
 
+  it('blocks accepting a pending request after the trip changed state', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const useCase = new AcceptTripRequestUseCase(repository);
+
+    repository.findTripRequestById.mockResolvedValue(
+      buildTripRequest({
+        tripStatus: TripStatus.Cancelled,
+      }),
+    );
+
+    await expect(
+      useCase.execute('user-driver', 'request-1'),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'La solicitud ya no puede aceptarse porque el viaje cambio de estado.',
+      ),
+    );
+
+    expect(repository.acceptTripRequest).not.toHaveBeenCalled();
+  });
+
   it('rejects a pending request without consuming seats', async () => {
     const repository = createTripRequestsRepositoryMock();
     const useCase = new RejectTripRequestUseCase(repository);
@@ -128,6 +151,27 @@ describe('Trip request seat adjustment use cases', () => {
     expect(response.tripRequest.tripAvailableSeats).toBe(2);
   });
 
+  it('blocks rejecting a pending request after the trip is already in progress', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const useCase = new RejectTripRequestUseCase(repository);
+
+    repository.findTripRequestById.mockResolvedValue(
+      buildTripRequest({
+        tripStatus: TripStatus.InProgress,
+      }),
+    );
+
+    await expect(
+      useCase.execute('user-driver', 'request-1'),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'La solicitud ya no puede rechazarse porque el viaje cambio de estado.',
+      ),
+    );
+
+    expect(repository.rejectTripRequest).not.toHaveBeenCalled();
+  });
+
   it('cancels an accepted request and delegates seat release to the repository', async () => {
     const repository = createTripRequestsRepositoryMock();
     const useCase = new CancelTripRequestUseCase(repository);
@@ -152,5 +196,27 @@ describe('Trip request seat adjustment use cases', () => {
     expect(repository.cancelTripRequest).toHaveBeenCalledWith('request-1');
     expect(response.tripRequest.status).toBe(TripRequestStatus.Cancelled);
     expect(response.tripRequest.tripAvailableSeats).toBe(2);
+  });
+
+  it('blocks cancelling a request after the trip changed state', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const useCase = new CancelTripRequestUseCase(repository);
+
+    repository.findTripRequestById.mockResolvedValue(
+      buildTripRequest({
+        status: TripRequestStatus.Accepted,
+        tripStatus: TripStatus.Cancelled,
+      }),
+    );
+
+    await expect(
+      useCase.execute('user-passenger', 'request-1'),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'La solicitud ya no puede cancelarse porque el viaje cambio de estado.',
+      ),
+    );
+
+    expect(repository.cancelTripRequest).not.toHaveBeenCalled();
   });
 });

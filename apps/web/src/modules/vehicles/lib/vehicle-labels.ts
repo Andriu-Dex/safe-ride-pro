@@ -1,4 +1,5 @@
 import {
+  DriverLicenseStatus,
   DriverVerificationStatus,
   LuggagePolicy,
   VehicleType,
@@ -32,7 +33,17 @@ export function getLuggagePolicyLabel(luggagePolicy: LuggagePolicy): string {
   }
 }
 
-export function canRegisterVehicles(status: DriverVerificationStatus): boolean {
+export function canRegisterVehicles(
+  status: DriverVerificationStatus,
+  licenseStatus?: DriverLicenseStatus,
+): boolean {
+  if (
+    status === DriverVerificationStatus.Approved &&
+    licenseStatus === DriverLicenseStatus.Expired
+  ) {
+    return false;
+  }
+
   return (
     status === DriverVerificationStatus.PendingVerification ||
     status === DriverVerificationStatus.Approved
