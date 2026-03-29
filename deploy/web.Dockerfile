@@ -19,7 +19,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN pnpm --filter @saferidepro/shared-types build
+RUN pnpm exec tsc --project packages/shared-types/tsconfig.json
 RUN pnpm --dir apps/web build
 
 FROM node:24-alpine AS runner

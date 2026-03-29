@@ -74,13 +74,3 @@ Este entorno esta pensado para:
 - pruebas funcionales del MVP
 
 No reemplaza todavia una estrategia final de produccion.
-
-## Siguientes mejoras recomendadas
-
-Mas adelante convendra agregar:
-
-- un despliegue gratuito o de bajo costo para demo publica
-- variables separadas por ambiente real
-- almacenamiento externo para archivos
-- observabilidad basica
-- smoke tests automatizados sobre el entorno desplegado
