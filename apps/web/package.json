@@ -12,6 +12,10 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:install": "playwright install chromium",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "format": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },
@@ -22,15 +26,16 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@saferidepro/eslint-config": "workspace:*",
+    "@saferidepro/tsconfig": "workspace:*",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
-    "@vitejs/plugin-react": "^5.0.0",
-    "@saferidepro/eslint-config": "workspace:*",
-    "@saferidepro/tsconfig": "workspace:*",
     "@types/node": "^22.13.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^5.0.0",
     "eslint": "^9.21.0",
     "jsdom": "^26.1.0",
     "prettier": "^3.5.0",
@@ -39,4 +44,3 @@
     "vitest": "^3.2.4"
   }
 }
-

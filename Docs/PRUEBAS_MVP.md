@@ -241,6 +241,26 @@ En frontend ya existen pruebas automaticas con `Vitest + Testing Library` para p
 - `ProtectedRoute`
 - `TripFiltersPanel`
 
+Tambien ya existen pruebas end-to-end web con `Playwright` para flujos criticos del MVP sobre el entorno QA:
+
+- login administrativo y acceso a auditoria
+- solicitud de conductor, registro de vehiculo y publicacion de viaje
+- flujo critico completo entre pasajero, conductor y admin
+
+Comandos:
+
+```powershell
+corepack pnpm --dir apps/web test:e2e
+corepack pnpm --dir apps/web test:e2e:headed
+```
+
+Si el entorno QA ya esta levantado y saludable, puedes reutilizarlo para acelerar las corridas:
+
+```powershell
+$env:PLAYWRIGHT_REUSE_QA='true'
+corepack pnpm --dir apps/web test:e2e
+```
+
 Ademas, el backend ya cuenta con pruebas de integracion con base de datos real en un schema aislado de PostgreSQL para flujos criticos del MVP:
 
 - registro, verificacion, login y consulta de perfil con persistencia real
@@ -264,6 +284,6 @@ En CI, este comando ya puede ejecutarse con un servicio efimero de PostgreSQL en
 
 La siguiente tanda recomendable de automatizacion es:
 
-- smoke tests end-to-end con navegador para el flujo principal
-- verificacion del entorno de QA/deploy con contenedores
+- revision funcional y endurecimiento de casos borde del negocio
+- ampliar smoke tests end-to-end a escenarios administrativos y errores de usuario
 - pipeline de despliegue cuando ya exista ambiente objetivo
