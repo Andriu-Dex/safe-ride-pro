@@ -16,10 +16,10 @@
     "test:db": "node ./test/scripts/run-db-tests.js",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "format": "prettier --check \"src/**/*.ts\"",
-    "prisma:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed"
+    "prisma:generate": "corepack pnpm exec prisma generate",
+    "db:migrate": "corepack pnpm exec prisma migrate dev",
+    "db:deploy": "corepack pnpm exec prisma migrate deploy",
+    "db:seed": "corepack pnpm exec prisma db seed"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",
