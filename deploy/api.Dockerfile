@@ -16,6 +16,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
+RUN pnpm --filter @saferidepro/shared-types build
 RUN pnpm --dir apps/api prisma:generate
 RUN pnpm --dir apps/api build
 

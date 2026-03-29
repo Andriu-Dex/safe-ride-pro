@@ -11,11 +11,11 @@
     }
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
-    "dev": "tsc --project tsconfig.json --watch",
+    "build": "corepack pnpm exec tsc --project tsconfig.json",
+    "dev": "corepack pnpm exec tsc --project tsconfig.json --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "echo \"Shared types tests will be added soon\"",
-    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "typecheck": "corepack pnpm exec tsc --project tsconfig.json --noEmit",
     "format": "prettier --check \"src/**/*.ts\""
   },
   "devDependencies": {
