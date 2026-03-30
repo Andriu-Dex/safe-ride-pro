@@ -16,6 +16,7 @@ import type {
   AuthUserRecord,
   AuthUserRepository,
 } from '../../../src/modules/auth/application/ports/auth-user.repository';
+import { AuthUserDocumentConflictError } from '../../../src/modules/auth/application/ports/auth-user.repository';
 import type { PasswordHasher } from '../../../src/modules/auth/application/ports/password-hasher';
 import { EnvironmentService } from '../../../src/shared/infrastructure/config/environment.service';
 
@@ -150,6 +151,47 @@ describe('RegisterUserUseCase', () => {
     });
   });
 
+  it('does not expose the verification code when the email was delivered by SMTP', async () => {
+    const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
+    const passwordHasher = createPasswordHasherMock();
+    const environmentService = {
+      emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
+    } as EnvironmentService;
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new RegisterUserUseCase(
+      repository,
+      authEmailService,
+      passwordHasher,
+      environmentService,
+      auditService,
+    );
+
+    repository.findInstitutionByDomain.mockResolvedValue({
+      id: 'institution-1',
+      name: 'UTA',
+      code: 'UTA',
+    });
+    repository.findUserByEmail.mockResolvedValue(null);
+    passwordHasher.hash.mockResolvedValue('hashed-password');
+    authEmailService.sendVerificationCodeEmail.mockResolvedValue('email');
+    repository.createUserWithMembership.mockImplementation(async (input) => buildCreatedUser(input.email));
+
+    const response = await useCase.execute({
+      email: 'student@uta.edu.ec',
+      password: 'Password123',
+      fullName: 'Usuario Registrado',
+      documentType: DocumentType.NationalId,
+      documentNumber: '1710034065',
+    });
+
+    expect(response.deliveryChannel).toBe('email');
+    expect(response.verificationCode).toBeUndefined();
+  });
+
   it('rejects duplicate registered emails', async () => {
     const repository = createAuthRepositoryMock();
     const authEmailService = createAuthEmailServiceMock();
@@ -228,5 +270,88 @@ describe('RegisterUserUseCase', () => {
     ).rejects.toThrow(new BadRequestException('La cedula ecuatoriana no es valida.'));
 
     expect(repository.createUserWithMembership).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid Ecuadorian mobile phone', async () => {
+    const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
+    const passwordHasher = createPasswordHasherMock();
+    const environmentService = {
+      emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
+    } as EnvironmentService;
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new RegisterUserUseCase(
+      repository,
+      authEmailService,
+      passwordHasher,
+      environmentService,
+      auditService,
+    );
+
+    repository.findInstitutionByDomain.mockResolvedValue({
+      id: 'institution-1',
+      name: 'UTA',
+      code: 'UTA',
+    });
+    repository.findUserByEmail.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        email: 'student@uta.edu.ec',
+        password: 'Password123',
+        fullName: 'Usuario',
+        phone: '0812345678',
+        documentType: DocumentType.NationalId,
+        documentNumber: '1710034065',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('El celular debe tener 10 digitos y empezar con 09.'),
+    );
+
+    expect(repository.createUserWithMembership).not.toHaveBeenCalled();
+  });
+
+  it('rejects a duplicate document with a controlled conflict message', async () => {
+    const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
+    const passwordHasher = createPasswordHasherMock();
+    const environmentService = {
+      emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
+    } as EnvironmentService;
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new RegisterUserUseCase(
+      repository,
+      authEmailService,
+      passwordHasher,
+      environmentService,
+      auditService,
+    );
+
+    repository.findInstitutionByDomain.mockResolvedValue({
+      id: 'institution-1',
+      name: 'UTA',
+      code: 'UTA',
+    });
+    repository.findUserByEmail.mockResolvedValue(null);
+    passwordHasher.hash.mockResolvedValue('hashed-password');
+    repository.createUserWithMembership.mockRejectedValue(new AuthUserDocumentConflictError());
+
+    await expect(
+      useCase.execute({
+        email: 'student@uta.edu.ec',
+        password: 'Password123',
+        fullName: 'Usuario',
+        documentType: DocumentType.NationalId,
+        documentNumber: '1710034065',
+      }),
+    ).rejects.toThrow(
+      new ConflictException('Ya existe una cuenta registrada con este tipo y numero de documento.'),
+    );
   });
 });

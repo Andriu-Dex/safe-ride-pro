@@ -8,6 +8,7 @@ import {
   AUTH_USER_REPOSITORY,
   AuthUserRepository,
 } from '../ports/auth-user.repository';
+import { AuthSessionService } from '../services/auth-session.service';
 
 @Injectable()
 export class VerifyEmailUseCase {
@@ -15,9 +16,14 @@ export class VerifyEmailUseCase {
     @Inject(AUTH_USER_REPOSITORY)
     private readonly authUserRepository: AuthUserRepository,
     private readonly auditService: AuditService,
+    private readonly authSessionService: AuthSessionService,
   ) {}
 
-  async execute(code: string): Promise<{ message: string }> {
+  async execute(code: string): Promise<{
+    message: string;
+    accessToken: string;
+    refreshToken: string;
+  }> {
     const tokenHash = createHash('sha256').update(code.trim()).digest('hex');
     const verificationRecord = await this.authUserRepository.findValidEmailVerification(
       tokenHash,
@@ -47,8 +53,21 @@ export class VerifyEmailUseCase {
       },
     });
 
+    const issuedSession = await this.authSessionService.issueTokens(
+      verifiedUser.id,
+      verifiedUser.globalRole,
+    );
+
+    await this.authUserRepository.createRefreshTokenSession(
+      verifiedUser.id,
+      issuedSession.refreshTokenHash,
+      issuedSession.refreshTokenExpiresAt,
+    );
+
     return {
       message: 'Correo verificado correctamente.',
+      accessToken: issuedSession.accessToken,
+      refreshToken: issuedSession.refreshToken,
     };
   }
 }

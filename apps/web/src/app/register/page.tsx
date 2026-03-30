@@ -7,6 +7,12 @@ import { AppLogo } from '../../components/ui/app-logo';
 import { RegisterForm } from '../../modules/auth/components/register-form';
 import { useAuth } from '../../modules/auth/hooks/use-auth';
 
+const REGISTER_TIPS = [
+  'Usa tu correo institucional activo.',
+  'Ingresa tu documento tal como consta en tu registro.',
+  'Revisa tu correo para activar la cuenta.',
+];
+
 export default function RegisterPage() {
   const router = useRouter();
   const { authSession, isHydrated } = useAuth();
@@ -18,27 +24,30 @@ export default function RegisterPage() {
   }, [authSession, isHydrated, router]);
 
   return (
-    <main className="login-shell">
-      <section className="login-card">
-        <div className="login-showcase">
-          <AppLogo />
-          <div>
-            <p className="kicker">Registro web</p>
-            <h1 className="hero-title">Crea tu cuenta institucional.</h1>
-          </div>
-          <p className="hero-text">
-            Registra tu cuenta, verifica tu correo y accede a SafeRidePro.
-          </p>
+    <main className="register-shell">
+      <section className="register-layout">
+        <aside className="register-showcase">
+          <div className="register-showcase-copy">
+            <AppLogo />
+            <h1 className="register-showcase-title">Registro institucional</h1>
+            <ul className="register-tip-list">
+              {REGISTER_TIPS.map((tip) => (
+                <li key={tip}>{tip}</li>
+              ))}
+            </ul>
 
-          <div className="feature-list">
-            <div className="feature-item">
-              <strong>Registro por institucion</strong>
-              <p>El sistema valida el dominio institucional y protege tu acceso con verificacion por codigo.</p>
+            <div className="register-showcase-media">
+              <img
+                alt="Imagen institucional de SafeRidePro"
+                className="register-showcase-image"
+                loading="eager"
+                src="https://i.imgur.com/oufXJwG.png"
+              />
             </div>
           </div>
-        </div>
+        </aside>
 
-        <div className="login-form-panel">
+        <div className="register-form-wrapper">
           <RegisterForm />
         </div>
       </section>

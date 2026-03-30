@@ -146,6 +146,22 @@ describe('AuthController HTTP', () => {
     expect(loginUseCase.execute).not.toHaveBeenCalled();
   });
 
+  it('rejects invalid phone numbers before reaching register use case', async () => {
+    await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({
+        email: 'student@uta.edu.ec',
+        password: 'Password123',
+        fullName: 'Usuario Uno',
+        phone: '0812345678',
+        documentType: DocumentType.NationalId,
+        documentNumber: '1710034065',
+      })
+      .expect(400);
+
+    expect(registerUserUseCase.execute).not.toHaveBeenCalled();
+  });
+
   it('resends the verification code through the HTTP endpoint', async () => {
     resendVerificationCodeUseCase.execute.mockResolvedValue({
       message: 'Si la cuenta existe y sigue pendiente, enviamos un nuevo codigo de verificacion.',
@@ -166,6 +182,28 @@ describe('AuthController HTTP', () => {
     expect(resendVerificationCodeUseCase.execute).toHaveBeenCalledWith({
       email: 'student@uta.edu.ec',
     });
+  });
+
+  it('verifies the email through the HTTP endpoint and returns a session', async () => {
+    verifyEmailUseCase.execute.mockResolvedValue({
+      message: 'Correo verificado correctamente.',
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/verify-email')
+      .send({
+        code: '123456',
+      })
+      .expect(201);
+
+    expect(response.body).toEqual({
+      message: 'Correo verificado correctamente.',
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+    });
+    expect(verifyEmailUseCase.execute).toHaveBeenCalledWith('123456');
   });
 
   it('starts the forgot-password flow through the HTTP endpoint', async () => {

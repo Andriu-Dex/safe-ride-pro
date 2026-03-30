@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable } from '@nes
 import {
   DocumentType,
   generateEmailVerificationCode,
+  isValidEcuadorianMobilePhone,
   isValidEcuadorianNationalId,
 } from '@saferidepro/shared-types';
 import { createHash } from 'node:crypto';
@@ -16,6 +17,7 @@ import {
 } from '../ports/auth-email.service';
 import {
   AUTH_USER_REPOSITORY,
+  AuthUserDocumentConflictError,
   AuthUserRepository,
 } from '../ports/auth-user.repository';
 import { PASSWORD_HASHER, PasswordHasher } from '../ports/password-hasher';
@@ -76,6 +78,7 @@ export class RegisterUserUseCase {
     }
 
     const normalizedDocumentNumber = input.documentNumber.trim();
+    const normalizedPhone = input.phone?.trim() || undefined;
 
     if (
       input.documentType === DocumentType.NationalId &&
@@ -84,18 +87,34 @@ export class RegisterUserUseCase {
       throw new BadRequestException('La cedula ecuatoriana no es valida.');
     }
 
+    if (normalizedPhone && !isValidEcuadorianMobilePhone(normalizedPhone)) {
+      throw new BadRequestException('El celular debe tener 10 digitos y empezar con 09.');
+    }
+
     const passwordHash = await this.passwordHasher.hash(input.password);
 
-    const createdUser = await this.authUserRepository.createUserWithMembership({
-      email: normalizedEmail,
-      passwordHash,
-      fullName: input.fullName.trim(),
-      phone: input.phone?.trim() || undefined,
-      documentType: input.documentType,
-      documentNumber: normalizedDocumentNumber,
-      studentCode: input.studentCode?.trim() || undefined,
-      institutionId: institution.id,
-    });
+    let createdUser;
+
+    try {
+      createdUser = await this.authUserRepository.createUserWithMembership({
+        email: normalizedEmail,
+        passwordHash,
+        fullName: input.fullName.trim(),
+        phone: normalizedPhone,
+        documentType: input.documentType,
+        documentNumber: normalizedDocumentNumber,
+        studentCode: input.studentCode?.trim() || undefined,
+        institutionId: institution.id,
+      });
+    } catch (error) {
+      if (error instanceof AuthUserDocumentConflictError) {
+        throw new ConflictException(
+          'Ya existe una cuenta registrada con este tipo y numero de documento.',
+        );
+      }
+
+      throw error;
+    }
 
     const verificationCode = generateEmailVerificationCode();
     const verificationCodeHash = createHash('sha256')
@@ -132,7 +151,8 @@ export class RegisterUserUseCase {
     return {
       message: 'Cuenta creada correctamente. Revisa tu correo para verificar la cuenta.',
       deliveryChannel,
-      verificationCode: this.environmentService.authAllowDebugCodes
+      verificationCode:
+        this.environmentService.authAllowDebugCodes && deliveryChannel === 'development_preview'
         ? verificationCode
         : undefined,
       user: {

@@ -29,9 +29,9 @@ export function LoginForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [helperMessage, setHelperMessage] = useState<string | null>(
     showVerifiedMessage
-      ? 'Correo verificado correctamente. Ya puedes iniciar sesion.'
+      ? 'Correo verificado correctamente. Ya puedes iniciar sesión.'
       : showResetMessage
-        ? 'La contrasena se actualizo correctamente. Ya puedes iniciar sesion.'
+        ? 'La contraseña se actualizó correctamente. Ya puedes iniciar sesión.'
         : null,
   );
 
@@ -57,7 +57,7 @@ export function LoginForm({
         return;
       }
 
-      setErrorMessage('No fue posible iniciar sesion. Intenta nuevamente.');
+      setErrorMessage('No fue posible iniciar sesión. Intenta nuevamente.');
     }
   };
 
@@ -65,7 +65,7 @@ export function LoginForm({
     <div className="form-card">
       <div className="form-header">
         <p className="kicker">Acceso institucional</p>
-        <h2>Inicia sesion</h2>
+        <h2>Inicia sesión</h2>
         <p>Usa tu cuenta institucional para acceder a SafeRidePro.</p>
       </div>
 
@@ -82,9 +82,9 @@ export function LoginForm({
 
         <InputField
           autoComplete="current-password"
-          label="Contrasena"
+          label="Contraseña"
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Ingresa tu contrasena"
+          placeholder="Ingresa tu contraseña"
           required
           type="password"
           value={password}
@@ -94,16 +94,16 @@ export function LoginForm({
         {helperMessage ? <div className="form-helper form-helper-strong">{helperMessage}</div> : null}
 
         <Button disabled={isBusy} type="submit">
-          {isBusy ? 'Ingresando...' : 'Iniciar sesion'}
+          {isBusy ? 'Ingresando...' : 'Iniciar sesión'}
         </Button>
       </form>
 
-      <div className="button-row">
-        <a className="button button-ghost" href="/register">
+      <div className="button-row auth-secondary-actions">
+        <a className="button button-secondary" href="/register">
           Crear cuenta
         </a>
         <a className="button button-secondary" href="/forgot-password">
-          Olvide mi contrasena
+          Olvidé mi contraseña
         </a>
       </div>
     </div>

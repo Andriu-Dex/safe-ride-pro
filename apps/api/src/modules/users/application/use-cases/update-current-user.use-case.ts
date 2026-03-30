@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { isValidEcuadorianMobilePhone } from '@saferidepro/shared-types';
 
 import {
   UpdateUserProfileInput,
@@ -14,6 +15,17 @@ export class UpdateCurrentUserUseCase {
   ) {}
 
   execute(userId: string, input: UpdateUserProfileInput) {
-    return this.usersRepository.updateProfile(userId, input);
+    const normalizedPhone = input.phone?.trim();
+
+    if (normalizedPhone && !isValidEcuadorianMobilePhone(normalizedPhone)) {
+      throw new BadRequestException('El celular debe tener 10 digitos y empezar con 09.');
+    }
+
+    return this.usersRepository.updateProfile(userId, {
+      ...input,
+      phone: normalizedPhone,
+      fullName: input.fullName?.trim(),
+      profilePhotoUrl: input.profilePhotoUrl?.trim(),
+    });
   }
 }

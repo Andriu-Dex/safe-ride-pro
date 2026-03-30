@@ -44,6 +44,7 @@ export {
 } from './password-reset';
 
 export { isValidEcuadorianNationalId } from './ecuadorian-national-id';
+export { isValidEcuadorianMobilePhone } from './ecuadorian-phone';
 
 export enum VehicleType {
   Motorcycle = 'MOTORCYCLE',

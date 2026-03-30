@@ -44,6 +44,11 @@ export type AuthSession = {
   user: AuthUser;
 };
 
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 export type LoginInput = {
   email: string;
   password: string;

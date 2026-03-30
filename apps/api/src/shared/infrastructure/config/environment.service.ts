@@ -50,16 +50,32 @@ export class EnvironmentService {
     return this.environment.authAllowDebugCodes;
   }
 
-  get resendApiKey(): string | null {
-    return this.environment.resendApiKey;
+  get smtpHost(): string | null {
+    return this.environment.smtpHost;
   }
 
-  get resendFromEmail(): string | null {
-    return this.environment.resendFromEmail;
+  get smtpPort(): number {
+    return this.environment.smtpPort;
   }
 
-  get resendFromName(): string {
-    return this.environment.resendFromName;
+  get smtpSecure(): boolean {
+    return this.environment.smtpSecure;
+  }
+
+  get smtpUser(): string | null {
+    return this.environment.smtpUser;
+  }
+
+  get smtpPassword(): string | null {
+    return this.environment.smtpPassword;
+  }
+
+  get smtpFromEmail(): string | null {
+    return this.environment.smtpFromEmail;
+  }
+
+  get smtpFromName(): string {
+    return this.environment.smtpFromName;
   }
 
   get webAppOrigins(): string[] {

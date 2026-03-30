@@ -1,18 +1,30 @@
+import { useId } from 'react';
+
 type SelectFieldProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
   hint?: string;
+  error?: string | null;
   children: React.ReactNode;
 };
 
-export function SelectField({ label, hint, children, ...props }: SelectFieldProps) {
+export function SelectField({ label, hint, error, children, ...props }: SelectFieldProps) {
+  const selectId = useId();
+
   return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      <select {...props} className="input">
+    <div className="field">
+      <label className="field-label" htmlFor={selectId}>
+        {label}
+      </label>
+      <select
+        {...props}
+        aria-invalid={error ? 'true' : 'false'}
+        className={['input', error ? 'input-invalid' : null].filter(Boolean).join(' ')}
+        id={selectId}
+      >
         {children}
       </select>
-      {hint ? <span className="field-hint">{hint}</span> : null}
-    </label>
+      {error ? <span className="field-error">{error}</span> : hint ? <span className="field-hint">{hint}</span> : null}
+    </div>
   );
 }
 

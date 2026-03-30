@@ -1,5 +1,11 @@
 import { apiRequest, ApiError } from '../../../lib/api-client';
-import type { AuthSession, AuthUser, LoginInput, RegisterInput } from '../types/auth-session';
+import type {
+  AuthSession,
+  AuthTokens,
+  AuthUser,
+  LoginInput,
+  RegisterInput,
+} from '../types/auth-session';
 
 export { ApiError };
 
@@ -21,6 +27,8 @@ export type RegisterResponse = {
 
 export type VerifyEmailResponse = {
   message: string;
+  accessToken: string;
+  refreshToken: string;
 };
 
 export type ResendVerificationCodeResponse = {
@@ -75,6 +83,16 @@ export async function verifyEmail(code: string): Promise<VerifyEmailResponse> {
       code,
     },
   });
+}
+
+export async function createSessionFromTokens(tokens: AuthTokens): Promise<AuthSession> {
+  const user = await getCurrentUser(tokens.accessToken);
+
+  return {
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    user,
+  };
 }
 
 export async function resendVerificationCode(

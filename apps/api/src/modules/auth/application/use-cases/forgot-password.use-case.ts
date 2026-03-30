@@ -94,7 +94,10 @@ export class ForgotPasswordUseCase {
       message:
         'Si existe una cuenta activa con ese correo, enviamos instrucciones para restablecer la contrasena.',
       deliveryChannel,
-      resetCode: this.environmentService.authAllowDebugCodes ? resetCode : undefined,
+      resetCode:
+        this.environmentService.authAllowDebugCodes && deliveryChannel === 'development_preview'
+          ? resetCode
+          : undefined,
     };
   }
 }

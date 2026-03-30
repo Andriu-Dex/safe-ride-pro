@@ -36,7 +36,7 @@ The first post-MVP phase already includes:
 - basic auth rate limiting and auth audit events
 
 For local development without a real email provider, keep `AUTH_ALLOW_DEBUG_CODES=true`.
-For real email delivery, configure `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `RESEND_FROM_NAME`.
+For real email delivery with SMTP, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME`.
 
 ## Notes
 

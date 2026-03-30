@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 
 export type AppEnvironment = {
   port: number;
@@ -13,19 +13,36 @@ export type AppEnvironment = {
   authFailedAttemptLimit: number;
   authFailedAttemptWindowMinutes: number;
   authAllowDebugCodes: boolean;
-  resendApiKey: string | null;
-  resendFromEmail: string | null;
-  resendFromName: string;
+  smtpHost: string | null;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string | null;
+  smtpPassword: string | null;
+  smtpFromEmail: string | null;
+  smtpFromName: string;
   webAppOrigins: string[];
 };
 
-const ENV_PATH_CANDIDATES = [
-  resolve(process.cwd(), 'apps/api/.env'),
-  resolve(process.cwd(), '.env'),
-];
-
 let cachedEnvironment: AppEnvironment | null = null;
 let environmentFileLoaded = false;
+
+function findWorkspaceRoot(startDirectory: string): string {
+  let currentDirectory = startDirectory;
+
+  while (true) {
+    if (existsSync(resolve(currentDirectory, 'pnpm-workspace.yaml'))) {
+      return currentDirectory;
+    }
+
+    const parentDirectory = dirname(currentDirectory);
+
+    if (parentDirectory === currentDirectory) {
+      return startDirectory;
+    }
+
+    currentDirectory = parentDirectory;
+  }
+}
 
 function loadEnvironmentFile(): void {
   if (environmentFileLoaded) {
@@ -34,14 +51,44 @@ function loadEnvironmentFile(): void {
 
   environmentFileLoaded = true;
 
-  if (typeof process.loadEnvFile !== 'function') {
-    return;
-  }
+  const workspaceRoot = findWorkspaceRoot(process.cwd());
+  const envPathCandidates = [
+    resolve(workspaceRoot, '.env'),
+    resolve(workspaceRoot, 'apps/api/.env'),
+  ];
 
-  const envPath = ENV_PATH_CANDIDATES.find((candidatePath) => existsSync(candidatePath));
+  for (const envPath of envPathCandidates) {
+    if (!existsSync(envPath)) {
+      continue;
+    }
 
-  if (envPath) {
-    process.loadEnvFile(envPath);
+    const rawFile = readFileSync(envPath, 'utf8');
+
+    for (const rawLine of rawFile.split(/\r?\n/)) {
+      const line = rawLine.trim();
+
+      if (!line || line.startsWith('#')) {
+        continue;
+      }
+
+      const separatorIndex = line.indexOf('=');
+
+      if (separatorIndex <= 0) {
+        continue;
+      }
+
+      const name = line.slice(0, separatorIndex).trim();
+      let value = line.slice(separatorIndex + 1).trim();
+
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+
+      process.env[name] = value;
+    }
   }
 }
 
@@ -142,9 +189,13 @@ export function getAppEnvironment(): AppEnvironment {
       'AUTH_ALLOW_DEBUG_CODES',
       process.env.NODE_ENV !== 'production',
     ),
-    resendApiKey: getOptionalString('RESEND_API_KEY'),
-    resendFromEmail: getOptionalString('RESEND_FROM_EMAIL'),
-    resendFromName: getOptionalString('RESEND_FROM_NAME') ?? 'SafeRidePro',
+    smtpHost: getOptionalString('SMTP_HOST'),
+    smtpPort: getPositiveInteger('SMTP_PORT', 587),
+    smtpSecure: getBoolean('SMTP_SECURE', false),
+    smtpUser: getOptionalString('SMTP_USER') ?? getOptionalString('SMTP_FROM_EMAIL'),
+    smtpPassword: getOptionalString('SMTP_PASSWORD') ?? getOptionalString('SMTP_PASS'),
+    smtpFromEmail: getOptionalString('SMTP_FROM_EMAIL') ?? getOptionalString('SMTP_USER'),
+    smtpFromName: getOptionalString('SMTP_FROM_NAME') ?? 'SafeRidePro',
     webAppOrigins: getStringList('WEB_APP_ORIGINS', ['http://localhost:3000']),
   };
 

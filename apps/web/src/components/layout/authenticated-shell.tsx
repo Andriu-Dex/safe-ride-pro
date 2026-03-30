@@ -89,12 +89,6 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           </section>
         ) : null}
 
-        <section className="sidebar-note">
-          <p className="sidebar-label">Estado del MVP</p>
-          <strong>Backend operativo</strong>
-          <p>Ya puedes gestionar viajes, registrar calificaciones y revisar auditoria desde el panel web.</p>
-        </section>
-
         <div className="sidebar-spacer" />
 
         <section className="sidebar-user-card">

@@ -9,6 +9,12 @@ import {
 
 export const AUTH_USER_REPOSITORY = Symbol('AUTH_USER_REPOSITORY');
 
+export class AuthUserDocumentConflictError extends Error {
+  constructor() {
+    super('AUTH_USER_DOCUMENT_CONFLICT');
+  }
+}
+
 export type ResolvedInstitution = {
   id: string;
   name: string;

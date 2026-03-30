@@ -3,9 +3,15 @@
 import { createContext, useEffect, useState } from 'react';
 
 import { ApiError } from '../../../lib/api-client';
-import { createSession, getCurrentUser, logout, refreshSession as refreshTokens } from '../lib/auth-api';
+import {
+  createSession,
+  createSessionFromTokens,
+  getCurrentUser,
+  logout,
+  refreshSession as refreshTokens,
+} from '../lib/auth-api';
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../lib/auth-storage';
-import type { AuthSession, LoginInput } from '../types/auth-session';
+import type { AuthSession, AuthTokens, LoginInput } from '../types/auth-session';
 
 const SESSION_REFRESH_INTERVAL_MS = 30_000;
 
@@ -14,6 +20,7 @@ type AuthContextValue = {
   isHydrated: boolean;
   isSigningIn: boolean;
   signIn: (input: LoginInput) => Promise<void>;
+  establishSession: (tokens: AuthTokens) => Promise<void>;
   signOut: () => void;
   refreshSession: () => Promise<void>;
 };
@@ -209,6 +216,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setAuthSession(null);
   };
 
+  const establishSession = async (tokens: AuthTokens): Promise<void> => {
+    const session = await createSessionFromTokens(tokens);
+    writeStoredSession(session);
+    setAuthSession(session);
+    setIsHydrated(true);
+  };
+
   const refreshSession = async (): Promise<void> => {
     if (!authSession) {
       return;
@@ -232,6 +246,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isHydrated,
         isSigningIn,
         signIn,
+        establishSession,
         signOut,
         refreshSession,
       }}

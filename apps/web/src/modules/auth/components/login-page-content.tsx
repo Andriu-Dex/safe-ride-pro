@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { AppLogo } from '../../../components/ui/app-logo';
 import { useAuth } from '../hooks/use-auth';
 import { LoginForm } from './login-form';
 
@@ -33,7 +32,12 @@ export function LoginPageContent({
     <main className="login-shell">
       <section className="login-card">
         <div className="login-showcase">
-          <AppLogo />
+          <img
+            alt="Logo de SafeRidePro"
+            className="auth-hero-logo"
+            loading="eager"
+            src="https://i.imgur.com/7UUGKrJ.png"
+          />
           <div>
             <p className="kicker">Acceso web</p>
             <h1 className="hero-title">Bienvenido a SafeRidePro.</h1>

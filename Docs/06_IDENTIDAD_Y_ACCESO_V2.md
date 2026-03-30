@@ -37,9 +37,13 @@ Esta fase abre la etapa post-MVP del producto web completo y deja listo el bloqu
 - `AUTH_FAILED_ATTEMPT_LIMIT`
 - `AUTH_FAILED_ATTEMPT_WINDOW_MINUTES`
 - `AUTH_ALLOW_DEBUG_CODES`
-- `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
-- `RESEND_FROM_NAME`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_FROM_EMAIL`
+- `SMTP_FROM_NAME`
 
 ### Web
 
@@ -53,7 +57,7 @@ Si `AUTH_ALLOW_DEBUG_CODES=true`, el backend puede devolver el codigo de verific
 
 ### Correo real
 
-Si `RESEND_API_KEY` y los datos de remitente estan configurados, el sistema envia los codigos por correo mediante Resend.
+Si SMTP esta configurado, el sistema envia los codigos por correo con el proveedor SMTP definido en el entorno. Si no lo esta, el backend usa `development_preview`.
 
 ## Decisiones vigentes
 

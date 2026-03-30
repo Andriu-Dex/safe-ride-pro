@@ -103,7 +103,8 @@ export class ResendVerificationCodeUseCase {
     return {
       message: 'Enviamos un nuevo codigo de verificacion a tu correo.',
       deliveryChannel,
-      verificationCode: this.environmentService.authAllowDebugCodes
+      verificationCode:
+        this.environmentService.authAllowDebugCodes && deliveryChannel === 'development_preview'
         ? verificationCode
         : undefined,
     };

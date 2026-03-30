@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { DocumentType } from '@saferidepro/shared-types';
 
 export class RegisterRequestDto {
@@ -14,6 +14,9 @@ export class RegisterRequestDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^09\d{8}$/, {
+    message: 'El celular debe tener 10 digitos y empezar con 09.',
+  })
   phone?: string;
 
   @IsEnum(DocumentType)

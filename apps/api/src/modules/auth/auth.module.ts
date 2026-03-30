@@ -18,7 +18,7 @@ import { RegisterUserUseCase } from './application/use-cases/register-user.use-c
 import { ResendVerificationCodeUseCase } from './application/use-cases/resend-verification-code.use-case';
 import { ResetPasswordUseCase } from './application/use-cases/reset-password.use-case';
 import { VerifyEmailUseCase } from './application/use-cases/verify-email.use-case';
-import { ResendAuthEmailService } from './infrastructure/notifications/resend-auth-email.service';
+import { SmtpAuthEmailService } from './infrastructure/notifications/smtp-auth-email.service';
 import { PrismaAuthUserRepository } from './infrastructure/repositories/prisma-auth-user.repository';
 import { BcryptPasswordHasherService } from './infrastructure/security/bcrypt-password-hasher.service';
 import { CryptoRefreshTokenService } from './infrastructure/security/crypto-refresh-token.service';
@@ -60,7 +60,7 @@ import { SuperAdminGuard } from './presentation/guards/super-admin.guard';
     },
     {
       provide: AUTH_EMAIL_SERVICE,
-      useClass: ResendAuthEmailService,
+      useClass: SmtpAuthEmailService,
     },
     AuthRateLimitService,
     AuthSessionService,

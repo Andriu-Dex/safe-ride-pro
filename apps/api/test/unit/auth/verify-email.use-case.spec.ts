@@ -9,6 +9,7 @@ import {
 import { createHash } from 'node:crypto';
 
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
+import { AuthSessionService } from '../../../src/modules/auth/application/services/auth-session.service';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
 import { VerifyEmailUseCase } from '../../../src/modules/auth/application/use-cases/verify-email.use-case';
 import type { AuthUserRecord, AuthUserRepository } from '../../../src/modules/auth/application/ports/auth-user.repository';
@@ -62,10 +63,13 @@ function buildVerifiedUser(): AuthUserRecord {
 describe('VerifyEmailUseCase', () => {
   it('verifies the email and records the audit event', async () => {
     const repository = createAuthRepositoryMock();
+    const authSessionService = {
+      issueTokens: jest.fn(),
+    } as unknown as jest.Mocked<AuthSessionService>;
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new VerifyEmailUseCase(repository, auditService);
+    const useCase = new VerifyEmailUseCase(repository, auditService, authSessionService);
 
     repository.findValidEmailVerification.mockResolvedValue({
       id: 'token-1',
@@ -75,10 +79,18 @@ describe('VerifyEmailUseCase', () => {
       createdAt: new Date('2030-01-01T09:00:00.000Z'),
     });
     repository.markEmailAsVerified.mockResolvedValue(buildVerifiedUser());
+    authSessionService.issueTokens.mockResolvedValue({
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      refreshTokenHash: 'refresh-hash',
+      refreshTokenExpiresAt: new Date('2030-01-15T10:00:00.000Z'),
+    });
 
     const response = await useCase.execute('verification-token');
 
     expect(response.message).toBe('Correo verificado correctamente.');
+    expect(response.accessToken).toBe('access-token');
+    expect(response.refreshToken).toBe('refresh-token');
     expect(repository.findValidEmailVerification).toHaveBeenCalledWith(
       createHash('sha256').update('verification-token').digest('hex'),
       expect.any(Date),
@@ -98,14 +110,22 @@ describe('VerifyEmailUseCase', () => {
         email: 'student@uta.edu.ec',
       },
     });
+    expect(repository.createRefreshTokenSession).toHaveBeenCalledWith(
+      'user-1',
+      'refresh-hash',
+      expect.any(Date),
+    );
   });
 
   it('rejects an invalid or expired verification code', async () => {
     const repository = createAuthRepositoryMock();
+    const authSessionService = {
+      issueTokens: jest.fn(),
+    } as unknown as jest.Mocked<AuthSessionService>;
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new VerifyEmailUseCase(repository, auditService);
+    const useCase = new VerifyEmailUseCase(repository, auditService, authSessionService);
 
     repository.findValidEmailVerification.mockResolvedValue(null);
 

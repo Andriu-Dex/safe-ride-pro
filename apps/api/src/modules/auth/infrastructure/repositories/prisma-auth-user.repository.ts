@@ -22,6 +22,7 @@ import {
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import {
   AuthUserRecord,
+  AuthUserDocumentConflictError,
   AuthUserRepository,
   CreateUserWithMembershipInput,
   EmailVerificationRecord,
@@ -95,32 +96,47 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
 
   async createUserWithMembership(input: CreateUserWithMembershipInput): Promise<AuthUserRecord> {
     const studentCode = await this.resolveStudentCode(input.institutionId, input.email, input.studentCode);
-
-    const createdUser = await this.prisma.user.create({
-      data: {
-        email: input.email,
-        passwordHash: input.passwordHash,
-        fullName: input.fullName,
-        phone: input.phone,
-        documentType: input.documentType as DocumentType,
-        documentNumber: input.documentNumber,
-        globalRole: GlobalUserRole.USER,
-        accountStatus: AccountStatus.PENDING_EMAIL_VERIFICATION,
-        memberships: {
-          create: {
-            institutionId: input.institutionId,
-            role: MembershipRole.STUDENT,
-            membershipStatus: MembershipStatus.ACTIVE,
-            studentCode,
-            isDefault: true,
-            driverVerificationStatus: DriverVerificationStatus.NOT_REQUESTED,
+    try {
+      const createdUser = await this.prisma.user.create({
+        data: {
+          email: input.email,
+          passwordHash: input.passwordHash,
+          fullName: input.fullName,
+          phone: input.phone,
+          documentType: input.documentType as DocumentType,
+          documentNumber: input.documentNumber,
+          globalRole: GlobalUserRole.USER,
+          accountStatus: AccountStatus.PENDING_EMAIL_VERIFICATION,
+          memberships: {
+            create: {
+              institutionId: input.institutionId,
+              role: MembershipRole.STUDENT,
+              membershipStatus: MembershipStatus.ACTIVE,
+              studentCode,
+              isDefault: true,
+              driverVerificationStatus: DriverVerificationStatus.NOT_REQUESTED,
+            },
           },
         },
-      },
-      include: this.buildAuthUserInclude(),
-    });
+        include: this.buildAuthUserInclude(),
+      });
 
-    return this.mapUser(createdUser);
+      return this.mapUser(createdUser);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
+
+        if (
+          error.code === 'P2002' &&
+          target.includes('documentType') &&
+          target.includes('documentNumber')
+        ) {
+          throw new AuthUserDocumentConflictError();
+        }
+      }
+
+      throw error;
+    }
   }
 
   private async resolveStudentCode(

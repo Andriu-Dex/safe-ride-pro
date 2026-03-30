@@ -38,9 +38,9 @@ describe('LoginForm', () => {
 
     await user.clear(screen.getByPlaceholderText('tu-correo@institucion.edu'));
     await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo-admin@uta.edu.ec');
-    await user.clear(screen.getByPlaceholderText('Ingresa tu contrasena'));
-    await user.type(screen.getByPlaceholderText('Ingresa tu contrasena'), 'Password123!');
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
+    await user.clear(screen.getByPlaceholderText('Ingresa tu contraseña'));
+    await user.type(screen.getByPlaceholderText('Ingresa tu contraseña'), 'Password123!');
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
 
     await waitFor(() => {
       expect(signInMock).toHaveBeenCalledWith({
@@ -60,8 +60,8 @@ describe('LoginForm', () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo-admin@uta.edu.ec');
-    await user.type(screen.getByPlaceholderText('Ingresa tu contrasena'), 'Password123!');
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
+    await user.type(screen.getByPlaceholderText('Ingresa tu contraseña'), 'Password123!');
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
 
     expect(await screen.findByText('Credenciales invalidas.')).toBeInTheDocument();
   });
