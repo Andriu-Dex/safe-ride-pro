@@ -1,4 +1,9 @@
-import { ReportStatus } from '@saferidepro/shared-types';
+import {
+  getReportSeverity,
+  HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH,
+  ReportSeverity,
+  ReportStatus,
+} from '@saferidepro/shared-types';
 
 export const REPORT_REASON_OPTIONS = [
   { label: 'Conduccion insegura', value: 'UNSAFE_DRIVING' },
@@ -50,3 +55,37 @@ export function getReportReasonLabel(reason: string): string {
     .replaceAll('_', ' ')
     .replace(/^\w/, (character) => character.toUpperCase());
 }
+
+export function getReportSeverityLabel(reason: string): string {
+  switch (getReportSeverity(reason)) {
+    case ReportSeverity.High:
+      return 'Alta severidad';
+    case ReportSeverity.Medium:
+      return 'Severidad media';
+    case ReportSeverity.Low:
+      return 'Severidad baja';
+    default:
+      return 'Severidad media';
+  }
+}
+
+export function getReportSeverityTone(
+  reason: string,
+): 'neutral' | 'warning' | 'danger' | 'success' {
+  switch (getReportSeverity(reason)) {
+    case ReportSeverity.High:
+      return 'danger';
+    case ReportSeverity.Medium:
+      return 'warning';
+    case ReportSeverity.Low:
+      return 'neutral';
+    default:
+      return 'neutral';
+  }
+}
+
+export function requiresDetailedReviewNote(reason: string): boolean {
+  return getReportSeverity(reason) === ReportSeverity.High;
+}
+
+export { HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH };

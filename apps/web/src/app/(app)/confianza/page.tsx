@@ -2,6 +2,7 @@
 
 import {
   isOperationalMembership,
+  OperationalSanctionType,
   selectOperationalMembership,
   TripRequestStatus,
   TripStatus,
@@ -12,6 +13,7 @@ import { Button } from '../../../components/ui/button';
 import { InfoCard } from '../../../components/ui/info-card';
 import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
+import { TextareaField } from '../../../components/ui/textarea-field';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
@@ -22,7 +24,13 @@ import { getRatingStars } from '../../../modules/ratings/lib/rating-labels';
 import type { RatingList } from '../../../modules/ratings/types/rating';
 import { ReportOpportunityCard, type ReportOpportunity } from '../../../modules/reports/components/report-opportunity-card';
 import { createReport, listMyReports } from '../../../modules/reports/lib/report-api';
-import { getReportReasonLabel, getReportStatusLabel, getReportStatusTone } from '../../../modules/reports/lib/report-labels';
+import {
+  getReportReasonLabel,
+  getReportSeverityLabel,
+  getReportSeverityTone,
+  getReportStatusLabel,
+  getReportStatusTone,
+} from '../../../modules/reports/lib/report-labels';
 import type { ReportRecord } from '../../../modules/reports/types/report';
 import { listIncomingTripRequests, listMyTripRequests } from '../../../modules/trip-requests/lib/trip-request-api';
 import type { TripRequestRecord } from '../../../modules/trip-requests/types/trip-request';
@@ -37,6 +45,16 @@ import {
   getVisibleReputationTone,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
+import {
+  listMySanctionAppeals,
+  submitSanctionAppeal,
+} from '../../../modules/sanctions/lib/sanction-api';
+import {
+  getSanctionAppealStatusLabel,
+  getSanctionAppealStatusTone,
+  SANCTION_APPEAL_REASON_MIN_LENGTH,
+} from '../../../modules/sanctions/lib/sanction-labels';
+import type { OperationalSanctionAppealRecord } from '../../../modules/sanctions/types/sanction';
 
 type RatingDraft = {
   score: string;
@@ -156,14 +174,17 @@ export default function TrustPage() {
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
   const [ratings, setRatings] = useState<RatingList>({ given: [], received: [] });
   const [reports, setReports] = useState<ReportRecord[]>([]);
+  const [sanctionAppeals, setSanctionAppeals] = useState<OperationalSanctionAppealRecord[]>([]);
   const [myRequests, setMyRequests] = useState<TripRequestRecord[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<TripRequestRecord[]>([]);
   const [ratingDrafts, setRatingDrafts] = useState<Record<string, RatingDraft>>({});
   const [reportDrafts, setReportDrafts] = useState<Record<string, ReportDraft>>({});
+  const [sanctionAppealDrafts, setSanctionAppealDrafts] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isSubmittingRatingId, setIsSubmittingRatingId] = useState<string | null>(null);
   const [isSubmittingReportId, setIsSubmittingReportId] = useState<string | null>(null);
+  const [isSubmittingSanctionAppealId, setIsSubmittingSanctionAppealId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -174,10 +195,18 @@ export default function TrustPage() {
       : undefined;
 
   const loadData = async (accessToken: string) => {
-    const [trustSummaryData, ratingsData, reportsData, myTripRequests, incomingTripRequests] = await Promise.all([
+    const [
+      trustSummaryData,
+      ratingsData,
+      reportsData,
+      appealsData,
+      myTripRequests,
+      incomingTripRequests,
+    ] = await Promise.all([
       getCurrentUserTrustSummary(accessToken),
       listMyRatings(accessToken),
       listMyReports(accessToken),
+      listMySanctionAppeals(accessToken),
       listMyTripRequests(accessToken),
       listIncomingTripRequests(accessToken),
     ]);
@@ -185,6 +214,7 @@ export default function TrustPage() {
     setTrustSummary(trustSummaryData);
     setRatings(ratingsData);
     setReports(reportsData);
+    setSanctionAppeals(appealsData);
     setMyRequests(myTripRequests);
     setIncomingRequests(incomingTripRequests);
   };
@@ -222,6 +252,7 @@ export default function TrustPage() {
       setTrustSummary(null);
       setRatings({ given: [], received: [] });
       setReports([]);
+      setSanctionAppeals([]);
       setMyRequests([]);
       setIncomingRequests([]);
       setIsLoading(false);
@@ -293,6 +324,13 @@ export default function TrustPage() {
       ),
     [reports],
   );
+  const sanctionAppealsBySanctionId = useMemo(
+    () =>
+      new Map(
+        sanctionAppeals.map((appeal) => [appeal.sanctionId, appeal] as const),
+      ),
+    [sanctionAppeals],
+  );
 
   const pendingRatingOpportunities = participationOpportunities.filter(
     (opportunity) => !givenRatingKeys.has(opportunity.id),
@@ -326,6 +364,13 @@ export default function TrustPage() {
         ...(currentDrafts[opportunityId] ?? EMPTY_REPORT_DRAFT),
         [field]: value,
       },
+    }));
+  };
+
+  const handleSanctionAppealDraftChange = (sanctionId: string, value: string) => {
+    setSanctionAppealDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [sanctionId]: value,
     }));
   };
 
@@ -399,6 +444,39 @@ export default function TrustPage() {
       await refreshData();
     } finally {
       setIsSubmittingReportId(null);
+    }
+  };
+
+  const handleSubmitSanctionAppeal = async (sanctionId: string) => {
+    if (!authSession) {
+      return;
+    }
+
+    const reason = sanctionAppealDrafts[sanctionId]?.trim() ?? '';
+    setIsSubmittingSanctionAppealId(sanctionId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await submitSanctionAppeal(authSession.accessToken, sanctionId, {
+        reason,
+      });
+
+      await loadData(authSession.accessToken);
+      setSuccessMessage(response.message);
+      setSanctionAppealDrafts((currentDrafts) => ({
+        ...currentDrafts,
+        [sanctionId]: '',
+      }));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setErrorMessage(getApiErrorMessage(error, 'No fue posible enviar la apelacion.'));
+      await refreshData();
+    } finally {
+      setIsSubmittingSanctionAppealId(null);
     }
   };
 
@@ -534,6 +612,16 @@ export default function TrustPage() {
               (trustSummary?.passengerNoShows ?? 0)
             }`}
           />
+          <InfoCard
+            description="Reportes resueltos de alta severidad dentro de la ventana administrativa actual."
+            label="Reportes graves"
+            value={`${trustSummary?.resolvedHighSeverityReportsReceived ?? 0}`}
+          />
+          <InfoCard
+            description="Apelaciones administrativas registradas desde tu cuenta."
+            label="Apelaciones"
+            value={`${sanctionAppeals.length}`}
+          />
         </div>
 
         {trustSummary ? (
@@ -587,20 +675,110 @@ export default function TrustPage() {
               </p>
             </div>
             <div className="list-stack">
-              {trustSummary.activeSanctions.map((sanction) => (
-                <div key={sanction.id} className="list-card list-card-strong">
+              {trustSummary.activeSanctions.map((sanction) => {
+                const linkedAppeal = sanctionAppealsBySanctionId.get(sanction.id);
+                const canAppeal = sanction.type !== OperationalSanctionType.Warning;
+                const appealDraft = sanctionAppealDrafts[sanction.id] ?? '';
+
+                return (
+                  <div key={sanction.id} className="list-card list-card-strong">
+                    <div className="list-card-header">
+                      <strong>{getOperationalSanctionTypeLabel(sanction.type)}</strong>
+                      <div className="button-row">
+                        <StatusPill
+                          label={getOperationalSanctionScopeLabel(sanction.scope)}
+                          tone={getOperationalSanctionTone(sanction.type)}
+                        />
+                        {linkedAppeal ? (
+                          <StatusPill
+                            label={getSanctionAppealStatusLabel(linkedAppeal.status)}
+                            tone={getSanctionAppealStatusTone(linkedAppeal.status)}
+                          />
+                        ) : null}
+                      </div>
+                    </div>
+                    <p className="panel-text">{sanction.reason}</p>
+                    <p className="panel-text">
+                      Inicio: {formatDateTime(sanction.startedAt)}
+                      {sanction.endsAt ? ` | Fin estimado: ${formatDateTime(sanction.endsAt)}` : ''}
+                    </p>
+
+                    {linkedAppeal ? (
+                      <>
+                        <p className="panel-text">Apelacion: {linkedAppeal.reason}</p>
+                        <p className="panel-text">
+                          Estado actual: {getSanctionAppealStatusLabel(linkedAppeal.status)}
+                        </p>
+                        {linkedAppeal.reviewNote ? (
+                          <p className="panel-text">
+                            Revision administrativa: {linkedAppeal.reviewNote}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : canAppeal ? (
+                      <>
+                        <TextareaField
+                          label="Motivo de apelacion"
+                          onChange={(event) =>
+                            handleSanctionAppealDraftChange(sanction.id, event.target.value)
+                          }
+                          placeholder="Explica por que consideras que la restriccion debe revisarse"
+                          rows={3}
+                          value={appealDraft}
+                        />
+                        <p className="form-helper">
+                          La apelacion debe tener al menos {SANCTION_APPEAL_REASON_MIN_LENGTH} caracteres.
+                        </p>
+                        <div className="button-row">
+                          <Button
+                            disabled={
+                              isSubmittingSanctionAppealId === sanction.id ||
+                              appealDraft.trim().length < SANCTION_APPEAL_REASON_MIN_LENGTH
+                            }
+                            onClick={() => void handleSubmitSanctionAppeal(sanction.id)}
+                          >
+                            {isSubmittingSanctionAppealId === sanction.id
+                              ? 'Enviando apelacion...'
+                              : 'Enviar apelacion'}
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="panel-text">
+                        Las advertencias activas no requieren apelacion administrativa en esta fase.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+        ) : null}
+
+        {sanctionAppeals.length ? (
+          <article className="panel panel-stack">
+            <div className="section-heading">
+              <h2 className="panel-title">Historial de apelaciones</h2>
+              <p className="section-heading-meta">{sanctionAppeals.length} registradas</p>
+            </div>
+            <div className="list-stack">
+              {sanctionAppeals.map((appeal) => (
+                <div key={appeal.id} className="list-card">
                   <div className="list-card-header">
-                    <strong>{getOperationalSanctionTypeLabel(sanction.type)}</strong>
+                    <strong>{getOperationalSanctionTypeLabel(appeal.sanctionType)}</strong>
                     <StatusPill
-                      label={getOperationalSanctionScopeLabel(sanction.scope)}
-                      tone={getOperationalSanctionTone(sanction.type)}
+                      label={getSanctionAppealStatusLabel(appeal.status)}
+                      tone={getSanctionAppealStatusTone(appeal.status)}
                     />
                   </div>
-                  <p className="panel-text">{sanction.reason}</p>
                   <p className="panel-text">
-                    Inicio: {formatDateTime(sanction.startedAt)}
-                    {sanction.endsAt ? ` | Fin estimado: ${formatDateTime(sanction.endsAt)}` : ''}
+                    Alcance: {getOperationalSanctionScopeLabel(appeal.sanctionScope)} | Inicio de sancion: {formatDateTime(appeal.sanctionStartedAt)}
                   </p>
+                  <p className="panel-text">Motivo de apelacion: {appeal.reason}</p>
+                  <p className="panel-text">Registrada: {formatDateTime(appeal.createdAt)}</p>
+                  {appeal.reviewNote ? (
+                    <p className="panel-text">Revision administrativa: {appeal.reviewNote}</p>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -768,6 +946,12 @@ export default function TrustPage() {
                     Viaje: {report.tripOriginLabel} -&gt; {report.tripDestinationLabel}
                   </p>
                   <p className="panel-text">Motivo: {getReportReasonLabel(report.reason)}</p>
+                  <div className="button-row">
+                    <StatusPill
+                      label={getReportSeverityLabel(report.reason)}
+                      tone={getReportSeverityTone(report.reason)}
+                    />
+                  </div>
                   <p className="panel-text">Registrado: {formatDateTime(report.createdAt)}</p>
                   {report.description ? (
                     <p className="panel-text">Descripcion: {report.description}</p>

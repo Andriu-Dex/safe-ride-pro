@@ -428,13 +428,41 @@ Estados administrativos sugeridos:
 - las sanciones se aplican por `membership`, no por usuario global
 - toda sancion activa debe quedar auditada
 - toda sancion vencida debe quedar auditada
+- toda apelacion debe quedar auditada
+- todo levantamiento manual debe quedar auditado
 - la web debe mostrar la restriccion vigente y su fecha estimada de fin
 - los endpoints deben bloquear acciones operativas segun el alcance de la sancion
 - el resumen de confianza debe mostrar reputacion visible, riesgo administrativo y senales activas
 - la reincidencia reciente debe influir en la duracion de sanciones nuevas
 - un reporte resuelto reciente puede llevar una membresia a `UNDER_REVIEW` aunque no exista todavia bloqueo fuerte
 
-### 9.12 Restricciones activas del MVP
+### 9.12 Apelaciones y levantamiento manual
+
+Las sanciones operativas restrictivas deben poder revisarse manualmente.
+
+Reglas base:
+
+- `WARNING` no se apela en esta fase
+- `LIMITED_PASSENGER`, `LIMITED_DRIVER` y `SUSPENDED` si pueden apelarse mientras sigan activas
+- cada sancion admite una sola apelacion formal
+- la apelacion debe incluir una justificacion escrita suficientemente clara
+- la revision de apelaciones solo corresponde a `SUPER_ADMIN` o a un `INSTITUTION_ADMIN` operativo dentro de la misma institucion
+- nadie puede revisar su propia apelacion ni levantar manualmente una sancion propia
+
+Estados de apelacion:
+
+- `PENDING`
+- `APPROVED`
+- `REJECTED`
+
+Reglas de cierre:
+
+- una apelacion aprobada puede levantar la sancion activa de forma manual
+- una apelacion rechazada debe conservar nota administrativa
+- un levantamiento manual directo no puede hacerse si la sancion tiene una apelacion pendiente
+- toda aprobacion, rechazo o levantamiento manual debe dejar rastro en auditoria
+
+### 9.13 Restricciones activas del MVP
 
 `LIMITED_PASSENGER` bloquea:
 
@@ -527,8 +555,38 @@ Se recomienda permitir inicialmente:
 
 - un reporte pendiente puede pasar a `UNDER_REVIEW`
 - un reporte solo puede cerrarse como `RESOLVED` o `DISMISSED` si existe nota administrativa
+- los reportes de alta severidad no deben cerrarse directamente desde `PENDING`; primero deben pasar por `UNDER_REVIEW`
+- los reportes de alta severidad requieren una nota administrativa mas detallada para cerrarse
 - un reporte cerrado no puede volver a estados abiertos
 - toda revision administrativa debe quedar auditada
+
+### 11.6 Severidad derivada por motivo
+
+En esta fase, la severidad se interpreta desde el motivo del reporte:
+
+- `UNSAFE_DRIVING`: alta
+- `INAPPROPRIATE_BEHAVIOR`: alta
+- `NO_SHOW`: media
+- `OTHER`: media
+- `ROUTE_ISSUE`: baja
+
+Esta severidad:
+
+- ordena mejor la bandeja administrativa
+- endurece las reglas de cierre
+- influye en el riesgo administrativo de la membresia reportada
+- influye en la futura sancion operativa automatica por reincidencia
+
+### 11.7 Conexion entre severidad, riesgo y sancion futura
+
+La severidad no cierra automaticamente el caso por si sola, pero si cambia el peso del incidente.
+
+Reglas iniciales:
+
+- un reporte resuelto de severidad alta empuja la membresia a `UNDER_REVIEW` aunque no exista todavia una suspension automatica
+- una combinacion de `1` reporte resuelto de severidad alta y reincidencia reciente en reportes resueltos puede escalar mas fuerte que dos reportes bajos o medios
+- los reportes bajos o medios por si solos favorecen seguimiento u observacion antes que una suspension automatica fuerte
+- los reportes de alta severidad exigen mas control de cierre para reducir falsos positivos y decisiones apresuradas
 
 ---
 

@@ -4,6 +4,7 @@ import {
   GlobalUserRole,
   InstitutionMembershipRole,
   isOperationalMembership,
+  OperationalSanctionAppealStatus,
   ReportStatus,
 } from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
@@ -15,14 +16,43 @@ import type { AuditEventRecord, AuditFilters } from '../../../modules/audit/type
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { listReviewableReports, reviewReport } from '../../../modules/reports/lib/report-api';
-import { getReportReasonLabel, getReportStatusLabel, getReportStatusTone } from '../../../modules/reports/lib/report-labels';
+import {
+  getReportReasonLabel,
+  getReportSeverityLabel,
+  getReportSeverityTone,
+  getReportStatusLabel,
+  getReportStatusTone,
+  HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH,
+  requiresDetailedReviewNote,
+} from '../../../modules/reports/lib/report-labels';
 import type { ReportRecord } from '../../../modules/reports/types/report';
+import {
+  liftOperationalSanction,
+  listReviewableActiveSanctions,
+  listReviewableSanctionAppeals,
+  reviewSanctionAppeal,
+} from '../../../modules/sanctions/lib/sanction-api';
+import {
+  getSanctionAppealStatusLabel,
+  getSanctionAppealStatusTone,
+  MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH,
+  SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH,
+} from '../../../modules/sanctions/lib/sanction-labels';
+import type {
+  OperationalSanctionAppealRecord,
+  ReviewableOperationalSanctionRecord,
+} from '../../../modules/sanctions/types/sanction';
 import { Button } from '../../../components/ui/button';
 import { InfoCard } from '../../../components/ui/info-card';
 import { SelectField } from '../../../components/ui/select-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import { ApiError } from '../../../lib/api-client';
+import {
+  getOperationalSanctionScopeLabel,
+  getOperationalSanctionTone,
+  getOperationalSanctionTypeLabel,
+} from '../../../modules/users/lib/trust-labels';
 
 const EMPTY_AUDIT_FILTERS: AuditFilters = {
   institutionId: undefined,
@@ -59,14 +89,24 @@ export default function AuditPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
   const [reviewableReports, setReviewableReports] = useState<ReportRecord[]>([]);
+  const [reviewableSanctions, setReviewableSanctions] = useState<
+    ReviewableOperationalSanctionRecord[]
+  >([]);
+  const [reviewableAppeals, setReviewableAppeals] = useState<
+    OperationalSanctionAppealRecord[]
+  >([]);
   const [auditFilterValues, setAuditFilterValues] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
   const [appliedAuditFilters, setAppliedAuditFilters] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
   const [reportStatusFilter, setReportStatusFilter] = useState<string>('');
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [appealReviewNotes, setAppealReviewNotes] = useState<Record<string, string>>({});
+  const [sanctionLiftNotes, setSanctionLiftNotes] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isReviewingReportId, setIsReviewingReportId] = useState<string | null>(null);
+  const [isReviewingAppealId, setIsReviewingAppealId] = useState<string | null>(null);
+  const [isLiftingSanctionId, setIsLiftingSanctionId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -93,17 +133,27 @@ export default function AuditPage() {
     filters: AuditFilters,
     nextReportStatusFilter: string,
   ) => {
-    const [auditItems, reportItems] = await Promise.all([
+    const [auditItems, reportItems, sanctionItems, appealItems] = await Promise.all([
       listAuditEvents(accessToken, filters),
       listReviewableReports(accessToken, {
         institutionId: filters.institutionId,
         status: nextReportStatusFilter ? nextReportStatusFilter as ReportStatus : undefined,
         limit: 25,
       }),
+      listReviewableActiveSanctions(accessToken, {
+        institutionId: filters.institutionId,
+        limit: 25,
+      }),
+      listReviewableSanctionAppeals(accessToken, {
+        institutionId: filters.institutionId,
+        limit: 25,
+      }),
     ]);
 
     setAuditEvents(auditItems);
     setReviewableReports(reportItems);
+    setReviewableSanctions(sanctionItems);
+    setReviewableAppeals(appealItems);
   };
 
   const refreshData = async (showSpinner = false) => {
@@ -231,6 +281,20 @@ export default function AuditPage() {
     }));
   };
 
+  const handleAppealReviewNoteChange = (appealId: string, value: string) => {
+    setAppealReviewNotes((currentNotes) => ({
+      ...currentNotes,
+      [appealId]: value,
+    }));
+  };
+
+  const handleSanctionLiftNoteChange = (sanctionId: string, value: string) => {
+    setSanctionLiftNotes((currentNotes) => ({
+      ...currentNotes,
+      [sanctionId]: value,
+    }));
+  };
+
   const handleReviewReport = async (reportId: string, status: ReportStatus) => {
     if (!authSession) {
       return;
@@ -271,6 +335,98 @@ export default function AuditPage() {
       await refreshData();
     } finally {
       setIsReviewingReportId(null);
+    }
+  };
+
+  const handleReviewAppeal = async (
+    appealId: string,
+    status: OperationalSanctionAppealStatus,
+  ) => {
+    if (!authSession) {
+      return;
+    }
+
+    const reviewNote = appealReviewNotes[appealId]?.trim();
+
+    if (
+      !reviewNote ||
+      reviewNote.length < SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
+    ) {
+      setErrorMessage(
+        `Debes indicar una nota administrativa de al menos ${SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH} caracteres para revisar la apelacion.`,
+      );
+      return;
+    }
+
+    setIsReviewingAppealId(appealId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await reviewSanctionAppeal(authSession.accessToken, appealId, {
+        status,
+        reviewNote,
+      });
+
+      await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
+      setSuccessMessage(response.message);
+      setAppealReviewNotes((currentNotes) => ({
+        ...currentNotes,
+        [appealId]: '',
+      }));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setErrorMessage(getApiErrorMessage(error, 'No fue posible revisar la apelacion.'));
+      await refreshData();
+    } finally {
+      setIsReviewingAppealId(null);
+    }
+  };
+
+  const handleLiftSanction = async (sanctionId: string) => {
+    if (!authSession) {
+      return;
+    }
+
+    const reviewNote = sanctionLiftNotes[sanctionId]?.trim();
+
+    if (
+      !reviewNote ||
+      reviewNote.length < MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH
+    ) {
+      setErrorMessage(
+        `Debes indicar una nota administrativa de al menos ${MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH} caracteres para levantar la sancion.`,
+      );
+      return;
+    }
+
+    setIsLiftingSanctionId(sanctionId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await liftOperationalSanction(authSession.accessToken, sanctionId, {
+        reviewNote,
+      });
+
+      await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
+      setSuccessMessage(response.message);
+      setSanctionLiftNotes((currentNotes) => ({
+        ...currentNotes,
+        [sanctionId]: '',
+      }));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setErrorMessage(getApiErrorMessage(error, 'No fue posible levantar la sancion.'));
+      await refreshData();
+    } finally {
+      setIsLiftingSanctionId(null);
     }
   };
 
@@ -360,6 +516,16 @@ export default function AuditPage() {
             label="Instituciones"
             value={`${institutionOptions.length || (authSession?.user.globalRole === GlobalUserRole.SuperAdmin ? 1 : 0)}`}
           />
+          <InfoCard
+            description="Sanciones activas actualmente disponibles para levantamiento manual."
+            label="Sanciones activas"
+            value={`${reviewableSanctions.length}`}
+          />
+          <InfoCard
+            description="Apelaciones de sanciones visibles con el alcance administrativo actual."
+            label="Apelaciones"
+            value={`${reviewableAppeals.length}`}
+          />
         </div>
 
         <AuditFiltersPanel
@@ -431,10 +597,16 @@ export default function AuditPage() {
                   <div key={report.id} className="list-card">
                     <div className="list-card-header">
                       <strong>{report.reportedFullName}</strong>
-                      <StatusPill
-                        label={getReportStatusLabel(report.status)}
-                        tone={getReportStatusTone(report.status)}
-                      />
+                      <div className="button-row">
+                        <StatusPill
+                          label={getReportStatusLabel(report.status)}
+                          tone={getReportStatusTone(report.status)}
+                        />
+                        <StatusPill
+                          label={getReportSeverityLabel(report.reason)}
+                          tone={getReportSeverityTone(report.reason)}
+                        />
+                      </div>
                     </div>
                     <p className="panel-text">
                       Reportante: {report.reporterFullName} | Viaje: {report.tripOriginLabel} -&gt; {report.tripDestinationLabel}
@@ -448,6 +620,11 @@ export default function AuditPage() {
                     ) : null}
                     {report.reviewNote ? (
                       <p className="panel-text">Nota de revision: {report.reviewNote}</p>
+                    ) : null}
+                    {requiresDetailedReviewNote(report.reason) ? (
+                      <p className="panel-text">
+                        Este reporte es de alta severidad. Debe pasar primero a revision y requiere una nota de al menos {HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH} caracteres para cerrarse.
+                      </p>
                     ) : null}
 
                     {report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview ? (
@@ -470,13 +647,35 @@ export default function AuditPage() {
                             </Button>
                           ) : null}
                           <Button
-                            disabled={isReviewingReportId === report.id || !(reviewNotes[report.id]?.trim())}
+                            disabled={
+                              isReviewingReportId === report.id ||
+                              !(reviewNotes[report.id]?.trim()) ||
+                              (
+                                requiresDetailedReviewNote(report.reason) &&
+                                report.status === ReportStatus.Pending
+                              ) ||
+                              (
+                                requiresDetailedReviewNote(report.reason) &&
+                                (reviewNotes[report.id]?.trim().length ?? 0) < HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH
+                              )
+                            }
                             onClick={() => void handleReviewReport(report.id, ReportStatus.Resolved)}
                           >
                             Resolver
                           </Button>
                           <Button
-                            disabled={isReviewingReportId === report.id || !(reviewNotes[report.id]?.trim())}
+                            disabled={
+                              isReviewingReportId === report.id ||
+                              !(reviewNotes[report.id]?.trim()) ||
+                              (
+                                requiresDetailedReviewNote(report.reason) &&
+                                report.status === ReportStatus.Pending
+                              ) ||
+                              (
+                                requiresDetailedReviewNote(report.reason) &&
+                                (reviewNotes[report.id]?.trim().length ?? 0) < HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH
+                              )
+                            }
                             onClick={() => void handleReviewReport(report.id, ReportStatus.Dismissed)}
                             variant="ghost"
                           >
@@ -495,6 +694,165 @@ export default function AuditPage() {
             ) : (
               <p className="panel-text">
                 No hay reportes administrativos para el filtro actual.
+              </p>
+            )}
+          </article>
+
+          <article className="panel panel-stack">
+            <div className="section-heading">
+              <h2 className="panel-title">Sanciones activas</h2>
+              <p className="section-heading-meta">{reviewableSanctions.length} resultados</p>
+            </div>
+
+            {reviewableSanctions.length ? (
+              <div className="list-stack">
+                {reviewableSanctions.map((sanction) => (
+                  <div key={sanction.id} className="list-card">
+                    <div className="list-card-header">
+                      <strong>{sanction.membershipUserFullName}</strong>
+                      <div className="button-row">
+                        <StatusPill
+                          label={getOperationalSanctionTypeLabel(sanction.type)}
+                          tone={getOperationalSanctionTone(sanction.type)}
+                        />
+                        <StatusPill
+                          label={getOperationalSanctionScopeLabel(sanction.scope)}
+                          tone="neutral"
+                        />
+                      </div>
+                    </div>
+                    <p className="panel-text">
+                      Institucion: {sanction.institutionName} | Inicio: {formatDateTime(sanction.startedAt)}
+                    </p>
+                    <p className="panel-text">{sanction.reason}</p>
+                    {sanction.endsAt ? (
+                      <p className="panel-text">
+                        Fin estimado: {formatDateTime(sanction.endsAt)}
+                      </p>
+                    ) : null}
+                    <TextareaField
+                      label="Nota administrativa para levantar"
+                      onChange={(event) =>
+                        handleSanctionLiftNoteChange(sanction.id, event.target.value)
+                      }
+                      placeholder="Justifica por que corresponde levantar manualmente esta sancion"
+                      rows={3}
+                      value={sanctionLiftNotes[sanction.id] ?? ''}
+                    />
+                    <div className="button-row">
+                      <Button
+                        disabled={
+                          isLiftingSanctionId === sanction.id ||
+                          (sanctionLiftNotes[sanction.id]?.trim().length ?? 0) <
+                            MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH
+                        }
+                        onClick={() => void handleLiftSanction(sanction.id)}
+                      >
+                        {isLiftingSanctionId === sanction.id
+                          ? 'Levantando...'
+                          : 'Levantar manualmente'}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="panel-text">
+                No hay sanciones activas dentro del alcance administrativo actual.
+              </p>
+            )}
+          </article>
+
+          <article className="panel panel-stack">
+            <div className="section-heading">
+              <h2 className="panel-title">Apelaciones de sanciones</h2>
+              <p className="section-heading-meta">{reviewableAppeals.length} resultados</p>
+            </div>
+
+            {reviewableAppeals.length ? (
+              <div className="list-stack">
+                {reviewableAppeals.map((appeal) => (
+                  <div key={appeal.id} className="list-card">
+                    <div className="list-card-header">
+                      <strong>{appeal.affectedFullName}</strong>
+                      <div className="button-row">
+                        <StatusPill
+                          label={getSanctionAppealStatusLabel(appeal.status)}
+                          tone={getSanctionAppealStatusTone(appeal.status)}
+                        />
+                        <StatusPill
+                          label={getOperationalSanctionTypeLabel(appeal.sanctionType)}
+                          tone={getOperationalSanctionTone(appeal.sanctionType)}
+                        />
+                      </div>
+                    </div>
+                    <p className="panel-text">
+                      Institucion: {appeal.institutionName} | Alcance: {getOperationalSanctionScopeLabel(appeal.sanctionScope)}
+                    </p>
+                    <p className="panel-text">Apelacion: {appeal.reason}</p>
+                    <p className="panel-text">
+                      Sancion original: {appeal.sanctionReason}
+                    </p>
+                    {appeal.reviewNote ? (
+                      <p className="panel-text">Nota de revision: {appeal.reviewNote}</p>
+                    ) : null}
+
+                    {appeal.status === OperationalSanctionAppealStatus.Pending ? (
+                      <>
+                        <TextareaField
+                          label="Nota administrativa"
+                          onChange={(event) =>
+                            handleAppealReviewNoteChange(appeal.id, event.target.value)
+                          }
+                          placeholder="Explica la decision administrativa sobre la apelacion"
+                          rows={3}
+                          value={appealReviewNotes[appeal.id] ?? ''}
+                        />
+                        <div className="button-row">
+                          <Button
+                            disabled={
+                              isReviewingAppealId === appeal.id ||
+                              (appealReviewNotes[appeal.id]?.trim().length ?? 0) <
+                                SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
+                            }
+                            onClick={() =>
+                              void handleReviewAppeal(
+                                appeal.id,
+                                OperationalSanctionAppealStatus.Approved,
+                              )
+                            }
+                          >
+                            Aprobar apelacion
+                          </Button>
+                          <Button
+                            disabled={
+                              isReviewingAppealId === appeal.id ||
+                              (appealReviewNotes[appeal.id]?.trim().length ?? 0) <
+                                SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
+                            }
+                            onClick={() =>
+                              void handleReviewAppeal(
+                                appeal.id,
+                                OperationalSanctionAppealStatus.Rejected,
+                              )
+                            }
+                            variant="ghost"
+                          >
+                            Rechazar apelacion
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="panel-text">
+                        Esta apelacion ya fue cerrada por {appeal.reviewedByFullName ?? 'administracion'}.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="panel-text">
+                No hay apelaciones de sanciones dentro del alcance actual.
               </p>
             )}
           </article>

@@ -93,6 +93,13 @@ export {
 } from './operational-sanction-policy';
 
 export {
+  MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH,
+  OperationalSanctionAppealStatus,
+  SANCTION_APPEAL_REASON_MIN_LENGTH,
+  SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH,
+} from './operational-sanction-appeal';
+
+export {
   AdministrativeRiskState,
   deriveTrustReputationProfile,
   getRecurrenceDurationMultiplier,
@@ -105,6 +112,12 @@ export {
   type TrustReputationInput,
   type TrustReputationProfile,
 } from './trust-reputation-policy';
+
+export {
+  getReportSeverity,
+  HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH,
+  ReportSeverity,
+} from './report-severity';
 
 export {
   CancellationTiming,

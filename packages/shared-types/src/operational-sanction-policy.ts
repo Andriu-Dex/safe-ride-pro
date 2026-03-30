@@ -32,6 +32,9 @@ export type OperationalSanctionMetrics = {
   latePassengerTripRequestCancellations: number;
   lateDriverTripCancellations: number;
   resolvedReportsReceived: number;
+  resolvedLowSeverityReportsReceived: number;
+  resolvedMediumSeverityReportsReceived: number;
+  resolvedHighSeverityReportsReceived: number;
 };
 
 export type OperationalSanctionDecision = {
@@ -48,6 +51,9 @@ export type OperationalSanctionDecision = {
     recurrenceWindowDays?: number;
     recentBlockingSanctionCount?: number;
     durationMultiplier?: number;
+    lowSeverityReports?: number;
+    mediumSeverityReports?: number;
+    highSeverityReports?: number;
   };
 };
 
@@ -176,6 +182,47 @@ function resolveDriverDecision(
 function resolveGlobalDecision(
   metrics: OperationalSanctionMetrics,
 ): OperationalSanctionDecision | null {
+  if (metrics.resolvedHighSeverityReportsReceived >= 2) {
+    return {
+      type: OperationalSanctionType.Suspended,
+      scope: OperationalSanctionScope.All,
+      trigger: OperationalSanctionTrigger.ResolvedReports,
+      durationDays: 21,
+      reason:
+        'Tu membresia fue suspendida temporalmente por reincidencia en reportes resueltos de alta severidad por administracion.',
+      metadata: {
+        threshold: 2,
+        eventCount: metrics.resolvedHighSeverityReportsReceived,
+        reportsWindowDays: SANCTION_REPORTS_WINDOW_DAYS,
+        highSeverityReports: metrics.resolvedHighSeverityReportsReceived,
+        mediumSeverityReports: metrics.resolvedMediumSeverityReportsReceived,
+        lowSeverityReports: metrics.resolvedLowSeverityReportsReceived,
+      },
+    };
+  }
+
+  if (
+    metrics.resolvedHighSeverityReportsReceived >= 1 &&
+    metrics.resolvedReportsReceived >= 2
+  ) {
+    return {
+      type: OperationalSanctionType.Suspended,
+      scope: OperationalSanctionScope.All,
+      trigger: OperationalSanctionTrigger.ResolvedReports,
+      durationDays: 14,
+      reason:
+        'Tu membresia fue suspendida temporalmente por un reporte resuelto de alta severidad combinado con reincidencia reciente en reportes administrativos.',
+      metadata: {
+        threshold: 2,
+        eventCount: metrics.resolvedReportsReceived,
+        reportsWindowDays: SANCTION_REPORTS_WINDOW_DAYS,
+        highSeverityReports: metrics.resolvedHighSeverityReportsReceived,
+        mediumSeverityReports: metrics.resolvedMediumSeverityReportsReceived,
+        lowSeverityReports: metrics.resolvedLowSeverityReportsReceived,
+      },
+    };
+  }
+
   if (metrics.resolvedReportsReceived >= 3) {
     return {
       type: OperationalSanctionType.Suspended,
@@ -188,6 +235,9 @@ function resolveGlobalDecision(
         threshold: 3,
         eventCount: metrics.resolvedReportsReceived,
         reportsWindowDays: SANCTION_REPORTS_WINDOW_DAYS,
+        highSeverityReports: metrics.resolvedHighSeverityReportsReceived,
+        mediumSeverityReports: metrics.resolvedMediumSeverityReportsReceived,
+        lowSeverityReports: metrics.resolvedLowSeverityReportsReceived,
       },
     };
   }
@@ -204,6 +254,9 @@ function resolveGlobalDecision(
         threshold: 2,
         eventCount: metrics.resolvedReportsReceived,
         reportsWindowDays: SANCTION_REPORTS_WINDOW_DAYS,
+        highSeverityReports: metrics.resolvedHighSeverityReportsReceived,
+        mediumSeverityReports: metrics.resolvedMediumSeverityReportsReceived,
+        lowSeverityReports: metrics.resolvedLowSeverityReportsReceived,
       },
     };
   }

@@ -3,6 +3,7 @@ import {
   AccountStatus,
   DriverVerificationStatus,
   GlobalUserRole,
+  HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH,
   InstitutionMembershipRole,
   MembershipStatus,
   ReportStatus,
@@ -100,7 +101,7 @@ describe('ReviewReportUseCase', () => {
     const sanctionsService = createOperationalSanctionsServiceMock();
     const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
 
-    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.Pending));
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.UnderReview));
 
     await expect(
       useCase.execute(buildAdminUser(), {
@@ -131,7 +132,7 @@ describe('ReviewReportUseCase', () => {
     const sanctionsService = createOperationalSanctionsServiceMock();
     const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
 
-    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.Pending));
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.UnderReview));
     repository.reviewReport.mockResolvedValue(buildReport(ReportStatus.Resolved));
 
     const response = await useCase.execute(buildAdminUser(), {
@@ -154,12 +155,60 @@ describe('ReviewReportUseCase', () => {
       entityType: AuditEntityType.Report,
       entityId: 'report-1',
       metadata: {
-        previousStatus: ReportStatus.Pending,
+        previousStatus: ReportStatus.UnderReview,
         currentStatus: ReportStatus.Resolved,
+        reason: 'UNSAFE_DRIVING',
+        severity: 'HIGH',
       },
     });
     expect(sanctionsService.synchronizeAutomaticSanctions).toHaveBeenCalledWith(
       'membership-driver',
+    );
+  });
+
+  it('forces high-severity reports to move through under review before being closed', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
+
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.Pending));
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        reportId: 'report-1',
+        status: ReportStatus.Resolved,
+        reviewNote: 'Caso confirmado con evidencia adicional y seguimiento formal.',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'Los reportes de alta severidad deben pasar primero a en revision antes de cerrarse.',
+      ),
+    );
+  });
+
+  it('requires a longer note to close high-severity reports', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
+
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.UnderReview));
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        reportId: 'report-1',
+        status: ReportStatus.Resolved,
+        reviewNote: 'Nota muy corta',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        `Los reportes de alta severidad requieren una nota administrativa de al menos ${HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH} caracteres para cerrarse.`,
+      ),
     );
   });
 

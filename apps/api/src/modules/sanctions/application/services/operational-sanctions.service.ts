@@ -1,4 +1,10 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   deriveOperationalSanctionDecisions,
   doesSanctionBlockDriverOperations,
@@ -30,6 +36,13 @@ export type OperationalSanctionSummary = {
   reason: string;
   startedAt: Date;
   endsAt: Date | null;
+};
+
+export type LiftOperationalSanctionCommand = {
+  sanctionId: string;
+  actorUserId: string;
+  reviewNote: string;
+  relatedAppealId?: string;
 };
 
 export type RecentOperationalSanctionHistorySummary = {
@@ -158,6 +171,46 @@ export class OperationalSanctionsService {
     }
 
     throw new ForbiddenException(this.buildBlockingMessage(blockingSanction));
+  }
+
+  async liftSanctionManually(
+    command: LiftOperationalSanctionCommand,
+  ): Promise<OperationalSanctionSummary> {
+    const sanction = await this.sanctionsRepository.findSanctionDetailById(command.sanctionId);
+
+    if (!sanction) {
+      throw new NotFoundException('La sancion indicada no existe.');
+    }
+
+    if (!this.isSanctionCurrentlyActive(sanction, new Date())) {
+      throw new BadRequestException(
+        'La sancion indicada ya no se encuentra activa y no puede levantarse manualmente.',
+      );
+    }
+
+    const expiredSanction = await this.sanctionsRepository.expireSanction(
+      sanction.id,
+      new Date(),
+    );
+
+    await this.auditService.record({
+      actorUserId: command.actorUserId,
+      institutionId: sanction.institutionId,
+      action: AuditAction.SanctionLiftedManually,
+      entityType: AuditEntityType.OperationalSanction,
+      entityId: sanction.id,
+      metadata: {
+        membershipId: sanction.membershipId,
+        type: sanction.type,
+        scope: sanction.scope,
+        trigger: sanction.trigger,
+        reviewNote: command.reviewNote,
+        relatedAppealId: command.relatedAppealId ?? null,
+        previousEndsAt: sanction.endsAt?.toISOString() ?? null,
+      },
+    });
+
+    return this.mapSummary(expiredSanction);
   }
 
   private async createAutomaticSanction(
@@ -364,5 +417,18 @@ export class OperationalSanctionsService {
     const year = `${date.getUTCFullYear()}`;
 
     return `${day}/${month}/${year}`;
+  }
+
+  private isSanctionCurrentlyActive(
+    sanction: {
+      status: OperationalSanctionStatus;
+      endsAt: Date | null;
+    },
+    asOf: Date,
+  ): boolean {
+    return (
+      sanction.status === OperationalSanctionStatus.Active &&
+      (!sanction.endsAt || sanction.endsAt.getTime() > asOf.getTime())
+    );
   }
 }

@@ -12,6 +12,8 @@ import {
   CancellationTiming,
   CANCELLATION_LATE_WINDOW_MINUTES,
   getCancellationTiming,
+  getReportSeverity,
+  ReportSeverity,
   SANCTION_OPERATIONAL_WINDOW_DAYS,
   SANCTION_REPORTS_WINDOW_DAYS,
   getDaysUntilDriverLicenseExpiration,
@@ -172,7 +174,7 @@ export class PrismaUsersRepository implements UsersRepository {
           },
         },
       }),
-      this.prisma.report.count({
+      this.prisma.report.findMany({
         where: {
           reportedMembershipId: membershipId,
           status: 'RESOLVED',
@@ -180,6 +182,9 @@ export class PrismaUsersRepository implements UsersRepository {
             not: null,
             gte: reportsWindowStart,
           },
+        },
+        select: {
+          reason: true,
         },
       }),
     ]);
@@ -199,6 +204,30 @@ export class PrismaUsersRepository implements UsersRepository {
         }) === CancellationTiming.Late,
     ).length;
 
+    const resolvedReportSeverityCounts = resolvedReportsReceived.reduce(
+      (totals, report) => {
+        const severity = getReportSeverity(report.reason);
+
+        if (severity === ReportSeverity.High) {
+          totals.high += 1;
+          return totals;
+        }
+
+        if (severity === ReportSeverity.Medium) {
+          totals.medium += 1;
+          return totals;
+        }
+
+        totals.low += 1;
+        return totals;
+      },
+      {
+        low: 0,
+        medium: 0,
+        high: 0,
+      },
+    );
+
     return {
       membershipId,
       averageRatingReceived:
@@ -209,7 +238,10 @@ export class PrismaUsersRepository implements UsersRepository {
       lateDriverTripCancellations,
       latePassengerTripRequestCancellations,
       passengerNoShows,
-      resolvedReportsReceived,
+      resolvedReportsReceived: resolvedReportsReceived.length,
+      resolvedLowSeverityReportsReceived: resolvedReportSeverityCounts.low,
+      resolvedMediumSeverityReportsReceived: resolvedReportSeverityCounts.medium,
+      resolvedHighSeverityReportsReceived: resolvedReportSeverityCounts.high,
       cancellationPolicy: {
         lateWindowMinutes: CANCELLATION_LATE_WINDOW_MINUTES,
         lastComputedAt: computedAt,

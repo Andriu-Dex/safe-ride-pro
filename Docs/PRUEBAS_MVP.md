@@ -223,6 +223,25 @@ Resultado esperado:
 - el reporte puede marcarse en revision, resolverse o desestimarse
 - al revisar un reporte se crea un nuevo evento de auditoria
 
+### 14. Apelaciones y levantamiento manual de sanciones
+
+Pasos:
+
+1. Generar una sancion restrictiva de prueba sobre una membresia
+2. Entrar a `/confianza`
+3. Registrar una apelacion de la sancion activa
+4. Entrar como admin a `/auditoria`
+5. Revisar la apelacion y aprobarla o rechazarla
+6. Probar tambien el levantamiento manual directo de una sancion sin apelacion pendiente
+
+Resultado esperado:
+
+- la apelacion aparece en el historial del usuario sancionado
+- la bandeja administrativa muestra apelaciones y sanciones activas
+- una apelacion aprobada puede levantar la sancion
+- una apelacion rechazada conserva la sancion y su nota administrativa
+- el levantamiento manual directo exige nota administrativa y queda auditado
+
 ## Casos borde a verificar
 
 - un usuario no puede solicitar su propio viaje
@@ -230,6 +249,8 @@ Resultado esperado:
 - no se puede calificar dos veces la misma relacion en el mismo viaje
 - no se puede reportar dos veces a la misma persona por el mismo viaje
 - no se puede desestimar un reporte sin nota administrativa
+- no se puede cerrar un reporte de alta severidad directamente desde `PENDING`
+- no se puede aprobar una apelacion propia ni levantar manualmente una sancion propia
 - un usuario sin permisos administrativos no debe poder usar la bandeja de auditoria
 
 ## Estado actual de pruebas automatizadas
@@ -265,6 +286,12 @@ Tambien ya existen pruebas HTTP de integracion ligera para endpoints criticos:
 - `GET /api/reports/me`
 - `GET /api/reports/inbox`
 - `PATCH /api/reports/:reportId/review`
+- `GET /api/sanctions/appeals/me`
+- `POST /api/sanctions/:sanctionId/appeals`
+- `GET /api/sanctions/appeals/inbox`
+- `PATCH /api/sanctions/appeals/:appealId/review`
+- `GET /api/sanctions/inbox`
+- `PATCH /api/sanctions/:sanctionId/lift`
 
 En frontend ya existen pruebas automaticas con `Vitest + Testing Library` para piezas criticas del panel web:
 
@@ -304,7 +331,7 @@ Ademas, el backend ya cuenta con pruebas de integracion con base de datos real e
 - listado y creacion de instituciones con permisos reales
 - actualizacion de perfil y lectura de membresias multiples
 - validacion basica del modelo multiinstitucional con un usuario global y dos memberships
-- aplicacion de sanciones automáticas y resumen de reputacion con PostgreSQL real
+- aplicacion de sanciones automaticas, apelaciones y resumen de reputacion con PostgreSQL real
 
 Comando:
 

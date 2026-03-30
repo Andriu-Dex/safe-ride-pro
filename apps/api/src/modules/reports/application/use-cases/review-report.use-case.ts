@@ -1,8 +1,11 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   GlobalUserRole,
+  getReportSeverity,
+  HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH,
   InstitutionMembershipRole,
   isOperationalMembership,
+  ReportSeverity,
   ReportStatus,
 } from '@saferidepro/shared-types';
 
@@ -73,6 +76,8 @@ export class ReviewReportUseCase {
     }
 
     const normalizedReviewNote = command.reviewNote?.trim();
+    const reportSeverity = getReportSeverity(report.reason);
+    const isHighSeverity = reportSeverity === ReportSeverity.High;
 
     if (
       (command.status === ReportStatus.Resolved || command.status === ReportStatus.Dismissed) &&
@@ -80,6 +85,27 @@ export class ReviewReportUseCase {
     ) {
       throw new BadRequestException(
         'Debes indicar una nota administrativa antes de cerrar el reporte.',
+      );
+    }
+
+    if (
+      isHighSeverity &&
+      (command.status === ReportStatus.Resolved || command.status === ReportStatus.Dismissed) &&
+      report.status === ReportStatus.Pending
+    ) {
+      throw new BadRequestException(
+        'Los reportes de alta severidad deben pasar primero a en revision antes de cerrarse.',
+      );
+    }
+
+    if (
+      isHighSeverity &&
+      (command.status === ReportStatus.Resolved || command.status === ReportStatus.Dismissed) &&
+      normalizedReviewNote &&
+      normalizedReviewNote.length < HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH
+    ) {
+      throw new BadRequestException(
+        `Los reportes de alta severidad requieren una nota administrativa de al menos ${HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH} caracteres para cerrarse.`,
       );
     }
 
@@ -101,6 +127,8 @@ export class ReviewReportUseCase {
       metadata: {
         previousStatus,
         currentStatus: updatedReport.status,
+        reason: report.reason,
+        severity: reportSeverity,
       },
     });
 

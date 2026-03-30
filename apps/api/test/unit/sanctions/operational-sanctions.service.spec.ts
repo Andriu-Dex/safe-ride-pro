@@ -22,9 +22,40 @@ function createSanctionsRepositoryMock(): jest.Mocked<SanctionsRepository> {
     getRecentSanctionHistory: jest.fn(),
     countRecentBlockingSanctionsByScope: jest.fn(),
     listActiveSanctions: jest.fn(),
+    findSanctionDetailById: jest.fn(),
+    listReviewableActiveSanctions: jest.fn(),
     expireElapsedSanctions: jest.fn(),
     expireSanction: jest.fn(),
     createOperationalSanction: jest.fn(),
+    findAppealBySanctionId: jest.fn(),
+    findAppealById: jest.fn(),
+    createOperationalSanctionAppeal: jest.fn(),
+    listAppealsByRequestedByUserId: jest.fn(),
+    listReviewableOperationalSanctionAppeals: jest.fn(),
+    reviewOperationalSanctionAppeal: jest.fn(),
+  };
+}
+
+function buildMetrics(
+  overrides: Partial<{
+    passengerNoShows: number;
+    latePassengerTripRequestCancellations: number;
+    lateDriverTripCancellations: number;
+    resolvedReportsReceived: number;
+    resolvedLowSeverityReportsReceived: number;
+    resolvedMediumSeverityReportsReceived: number;
+    resolvedHighSeverityReportsReceived: number;
+  }> = {},
+) {
+  return {
+    passengerNoShows: 0,
+    latePassengerTripRequestCancellations: 0,
+    lateDriverTripCancellations: 0,
+    resolvedReportsReceived: 0,
+    resolvedLowSeverityReportsReceived: 0,
+    resolvedMediumSeverityReportsReceived: 0,
+    resolvedHighSeverityReportsReceived: 0,
+    ...overrides,
   };
 }
 
@@ -61,12 +92,11 @@ describe('OperationalSanctionsService', () => {
     repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
     repository.expireElapsedSanctions.mockResolvedValue([]);
     repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
-    repository.getRecentMetrics.mockResolvedValue({
-      passengerNoShows: 2,
-      latePassengerTripRequestCancellations: 0,
-      lateDriverTripCancellations: 0,
-      resolvedReportsReceived: 0,
-    });
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        passengerNoShows: 2,
+      }),
+    );
     repository.listActiveSanctions.mockResolvedValue([]);
     repository.createOperationalSanction.mockImplementation(
       async (input: CreateOperationalSanctionInput) =>
@@ -114,12 +144,11 @@ describe('OperationalSanctionsService', () => {
     repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
     repository.expireElapsedSanctions.mockResolvedValue([]);
     repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
-    repository.getRecentMetrics.mockResolvedValue({
-      passengerNoShows: 3,
-      latePassengerTripRequestCancellations: 0,
-      lateDriverTripCancellations: 0,
-      resolvedReportsReceived: 0,
-    });
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        passengerNoShows: 3,
+      }),
+    );
     repository.listActiveSanctions.mockResolvedValue([
       buildSanctionRecord(),
     ]);
@@ -163,12 +192,11 @@ describe('OperationalSanctionsService', () => {
     repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
     repository.expireElapsedSanctions.mockResolvedValue([]);
     repository.countRecentBlockingSanctionsByScope.mockResolvedValue(1);
-    repository.getRecentMetrics.mockResolvedValue({
-      passengerNoShows: 3,
-      latePassengerTripRequestCancellations: 0,
-      lateDriverTripCancellations: 0,
-      resolvedReportsReceived: 0,
-    });
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        passengerNoShows: 3,
+      }),
+    );
     repository.listActiveSanctions.mockResolvedValue([]);
     repository.createOperationalSanction.mockImplementation(
       async (input: CreateOperationalSanctionInput) =>
@@ -224,12 +252,11 @@ describe('OperationalSanctionsService', () => {
 
     repository.expireElapsedSanctions.mockResolvedValue([]);
     repository.countRecentBlockingSanctionsByScope.mockResolvedValue(1);
-    repository.getRecentMetrics.mockResolvedValue({
-      passengerNoShows: 3,
-      latePassengerTripRequestCancellations: 0,
-      lateDriverTripCancellations: 0,
-      resolvedReportsReceived: 0,
-    });
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        passengerNoShows: 3,
+      }),
+    );
     repository.listActiveSanctions.mockResolvedValue([
       buildSanctionRecord({
         id: 'sanction-5',
@@ -256,12 +283,11 @@ describe('OperationalSanctionsService', () => {
 
     repository.expireElapsedSanctions.mockResolvedValue([]);
     repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
-    repository.getRecentMetrics.mockResolvedValue({
-      passengerNoShows: 3,
-      latePassengerTripRequestCancellations: 0,
-      lateDriverTripCancellations: 0,
-      resolvedReportsReceived: 0,
-    });
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        passengerNoShows: 3,
+      }),
+    );
     repository.listActiveSanctions.mockResolvedValue([
       buildSanctionRecord({
         id: 'sanction-2',
@@ -290,12 +316,12 @@ describe('OperationalSanctionsService', () => {
     repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
     repository.expireElapsedSanctions.mockResolvedValue([]);
     repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
-    repository.getRecentMetrics.mockResolvedValue({
-      passengerNoShows: 0,
-      latePassengerTripRequestCancellations: 0,
-      lateDriverTripCancellations: 0,
-      resolvedReportsReceived: 2,
-    });
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        resolvedReportsReceived: 2,
+        resolvedMediumSeverityReportsReceived: 2,
+      }),
+    );
     repository.listActiveSanctions.mockResolvedValue([]);
     repository.createOperationalSanction.mockImplementation(
       async (input: CreateOperationalSanctionInput) =>
@@ -319,6 +345,63 @@ describe('OperationalSanctionsService', () => {
       scope: OperationalSanctionScope.All,
       trigger: OperationalSanctionTrigger.ResolvedReports,
     });
+  });
+
+  it('uses a stronger suspension when a high-severity resolved report combines with recurrence', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        resolvedReportsReceived: 2,
+        resolvedMediumSeverityReportsReceived: 1,
+        resolvedHighSeverityReportsReceived: 1,
+      }),
+    );
+    repository.listActiveSanctions.mockResolvedValue([]);
+    repository.createOperationalSanction.mockImplementation(
+      async (input: CreateOperationalSanctionInput) =>
+        buildSanctionRecord({
+          id: 'sanction-6',
+          membershipId: input.membershipId,
+          type: input.type,
+          scope: input.scope,
+          trigger: input.trigger,
+          reason: input.reason,
+          startedAt: input.startedAt,
+          endsAt: input.endsAt,
+          metadata: input.metadata ?? null,
+        }),
+    );
+
+    const sanctions = await service.synchronizeAutomaticSanctions('membership-1');
+
+    expect(sanctions[0]).toMatchObject({
+      type: OperationalSanctionType.Suspended,
+      scope: OperationalSanctionScope.All,
+      trigger: OperationalSanctionTrigger.ResolvedReports,
+    });
+    expect(repository.createOperationalSanction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          highSeverityReports: 1,
+          mediumSeverityReports: 1,
+          lowSeverityReports: 0,
+        }),
+      }),
+    );
+
+    const createInput = repository.createOperationalSanction.mock.calls[0][0];
+    const durationMs =
+      (createInput.endsAt?.getTime() ?? 0) - createInput.startedAt.getTime();
+
+    expect(durationMs).toBe(14 * 24 * 60 * 60 * 1_000);
   });
 
   it('returns recent sanction history for trust calculations', async () => {

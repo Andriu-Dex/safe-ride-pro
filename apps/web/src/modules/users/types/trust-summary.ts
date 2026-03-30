@@ -18,6 +18,9 @@ export type TrustSummary = {
   latePassengerTripRequestCancellations: number;
   passengerNoShows: number;
   resolvedReportsReceived: number;
+  resolvedLowSeverityReportsReceived: number;
+  resolvedMediumSeverityReportsReceived: number;
+  resolvedHighSeverityReportsReceived: number;
   hasEnoughRatingsSignal: boolean;
   hasLowRatingSignal: boolean;
   visibleReputationState: VisibleReputationState;

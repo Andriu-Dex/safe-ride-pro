@@ -34,6 +34,14 @@ export function getAuditActionLabel(action: AuditAction): string {
       return 'Sancion aplicada';
     case 'SANCTION_EXPIRED':
       return 'Sancion vencida';
+    case 'SANCTION_APPEAL_SUBMITTED':
+      return 'Apelacion de sancion enviada';
+    case 'SANCTION_APPEAL_APPROVED':
+      return 'Apelacion de sancion aprobada';
+    case 'SANCTION_APPEAL_REJECTED':
+      return 'Apelacion de sancion rechazada';
+    case 'SANCTION_LIFTED_MANUALLY':
+      return 'Sancion levantada manualmente';
     default:
       return action;
   }
@@ -51,6 +59,10 @@ export function getAuditEntityTypeLabel(entityType: AuditEntityType): string {
       return 'Viaje';
     case 'REPORT':
       return 'Reporte';
+    case 'OPERATIONAL_SANCTION':
+      return 'Sancion';
+    case 'SANCTION_APPEAL':
+      return 'Apelacion';
     case 'AUTH_SESSION':
       return 'Sesion';
     default:

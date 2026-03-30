@@ -63,6 +63,9 @@ export type TrustSummaryMetrics = {
   latePassengerTripRequestCancellations: number;
   passengerNoShows: number;
   resolvedReportsReceived: number;
+  resolvedLowSeverityReportsReceived: number;
+  resolvedMediumSeverityReportsReceived: number;
+  resolvedHighSeverityReportsReceived: number;
   cancellationPolicy: {
     lateWindowMinutes: number;
     lastComputedAt: Date;

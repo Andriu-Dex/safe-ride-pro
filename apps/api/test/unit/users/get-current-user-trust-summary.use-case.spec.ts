@@ -71,6 +71,9 @@ function buildTrustSummary(): TrustSummaryMetrics {
     latePassengerTripRequestCancellations: 0,
     passengerNoShows: 0,
     resolvedReportsReceived: 0,
+    resolvedLowSeverityReportsReceived: 0,
+    resolvedMediumSeverityReportsReceived: 0,
+    resolvedHighSeverityReportsReceived: 0,
     cancellationPolicy: {
       lateWindowMinutes: 30,
       lastComputedAt: new Date('2030-01-01T12:00:00.000Z'),
@@ -163,6 +166,34 @@ describe('GetCurrentUserTrustSummaryUseCase', () => {
     expect(response.administrativeRiskState).toBe('UNDER_REVIEW');
     expect(response.riskSignals).toContain(
       'Tu promedio reciente de calificaciones esta por debajo de 3.5/5 con muestra suficiente.',
+    );
+  });
+
+  it('marks the summary under review when there is a recent high-severity resolved report', async () => {
+    const repository = createUsersRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new GetCurrentUserTrustSummaryUseCase(repository, sanctionsService);
+
+    repository.findById.mockResolvedValue(buildUserProfile());
+    repository.getTrustSummary.mockResolvedValue({
+      ...buildTrustSummary(),
+      resolvedReportsReceived: 1,
+      resolvedHighSeverityReportsReceived: 1,
+    });
+    sanctionsService.synchronizeAutomaticSanctions.mockResolvedValue([]);
+    sanctionsService.getRecentSanctionHistory.mockResolvedValue({
+      recentSanctionCount: 0,
+      recentBlockingSanctionCount: 0,
+      recurrenceWindowDays: 90,
+      lastComputedAt: new Date('2030-01-01T12:00:00.000Z'),
+    });
+
+    const response = await useCase.execute('user-1');
+
+    expect(response.administrativeRiskState).toBe('UNDER_REVIEW');
+    expect(response.visibleReputationState).toBe('UNDER_REVIEW');
+    expect(response.riskSignals).toContain(
+      'Existe al menos un reporte resuelto reciente de alta severidad (1) que requiere seguimiento prioritario.',
     );
   });
 });

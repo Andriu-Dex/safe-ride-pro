@@ -37,6 +37,9 @@ export type TrustReputationInput = {
   latePassengerTripRequestCancellations: number;
   passengerNoShows: number;
   resolvedReportsReceived: number;
+  resolvedLowSeverityReportsReceived: number;
+  resolvedMediumSeverityReportsReceived: number;
+  resolvedHighSeverityReportsReceived: number;
   recentSanctionCount: number;
   recentBlockingSanctionCount: number;
   activeSanctions: ActiveOperationalSanctionLike[];
@@ -79,6 +82,8 @@ export function deriveTrustReputationProfile(
   const operationalIncidentCategoryCount = operationalIncidentSignals.filter(Boolean).length;
   const hasOperationalIncidents = operationalIncidentCategoryCount > 0;
   const hasResolvedReportSignal = input.resolvedReportsReceived > 0;
+  const hasHighSeverityReportSignal = input.resolvedHighSeverityReportsReceived > 0;
+  const hasMultipleResolvedReportSignal = input.resolvedReportsReceived >= 2;
   const hasRecentSanctionHistory = input.recentSanctionCount > 0;
   const hasRecentBlockingSanctionHistory = input.recentBlockingSanctionCount > 0;
 
@@ -89,6 +94,10 @@ export function deriveTrustReputationProfile(
     hasLowRatingSignal,
     hasOperationalIncidents,
     hasResolvedReportSignal,
+    hasHighSeverityReportSignal,
+    resolvedLowSeverityReportsReceived: input.resolvedLowSeverityReportsReceived,
+    resolvedMediumSeverityReportsReceived: input.resolvedMediumSeverityReportsReceived,
+    resolvedHighSeverityReportsReceived: input.resolvedHighSeverityReportsReceived,
     hasRecentSanctionHistory,
     hasRecentBlockingSanctionHistory,
   });
@@ -100,6 +109,8 @@ export function deriveTrustReputationProfile(
     hasOperationalIncidents,
     operationalIncidentCategoryCount,
     hasResolvedReportSignal,
+    hasHighSeverityReportSignal,
+    hasMultipleResolvedReportSignal,
     hasRecentSanctionHistory,
     hasRecentBlockingSanctionHistory,
   });
@@ -142,6 +153,8 @@ function deriveAdministrativeRiskState(input: {
   hasOperationalIncidents: boolean;
   operationalIncidentCategoryCount: number;
   hasResolvedReportSignal: boolean;
+  hasHighSeverityReportSignal: boolean;
+  hasMultipleResolvedReportSignal: boolean;
   hasRecentSanctionHistory: boolean;
   hasRecentBlockingSanctionHistory: boolean;
 }): AdministrativeRiskState {
@@ -150,7 +163,8 @@ function deriveAdministrativeRiskState(input: {
   }
 
   if (
-    input.hasResolvedReportSignal ||
+    input.hasHighSeverityReportSignal ||
+    input.hasMultipleResolvedReportSignal ||
     (input.hasLowRatingSignal &&
       (input.hasOperationalIncidents || input.hasRecentBlockingSanctionHistory)) ||
     (input.operationalIncidentCategoryCount >= 2 && input.hasRecentSanctionHistory)
@@ -196,6 +210,10 @@ function buildRiskSignals(input: {
   hasLowRatingSignal: boolean;
   hasOperationalIncidents: boolean;
   hasResolvedReportSignal: boolean;
+  hasHighSeverityReportSignal: boolean;
+  resolvedLowSeverityReportsReceived: number;
+  resolvedMediumSeverityReportsReceived: number;
+  resolvedHighSeverityReportsReceived: number;
   hasRecentSanctionHistory: boolean;
   hasRecentBlockingSanctionHistory: boolean;
 }): string[] {
@@ -227,8 +245,14 @@ function buildRiskSignals(input: {
     );
   }
 
-  if (input.hasResolvedReportSignal) {
-    reasons.push('Existe al menos un reporte resuelto reciente que requiere seguimiento.');
+  if (input.hasHighSeverityReportSignal) {
+    reasons.push(
+      `Existe al menos un reporte resuelto reciente de alta severidad (${input.resolvedHighSeverityReportsReceived}) que requiere seguimiento prioritario.`,
+    );
+  } else if (input.hasResolvedReportSignal) {
+    reasons.push(
+      `Existen reportes resueltos recientes que requieren seguimiento (${input.resolvedMediumSeverityReportsReceived} medios, ${input.resolvedLowSeverityReportsReceived} bajos).`,
+    );
   }
 
   if (input.hasRecentBlockingSanctionHistory) {

@@ -15,6 +15,10 @@ export enum AuditAction {
   ReportReviewed = 'REPORT_REVIEWED',
   SanctionApplied = 'SANCTION_APPLIED',
   SanctionExpired = 'SANCTION_EXPIRED',
+  SanctionAppealSubmitted = 'SANCTION_APPEAL_SUBMITTED',
+  SanctionAppealApproved = 'SANCTION_APPEAL_APPROVED',
+  SanctionAppealRejected = 'SANCTION_APPEAL_REJECTED',
+  SanctionLiftedManually = 'SANCTION_LIFTED_MANUALLY',
 }
 
 export enum AuditEntityType {
@@ -23,5 +27,7 @@ export enum AuditEntityType {
   DriverProfile = 'DRIVER_PROFILE',
   Trip = 'TRIP',
   Report = 'REPORT',
+  OperationalSanction = 'OPERATIONAL_SANCTION',
+  SanctionAppeal = 'SANCTION_APPEAL',
   AuthSession = 'AUTH_SESSION',
 }
