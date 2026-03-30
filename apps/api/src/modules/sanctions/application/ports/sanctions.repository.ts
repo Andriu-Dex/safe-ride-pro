@@ -3,6 +3,7 @@ import {
   OperationalSanctionStatus,
   OperationalSanctionTrigger,
   OperationalSanctionType,
+  SANCTION_RECURRENCE_WINDOW_DAYS,
   type OperationalSanctionMetrics,
 } from '@saferidepro/shared-types';
 
@@ -37,9 +38,21 @@ export type CreateOperationalSanctionInput = {
   metadata?: Record<string, unknown>;
 };
 
+export type RecentSanctionHistory = {
+  recentSanctionCount: number;
+  recentBlockingSanctionCount: number;
+  recurrenceWindowDays: typeof SANCTION_RECURRENCE_WINDOW_DAYS;
+};
+
 export interface SanctionsRepository {
   findInstitutionIdByMembershipId(membershipId: string): Promise<string | null>;
   getRecentMetrics(membershipId: string, asOf: Date): Promise<OperationalSanctionMetrics>;
+  getRecentSanctionHistory(membershipId: string, asOf: Date): Promise<RecentSanctionHistory>;
+  countRecentBlockingSanctionsByScope(
+    membershipId: string,
+    scope: OperationalSanctionScope,
+    asOf: Date,
+  ): Promise<number>;
   listActiveSanctions(membershipId: string, asOf: Date): Promise<OperationalSanctionRecord[]>;
   expireElapsedSanctions(membershipId: string, asOf: Date): Promise<OperationalSanctionRecord[]>;
   expireSanction(sanctionId: string, asOf: Date): Promise<OperationalSanctionRecord>;

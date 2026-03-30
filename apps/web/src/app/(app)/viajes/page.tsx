@@ -69,7 +69,13 @@ import { getVehicleOverview } from '../../../modules/vehicles/lib/vehicle-api';
 import { getLuggagePolicyLabel, getVehicleTypeLabel } from '../../../modules/vehicles/lib/vehicle-labels';
 import type { VehicleOverview } from '../../../modules/vehicles/types/vehicle';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
-import { getTrustRestrictions } from '../../../modules/users/lib/trust-labels';
+import {
+  getAdministrativeRiskStateLabel,
+  getAdministrativeRiskTone,
+  getTrustRestrictions,
+  getVisibleReputationStateLabel,
+  getVisibleReputationTone,
+} from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 
 const EMPTY_TRIP_FORM = {
@@ -664,6 +670,18 @@ export default function TripsPage() {
             label={getDriverStatusLabel(driverStatus)}
             tone={getDriverStatusTone(driverStatus)}
           />
+          {trustSummary ? (
+            <StatusPill
+              label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+              tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+            />
+          ) : null}
+          {trustSummary ? (
+            <StatusPill
+              label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
+              tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
+            />
+          ) : null}
         </div>
       </header>
 
@@ -707,6 +725,15 @@ export default function TripsPage() {
         {trustRestrictions.blocksPassenger ? (
           <div className="form-helper">
             {trustRestrictions.message ?? 'Tu membresia tiene una restriccion activa para solicitar viajes.'}
+          </div>
+        ) : null}
+
+        {trustSummary &&
+        !trustRestrictions.blocksDriver &&
+        !trustRestrictions.blocksPassenger &&
+        trustSummary.riskSignals.length ? (
+          <div className="form-helper">
+            {trustSummary.riskSignals[0]}
           </div>
         ) : null}
 

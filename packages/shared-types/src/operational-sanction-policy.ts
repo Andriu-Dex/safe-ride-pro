@@ -45,6 +45,9 @@ export type OperationalSanctionDecision = {
     eventCount: number;
     operationalWindowDays?: number;
     reportsWindowDays?: number;
+    recurrenceWindowDays?: number;
+    recentBlockingSanctionCount?: number;
+    durationMultiplier?: number;
   };
 };
 

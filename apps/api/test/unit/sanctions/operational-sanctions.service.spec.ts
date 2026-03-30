@@ -19,6 +19,8 @@ function createSanctionsRepositoryMock(): jest.Mocked<SanctionsRepository> {
   return {
     findInstitutionIdByMembershipId: jest.fn(),
     getRecentMetrics: jest.fn(),
+    getRecentSanctionHistory: jest.fn(),
+    countRecentBlockingSanctionsByScope: jest.fn(),
     listActiveSanctions: jest.fn(),
     expireElapsedSanctions: jest.fn(),
     expireSanction: jest.fn(),
@@ -58,6 +60,7 @@ describe('OperationalSanctionsService', () => {
 
     repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
     repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
     repository.getRecentMetrics.mockResolvedValue({
       passengerNoShows: 2,
       latePassengerTripRequestCancellations: 0,
@@ -110,6 +113,7 @@ describe('OperationalSanctionsService', () => {
 
     repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
     repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
     repository.getRecentMetrics.mockResolvedValue({
       passengerNoShows: 3,
       latePassengerTripRequestCancellations: 0,
@@ -149,6 +153,100 @@ describe('OperationalSanctionsService', () => {
     expect(sanctions[0].type).toBe(OperationalSanctionType.LimitedPassenger);
   });
 
+  it('duplicates the duration when a blocking sanction recurs inside the recurrence window', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(1);
+    repository.getRecentMetrics.mockResolvedValue({
+      passengerNoShows: 3,
+      latePassengerTripRequestCancellations: 0,
+      lateDriverTripCancellations: 0,
+      resolvedReportsReceived: 0,
+    });
+    repository.listActiveSanctions.mockResolvedValue([]);
+    repository.createOperationalSanction.mockImplementation(
+      async (input: CreateOperationalSanctionInput) =>
+        buildSanctionRecord({
+          id: 'sanction-4',
+          membershipId: input.membershipId,
+          type: input.type,
+          scope: input.scope,
+          trigger: input.trigger,
+          reason: input.reason,
+          startedAt: input.startedAt,
+          endsAt: input.endsAt,
+          metadata: input.metadata ?? null,
+        }),
+    );
+
+    const sanctions = await service.synchronizeAutomaticSanctions('membership-1');
+
+    expect(repository.createOperationalSanction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: OperationalSanctionType.LimitedPassenger,
+        scope: OperationalSanctionScope.Passenger,
+        metadata: expect.objectContaining({
+          durationMultiplier: 2,
+          recurrenceWindowDays: 90,
+          recentBlockingSanctionCount: 1,
+        }),
+      }),
+    );
+    expect(sanctions[0].reason).toContain(
+      'La duracion se agravo por reincidencia reciente',
+    );
+    expect(repository.createOperationalSanction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endsAt: expect.any(Date),
+        startedAt: expect.any(Date),
+      }),
+    );
+
+    const createInput = repository.createOperationalSanction.mock.calls[0][0];
+    const durationMs =
+      (createInput.endsAt?.getTime() ?? 0) - createInput.startedAt.getTime();
+
+    expect(durationMs).toBe(14 * 24 * 60 * 60 * 1_000);
+  });
+
+  it('does not aggravate a sanction again when the only prior restrictive record is the currently active sanction', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(1);
+    repository.getRecentMetrics.mockResolvedValue({
+      passengerNoShows: 3,
+      latePassengerTripRequestCancellations: 0,
+      lateDriverTripCancellations: 0,
+      resolvedReportsReceived: 0,
+    });
+    repository.listActiveSanctions.mockResolvedValue([
+      buildSanctionRecord({
+        id: 'sanction-5',
+        type: OperationalSanctionType.LimitedPassenger,
+        scope: OperationalSanctionScope.Passenger,
+        trigger: OperationalSanctionTrigger.PassengerNoShow,
+        endsAt: new Date('2030-01-08T08:00:00.000Z'),
+      }),
+    ]);
+
+    const sanctions = await service.synchronizeAutomaticSanctions('membership-1');
+
+    expect(repository.createOperationalSanction).not.toHaveBeenCalled();
+    expect(repository.expireSanction).not.toHaveBeenCalled();
+    expect(sanctions[0].endsAt?.toISOString()).toBe('2030-01-08T08:00:00.000Z');
+  });
+
   it('blocks passenger operations when an active limited passenger sanction exists', async () => {
     const repository = createSanctionsRepositoryMock();
     const auditService = {
@@ -157,6 +255,7 @@ describe('OperationalSanctionsService', () => {
     const service = new OperationalSanctionsService(repository, auditService);
 
     repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
     repository.getRecentMetrics.mockResolvedValue({
       passengerNoShows: 3,
       latePassengerTripRequestCancellations: 0,
@@ -190,6 +289,7 @@ describe('OperationalSanctionsService', () => {
 
     repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
     repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(0);
     repository.getRecentMetrics.mockResolvedValue({
       passengerNoShows: 0,
       latePassengerTripRequestCancellations: 0,
@@ -219,5 +319,25 @@ describe('OperationalSanctionsService', () => {
       scope: OperationalSanctionScope.All,
       trigger: OperationalSanctionTrigger.ResolvedReports,
     });
+  });
+
+  it('returns recent sanction history for trust calculations', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.getRecentSanctionHistory.mockResolvedValue({
+      recentSanctionCount: 3,
+      recentBlockingSanctionCount: 1,
+      recurrenceWindowDays: 90,
+    });
+
+    const history = await service.getRecentSanctionHistory('membership-1');
+
+    expect(history.recentSanctionCount).toBe(3);
+    expect(history.recentBlockingSanctionCount).toBe(1);
+    expect(history.recurrenceWindowDays).toBe(90);
   });
 });

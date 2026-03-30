@@ -8,6 +8,7 @@ import {
   OperationalSanctionTrigger,
   OperationalSanctionType,
   SANCTION_OPERATIONAL_WINDOW_DAYS,
+  SANCTION_RECURRENCE_WINDOW_DAYS,
   SANCTION_REPORTS_WINDOW_DAYS,
   type OperationalSanctionMetrics,
 } from '@saferidepro/shared-types';
@@ -16,6 +17,7 @@ import { PrismaService } from '../../../../shared/infrastructure/database/prisma
 import {
   CreateOperationalSanctionInput,
   OperationalSanctionRecord,
+  RecentSanctionHistory,
   SanctionsRepository,
 } from '../../application/ports/sanctions.repository';
 
@@ -123,6 +125,68 @@ export class PrismaSanctionsRepository implements SanctionsRepository {
       passengerNoShows,
       resolvedReportsReceived,
     };
+  }
+
+  async getRecentSanctionHistory(
+    membershipId: string,
+    asOf: Date,
+  ): Promise<RecentSanctionHistory> {
+    const recurrenceWindowStart = new Date(asOf);
+    recurrenceWindowStart.setDate(
+      recurrenceWindowStart.getDate() - SANCTION_RECURRENCE_WINDOW_DAYS,
+    );
+
+    const [recentSanctionCount, recentBlockingSanctionCount] = await Promise.all([
+      this.prisma.operationalSanction.count({
+        where: {
+          membershipId,
+          startedAt: {
+            gte: recurrenceWindowStart,
+          },
+        },
+      }),
+      this.prisma.operationalSanction.count({
+        where: {
+          membershipId,
+          startedAt: {
+            gte: recurrenceWindowStart,
+          },
+          type: {
+            not: 'WARNING',
+          },
+        },
+      }),
+    ]);
+
+    return {
+      recentSanctionCount,
+      recentBlockingSanctionCount,
+      recurrenceWindowDays: SANCTION_RECURRENCE_WINDOW_DAYS,
+    };
+  }
+
+  async countRecentBlockingSanctionsByScope(
+    membershipId: string,
+    scope: OperationalSanctionScope,
+    asOf: Date,
+  ): Promise<number> {
+    const recurrenceWindowStart = new Date(asOf);
+    recurrenceWindowStart.setDate(
+      recurrenceWindowStart.getDate() - SANCTION_RECURRENCE_WINDOW_DAYS,
+    );
+
+    return this.prisma.operationalSanction.count({
+      where: {
+        membershipId,
+        scope,
+        startedAt: {
+          gte: recurrenceWindowStart,
+        },
+        type: {
+          not: 'WARNING',
+        },
+      },
+    });
   }
 
   async listActiveSanctions(

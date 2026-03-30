@@ -93,6 +93,20 @@ export {
 } from './operational-sanction-policy';
 
 export {
+  AdministrativeRiskState,
+  deriveTrustReputationProfile,
+  getRecurrenceDurationMultiplier,
+  SANCTION_RECURRENCE_WINDOW_DAYS,
+  TRUST_LOW_RATING_THRESHOLD,
+  TRUST_MIN_COMPLETED_INTERACTIONS_FOR_SIGNAL,
+  TRUST_MIN_RATINGS_FOR_SIGNAL,
+  VisibleReputationState,
+  type ActiveOperationalSanctionLike,
+  type TrustReputationInput,
+  type TrustReputationProfile,
+} from './trust-reputation-policy';
+
+export {
   CancellationTiming,
   CANCELLATION_LATE_WINDOW_MINUTES,
   getCancellationTiming,

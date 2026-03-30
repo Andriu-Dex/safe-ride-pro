@@ -1,5 +1,6 @@
 import {
   AccountStatus,
+  AdministrativeRiskState,
   DriverLicenseStatus,
   DriverVerificationStatus,
   GlobalUserRole,
@@ -9,6 +10,11 @@ import {
   OperationalSanctionStatus,
   OperationalSanctionTrigger,
   OperationalSanctionType,
+  SANCTION_RECURRENCE_WINDOW_DAYS,
+  TRUST_LOW_RATING_THRESHOLD,
+  TRUST_MIN_COMPLETED_INTERACTIONS_FOR_SIGNAL,
+  TRUST_MIN_RATINGS_FOR_SIGNAL,
+  VisibleReputationState,
 } from '@saferidepro/shared-types';
 
 export const USERS_REPOSITORY = Symbol('USERS_REPOSITORY');
@@ -47,7 +53,7 @@ export type UpdateUserProfileInput = {
   profilePhotoUrl?: string;
 };
 
-export type TrustSummary = {
+export type TrustSummaryMetrics = {
   membershipId: string;
   averageRatingReceived: number | null;
   totalRatingsReceived: number;
@@ -61,11 +67,29 @@ export type TrustSummary = {
     lateWindowMinutes: number;
     lastComputedAt: Date;
   };
+};
+
+export type TrustSummary = TrustSummaryMetrics & {
+  completedInteractions: number;
+  hasEnoughRatingsSignal: boolean;
+  hasLowRatingSignal: boolean;
+  visibleReputationState: VisibleReputationState;
+  administrativeRiskState: AdministrativeRiskState;
+  riskSignals: string[];
+  reputationPolicy: {
+    lowRatingThreshold: number;
+    minimumRatingsForSignal: number;
+    minimumCompletedInteractionsForSignal: number;
+    recurrenceWindowDays: number;
+    lastComputedAt: Date;
+  };
   sanctionPolicy?: {
     operationalWindowDays: number;
     reportsWindowDays: number;
     lastComputedAt: Date;
   };
+  recentSanctionCount: number;
+  recentBlockingSanctionCount: number;
   activeSanctions?: {
     id: string;
     type: OperationalSanctionType;
@@ -78,8 +102,15 @@ export type TrustSummary = {
   }[];
 };
 
+export const DEFAULT_REPUTATION_POLICY = {
+  lowRatingThreshold: TRUST_LOW_RATING_THRESHOLD,
+  minimumRatingsForSignal: TRUST_MIN_RATINGS_FOR_SIGNAL,
+  minimumCompletedInteractionsForSignal: TRUST_MIN_COMPLETED_INTERACTIONS_FOR_SIGNAL,
+  recurrenceWindowDays: SANCTION_RECURRENCE_WINDOW_DAYS,
+} as const;
+
 export interface UsersRepository {
   findById(userId: string): Promise<UserProfile | null>;
   updateProfile(userId: string, input: UpdateUserProfileInput): Promise<UserProfile>;
-  getTrustSummary(membershipId: string): Promise<TrustSummary>;
+  getTrustSummary(membershipId: string): Promise<TrustSummaryMetrics>;
 }

@@ -25,7 +25,7 @@ import {
 
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import {
-  TrustSummary,
+  TrustSummaryMetrics,
   UpdateUserProfileInput,
   UserProfile,
   UsersRepository,
@@ -86,7 +86,7 @@ export class PrismaUsersRepository implements UsersRepository {
     return this.mapUser(user);
   }
 
-  async getTrustSummary(membershipId: string): Promise<TrustSummary> {
+  async getTrustSummary(membershipId: string): Promise<TrustSummaryMetrics> {
     const computedAt = new Date();
     const operationalWindowStart = new Date(computedAt);
     operationalWindowStart.setDate(

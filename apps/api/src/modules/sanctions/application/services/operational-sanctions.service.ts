@@ -3,11 +3,13 @@ import {
   deriveOperationalSanctionDecisions,
   doesSanctionBlockDriverOperations,
   doesSanctionBlockPassengerOperations,
+  getRecurrenceDurationMultiplier,
   getOperationalSanctionScopeLabel,
   OperationalSanctionScope,
   OperationalSanctionStatus,
   OperationalSanctionTrigger,
   OperationalSanctionType,
+  SANCTION_RECURRENCE_WINDOW_DAYS,
   type OperationalSanctionDecision,
 } from '@saferidepro/shared-types';
 
@@ -28,6 +30,13 @@ export type OperationalSanctionSummary = {
   reason: string;
   startedAt: Date;
   endsAt: Date | null;
+};
+
+export type RecentOperationalSanctionHistorySummary = {
+  recentSanctionCount: number;
+  recentBlockingSanctionCount: number;
+  recurrenceWindowDays: number;
+  lastComputedAt: Date;
 };
 
 @Injectable()
@@ -59,10 +68,18 @@ export class OperationalSanctionsService {
 
     const decisions = deriveOperationalSanctionDecisions(metrics);
     let activeAutomaticSanctions = [...activeSanctions];
+    const recurrenceCountsByScope = new Map<OperationalSanctionScope, number>();
 
-    for (const decision of decisions) {
+    for (const baseDecision of decisions) {
       const currentSanction = activeAutomaticSanctions.find(
-        (sanction) => sanction.scope === decision.scope && sanction.isAutomatic,
+        (sanction) => sanction.scope === baseDecision.scope && sanction.isAutomatic,
+      );
+      const decision = await this.applyRecurrencePolicy(
+        membershipId,
+        baseDecision,
+        currentSanction,
+        asOf,
+        recurrenceCountsByScope,
       );
 
       if (!currentSanction) {
@@ -100,6 +117,21 @@ export class OperationalSanctionsService {
       .filter((sanction) => sanction.status === OperationalSanctionStatus.Active)
       .sort((left, right) => right.startedAt.getTime() - left.startedAt.getTime())
       .map((sanction) => this.mapSummary(sanction));
+  }
+
+  async getRecentSanctionHistory(
+    membershipId: string,
+  ): Promise<RecentOperationalSanctionHistorySummary> {
+    const asOf = new Date();
+    const history = await this.sanctionsRepository.getRecentSanctionHistory(
+      membershipId,
+      asOf,
+    );
+
+    return {
+      ...history,
+      lastComputedAt: asOf,
+    };
   }
 
   async assertPassengerOperationsAllowed(membershipId: string): Promise<void> {
@@ -173,6 +205,54 @@ export class OperationalSanctionsService {
     });
 
     return sanction;
+  }
+
+  private async applyRecurrencePolicy(
+    membershipId: string,
+    decision: OperationalSanctionDecision,
+    currentSanction: OperationalSanctionRecord | undefined,
+    asOf: Date,
+    recurrenceCountsByScope: Map<OperationalSanctionScope, number>,
+  ): Promise<OperationalSanctionDecision> {
+    if (decision.type === OperationalSanctionType.Warning) {
+      return decision;
+    }
+
+    const existingCount = recurrenceCountsByScope.get(decision.scope);
+    const rawRecentBlockingSanctionCount =
+      existingCount ??
+      (await this.sanctionsRepository.countRecentBlockingSanctionsByScope(
+        membershipId,
+        decision.scope,
+        asOf,
+      ));
+
+    recurrenceCountsByScope.set(decision.scope, rawRecentBlockingSanctionCount);
+    const recentBlockingSanctionCount = Math.max(
+      0,
+      rawRecentBlockingSanctionCount -
+        (currentSanction && currentSanction.type !== OperationalSanctionType.Warning ? 1 : 0),
+    );
+
+    const durationMultiplier = getRecurrenceDurationMultiplier(
+      recentBlockingSanctionCount,
+    );
+
+    if (durationMultiplier <= 1) {
+      return decision;
+    }
+
+    return {
+      ...decision,
+      durationDays: decision.durationDays * durationMultiplier,
+      reason: `${decision.reason} La duracion se agravo por reincidencia reciente dentro de ${SANCTION_RECURRENCE_WINDOW_DAYS} dias.`,
+      metadata: {
+        ...decision.metadata,
+        recurrenceWindowDays: SANCTION_RECURRENCE_WINDOW_DAYS,
+        recentBlockingSanctionCount,
+        durationMultiplier,
+      },
+    };
   }
 
   private async recordExpirationAudit(

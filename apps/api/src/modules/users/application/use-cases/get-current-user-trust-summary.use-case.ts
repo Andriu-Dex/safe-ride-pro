@@ -1,5 +1,6 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  deriveTrustReputationProfile,
   isOperationalMembership,
   SANCTION_OPERATIONAL_WINDOW_DAYS,
   SANCTION_REPORTS_WINDOW_DAYS,
@@ -7,7 +8,11 @@ import {
 } from '@saferidepro/shared-types';
 
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
-import { USERS_REPOSITORY, UsersRepository } from '../ports/users.repository';
+import {
+  DEFAULT_REPUTATION_POLICY,
+  USERS_REPOSITORY,
+  UsersRepository,
+} from '../ports/users.repository';
 
 @Injectable()
 export class GetCurrentUserTrustSummaryUseCase {
@@ -32,18 +37,43 @@ export class GetCurrentUserTrustSummaryUseCase {
       );
     }
 
-    const [trustSummary, activeSanctions] = await Promise.all([
+    const [trustSummaryMetrics, activeSanctions] = await Promise.all([
       this.usersRepository.getTrustSummary(membership.id),
       this.operationalSanctionsService.synchronizeAutomaticSanctions(membership.id),
     ]);
+    const sanctionHistory = await this.operationalSanctionsService.getRecentSanctionHistory(
+      membership.id,
+    );
+
+    const reputationProfile = deriveTrustReputationProfile({
+      ...trustSummaryMetrics,
+      activeSanctions: activeSanctions.map((sanction) => ({
+        type: sanction.type,
+        scope: sanction.scope,
+      })),
+      recentSanctionCount: sanctionHistory.recentSanctionCount,
+      recentBlockingSanctionCount: sanctionHistory.recentBlockingSanctionCount,
+    });
 
     return {
-      ...trustSummary,
+      ...trustSummaryMetrics,
+      completedInteractions: reputationProfile.completedInteractions,
+      hasEnoughRatingsSignal: reputationProfile.hasEnoughRatingsSignal,
+      hasLowRatingSignal: reputationProfile.hasLowRatingSignal,
+      visibleReputationState: reputationProfile.visibleReputationState,
+      administrativeRiskState: reputationProfile.administrativeRiskState,
+      riskSignals: reputationProfile.riskSignals,
+      reputationPolicy: {
+        ...DEFAULT_REPUTATION_POLICY,
+        lastComputedAt: sanctionHistory.lastComputedAt,
+      },
       sanctionPolicy: {
         operationalWindowDays: SANCTION_OPERATIONAL_WINDOW_DAYS,
         reportsWindowDays: SANCTION_REPORTS_WINDOW_DAYS,
         lastComputedAt: new Date(),
       },
+      recentSanctionCount: sanctionHistory.recentSanctionCount,
+      recentBlockingSanctionCount: sanctionHistory.recentBlockingSanctionCount,
       activeSanctions,
     };
   }

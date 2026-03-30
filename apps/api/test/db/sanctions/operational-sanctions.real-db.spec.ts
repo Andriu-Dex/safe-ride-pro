@@ -1,10 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
 import {
+  AdministrativeRiskState,
   LuggagePolicy,
   OperationalSanctionType,
   TripRouteMode,
   TripStatus,
   VehicleType,
+  VisibleReputationState,
 } from '@saferidepro/shared-types';
 import request from 'supertest';
 
@@ -146,6 +148,13 @@ describe('Operational sanctions real DB integration', () => {
       .expect(200);
 
     expect(trustSummaryResponse.body.passengerNoShows).toBe(3);
+    expect(trustSummaryResponse.body.visibleReputationState).toBe(
+      VisibleReputationState.Restricted,
+    );
+    expect(trustSummaryResponse.body.administrativeRiskState).toBe(
+      AdministrativeRiskState.Restricted,
+    );
+    expect(trustSummaryResponse.body.recentBlockingSanctionCount).toBeGreaterThanOrEqual(1);
     expect(trustSummaryResponse.body.activeSanctions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

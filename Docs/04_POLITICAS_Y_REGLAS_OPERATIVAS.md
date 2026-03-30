@@ -359,43 +359,82 @@ El sistema debe poder calcular al menos:
 
 - conducta operativa: ultimos `30` dias
 - reportes resueltos: ultimos `60` dias
+- reincidencia de sanciones previas: ultimos `90` dias
 - reputacion promedio: valor informativo, no sancionador por si solo
 
-### 9.7 Umbrales automaticos vigentes
+### 9.7 Reputacion fina y riesgo administrativo
 
-#### 9.7.1 No-show de pasajero
+La reputacion visible y el riesgo administrativo no son lo mismo.
+
+La reputacion visible comunica confianza general al usuario y a su contexto.  
+El riesgo administrativo sirve para priorizar revisiones y endurecer reincidencia.
+
+Estados visibles sugeridos:
+
+- `IN_CONSTRUCTION`
+- `RELIABLE`
+- `WITH_OBSERVATIONS`
+- `UNDER_REVIEW`
+- `RESTRICTED`
+
+Estados administrativos sugeridos:
+
+- `NORMAL`
+- `OBSERVED`
+- `UNDER_REVIEW`
+- `RESTRICTED`
+
+### 9.8 Umbrales de reputacion visible
+
+- el rating no debe considerarse senal fuerte hasta que existan al menos `3` calificaciones y `5` interacciones completadas
+- una calificacion baja aislada no activa sancion automatica
+- promedio menor a `3.5/5` con muestra suficiente genera observacion
+- promedio bajo mas otro riesgo reciente genera `UNDER_REVIEW`
+
+### 9.9 Regla de reincidencia agravada
+
+- si una membresia vuelve a recibir una sancion restrictiva del mismo alcance dentro de `90` dias, la siguiente duracion se duplica una sola vez
+- esta agravacion aplica a sanciones de pasajero, conductor o suspension global
+- las advertencias no se duplican, pero si cuentan como antecedente visible
+
+### 9.10 Umbrales automaticos vigentes
+
+#### 9.10.1 No-show de pasajero
 
 - `2` en 30 dias: `WARNING`
 - `3` en 30 dias: `LIMITED_PASSENGER` por `7` dias
 - `4` o mas en 30 dias: `LIMITED_PASSENGER` por `14` dias
 
-#### 9.7.2 Cancelaciones tardias de pasajero
+#### 9.10.2 Cancelaciones tardias de pasajero
 
 - `2` en 30 dias: `WARNING`
 - `3` en 30 dias: `LIMITED_PASSENGER` por `3` dias
 - `4` o mas en 30 dias: `LIMITED_PASSENGER` por `7` dias
 
-#### 9.7.3 Cancelaciones tardias de conductor
+#### 9.10.3 Cancelaciones tardias de conductor
 
 - `2` en 30 dias: `WARNING`
 - `3` en 30 dias: `LIMITED_DRIVER` por `7` dias
 - `4` o mas en 30 dias: `LIMITED_DRIVER` por `14` dias
 
-#### 9.7.4 Reportes resueltos recibidos
+#### 9.10.4 Reportes resueltos recibidos
 
 - `1` reporte resuelto: seguimiento administrativo, sin sancion automatica fuerte
 - `2` reportes resueltos en 60 dias: `SUSPENDED` por `7` dias
 - `3` o mas reportes resueltos en 60 dias: `SUSPENDED` por `15` dias
 
-### 9.8 Reglas de aplicacion tecnica
+### 9.11 Reglas de aplicacion tecnica
 
 - las sanciones se aplican por `membership`, no por usuario global
 - toda sancion activa debe quedar auditada
 - toda sancion vencida debe quedar auditada
 - la web debe mostrar la restriccion vigente y su fecha estimada de fin
 - los endpoints deben bloquear acciones operativas segun el alcance de la sancion
+- el resumen de confianza debe mostrar reputacion visible, riesgo administrativo y senales activas
+- la reincidencia reciente debe influir en la duracion de sanciones nuevas
+- un reporte resuelto reciente puede llevar una membresia a `UNDER_REVIEW` aunque no exista todavia bloqueo fuerte
 
-### 9.9 Restricciones activas del MVP
+### 9.12 Restricciones activas del MVP
 
 `LIMITED_PASSENGER` bloquea:
 

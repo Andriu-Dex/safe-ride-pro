@@ -28,9 +28,13 @@ import { listIncomingTripRequests, listMyTripRequests } from '../../../modules/t
 import type { TripRequestRecord } from '../../../modules/trip-requests/types/trip-request';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
 import {
+  getAdministrativeRiskStateLabel,
+  getAdministrativeRiskTone,
   getOperationalSanctionScopeLabel,
   getOperationalSanctionTone,
   getOperationalSanctionTypeLabel,
+  getVisibleReputationStateLabel,
+  getVisibleReputationTone,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 
@@ -462,6 +466,20 @@ export default function TrustPage() {
       <section className="content-grid">
         <div className="metrics-grid">
           <InfoCard
+            description="Estado visible que resume tu confianza actual para otros usuarios."
+            label="Estado visible"
+            value={trustSummary ? getVisibleReputationStateLabel(trustSummary.visibleReputationState) : 'Sin datos'}
+          />
+          <InfoCard
+            description="Estado administrativo derivado de riesgos recientes y reincidencia."
+            label="Estado administrativo"
+            value={
+              trustSummary
+                ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
+                : 'Sin datos'
+            }
+          />
+          <InfoCard
             description="Viajes completados donde aun puedes registrar una calificacion."
             label="Calificaciones pendientes"
             value={`${pendingRatingOpportunities.length}`}
@@ -480,6 +498,18 @@ export default function TrustPage() {
             description="Promedio actual de calificaciones recibidas por tu membresia activa."
             label="Promedio actual"
             value={formatAverageScore(trustSummary?.averageRatingReceived ?? null)}
+          />
+          <InfoCard
+            description="Cantidad total de interacciones completadas que alimentan tu historial."
+            label="Interacciones completadas"
+            value={`${trustSummary?.completedInteractions ?? 0}`}
+          />
+          <InfoCard
+            description="Sanciones o advertencias recientes dentro de la ventana de reincidencia."
+            label="Historial reciente"
+            value={`${
+              trustSummary?.recentBlockingSanctionCount ?? 0
+            } restrictivas / ${trustSummary?.recentSanctionCount ?? 0} totales`}
           />
           <InfoCard
             description="Viajes completados como conductor desde tu membresia activa."
@@ -505,6 +535,48 @@ export default function TrustPage() {
             }`}
           />
         </div>
+
+        {trustSummary ? (
+          <article className="panel panel-stack">
+            <div className="section-heading">
+              <h2 className="panel-title">Estado de reputacion</h2>
+              <div className="button-row">
+                <StatusPill
+                  label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+                  tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+                />
+                <StatusPill
+                  label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
+                  tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
+                />
+              </div>
+            </div>
+
+            <div className="list-stack">
+              <div className="list-card">
+                <div className="list-card-header">
+                  <strong>Senales actuales</strong>
+                  <span className="section-heading-meta">
+                    {trustSummary.riskSignals.length} detectadas
+                  </span>
+                </div>
+                {trustSummary.riskSignals.length ? (
+                  <div className="list-stack">
+                    {trustSummary.riskSignals.map((signal) => (
+                      <p key={signal} className="panel-text">
+                        {signal}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="panel-text">
+                    No se detectaron observaciones recientes en tu membresia activa.
+                  </p>
+                )}
+              </div>
+            </div>
+          </article>
+        ) : null}
 
         {trustSummary?.activeSanctions?.length ? (
           <article className="panel panel-stack">
@@ -539,6 +611,10 @@ export default function TrustPage() {
           <div className="form-helper">
             Ventana de cancelacion tardia vigente: {trustSummary.cancellationPolicy.lateWindowMinutes} minutos antes de la salida.
             Ultimo calculo: {formatDateTime(trustSummary.cancellationPolicy.lastComputedAt)}.
+            {' '}
+            Umbral de rating bajo: {trustSummary.reputationPolicy.lowRatingThreshold.toFixed(1)}/5 con al menos {trustSummary.reputationPolicy.minimumRatingsForSignal} calificaciones y {trustSummary.reputationPolicy.minimumCompletedInteractionsForSignal} interacciones completadas.
+            {' '}
+            Reincidencia agravada: {trustSummary.reputationPolicy.recurrenceWindowDays} dias.
             {trustSummary.sanctionPolicy
               ? ` Evaluacion de sanciones: ${trustSummary.sanctionPolicy.operationalWindowDays} dias para conducta operativa y ${trustSummary.sanctionPolicy.reportsWindowDays} dias para reportes resueltos.`
               : ''}

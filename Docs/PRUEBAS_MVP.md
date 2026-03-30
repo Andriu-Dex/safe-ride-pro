@@ -127,7 +127,23 @@ Resultado esperado:
 - el backend bloquea la accion restringida
 - la web deja claro si la restriccion afecta al rol de pasajero, conductor o ambos
 
-### 7. Filtros de viajes
+### 7. Reputacion fina y reincidencia
+
+Pasos:
+
+1. Provocar una advertencia o sancion reciente de prueba
+2. Entrar a `/confianza`
+3. Revisar el estado visible, el estado administrativo y las senales detectadas
+4. Si existe una sancion restrictiva previa en la ventana de 90 dias, repetir el patron sancionable
+
+Resultado esperado:
+
+- `Confianza` muestra `Estado visible` y `Estado administrativo`
+- el usuario puede quedar `En construccion`, `Confiable`, `Con observaciones`, `En revision` o `Restringido`
+- se muestran senales entendibles, no solo numeros
+- la reincidencia reciente agrava la siguiente sancion restrictiva del mismo alcance
+
+### 8. Filtros de viajes
 
 Pasos:
 
@@ -140,7 +156,7 @@ Resultado esperado:
 - cambian los resultados de `Viajes disponibles`
 - el contador de filtros activos responde correctamente
 
-### 8. Solicitud de cupo
+### 9. Solicitud de cupo
 
 Pasos:
 
@@ -153,7 +169,7 @@ Resultado esperado:
 - la solicitud aparece en `Mis solicitudes` del pasajero
 - la solicitud aparece en `Solicitudes recibidas` del conductor
 
-### 9. Aceptacion de solicitud y avance del viaje
+### 10. Aceptacion de solicitud y avance del viaje
 
 Pasos:
 
@@ -167,7 +183,7 @@ Resultado esperado:
 - el viaje pasa por los estados esperados
 - al completar, queda habilitado el flujo de confianza
 
-### 10. Calificaciones
+### 11. Calificaciones
 
 Pasos:
 
@@ -180,7 +196,7 @@ Resultado esperado:
 - la calificacion aparece en `Calificaciones emitidas`
 - la contraparte la ve en `Calificaciones recibidas`
 
-### 11. Reportes
+### 12. Reportes
 
 Pasos:
 
@@ -192,7 +208,7 @@ Resultado esperado:
 - el reporte aparece en `Mis reportes`
 - la auditoria registra el evento de reporte creado
 
-### 12. Auditoria y revision administrativa
+### 13. Auditoria y revision administrativa
 
 Pasos:
 
@@ -230,6 +246,8 @@ El backend ya cuenta con una primera base de pruebas unitarias para reglas criti
 - `ratings`
 - `reports`
 - `revision administrativa`
+- `sanciones`
+- `resumen de confianza y reputacion fina`
 
 Tambien ya existen pruebas HTTP de integracion ligera para endpoints criticos:
 
@@ -286,6 +304,7 @@ Ademas, el backend ya cuenta con pruebas de integracion con base de datos real e
 - listado y creacion de instituciones con permisos reales
 - actualizacion de perfil y lectura de membresias multiples
 - validacion basica del modelo multiinstitucional con un usuario global y dos memberships
+- aplicacion de sanciones automáticas y resumen de reputacion con PostgreSQL real
 
 Comando:
 

@@ -33,6 +33,7 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
 function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
   return {
     synchronizeAutomaticSanctions: jest.fn(),
+    getRecentSanctionHistory: jest.fn(),
     assertPassengerOperationsAllowed: jest.fn(),
     assertDriverOperationsAllowed: jest.fn(),
   } as unknown as jest.Mocked<OperationalSanctionsService>;

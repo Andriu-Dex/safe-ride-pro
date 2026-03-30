@@ -10,7 +10,7 @@ import {
 import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { GetCurrentUserTrustSummaryUseCase } from '../../../src/modules/users/application/use-cases/get-current-user-trust-summary.use-case';
 import type {
-  TrustSummary,
+  TrustSummaryMetrics,
   UserProfile,
   UsersRepository,
 } from '../../../src/modules/users/application/ports/users.repository';
@@ -26,6 +26,7 @@ function createUsersRepositoryMock(): jest.Mocked<UsersRepository> {
 function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
   return {
     synchronizeAutomaticSanctions: jest.fn(),
+    getRecentSanctionHistory: jest.fn(),
     assertPassengerOperationsAllowed: jest.fn(),
     assertDriverOperationsAllowed: jest.fn(),
   } as unknown as jest.Mocked<OperationalSanctionsService>;
@@ -59,17 +60,17 @@ function buildUserProfile(overrides: Partial<UserProfile> = {}): UserProfile {
   };
 }
 
-function buildTrustSummary(): TrustSummary {
+function buildTrustSummary(): TrustSummaryMetrics {
   return {
     membershipId: 'membership-1',
     averageRatingReceived: 4.5,
-    totalRatingsReceived: 4,
-    completedTripsAsDriver: 2,
-    completedTripsAsPassenger: 3,
-    lateDriverTripCancellations: 1,
-    latePassengerTripRequestCancellations: 1,
+    totalRatingsReceived: 2,
+    completedTripsAsDriver: 1,
+    completedTripsAsPassenger: 2,
+    lateDriverTripCancellations: 0,
+    latePassengerTripRequestCancellations: 0,
     passengerNoShows: 0,
-    resolvedReportsReceived: 1,
+    resolvedReportsReceived: 0,
     cancellationPolicy: {
       lateWindowMinutes: 30,
       lastComputedAt: new Date('2030-01-01T12:00:00.000Z'),
@@ -86,12 +87,21 @@ describe('GetCurrentUserTrustSummaryUseCase', () => {
     repository.findById.mockResolvedValue(buildUserProfile());
     repository.getTrustSummary.mockResolvedValue(buildTrustSummary());
     sanctionsService.synchronizeAutomaticSanctions.mockResolvedValue([]);
+    sanctionsService.getRecentSanctionHistory.mockResolvedValue({
+      recentSanctionCount: 0,
+      recentBlockingSanctionCount: 0,
+      recurrenceWindowDays: 90,
+      lastComputedAt: new Date('2030-01-01T12:00:00.000Z'),
+    });
 
     const response = await useCase.execute('user-1');
 
     expect(response.membershipId).toBe('membership-1');
+    expect(response.visibleReputationState).toBe('IN_CONSTRUCTION');
+    expect(response.administrativeRiskState).toBe('NORMAL');
     expect(repository.getTrustSummary).toHaveBeenCalledWith('membership-1');
     expect(sanctionsService.synchronizeAutomaticSanctions).toHaveBeenCalledWith('membership-1');
+    expect(sanctionsService.getRecentSanctionHistory).toHaveBeenCalledWith('membership-1');
   });
 
   it('rejects missing users or users without an active membership', async () => {
@@ -120,6 +130,39 @@ describe('GetCurrentUserTrustSummaryUseCase', () => {
       new ForbiddenException(
         'No tienes una membresia activa para consultar tu resumen de confianza.',
       ),
+    );
+  });
+
+  it('marks the summary under review when low ratings and recent risks coexist', async () => {
+    const repository = createUsersRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new GetCurrentUserTrustSummaryUseCase(repository, sanctionsService);
+
+    repository.findById.mockResolvedValue(buildUserProfile());
+    repository.getTrustSummary.mockResolvedValue({
+      ...buildTrustSummary(),
+      averageRatingReceived: 3.2,
+      totalRatingsReceived: 4,
+      completedTripsAsDriver: 3,
+      completedTripsAsPassenger: 2,
+      latePassengerTripRequestCancellations: 1,
+    });
+    sanctionsService.synchronizeAutomaticSanctions.mockResolvedValue([]);
+    sanctionsService.getRecentSanctionHistory.mockResolvedValue({
+      recentSanctionCount: 1,
+      recentBlockingSanctionCount: 0,
+      recurrenceWindowDays: 90,
+      lastComputedAt: new Date('2030-01-01T12:00:00.000Z'),
+    });
+
+    const response = await useCase.execute('user-1');
+
+    expect(response.hasEnoughRatingsSignal).toBe(true);
+    expect(response.hasLowRatingSignal).toBe(true);
+    expect(response.visibleReputationState).toBe('UNDER_REVIEW');
+    expect(response.administrativeRiskState).toBe('UNDER_REVIEW');
+    expect(response.riskSignals).toContain(
+      'Tu promedio reciente de calificaciones esta por debajo de 3.5/5 con muestra suficiente.',
     );
   });
 });
