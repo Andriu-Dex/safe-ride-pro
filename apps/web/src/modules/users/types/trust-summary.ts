@@ -1,3 +1,10 @@
+import type {
+  OperationalSanctionScope,
+  OperationalSanctionStatus,
+  OperationalSanctionTrigger,
+  OperationalSanctionType,
+} from '@saferidepro/shared-types';
+
 export type TrustSummary = {
   membershipId: string;
   averageRatingReceived: number | null;
@@ -12,4 +19,19 @@ export type TrustSummary = {
     lateWindowMinutes: number;
     lastComputedAt: string;
   };
+  sanctionPolicy?: {
+    operationalWindowDays: number;
+    reportsWindowDays: number;
+    lastComputedAt: string;
+  };
+  activeSanctions?: {
+    id: string;
+    type: OperationalSanctionType;
+    scope: OperationalSanctionScope;
+    status: OperationalSanctionStatus;
+    trigger: OperationalSanctionTrigger;
+    reason: string;
+    startedAt: string;
+    endsAt: string | null;
+  }[];
 };

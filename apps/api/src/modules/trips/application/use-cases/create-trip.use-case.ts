@@ -8,6 +8,7 @@ import {
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   CreateTripInput,
   TRIPS_REPOSITORY,
@@ -35,6 +36,7 @@ export class CreateTripUseCase {
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
     private readonly auditService: AuditService,
+    private readonly operationalSanctionsService: OperationalSanctionsService,
   ) {}
 
   async execute(command: CreateTripCommand) {
@@ -53,6 +55,8 @@ export class CreateTripUseCase {
         'Tu licencia vencio. Debes actualizarla antes de crear nuevos viajes.',
       );
     }
+
+    await this.operationalSanctionsService.assertDriverOperationsAllowed(membership.id);
 
     const vehicle = await this.tripsRepository.findVehicleByIdForMembership(
       membership.id,

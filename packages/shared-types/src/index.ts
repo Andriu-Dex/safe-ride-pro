@@ -76,6 +76,23 @@ export enum ReportStatus {
 }
 
 export {
+  deriveOperationalSanctionDecisions,
+  doesSanctionBlockDriverOperations,
+  doesSanctionBlockPassengerOperations,
+  getOperationalSanctionDurationLabel,
+  getOperationalSanctionScopeLabel,
+  OperationalSanctionScope,
+  OperationalSanctionStatus,
+  OperationalSanctionTrigger,
+  OperationalSanctionType,
+  SANCTION_OPERATIONAL_WINDOW_DAYS,
+  SANCTION_REPORTS_WINDOW_DAYS,
+  SANCTION_WARNING_DURATION_DAYS,
+  type OperationalSanctionDecision,
+  type OperationalSanctionMetrics,
+} from './operational-sanction-policy';
+
+export {
   CancellationTiming,
   CANCELLATION_LATE_WINDOW_MINUTES,
   getCancellationTiming,
@@ -90,6 +107,11 @@ export {
   isDriverBlockedByExpiredLicense,
   type DriverVerificationStatusLike,
 } from './driver-license';
+
+export {
+  isOperationalMembership,
+  selectOperationalMembership,
+} from './membership-context';
 
 export {
   getTripStartAvailability,

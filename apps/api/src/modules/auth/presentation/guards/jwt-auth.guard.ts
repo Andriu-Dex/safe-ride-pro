@@ -53,9 +53,7 @@ export class JwtAuthGuard implements CanActivate {
               },
             },
           },
-          orderBy: {
-            joinedAt: 'asc',
-          },
+          orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
         },
       },
     });
@@ -78,6 +76,7 @@ export class JwtAuthGuard implements CanActivate {
         id: membership.id,
         institutionId: membership.institutionId,
         institutionName: membership.institution.name,
+        institutionIsActive: membership.institution.isActive,
         role: membership.role as never,
         membershipStatus: membership.membershipStatus as never,
         studentCode: membership.studentCode,

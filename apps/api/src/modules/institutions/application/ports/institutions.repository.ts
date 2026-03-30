@@ -5,6 +5,7 @@ export type InstitutionSummary = {
   name: string;
   code: string;
   domains: string[];
+  isActive: boolean;
 };
 
 export type CreateInstitutionInput = {
@@ -16,4 +17,6 @@ export type CreateInstitutionInput = {
 export interface InstitutionsRepository {
   listActive(): Promise<InstitutionSummary[]>;
   create(input: CreateInstitutionInput): Promise<InstitutionSummary>;
+  findById(institutionId: string): Promise<InstitutionSummary | null>;
+  updateStatus(institutionId: string, isActive: boolean): Promise<InstitutionSummary>;
 }

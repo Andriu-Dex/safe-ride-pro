@@ -104,4 +104,91 @@ describe('Institutions real DB integration', () => {
       'Esta accion requiere privilegios de SUPER_ADMIN.',
     );
   });
+
+  it('suspends an institution and degrades an already open user session', async () => {
+    const uniqueSuffix = `${Date.now()}-suspend`;
+    const institutionName = `Institucion Suspendible ${uniqueSuffix.slice(-4)}`;
+    const institutionCode = `SP${uniqueSuffix.slice(-4)}`;
+    const primaryDomain = `suspendible${uniqueSuffix.slice(-4)}.edu.ec`;
+    const adminSession = await loginSeedAdmin(app);
+
+    const createInstitutionResponse = await request(app.getHttpServer())
+      .post('/api/institutions')
+      .set('Authorization', `Bearer ${adminSession.body.accessToken as string}`)
+      .send({
+        name: institutionName,
+        code: institutionCode,
+        domains: [primaryDomain],
+      })
+      .expect(201);
+
+    const institutionId = createInstitutionResponse.body.id as string;
+
+    const registeredUser = await registerVerifyAndLoginUser(app, {
+      email: `session.${uniqueSuffix}@${primaryDomain}`,
+      password: 'Suspend123!',
+      fullName: 'Usuario Suspendido',
+      documentNumber: `${Date.now()}`.slice(-10),
+      studentCode: `SUS-${uniqueSuffix.slice(-6)}`,
+    });
+
+    const accessToken = registeredUser.login.accessToken as string;
+
+    const suspendResponse = await request(app.getHttpServer())
+      .patch(`/api/institutions/${institutionId}/status`)
+      .set('Authorization', `Bearer ${adminSession.body.accessToken as string}`)
+      .send({
+        isActive: false,
+      })
+      .expect(200);
+
+    expect(suspendResponse.body.message).toBe('La institucion fue suspendida correctamente.');
+    expect(suspendResponse.body.institution).toMatchObject({
+      id: institutionId,
+      isActive: false,
+    });
+
+    const currentUserResponse = await request(app.getHttpServer())
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(currentUserResponse.body.memberships[0]).toMatchObject({
+      institutionId,
+      institutionIsActive: false,
+    });
+
+    const trustSummaryResponse = await request(app.getHttpServer())
+      .get('/api/users/me/trust-summary')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(403);
+
+    expect(trustSummaryResponse.body.message).toBe(
+      'No tienes una membresia activa para consultar tu resumen de confianza.',
+    );
+
+    const activeInstitutionsResponse = await request(app.getHttpServer())
+      .get('/api/institutions')
+      .expect(200);
+
+    expect(
+      activeInstitutionsResponse.body.some(
+        (institution: { id: string }) => institution.id === institutionId,
+      ),
+    ).toBe(false);
+
+    const reactivateResponse = await request(app.getHttpServer())
+      .patch(`/api/institutions/${institutionId}/status`)
+      .set('Authorization', `Bearer ${adminSession.body.accessToken as string}`)
+      .send({
+        isActive: true,
+      })
+      .expect(200);
+
+    expect(reactivateResponse.body.message).toBe('La institucion fue reactivada correctamente.');
+    expect(reactivateResponse.body.institution).toMatchObject({
+      id: institutionId,
+      isActive: true,
+    });
+  });
 });

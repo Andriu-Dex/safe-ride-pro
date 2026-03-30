@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { AccountStatus } from '@saferidepro/shared-types';
+import { AccountStatus, selectOperationalMembership } from '@saferidepro/shared-types';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
@@ -39,8 +39,7 @@ export class LoginUseCase {
   }> {
     const normalizedEmail = input.email.trim().toLowerCase();
     const user = await this.authUserRepository.findUserByEmail(normalizedEmail);
-    const defaultMembership = user?.memberships.find((membership) => membership.isDefault)
-      ?? user?.memberships[0];
+    const defaultMembership = selectOperationalMembership(user?.memberships);
 
     if (!user) {
       await this.auditService.record({

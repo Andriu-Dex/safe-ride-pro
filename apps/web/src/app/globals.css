@@ -168,6 +168,13 @@ main {
   color: white;
 }
 
+.sidebar-link-disabled {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(245, 239, 228, 0.42);
+  cursor: not-allowed;
+}
+
 .sidebar-note,
 .sidebar-user-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -184,6 +191,11 @@ main {
 .sidebar-note {
   display: grid;
   gap: 0.5rem;
+}
+
+.sidebar-note-warning {
+  border-color: rgba(183, 121, 31, 0.28);
+  background: rgba(183, 121, 31, 0.1);
 }
 
 .sidebar-note strong,
@@ -555,6 +567,14 @@ main {
   border-radius: 999px;
   background: radial-gradient(circle, rgba(15, 118, 110, 0.9), rgba(15, 118, 110, 0.2));
   animation: pulse 1.6s ease-in-out infinite;
+}
+
+.operational-access-card {
+  text-align: left;
+}
+
+.operational-access-kicker {
+  color: var(--color-warning);
 }
 
 @keyframes pulse {

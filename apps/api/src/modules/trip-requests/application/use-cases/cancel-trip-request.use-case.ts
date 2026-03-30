@@ -1,9 +1,17 @@
-﻿import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  CancellationTiming,
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   TRIP_REQUESTS_REPOSITORY,
   TripRequestsRepository,
@@ -14,6 +22,7 @@ export class CancelTripRequestUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
+    private readonly operationalSanctionsService: OperationalSanctionsService,
   ) {}
 
   async execute(userId: string, requestId: string) {
@@ -48,6 +57,12 @@ export class CancelTripRequestUseCase {
     if (!updatedTripRequest) {
       throw new BadRequestException(
         'La solicitud ya no pudo cancelarse por un cambio reciente en su estado.',
+      );
+    }
+
+    if (updatedTripRequest.cancellationTiming === CancellationTiming.Late) {
+      await this.operationalSanctionsService.synchronizeAutomaticSanctions(
+        updatedTripRequest.passengerMembershipId,
       );
     }
 

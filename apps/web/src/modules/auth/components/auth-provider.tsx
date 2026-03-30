@@ -2,9 +2,12 @@
 
 import { createContext, useEffect, useState } from 'react';
 
+import { ApiError } from '../../../lib/api-client';
 import { createSession, getCurrentUser } from '../lib/auth-api';
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../lib/auth-storage';
 import type { AuthSession, LoginInput } from '../types/auth-session';
+
+const SESSION_REFRESH_INTERVAL_MS = 30_000;
 
 type AuthContextValue = {
   authSession: AuthSession | null;
@@ -72,6 +75,65 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!authSession || typeof window === 'undefined') {
+      return;
+    }
+
+    let isActive = true;
+
+    const syncSession = async () => {
+      try {
+        const user = await getCurrentUser(authSession.accessToken);
+
+        if (!isActive) {
+          return;
+        }
+
+        const nextSession = {
+          accessToken: authSession.accessToken,
+          user,
+        } satisfies AuthSession;
+
+        writeStoredSession(nextSession);
+        setAuthSession(nextSession);
+      } catch (error) {
+        if (
+          isActive &&
+          error instanceof ApiError &&
+          error.status === 401
+        ) {
+          clearStoredSession();
+          setAuthSession(null);
+        }
+      }
+    };
+
+    const handleFocus = () => {
+      void syncSession();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void syncSession();
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void syncSession();
+    }, SESSION_REFRESH_INTERVAL_MS);
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [authSession]);
 
   const signIn = async (input: LoginInput): Promise<void> => {
     setIsSigningIn(true);

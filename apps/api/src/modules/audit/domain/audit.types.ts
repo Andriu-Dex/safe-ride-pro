@@ -13,10 +13,13 @@ export enum AuditAction {
   TripCancelled = 'TRIP_CANCELLED',
   ReportCreated = 'REPORT_CREATED',
   ReportReviewed = 'REPORT_REVIEWED',
+  SanctionApplied = 'SANCTION_APPLIED',
+  SanctionExpired = 'SANCTION_EXPIRED',
 }
 
 export enum AuditEntityType {
   User = 'USER',
+  UserMembership = 'USER_MEMBERSHIP',
   DriverProfile = 'DRIVER_PROFILE',
   Trip = 'TRIP',
   Report = 'REPORT',

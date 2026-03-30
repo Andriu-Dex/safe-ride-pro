@@ -84,6 +84,31 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum OperationalSanctionType {
+  WARNING
+  LIMITED_PASSENGER
+  LIMITED_DRIVER
+  SUSPENDED
+}
+
+enum OperationalSanctionScope {
+  PASSENGER
+  DRIVER
+  ALL
+}
+
+enum OperationalSanctionStatus {
+  ACTIVE
+  EXPIRED
+}
+
+enum OperationalSanctionTrigger {
+  PASSENGER_NO_SHOW
+  LATE_DRIVER_CANCELLATION
+  LATE_PASSENGER_CANCELLATION
+  RESOLVED_REPORTS
+}
+
 enum AuditAction {
   AUTH_REGISTERED
   AUTH_EMAIL_VERIFIED
@@ -99,10 +124,13 @@ enum AuditAction {
   TRIP_CANCELLED
   REPORT_CREATED
   REPORT_REVIEWED
+  SANCTION_APPLIED
+  SANCTION_EXPIRED
 }
 
 enum AuditEntityType {
   USER
+  USER_MEMBERSHIP
   DRIVER_PROFILE
   TRIP
   REPORT
@@ -184,6 +212,7 @@ model UserInstitutionMembership {
   ratingsReceived          Rating[]                 @relation("RatingTarget")
   reportsCreated           Report[]                 @relation("ReportReporter")
   reportsReceived          Report[]                 @relation("ReportReported")
+  operationalSanctions     OperationalSanction[]
 
   @@unique([userId, institutionId])
   @@unique([institutionId, studentCode])
@@ -397,6 +426,30 @@ model Report {
   @@index([tripId, createdAt])
   @@map("reports")
 }
+
+model OperationalSanction {
+  id           String                    @id @default(uuid())
+  membershipId String
+  type         OperationalSanctionType
+  scope        OperationalSanctionScope
+  status       OperationalSanctionStatus @default(ACTIVE)
+  trigger      OperationalSanctionTrigger
+  reason       String
+  isAutomatic  Boolean                   @default(true)
+  startedAt    DateTime                  @default(now())
+  endsAt       DateTime?
+  expiredAt    DateTime?
+  metadata     Json?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  membership   UserInstitutionMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId, status])
+  @@index([membershipId, scope, status])
+  @@index([status, endsAt])
+  @@map("operational_sanctions")
+}
+
 model AuditEvent {
   id            String          @id @default(uuid())
   institutionId String?

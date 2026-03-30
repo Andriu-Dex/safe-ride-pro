@@ -5,6 +5,10 @@ import {
   GlobalUserRole,
   InstitutionMembershipRole,
   MembershipStatus,
+  OperationalSanctionScope,
+  OperationalSanctionStatus,
+  OperationalSanctionTrigger,
+  OperationalSanctionType,
 } from '@saferidepro/shared-types';
 
 export const USERS_REPOSITORY = Symbol('USERS_REPOSITORY');
@@ -24,6 +28,7 @@ export type UserProfile = {
     id: string;
     institutionId: string;
     institutionName: string;
+    institutionIsActive?: boolean;
     role: InstitutionMembershipRole;
     membershipStatus: MembershipStatus;
     studentCode: string;
@@ -56,6 +61,21 @@ export type TrustSummary = {
     lateWindowMinutes: number;
     lastComputedAt: Date;
   };
+  sanctionPolicy?: {
+    operationalWindowDays: number;
+    reportsWindowDays: number;
+    lastComputedAt: Date;
+  };
+  activeSanctions?: {
+    id: string;
+    type: OperationalSanctionType;
+    scope: OperationalSanctionScope;
+    status: OperationalSanctionStatus;
+    trigger: OperationalSanctionTrigger;
+    reason: string;
+    startedAt: Date;
+    endsAt: Date | null;
+  }[];
 };
 
 export interface UsersRepository {

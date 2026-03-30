@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  isOperationalMembership,
+  selectOperationalMembership,
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
@@ -8,10 +10,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { InfoCard } from '../../../components/ui/info-card';
+import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import { RatingOpportunityCard, type RatingOpportunity } from '../../../modules/ratings/components/rating-opportunity-card';
 import { createRating, listMyRatings } from '../../../modules/ratings/lib/rating-api';
 import { getRatingStars } from '../../../modules/ratings/lib/rating-labels';
@@ -23,6 +27,11 @@ import type { ReportRecord } from '../../../modules/reports/types/report';
 import { listIncomingTripRequests, listMyTripRequests } from '../../../modules/trip-requests/lib/trip-request-api';
 import type { TripRequestRecord } from '../../../modules/trip-requests/types/trip-request';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
+import {
+  getOperationalSanctionScopeLabel,
+  getOperationalSanctionTone,
+  getOperationalSanctionTypeLabel,
+} from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 
 type RatingDraft = {
@@ -138,7 +147,8 @@ function buildParticipationOpportunities(
 }
 
 export default function TrustPage() {
-  const { authSession, isHydrated } = useAuth();
+  const { authSession, isHydrated, refreshSession } = useAuth();
+  const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
   const [ratings, setRatings] = useState<RatingList>({ given: [], received: [] });
   const [reports, setReports] = useState<ReportRecord[]>([]);
@@ -153,8 +163,11 @@ export default function TrustPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const defaultMembershipId = authSession?.user.memberships.find((membership) => membership.isDefault)?.id
-    ?? authSession?.user.memberships[0]?.id;
+  const defaultMembership = selectOperationalMembership(authSession?.user.memberships);
+  const defaultMembershipId =
+    defaultMembership && isOperationalMembership(defaultMembership)
+      ? defaultMembership.id
+      : undefined;
 
   const loadData = async (accessToken: string) => {
     const [trustSummaryData, ratingsData, reportsData, myTripRequests, incomingTripRequests] = await Promise.all([
@@ -184,6 +197,10 @@ export default function TrustPage() {
     try {
       await loadData(authSession.accessToken);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setErrorMessage(getApiErrorMessage(error, 'No fue posible sincronizar calificaciones y reportes.'));
     } finally {
       if (showSpinner) {
@@ -193,7 +210,17 @@ export default function TrustPage() {
   };
 
   useEffect(() => {
-    if (!isHydrated || !authSession) {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (!authSession || !operationalAccess.hasOperationalMembership) {
+      setTrustSummary(null);
+      setRatings({ given: [], received: [] });
+      setReports([]);
+      setMyRequests([]);
+      setIncomingRequests([]);
+      setIsLoading(false);
       return;
     }
 
@@ -208,6 +235,10 @@ export default function TrustPage() {
       } catch (error) {
         if (!isMounted) {
           return;
+        }
+
+        if (error instanceof ApiError && error.status === 403) {
+          await refreshSession().catch(() => undefined);
         }
 
         setErrorMessage(
@@ -227,14 +258,14 @@ export default function TrustPage() {
     return () => {
       isMounted = false;
     };
-  }, [authSession, isHydrated]);
+  }, [authSession, isHydrated, operationalAccess.hasOperationalMembership]);
 
   useAutoRefresh(
     async () => {
       await refreshData();
     },
     {
-      enabled: Boolean(authSession && isHydrated),
+      enabled: Boolean(authSession && isHydrated && operationalAccess.hasOperationalMembership),
       intervalMs: 20_000,
     },
   );
@@ -319,6 +350,10 @@ export default function TrustPage() {
         [opportunity.id]: EMPTY_RATING_DRAFT,
       }));
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setErrorMessage(getApiErrorMessage(error, 'No fue posible registrar la calificacion.'));
       await refreshData();
     } finally {
@@ -352,6 +387,10 @@ export default function TrustPage() {
         [opportunity.id]: EMPTY_REPORT_DRAFT,
       }));
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setErrorMessage(getApiErrorMessage(error, 'No fue posible registrar el reporte.'));
       await refreshData();
     } finally {
@@ -370,6 +409,29 @@ export default function TrustPage() {
           </p>
         </div>
       </section>
+    );
+  }
+
+  if (!operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message) {
+    return (
+      <>
+        <header className="topbar">
+          <div>
+            <h1 className="topbar-title">Confianza</h1>
+            <p className="topbar-subtitle">
+              Revisa tu reputacion, califica a otros participantes y registra incidentes de viajes completados.
+            </p>
+          </div>
+          <StatusPill label="Operacion bloqueada" tone="warning" />
+        </header>
+
+        <section className="empty-state">
+          <OperationalAccessCard
+            message={operationalAccess.message}
+            title={operationalAccess.title}
+          />
+        </section>
+      </>
     );
   }
 
@@ -444,10 +506,42 @@ export default function TrustPage() {
           />
         </div>
 
+        {trustSummary?.activeSanctions?.length ? (
+          <article className="panel panel-stack">
+            <div className="section-heading">
+              <h2 className="panel-title">Restricciones activas</h2>
+              <p className="section-heading-meta">
+                {trustSummary.activeSanctions.length} vigentes
+              </p>
+            </div>
+            <div className="list-stack">
+              {trustSummary.activeSanctions.map((sanction) => (
+                <div key={sanction.id} className="list-card list-card-strong">
+                  <div className="list-card-header">
+                    <strong>{getOperationalSanctionTypeLabel(sanction.type)}</strong>
+                    <StatusPill
+                      label={getOperationalSanctionScopeLabel(sanction.scope)}
+                      tone={getOperationalSanctionTone(sanction.type)}
+                    />
+                  </div>
+                  <p className="panel-text">{sanction.reason}</p>
+                  <p className="panel-text">
+                    Inicio: {formatDateTime(sanction.startedAt)}
+                    {sanction.endsAt ? ` | Fin estimado: ${formatDateTime(sanction.endsAt)}` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </article>
+        ) : null}
+
         {trustSummary ? (
           <div className="form-helper">
             Ventana de cancelacion tardia vigente: {trustSummary.cancellationPolicy.lateWindowMinutes} minutos antes de la salida.
             Ultimo calculo: {formatDateTime(trustSummary.cancellationPolicy.lastComputedAt)}.
+            {trustSummary.sanctionPolicy
+              ? ` Evaluacion de sanciones: ${trustSummary.sanctionPolicy.operationalWindowDays} dias para conducta operativa y ${trustSummary.sanctionPolicy.reportsWindowDays} dias para reportes resueltos.`
+              : ''}
           </div>
         ) : null}
 

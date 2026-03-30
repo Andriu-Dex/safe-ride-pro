@@ -135,4 +135,68 @@ describe('Users multi-institution real DB integration', () => {
     expect(storedUser?.memberships[0]?.institution.code).toBe('UTA');
     expect(storedUser?.memberships[1]?.institutionId).toBe(secondaryInstitution.id);
   });
+
+  it('uses an active membership from an active institution as operational fallback', async () => {
+    const uniqueSuffix = `${Date.now()}-fallback`;
+    const secondaryInstitution = await prisma.institution.create({
+      data: {
+        name: `Institucion Operativa ${uniqueSuffix.slice(-4)}`,
+        code: `IO${uniqueSuffix.slice(-4)}`,
+        domains: {
+          create: [
+            {
+              domain: `operativa${uniqueSuffix.slice(-4)}.edu.ec`,
+              isPrimary: true,
+              isActive: true,
+            },
+          ],
+        },
+      },
+    });
+
+    const session = await registerVerifyAndLoginUser(app, {
+      email: `fallback.${uniqueSuffix}@uta.edu.ec`,
+      password: 'FallbackPass123!',
+      fullName: 'Usuario Operativo',
+      documentNumber: `${Date.now()}`.slice(-10),
+      studentCode: `FBK-${uniqueSuffix.slice(-6)}`,
+    });
+
+    const userId = session.registration.user.id as string;
+    const originalMembershipId = session.login.user.memberships[0].id as string;
+
+    const secondaryMembership = await prisma.userInstitutionMembership.create({
+      data: {
+        userId,
+        institutionId: secondaryInstitution.id,
+        role: MembershipRole.STUDENT,
+        membershipStatus: MembershipStatus.ACTIVE,
+        studentCode: `OPS-${uniqueSuffix.slice(-6)}`,
+        isDefault: false,
+        driverVerificationStatus: DriverVerificationStatus.NOT_REQUESTED,
+      },
+    });
+
+    await prisma.userInstitutionMembership.update({
+      where: { id: originalMembershipId },
+      data: {
+        membershipStatus: MembershipStatus.INACTIVE,
+      },
+    });
+
+    const reloginResponse = await loginUser(
+      app,
+      `fallback.${uniqueSuffix}@uta.edu.ec`,
+      'FallbackPass123!',
+    );
+    const accessToken = reloginResponse.body.accessToken as string;
+
+    const trustSummaryResponse = await request(app.getHttpServer())
+      .get('/api/users/me/trust-summary')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(trustSummaryResponse.body.membershipId).toBe(secondaryMembership.id);
+    expect(trustSummaryResponse.body.cancellationPolicy.lateWindowMinutes).toBe(30);
+  });
 });

@@ -30,6 +30,10 @@ export function getAuditActionLabel(action: AuditAction): string {
       return 'Reporte creado';
     case 'REPORT_REVIEWED':
       return 'Reporte revisado';
+    case 'SANCTION_APPLIED':
+      return 'Sancion aplicada';
+    case 'SANCTION_EXPIRED':
+      return 'Sancion vencida';
     default:
       return action;
   }
@@ -39,6 +43,8 @@ export function getAuditEntityTypeLabel(entityType: AuditEntityType): string {
   switch (entityType) {
     case 'USER':
       return 'Usuario';
+    case 'USER_MEMBERSHIP':
+      return 'Membresia';
     case 'DRIVER_PROFILE':
       return 'Perfil de conductor';
     case 'TRIP':

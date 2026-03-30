@@ -3,6 +3,7 @@ import { DriverLicenseStatus, DriverVerificationStatus, MembershipStatus, TripSt
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   TRIPS_REPOSITORY,
   TripsRepository,
@@ -14,6 +15,7 @@ export class PublishTripUseCase {
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
     private readonly auditService: AuditService,
+    private readonly operationalSanctionsService: OperationalSanctionsService,
   ) {}
 
   async execute(userId: string, tripId: string) {
@@ -32,6 +34,8 @@ export class PublishTripUseCase {
         'Tu licencia vencio. Debes actualizarla antes de publicar viajes.',
       );
     }
+
+    await this.operationalSanctionsService.assertDriverOperationsAllowed(membership.id);
 
     const trip = await this.tripsRepository.findTripById(tripId);
 

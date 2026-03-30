@@ -112,7 +112,22 @@ Resultado esperado:
 - cambia de `DRAFT` a `PUBLISHED`
 - la auditoria registra la publicacion
 
-### 6. Filtros de viajes
+### 6. Sanciones operativas y confianza
+
+Pasos:
+
+1. Generar cancelaciones tardias o `no-show` de prueba dentro de la ventana operativa
+2. Consultar `/confianza`
+3. Intentar ejecutar una accion restringida desde `/viajes`
+
+Resultado esperado:
+
+- la vista de `Confianza` muestra advertencia o sancion activa
+- la fecha estimada de fin aparece visible
+- el backend bloquea la accion restringida
+- la web deja claro si la restriccion afecta al rol de pasajero, conductor o ambos
+
+### 7. Filtros de viajes
 
 Pasos:
 
@@ -125,7 +140,7 @@ Resultado esperado:
 - cambian los resultados de `Viajes disponibles`
 - el contador de filtros activos responde correctamente
 
-### 7. Solicitud de cupo
+### 8. Solicitud de cupo
 
 Pasos:
 
@@ -138,7 +153,7 @@ Resultado esperado:
 - la solicitud aparece en `Mis solicitudes` del pasajero
 - la solicitud aparece en `Solicitudes recibidas` del conductor
 
-### 8. Aceptacion de solicitud y avance del viaje
+### 9. Aceptacion de solicitud y avance del viaje
 
 Pasos:
 
@@ -152,7 +167,7 @@ Resultado esperado:
 - el viaje pasa por los estados esperados
 - al completar, queda habilitado el flujo de confianza
 
-### 9. Calificaciones
+### 10. Calificaciones
 
 Pasos:
 
@@ -165,7 +180,7 @@ Resultado esperado:
 - la calificacion aparece en `Calificaciones emitidas`
 - la contraparte la ve en `Calificaciones recibidas`
 
-### 10. Reportes
+### 11. Reportes
 
 Pasos:
 
@@ -177,7 +192,7 @@ Resultado esperado:
 - el reporte aparece en `Mis reportes`
 - la auditoria registra el evento de reporte creado
 
-### 11. Auditoria y revision administrativa
+### 12. Auditoria y revision administrativa
 
 Pasos:
 

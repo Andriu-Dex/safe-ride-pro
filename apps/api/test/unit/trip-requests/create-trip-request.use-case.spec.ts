@@ -1,10 +1,11 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   MembershipStatus,
   TripRouteMode,
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { CreateTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/create-trip-request.use-case';
 import type { TripRequestsRepository } from '../../../src/modules/trip-requests/application/ports/trip-requests.repository';
 
@@ -24,10 +25,19 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
   };
 }
 
+function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
+  return {
+    synchronizeAutomaticSanctions: jest.fn(),
+    assertPassengerOperationsAllowed: jest.fn(),
+    assertDriverOperationsAllowed: jest.fn(),
+  } as unknown as jest.Mocked<OperationalSanctionsService>;
+}
+
 describe('CreateTripRequestUseCase', () => {
   it('rejects when the user tries to request a trip owned by the same driver', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new CreateTripRequestUseCase(repository);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(repository, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -67,7 +77,8 @@ describe('CreateTripRequestUseCase', () => {
 
   it('rejects custom detour points for direct routes', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new CreateTripRequestUseCase(repository);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(repository, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-2',
@@ -110,5 +121,38 @@ describe('CreateTripRequestUseCase', () => {
     );
 
     expect(repository.createTripRequest).not.toHaveBeenCalled();
+  });
+
+  it('blocks trip requests when the passenger has an active operational restriction', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(repository, sanctionsService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+    });
+    sanctionsService.assertPassengerOperationsAllowed.mockRejectedValue(
+      new ForbiddenException(
+        'Tu membresia tiene una restriccion temporal para operar como pasajero hasta 01/01/2030.',
+      ),
+    );
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'Tu membresia tiene una restriccion temporal para operar como pasajero hasta 01/01/2030.',
+      ),
+    );
+
+    expect(repository.findTripById).not.toHaveBeenCalled();
   });
 });

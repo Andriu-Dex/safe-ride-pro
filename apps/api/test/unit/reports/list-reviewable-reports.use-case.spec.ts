@@ -38,11 +38,38 @@ function buildRegularUser(): CurrentUserContext {
         id: 'membership-student',
         institutionId: 'institution-1',
         institutionName: 'UTA',
+        institutionIsActive: true,
         role: InstitutionMembershipRole.Student,
         membershipStatus: MembershipStatus.Active,
         studentCode: 'STUDENT-001',
         isDefault: true,
         driverVerificationStatus: DriverVerificationStatus.NotRequested,
+      },
+    ],
+  };
+}
+
+function buildInstitutionAdminUser(
+  overrides?: Partial<CurrentUserContext['memberships'][number]>,
+): CurrentUserContext {
+  return {
+    id: 'admin-1',
+    email: 'admin@uta.edu.ec',
+    fullName: 'Admin UTA',
+    globalRole: GlobalUserRole.User,
+    accountStatus: AccountStatus.Active,
+    memberships: [
+      {
+        id: 'membership-admin',
+        institutionId: 'institution-1',
+        institutionName: 'UTA',
+        institutionIsActive: true,
+        role: InstitutionMembershipRole.InstitutionAdmin,
+        membershipStatus: MembershipStatus.Active,
+        studentCode: 'ADMIN-001',
+        isDefault: true,
+        driverVerificationStatus: DriverVerificationStatus.NotRequested,
+        ...overrides,
       },
     ],
   };
@@ -56,6 +83,22 @@ describe('ListReviewableReportsUseCase', () => {
     await expect(
       useCase.execute({
         currentUser: buildRegularUser(),
+        status: ReportStatus.Pending,
+      }),
+    ).rejects.toThrow(new ForbiddenException('No tienes permisos para revisar reportes.'));
+
+    expect(repository.listReviewableReports).not.toHaveBeenCalled();
+  });
+
+  it('forbids access when the administrative membership belongs to an inactive institution', async () => {
+    const repository = createReportsRepositoryMock();
+    const useCase = new ListReviewableReportsUseCase(repository);
+
+    await expect(
+      useCase.execute({
+        currentUser: buildInstitutionAdminUser({
+          institutionIsActive: false,
+        }),
         status: ReportStatus.Pending,
       }),
     ).rejects.toThrow(new ForbiddenException('No tienes permisos para revisar reportes.'));

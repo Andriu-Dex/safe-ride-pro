@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
+  CancellationTiming,
   DriverLicenseStatus,
   DriverVerificationStatus,
   LuggagePolicy,
@@ -11,6 +12,7 @@ import {
 
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
+import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { CancelTripUseCase } from '../../../src/modules/trips/application/use-cases/cancel-trip.use-case';
 import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-cases/complete-trip.use-case';
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
@@ -29,6 +31,14 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
   };
+}
+
+function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
+  return {
+    synchronizeAutomaticSanctions: jest.fn(),
+    assertPassengerOperationsAllowed: jest.fn(),
+    assertDriverOperationsAllowed: jest.fn(),
+  } as unknown as jest.Mocked<OperationalSanctionsService>;
 }
 
 function buildTrip(status: TripStatus, overrides: Partial<TripRecord> = {}): TripRecord {
@@ -84,7 +94,8 @@ describe('Trip status transition use cases', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new PublishTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new PublishTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -113,7 +124,8 @@ describe('Trip status transition use cases', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new PublishTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new PublishTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -143,6 +155,7 @@ describe('Trip status transition use cases', () => {
         status: TripStatus.Full,
       },
     });
+    expect(sanctionsService.assertDriverOperationsAllowed).toHaveBeenCalledWith('membership-1');
   });
 
   it('rejects publishing a trip when the vehicle is inactive or the departure time already passed', async () => {
@@ -150,7 +163,8 @@ describe('Trip status transition use cases', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new PublishTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new PublishTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -182,7 +196,8 @@ describe('Trip status transition use cases', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new PublishTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new PublishTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -205,7 +220,8 @@ describe('Trip status transition use cases', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new StartTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new StartTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -239,6 +255,7 @@ describe('Trip status transition use cases', () => {
         status: TripStatus.InProgress,
       },
     });
+    expect(sanctionsService.assertDriverOperationsAllowed).toHaveBeenCalledWith('membership-1');
   });
 
   it('rejects starting a trip too early or after its estimated arrival time', async () => {
@@ -246,7 +263,8 @@ describe('Trip status transition use cases', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new StartTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new StartTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -285,7 +303,8 @@ describe('Trip status transition use cases', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new StartTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new StartTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -341,7 +360,8 @@ describe('Trip status transition use cases', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new CancelTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CancelTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -367,5 +387,68 @@ describe('Trip status transition use cases', () => {
         status: TripStatus.Cancelled,
       },
     });
+    expect(sanctionsService.synchronizeAutomaticSanctions).not.toHaveBeenCalled();
+  });
+
+  it('recalculates sanctions when a trip is cancelled late by the driver', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CancelTripUseCase(repository, auditService, sanctionsService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Published));
+    repository.cancelTripAndActiveRequests.mockResolvedValue(
+      buildTrip(TripStatus.Cancelled, {
+        cancellationTiming: CancellationTiming.Late,
+        cancelledAt: new Date('2030-01-01T09:40:00.000Z'),
+      }),
+    );
+
+    await useCase.execute('user-1', 'trip-1');
+
+    expect(sanctionsService.synchronizeAutomaticSanctions).toHaveBeenCalledWith('membership-1');
+  });
+
+  it('blocks publishing or starting when the operational sanctions restrict the driver role', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const publishUseCase = new PublishTripUseCase(repository, auditService, sanctionsService);
+    const startUseCase = new StartTripUseCase(repository, auditService, sanctionsService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    sanctionsService.assertDriverOperationsAllowed.mockRejectedValue(
+      new ForbiddenException(
+        'Tu membresia tiene una restriccion temporal para operar como conductor hasta 01/01/2030.',
+      ),
+    );
+
+    await expect(publishUseCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new ForbiddenException(
+        'Tu membresia tiene una restriccion temporal para operar como conductor hasta 01/01/2030.',
+      ),
+    );
+    await expect(startUseCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new ForbiddenException(
+        'Tu membresia tiene una restriccion temporal para operar como conductor hasta 01/01/2030.',
+      ),
+    );
   });
 });

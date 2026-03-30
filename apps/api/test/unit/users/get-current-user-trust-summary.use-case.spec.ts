@@ -7,6 +7,7 @@ import {
   MembershipStatus,
 } from '@saferidepro/shared-types';
 
+import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { GetCurrentUserTrustSummaryUseCase } from '../../../src/modules/users/application/use-cases/get-current-user-trust-summary.use-case';
 import type {
   TrustSummary,
@@ -20,6 +21,14 @@ function createUsersRepositoryMock(): jest.Mocked<UsersRepository> {
     updateProfile: jest.fn(),
     getTrustSummary: jest.fn(),
   };
+}
+
+function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
+  return {
+    synchronizeAutomaticSanctions: jest.fn(),
+    assertPassengerOperationsAllowed: jest.fn(),
+    assertDriverOperationsAllowed: jest.fn(),
+  } as unknown as jest.Mocked<OperationalSanctionsService>;
 }
 
 function buildUserProfile(overrides: Partial<UserProfile> = {}): UserProfile {
@@ -71,20 +80,24 @@ function buildTrustSummary(): TrustSummary {
 describe('GetCurrentUserTrustSummaryUseCase', () => {
   it('returns the summary for the active default membership', async () => {
     const repository = createUsersRepositoryMock();
-    const useCase = new GetCurrentUserTrustSummaryUseCase(repository);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new GetCurrentUserTrustSummaryUseCase(repository, sanctionsService);
 
     repository.findById.mockResolvedValue(buildUserProfile());
     repository.getTrustSummary.mockResolvedValue(buildTrustSummary());
+    sanctionsService.synchronizeAutomaticSanctions.mockResolvedValue([]);
 
     const response = await useCase.execute('user-1');
 
     expect(response.membershipId).toBe('membership-1');
     expect(repository.getTrustSummary).toHaveBeenCalledWith('membership-1');
+    expect(sanctionsService.synchronizeAutomaticSanctions).toHaveBeenCalledWith('membership-1');
   });
 
   it('rejects missing users or users without an active membership', async () => {
     const repository = createUsersRepositoryMock();
-    const useCase = new GetCurrentUserTrustSummaryUseCase(repository);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new GetCurrentUserTrustSummaryUseCase(repository, sanctionsService);
 
     repository.findById
       .mockResolvedValueOnce(null)

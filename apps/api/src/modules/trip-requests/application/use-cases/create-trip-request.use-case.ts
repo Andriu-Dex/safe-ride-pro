@@ -9,6 +9,7 @@ import {
   TRIP_REQUESTS_REPOSITORY,
   TripRequestsRepository,
 } from '../ports/trip-requests.repository';
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 
 export type CreateTripRequestCommand = {
   userId: string;
@@ -25,6 +26,7 @@ export class CreateTripRequestUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
+    private readonly operationalSanctionsService: OperationalSanctionsService,
   ) {}
 
   async execute(command: CreateTripRequestCommand) {
@@ -33,6 +35,8 @@ export class CreateTripRequestUseCase {
     if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
       throw new ForbiddenException('No tienes una membresia activa para solicitar viajes.');
     }
+
+    await this.operationalSanctionsService.assertPassengerOperationsAllowed(membership.id);
 
     const trip = await this.tripRequestsRepository.findTripById(command.tripId);
 

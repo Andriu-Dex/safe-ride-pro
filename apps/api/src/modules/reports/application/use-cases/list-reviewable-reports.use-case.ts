@@ -2,7 +2,7 @@ import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
   GlobalUserRole,
   InstitutionMembershipRole,
-  MembershipStatus,
+  isOperationalMembership,
   ReportStatus,
 } from '@saferidepro/shared-types';
 
@@ -69,7 +69,7 @@ export class ListReviewableReportsUseCase {
       .filter(
         (membership) =>
           membership.role === InstitutionMembershipRole.InstitutionAdmin &&
-          membership.membershipStatus === MembershipStatus.Active,
+          isOperationalMembership(membership),
       )
       .map((membership) => membership.institutionId);
   }

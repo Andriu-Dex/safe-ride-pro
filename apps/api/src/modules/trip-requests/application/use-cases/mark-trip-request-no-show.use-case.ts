@@ -5,12 +5,14 @@ import {
   TRIP_REQUESTS_REPOSITORY,
   TripRequestsRepository,
 } from '../ports/trip-requests.repository';
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 
 @Injectable()
 export class MarkTripRequestNoShowUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
+    private readonly operationalSanctionsService: OperationalSanctionsService,
   ) {}
 
   async execute(userId: string, requestId: string, reviewNote?: string) {
@@ -55,6 +57,10 @@ export class MarkTripRequestNoShowUseCase {
         'La solicitud ya no pudo marcarse como no-show por un cambio reciente en su estado.',
       );
     }
+
+    await this.operationalSanctionsService.synchronizeAutomaticSanctions(
+      updatedTripRequest.passengerMembershipId,
+    );
 
     return {
       message: 'No-show registrado correctamente.',

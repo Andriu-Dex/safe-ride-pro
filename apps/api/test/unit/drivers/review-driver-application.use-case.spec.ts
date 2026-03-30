@@ -41,6 +41,7 @@ function buildAdminUser(): CurrentUserContext {
         id: 'membership-admin',
         institutionId: 'institution-1',
         institutionName: 'UTA',
+        institutionIsActive: true,
         role: InstitutionMembershipRole.InstitutionAdmin,
         membershipStatus: MembershipStatus.Active,
         studentCode: 'ADMIN-001',
@@ -227,6 +228,38 @@ describe('ReviewDriverApplicationUseCase', () => {
         membershipId: 'membership-target',
         decision: DriverVerificationStatus.Approved,
       }),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'No tienes permisos para revisar solicitudes de esta institucion.',
+      ),
+    );
+  });
+
+  it('rejects inactive institutional contexts even if the role is administrative', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewDriverApplicationUseCase(repository, auditService);
+
+    repository.findMembershipById.mockResolvedValue(buildTargetMembership());
+
+    await expect(
+      useCase.execute(
+        {
+          ...buildAdminUser(),
+          memberships: [
+            {
+              ...buildAdminUser().memberships[0],
+              institutionIsActive: false,
+            },
+          ],
+        },
+        {
+          membershipId: 'membership-target',
+          decision: DriverVerificationStatus.Approved,
+        },
+      ),
     ).rejects.toThrow(
       new ForbiddenException(
         'No tienes permisos para revisar solicitudes de esta institucion.',

@@ -26,7 +26,10 @@ export class PrismaDriversRepository implements DriversRepository {
     const membership = await this.prisma.userInstitutionMembership.findFirst({
       where: {
         userId,
-        isDefault: true,
+        membershipStatus: 'ACTIVE',
+        institution: {
+          isActive: true,
+        },
       },
       include: {
         institution: true,
@@ -36,6 +39,7 @@ export class PrismaDriversRepository implements DriversRepository {
           },
         },
       },
+      orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
     });
 
     return membership ? this.mapMembership(membership) : null;

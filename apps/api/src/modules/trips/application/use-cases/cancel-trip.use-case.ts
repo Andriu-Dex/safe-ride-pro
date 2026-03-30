@@ -1,8 +1,9 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { MembershipStatus, TripStatus } from '@saferidepro/shared-types';
+import { CancellationTiming, MembershipStatus, TripStatus } from '@saferidepro/shared-types';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   TRIPS_REPOSITORY,
   TripsRepository,
@@ -14,6 +15,7 @@ export class CancelTripUseCase {
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
     private readonly auditService: AuditService,
+    private readonly operationalSanctionsService: OperationalSanctionsService,
   ) {}
 
   async execute(userId: string, tripId: string) {
@@ -53,6 +55,10 @@ export class CancelTripUseCase {
         status: updatedTrip.status,
       },
     });
+
+    if (updatedTrip.cancellationTiming === CancellationTiming.Late) {
+      await this.operationalSanctionsService.synchronizeAutomaticSanctions(membership.id);
+    }
 
     return {
       message: 'Viaje cancelado correctamente.',

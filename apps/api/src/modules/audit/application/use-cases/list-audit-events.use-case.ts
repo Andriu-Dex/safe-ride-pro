@@ -2,7 +2,7 @@ import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
   GlobalUserRole,
   InstitutionMembershipRole,
-  MembershipStatus,
+  isOperationalMembership,
 } from '@saferidepro/shared-types';
 
 import { CurrentUserContext } from '../../../auth/application/types/current-user-context.type';
@@ -75,7 +75,7 @@ export class ListAuditEventsUseCase {
       .filter(
         (membership) =>
           membership.role === InstitutionMembershipRole.InstitutionAdmin &&
-          membership.membershipStatus === MembershipStatus.Active,
+          isOperationalMembership(membership),
       )
       .map((membership) => membership.institutionId);
   }

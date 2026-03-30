@@ -11,6 +11,7 @@ import {
 
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
+import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { CreateTripUseCase } from '../../../src/modules/trips/application/use-cases/create-trip.use-case';
 import type {
   CreateTripInput,
@@ -30,6 +31,14 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
   };
+}
+
+function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
+  return {
+    synchronizeAutomaticSanctions: jest.fn(),
+    assertPassengerOperationsAllowed: jest.fn(),
+    assertDriverOperationsAllowed: jest.fn(),
+  } as unknown as jest.Mocked<OperationalSanctionsService>;
 }
 
 function buildCreatedTrip(input: CreateTripInput): TripRecord {
@@ -71,7 +80,8 @@ describe('CreateTripUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new CreateTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -107,7 +117,8 @@ describe('CreateTripUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new CreateTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -154,7 +165,8 @@ describe('CreateTripUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new CreateTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -200,7 +212,8 @@ describe('CreateTripUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new CreateTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -272,6 +285,7 @@ describe('CreateTripUseCase', () => {
         departureAt: '2030-01-01T10:00:00.000Z',
       },
     });
+    expect(sanctionsService.assertDriverOperationsAllowed).toHaveBeenCalledWith('membership-1');
   });
 
   it('blocks creating a trip when the approved driver license is expired', async () => {
@@ -279,7 +293,8 @@ describe('CreateTripUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new CreateTripUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -313,5 +328,51 @@ describe('CreateTripUseCase', () => {
         'Tu licencia vencio. Debes actualizarla antes de crear nuevos viajes.',
       ),
     );
+  });
+
+  it('blocks creating a trip when the operational sanctions restrict the driver role', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    sanctionsService.assertDriverOperationsAllowed.mockRejectedValue(
+      new ForbiddenException(
+        'Tu membresia tiene una restriccion temporal para operar como conductor hasta 01/01/2030.',
+      ),
+    );
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        vehicleId: 'vehicle-1',
+        routeMode: TripRouteMode.DirectRoute,
+        originLabel: 'Huachi',
+        destinationLabel: 'Centro',
+        originLatitude: -1.25,
+        originLongitude: -78.62,
+        destinationLatitude: -1.24,
+        destinationLongitude: -78.61,
+        departureAt: '2030-01-01T10:00:00.000Z',
+        estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+        seatCount: 3,
+        basePriceReference: 2.5,
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'Tu membresia tiene una restriccion temporal para operar como conductor hasta 01/01/2030.',
+      ),
+    );
+
+    expect(repository.findVehicleByIdForMembership).not.toHaveBeenCalled();
   });
 });

@@ -283,6 +283,12 @@ En la primera version:
 - no habra viajes cruzados entre instituciones
 - los admins institucionales solo pueden operar sobre entidades de sus instituciones activas
 - un admin institucional no puede revisar reportes en los que participa como reportante o reportado
+- el sistema debe elegir como contexto operativo la membresia activa prioritaria dentro de una institucion activa
+- si la membresia por defecto deja de ser operativa, el sistema debe caer a otra membresia activa disponible antes de bloquear al usuario
+- si no existe ninguna membresia operativa, la web no debe seguir ofreciendo modulos operativos ni acciones de conductor, vehiculos, viajes o confianza
+- una membresia `ACTIVE` dentro de una institucion inactiva no debe otorgar permisos administrativos ni operativos
+- si una institucion se suspende mientras el usuario ya tiene la sesion abierta, la sesion puede seguir autenticada, pero debe degradarse a un estado no operativo
+- la web debe resincronizar la sesion al recuperar foco y tambien de forma periodica para detectar suspensiones institucionales sin requerir nuevo login
 
 ### 8.5 Escalabilidad futura
 
@@ -306,16 +312,23 @@ Debe considerar:
 
 ### 9.2 Regla funcional
 
-Un usuario puede ser advertido, restringido, suspendido o bloqueado por:
+La reputacion informativa y la sancion operativa deben tratarse por separado.
 
-- reputacion muy baja
-- reportes graves confirmados
+La reputacion resume comportamiento.  
+La sancion restringe acciones concretas cuando existe reincidencia reciente.
+
+Un usuario puede ser advertido, restringido o suspendido por:
+
 - incumplimiento reiterado
-- fraude o conducta critica
+- cancelaciones tardias
+- no-show
+- reportes resueltos por administracion
+
+En esta version no se aplican sanciones automaticas fuertes por una calificacion baja aislada.
 
 ### 9.3 Decision de diseno
 
-La formula exacta de reputacion queda pendiente para una version posterior, pero el modelo del sistema debe dejar espacio para:
+La formula exacta de reputacion agregada queda abierta para versiones posteriores, pero el sistema ya debe soportar:
 
 - score agregado
 - contador de viajes
@@ -334,6 +347,72 @@ El sistema debe poder calcular al menos:
 - cancelaciones tardias de solicitudes como pasajero
 - no-show registrados sobre la membresia del pasajero
 - reportes resueltos recibidos
+
+### 9.5 Tipos de sancion operativa
+
+- `WARNING`: advertencia visible, sin bloqueo operativo
+- `LIMITED_PASSENGER`: bloquea nuevas solicitudes de viaje
+- `LIMITED_DRIVER`: bloquea crear, publicar e iniciar viajes
+- `SUSPENDED`: bloquea operacion de movilidad como pasajero y conductor
+
+### 9.6 Ventanas de evaluacion
+
+- conducta operativa: ultimos `30` dias
+- reportes resueltos: ultimos `60` dias
+- reputacion promedio: valor informativo, no sancionador por si solo
+
+### 9.7 Umbrales automaticos vigentes
+
+#### 9.7.1 No-show de pasajero
+
+- `2` en 30 dias: `WARNING`
+- `3` en 30 dias: `LIMITED_PASSENGER` por `7` dias
+- `4` o mas en 30 dias: `LIMITED_PASSENGER` por `14` dias
+
+#### 9.7.2 Cancelaciones tardias de pasajero
+
+- `2` en 30 dias: `WARNING`
+- `3` en 30 dias: `LIMITED_PASSENGER` por `3` dias
+- `4` o mas en 30 dias: `LIMITED_PASSENGER` por `7` dias
+
+#### 9.7.3 Cancelaciones tardias de conductor
+
+- `2` en 30 dias: `WARNING`
+- `3` en 30 dias: `LIMITED_DRIVER` por `7` dias
+- `4` o mas en 30 dias: `LIMITED_DRIVER` por `14` dias
+
+#### 9.7.4 Reportes resueltos recibidos
+
+- `1` reporte resuelto: seguimiento administrativo, sin sancion automatica fuerte
+- `2` reportes resueltos en 60 dias: `SUSPENDED` por `7` dias
+- `3` o mas reportes resueltos en 60 dias: `SUSPENDED` por `15` dias
+
+### 9.8 Reglas de aplicacion tecnica
+
+- las sanciones se aplican por `membership`, no por usuario global
+- toda sancion activa debe quedar auditada
+- toda sancion vencida debe quedar auditada
+- la web debe mostrar la restriccion vigente y su fecha estimada de fin
+- los endpoints deben bloquear acciones operativas segun el alcance de la sancion
+
+### 9.9 Restricciones activas del MVP
+
+`LIMITED_PASSENGER` bloquea:
+
+- `createTripRequest`
+
+`LIMITED_DRIVER` bloquea:
+
+- `createTrip`
+- `publishTrip`
+- `startTrip`
+
+`SUSPENDED` bloquea:
+
+- `createTripRequest`
+- `createTrip`
+- `publishTrip`
+- `startTrip`
 
 ---
 

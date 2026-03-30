@@ -1,6 +1,12 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { MembershipStatus } from '@saferidepro/shared-types';
+import {
+  isOperationalMembership,
+  SANCTION_OPERATIONAL_WINDOW_DAYS,
+  SANCTION_REPORTS_WINDOW_DAYS,
+  selectOperationalMembership,
+} from '@saferidepro/shared-types';
 
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import { USERS_REPOSITORY, UsersRepository } from '../ports/users.repository';
 
 @Injectable()
@@ -8,6 +14,7 @@ export class GetCurrentUserTrustSummaryUseCase {
   constructor(
     @Inject(USERS_REPOSITORY)
     private readonly usersRepository: UsersRepository,
+    private readonly operationalSanctionsService: OperationalSanctionsService,
   ) {}
 
   async execute(userId: string) {
@@ -17,14 +24,27 @@ export class GetCurrentUserTrustSummaryUseCase {
       throw new NotFoundException('El usuario solicitado no existe.');
     }
 
-    const membership = user.memberships.find((item) => item.isDefault) ?? user.memberships[0];
+    const membership = selectOperationalMembership(user.memberships);
 
-    if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
+    if (!membership || !isOperationalMembership(membership)) {
       throw new ForbiddenException(
         'No tienes una membresia activa para consultar tu resumen de confianza.',
       );
     }
 
-    return this.usersRepository.getTrustSummary(membership.id);
+    const [trustSummary, activeSanctions] = await Promise.all([
+      this.usersRepository.getTrustSummary(membership.id),
+      this.operationalSanctionsService.synchronizeAutomaticSanctions(membership.id),
+    ]);
+
+    return {
+      ...trustSummary,
+      sanctionPolicy: {
+        operationalWindowDays: SANCTION_OPERATIONAL_WINDOW_DAYS,
+        reportsWindowDays: SANCTION_REPORTS_WINDOW_DAYS,
+        lastComputedAt: new Date(),
+      },
+      activeSanctions,
+    };
   }
 }

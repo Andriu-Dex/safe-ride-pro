@@ -4,16 +4,17 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
 import { useAuth } from '../../modules/auth/hooks/use-auth';
+import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
 import { AppLogo } from '../ui/app-logo';
 import { Button } from '../ui/button';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Resumen' },
-  { href: '/conductor', label: 'Conductor' },
-  { href: '/vehiculos', label: 'Vehiculos' },
-  { href: '/viajes', label: 'Viajes' },
-  { href: '/confianza', label: 'Confianza' },
-  { href: '/auditoria', label: 'Auditoria' },
+  { href: '/dashboard', label: 'Resumen', requiresOperationalMembership: false },
+  { href: '/conductor', label: 'Conductor', requiresOperationalMembership: true },
+  { href: '/vehiculos', label: 'Vehiculos', requiresOperationalMembership: true },
+  { href: '/viajes', label: 'Viajes', requiresOperationalMembership: true },
+  { href: '/confianza', label: 'Confianza', requiresOperationalMembership: true },
+  { href: '/auditoria', label: 'Auditoria', requiresOperationalMembership: false },
 ] as const;
 
 type AuthenticatedShellProps = Readonly<{
@@ -25,8 +26,9 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const { authSession, signOut } = useAuth();
 
-  const defaultMembership = authSession?.user.memberships.find((membership) => membership.isDefault)
-    ?? authSession?.user.memberships[0];
+  const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
+  const currentMembership =
+    operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
 
   const handleSignOut = (): void => {
     signOut();
@@ -43,6 +45,22 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           <nav className="sidebar-nav">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
+              const isDisabled =
+                item.requiresOperationalMembership &&
+                !operationalAccess.hasOperationalMembership;
+
+              if (isDisabled) {
+                return (
+                  <div
+                    key={item.href}
+                    aria-disabled="true"
+                    className="sidebar-link sidebar-link-disabled"
+                  >
+                    <span>{item.label}</span>
+                    <span>Bloqueado</span>
+                  </div>
+                );
+              }
 
               return (
                 <Link
@@ -61,6 +79,16 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           </nav>
         </section>
 
+        {!operationalAccess.hasOperationalMembership &&
+        operationalAccess.title &&
+        operationalAccess.message ? (
+          <section className="sidebar-note sidebar-note-warning">
+            <p className="sidebar-label">Acceso operativo</p>
+            <strong>{operationalAccess.title}</strong>
+            <p>{operationalAccess.message}</p>
+          </section>
+        ) : null}
+
         <section className="sidebar-note">
           <p className="sidebar-label">Estado del MVP</p>
           <strong>Backend operativo</strong>
@@ -72,7 +100,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         <section className="sidebar-user-card">
           <p className="sidebar-label">Sesion activa</p>
           <strong>{authSession?.user.fullName}</strong>
-          <p>{defaultMembership?.institutionName ?? 'Institucion no disponible'}</p>
+          <p>{currentMembership?.institutionName ?? 'Institucion no disponible'}</p>
           <p>{authSession?.user.email}</p>
           <Button variant="secondary" onClick={handleSignOut}>
             Cerrar sesion

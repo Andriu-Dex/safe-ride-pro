@@ -19,6 +19,7 @@ export type AuthMembershipRecord = {
   id: string;
   institutionId: string;
   institutionName: string;
+  institutionIsActive?: boolean;
   role: InstitutionMembershipRole;
   membershipStatus: MembershipStatus;
   studentCode: string;

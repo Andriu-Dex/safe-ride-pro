@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { selectOperationalMembership } from '@saferidepro/shared-types';
 import { createHash } from 'node:crypto';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
@@ -33,8 +34,7 @@ export class VerifyEmailUseCase {
       new Date(),
     );
 
-    const defaultMembership = verifiedUser.memberships.find((membership) => membership.isDefault)
-      ?? verifiedUser.memberships[0];
+    const defaultMembership = selectOperationalMembership(verifiedUser.memberships);
 
     await this.auditService.record({
       institutionId: defaultMembership?.institutionId,

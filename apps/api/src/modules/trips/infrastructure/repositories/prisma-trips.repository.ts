@@ -33,7 +33,10 @@ export class PrismaTripsRepository implements TripsRepository {
     const membership = await this.prisma.userInstitutionMembership.findFirst({
       where: {
         userId,
-        isDefault: true,
+        membershipStatus: 'ACTIVE',
+        institution: {
+          isActive: true,
+        },
       },
       include: {
         institution: true,
@@ -43,6 +46,7 @@ export class PrismaTripsRepository implements TripsRepository {
           },
         },
       },
+      orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
     });
 
     if (!membership) {

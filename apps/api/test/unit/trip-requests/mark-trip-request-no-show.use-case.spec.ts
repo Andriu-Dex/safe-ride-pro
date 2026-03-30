@@ -5,6 +5,7 @@ import {
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { MarkTripRequestNoShowUseCase } from '../../../src/modules/trip-requests/application/use-cases/mark-trip-request-no-show.use-case';
 import type {
   TripRequestMembershipRecord,
@@ -27,6 +28,14 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
     cancelTripRequest: jest.fn(),
     markTripRequestAsNoShow: jest.fn(),
   };
+}
+
+function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
+  return {
+    synchronizeAutomaticSanctions: jest.fn(),
+    assertPassengerOperationsAllowed: jest.fn(),
+    assertDriverOperationsAllowed: jest.fn(),
+  } as unknown as jest.Mocked<OperationalSanctionsService>;
 }
 
 function buildTripRequestRecord(overrides: Partial<TripRequestRecord> = {}): TripRequestRecord {
@@ -67,7 +76,8 @@ function buildTripRequestRecord(overrides: Partial<TripRequestRecord> = {}): Tri
 describe('MarkTripRequestNoShowUseCase', () => {
   it('registers a no-show when the driver owns the request and provides a note', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new MarkTripRequestNoShowUseCase(repository);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new MarkTripRequestNoShowUseCase(repository, sanctionsService);
 
     repository.findTripRequestById.mockResolvedValue(buildTripRequestRecord());
     repository.markTripRequestAsNoShow.mockResolvedValue(
@@ -88,11 +98,15 @@ describe('MarkTripRequestNoShowUseCase', () => {
       'request-1',
       'El pasajero no llego al punto acordado.',
     );
+    expect(sanctionsService.synchronizeAutomaticSanctions).toHaveBeenCalledWith(
+      'membership-passenger',
+    );
   });
 
   it('rejects invalid no-show scenarios', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new MarkTripRequestNoShowUseCase(repository);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new MarkTripRequestNoShowUseCase(repository, sanctionsService);
 
     repository.findTripRequestById
       .mockResolvedValueOnce(null)

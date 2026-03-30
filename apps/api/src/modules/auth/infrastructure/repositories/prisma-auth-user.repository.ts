@@ -69,9 +69,7 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
               },
             },
           },
-          orderBy: {
-            joinedAt: 'asc',
-          },
+          orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
         },
       },
     });
@@ -111,6 +109,7 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
               },
             },
           },
+          orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
         },
       },
     });
@@ -178,16 +177,17 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
           accountStatus: AccountStatus.ACTIVE,
         },
         include: {
-        memberships: {
-          include: {
-            institution: true,
-            driverProfile: {
-              select: {
-                licenseExpiresAt: true,
+          memberships: {
+            include: {
+              institution: true,
+              driverProfile: {
+                select: {
+                  licenseExpiresAt: true,
+                },
               },
             },
+            orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
           },
-        },
         },
       }),
     ]);
@@ -214,7 +214,7 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
       driverProfile?: {
         licenseExpiresAt: Date;
       } | null;
-      institution: { name: string };
+      institution: { name: string; isActive: boolean };
     }[];
   }): AuthUserRecord {
     return {
@@ -229,6 +229,7 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
         id: membership.id,
         institutionId: membership.institutionId,
         institutionName: membership.institution.name,
+        institutionIsActive: membership.institution.isActive,
         role: membership.role as unknown as InstitutionMembershipRole,
         membershipStatus: membership.membershipStatus as unknown as SharedMembershipStatus,
         studentCode: membership.studentCode,

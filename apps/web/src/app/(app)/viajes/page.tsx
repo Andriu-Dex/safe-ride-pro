@@ -4,6 +4,9 @@ import {
   CancellationTiming,
   DriverLicenseStatus,
   DriverVerificationStatus,
+  isOperationalMembership,
+  OperationalSanctionType,
+  selectOperationalMembership,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -15,10 +18,12 @@ import { ApiError } from '../../../lib/api-client';
 import { Button } from '../../../components/ui/button';
 import { InfoCard } from '../../../components/ui/info-card';
 import { InputField } from '../../../components/ui/input-field';
+import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import {
   getDriverLicenseAlertMessage,
   getDriverStatusLabel,
@@ -63,6 +68,9 @@ import type { TripFilters, TripRecord } from '../../../modules/trips/types/trip'
 import { getVehicleOverview } from '../../../modules/vehicles/lib/vehicle-api';
 import { getLuggagePolicyLabel, getVehicleTypeLabel } from '../../../modules/vehicles/lib/vehicle-labels';
 import type { VehicleOverview } from '../../../modules/vehicles/types/vehicle';
+import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
+import { getTrustRestrictions } from '../../../modules/users/lib/trust-labels';
+import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 
 const EMPTY_TRIP_FORM = {
   vehicleId: '',
@@ -162,8 +170,10 @@ function canCreateRequestForTrip(trip: TripRecord, hasActiveRequest: boolean): b
 }
 
 export default function TripsPage() {
-  const { authSession, isHydrated } = useAuth();
+  const { authSession, isHydrated, refreshSession } = useAuth();
+  const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [vehicleOverview, setVehicleOverview] = useState<VehicleOverview | null>(null);
+  const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
   const [myTrips, setMyTrips] = useState<TripRecord[]>([]);
   const [availableTrips, setAvailableTrips] = useState<TripRecord[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<TripRequestRecord[]>([]);
@@ -185,8 +195,9 @@ export default function TripsPage() {
   const [requestSuccessMessage, setRequestSuccessMessage] = useState<string | null>(null);
 
   const loadTripsData = async (accessToken: string, filters: TripFilters) => {
-    const [vehicleData, myTripsData, availableTripsData, myTripRequestsData, incomingTripRequestsData] = await Promise.all([
+    const [vehicleData, trustSummaryData, myTripsData, availableTripsData, myTripRequestsData, incomingTripRequestsData] = await Promise.all([
       getVehicleOverview(accessToken),
+      getCurrentUserTrustSummary(accessToken),
       listMyTrips(accessToken, filters),
       listAvailableTrips(accessToken, filters),
       listMyTripRequests(accessToken),
@@ -194,6 +205,7 @@ export default function TripsPage() {
     ]);
 
     setVehicleOverview(vehicleData);
+    setTrustSummary(trustSummaryData);
     setMyTrips(myTripsData);
     setAvailableTrips(availableTripsData);
     setMyRequests(myTripRequestsData);
@@ -212,6 +224,10 @@ export default function TripsPage() {
     try {
       await loadTripsData(authSession.accessToken, tripFilters);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setTripErrorMessage(getApiErrorMessage(error, 'No fue posible sincronizar la informacion de viajes.'));
     } finally {
       if (showSpinner) {
@@ -221,7 +237,18 @@ export default function TripsPage() {
   };
 
   useEffect(() => {
-    if (!isHydrated || !authSession) {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (!authSession || !operationalAccess.hasOperationalMembership) {
+      setVehicleOverview(null);
+      setTrustSummary(null);
+      setMyTrips([]);
+      setAvailableTrips([]);
+      setIncomingRequests([]);
+      setMyRequests([]);
+      setIsLoading(false);
       return;
     }
 
@@ -237,6 +264,10 @@ export default function TripsPage() {
       } catch (error) {
         if (!isMounted) {
           return;
+        }
+
+        if (error instanceof ApiError && error.status === 403) {
+          await refreshSession().catch(() => undefined);
         }
 
         const message = error instanceof ApiError
@@ -255,14 +286,14 @@ export default function TripsPage() {
     return () => {
       isMounted = false;
     };
-  }, [authSession, isHydrated, tripFilters]);
+  }, [authSession, isHydrated, operationalAccess.hasOperationalMembership, tripFilters]);
 
   useAutoRefresh(
     async () => {
       await refreshTripsData();
     },
     {
-      enabled: Boolean(authSession && isHydrated),
+      enabled: Boolean(authSession && isHydrated && operationalAccess.hasOperationalMembership),
       intervalMs: 20_000,
     },
   );
@@ -341,6 +372,10 @@ export default function TripsPage() {
       setTripSuccessMessage(response.message);
       setTripForm(EMPTY_TRIP_FORM);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setTripErrorMessage(getApiErrorMessage(error, 'No fue posible crear el viaje.'));
     } finally {
       setIsCreatingTrip(false);
@@ -371,6 +406,10 @@ export default function TripsPage() {
       await reloadData();
       setTripSuccessMessage(response.message);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setTripErrorMessage(getApiErrorMessage(error, 'No fue posible actualizar el viaje.'));
       await refreshTripsData();
     } finally {
@@ -427,6 +466,10 @@ export default function TripsPage() {
         [trip.id]: EMPTY_REQUEST_DRAFT,
       }));
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setRequestErrorMessage(getApiErrorMessage(error, 'No fue posible enviar la solicitud de viaje.'));
       await refreshTripsData();
     } finally {
@@ -454,6 +497,10 @@ export default function TripsPage() {
       await reloadData();
       setRequestSuccessMessage(response.message);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setRequestErrorMessage(getApiErrorMessage(error, 'No fue posible actualizar la solicitud.'));
       await refreshTripsData();
     } finally {
@@ -493,6 +540,10 @@ export default function TripsPage() {
         [requestId]: DEFAULT_NO_SHOW_NOTE,
       }));
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setRequestErrorMessage(
         getApiErrorMessage(error, 'No fue posible registrar el no-show.'),
       );
@@ -516,6 +567,10 @@ export default function TripsPage() {
       await reloadData();
       setRequestSuccessMessage(response.message);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setRequestErrorMessage(getApiErrorMessage(error, 'No fue posible cancelar la solicitud.'));
       await refreshTripsData();
     } finally {
@@ -523,15 +578,22 @@ export default function TripsPage() {
     }
   };
 
-  const defaultMembershipId = authSession?.user.memberships.find((membership) => membership.isDefault)?.id
-    ?? authSession?.user.memberships[0]?.id;
+  const defaultMembership = selectOperationalMembership(authSession?.user.memberships);
+  const defaultMembershipId =
+    defaultMembership && isOperationalMembership(defaultMembership)
+      ? defaultMembership.id
+      : undefined;
   const driverStatus =
     vehicleOverview?.membership?.effectiveDriverVerificationStatus
     ?? vehicleOverview?.membership?.driverVerificationStatus
     ?? DriverVerificationStatus.NotRequested;
   const licenseStatus = vehicleOverview?.membership?.licenseStatus ?? DriverLicenseStatus.Missing;
   const activeVehicles = (vehicleOverview?.vehicles ?? []).filter((vehicle) => vehicle.isActive);
-  const canCreateTrips = driverStatus === DriverVerificationStatus.Approved && activeVehicles.length > 0;
+  const trustRestrictions = getTrustRestrictions(trustSummary);
+  const canCreateTrips =
+    driverStatus === DriverVerificationStatus.Approved &&
+    activeVehicles.length > 0 &&
+    !trustRestrictions.blocksDriver;
   const driverLicenseAlertMessage = getDriverLicenseAlertMessage(
     licenseStatus,
     vehicleOverview?.membership?.licenseExpiresInDays,
@@ -552,6 +614,29 @@ export default function TripsPage() {
           </p>
         </div>
       </section>
+    );
+  }
+
+  if (!operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message) {
+    return (
+      <>
+        <header className="topbar">
+          <div>
+            <h1 className="topbar-title">Viajes</h1>
+            <p className="topbar-subtitle">
+              Administra tus viajes como conductor y revisa las solicitudes disponibles dentro de tu institucion.
+            </p>
+          </div>
+          <StatusPill label="Operacion bloqueada" tone="warning" />
+        </header>
+
+        <section className="empty-state">
+          <OperationalAccessCard
+            message={operationalAccess.message}
+            title={operationalAccess.title}
+          />
+        </section>
+      </>
     );
   }
 
@@ -611,9 +696,17 @@ export default function TripsPage() {
 
         {!canCreateTrips ? (
           <div className="form-helper">
-            {licenseStatus === DriverLicenseStatus.Expired
+            {trustRestrictions.blocksDriver
+              ? trustRestrictions.message ?? 'Tu membresia tiene una restriccion activa para operar como conductor.'
+              : licenseStatus === DriverLicenseStatus.Expired
               ? 'Tu licencia vencio. Debes renovarla antes de crear, publicar o iniciar viajes.'
               : 'Para crear viajes necesitas tener estado de conductor aprobado y al menos un vehiculo activo.'}
+          </div>
+        ) : null}
+
+        {trustRestrictions.blocksPassenger ? (
+          <div className="form-helper">
+            {trustRestrictions.message ?? 'Tu membresia tiene una restriccion activa para solicitar viajes.'}
           </div>
         ) : null}
 
@@ -696,7 +789,11 @@ export default function TripsPage() {
                     <div className="button-row">
                       {trip.status === TripStatus.Draft ? (
                         <Button
-                          disabled={isMutatingTripId === trip.id || licenseStatus === DriverLicenseStatus.Expired}
+                          disabled={
+                            isMutatingTripId === trip.id ||
+                            licenseStatus === DriverLicenseStatus.Expired ||
+                            trustRestrictions.blocksDriver
+                          }
                           onClick={() => void handleTripAction(trip.id, 'publish')}
                           variant="primary"
                         >
@@ -708,6 +805,7 @@ export default function TripsPage() {
                           disabled={
                             isMutatingTripId === trip.id ||
                             licenseStatus === DriverLicenseStatus.Expired ||
+                            trustRestrictions.blocksDriver ||
                             !canStartTripNow(trip.departureAt, trip.estimatedArrivalAt)
                           }
                           onClick={() => void handleTripAction(trip.id, 'start')}
@@ -928,6 +1026,7 @@ export default function TripsPage() {
                       request.status === TripRequestStatus.Accepted),
                 );
                 const canSubmitRequest = canCreateRequestForTrip(trip, hasActiveRequest);
+                const isPassengerOperationBlocked = trustRestrictions.blocksPassenger;
 
                 return (
                   <div key={trip.id} className="list-card list-card-strong">
@@ -997,11 +1096,17 @@ export default function TripsPage() {
 
                     <div className="button-row">
                       <Button
-                        disabled={!canSubmitRequest || isMutatingRequestId === trip.id}
+                        disabled={
+                          !canSubmitRequest ||
+                          isMutatingRequestId === trip.id ||
+                          isPassengerOperationBlocked
+                        }
                         onClick={() => void handleCreateRequest(trip)}
                       >
                         {hasActiveRequest
                           ? 'Ya solicitaste este viaje'
+                          : isPassengerOperationBlocked
+                            ? 'Solicitud restringida'
                           : trip.status === TripStatus.Full
                             ? 'Sin cupos disponibles'
                             : 'Solicitar cupo'}

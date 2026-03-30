@@ -4,6 +4,7 @@ import {
   DriverVerificationStatus,
   GlobalUserRole,
   InstitutionMembershipRole,
+  isOperationalMembership,
   MembershipStatus,
 } from '@saferidepro/shared-types';
 
@@ -42,7 +43,7 @@ export class ReviewDriverApplicationUseCase {
         (membership) =>
           membership.institutionId === targetMembership.institutionId &&
           membership.role === InstitutionMembershipRole.InstitutionAdmin &&
-          membership.membershipStatus === MembershipStatus.Active,
+          isOperationalMembership(membership),
       );
 
     if (!canReview) {

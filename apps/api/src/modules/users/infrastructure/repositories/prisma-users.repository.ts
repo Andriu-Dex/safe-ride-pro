@@ -12,6 +12,8 @@ import {
   CancellationTiming,
   CANCELLATION_LATE_WINDOW_MINUTES,
   getCancellationTiming,
+  SANCTION_OPERATIONAL_WINDOW_DAYS,
+  SANCTION_REPORTS_WINDOW_DAYS,
   getDaysUntilDriverLicenseExpiration,
   getDriverLicenseStatus,
   getEffectiveDriverVerificationStatus,
@@ -86,6 +88,12 @@ export class PrismaUsersRepository implements UsersRepository {
 
   async getTrustSummary(membershipId: string): Promise<TrustSummary> {
     const computedAt = new Date();
+    const operationalWindowStart = new Date(computedAt);
+    operationalWindowStart.setDate(
+      operationalWindowStart.getDate() - SANCTION_OPERATIONAL_WINDOW_DAYS,
+    );
+    const reportsWindowStart = new Date(computedAt);
+    reportsWindowStart.setDate(reportsWindowStart.getDate() - SANCTION_REPORTS_WINDOW_DAYS);
 
     const [
       ratingAggregate,
@@ -128,6 +136,7 @@ export class PrismaUsersRepository implements UsersRepository {
           status: 'CANCELLED',
           cancelledAt: {
             not: null,
+            gte: operationalWindowStart,
           },
         },
         select: {
@@ -141,6 +150,7 @@ export class PrismaUsersRepository implements UsersRepository {
           status: 'CANCELLED',
           cancelledAt: {
             not: null,
+            gte: operationalWindowStart,
           },
         },
         select: {
@@ -156,12 +166,20 @@ export class PrismaUsersRepository implements UsersRepository {
         where: {
           passengerMembershipId: membershipId,
           status: 'NO_SHOW',
+          reviewedAt: {
+            not: null,
+            gte: operationalWindowStart,
+          },
         },
       }),
       this.prisma.report.count({
         where: {
           reportedMembershipId: membershipId,
           status: 'RESOLVED',
+          reviewedAt: {
+            not: null,
+            gte: reportsWindowStart,
+          },
         },
       }),
     ]);
@@ -221,7 +239,7 @@ export class PrismaUsersRepository implements UsersRepository {
       driverProfile?: {
         licenseExpiresAt: Date;
       } | null;
-      institution: { name: string };
+      institution: { name: string; isActive: boolean };
     }[];
   }): UserProfile {
     return {
@@ -239,6 +257,7 @@ export class PrismaUsersRepository implements UsersRepository {
         id: membership.id,
         institutionId: membership.institutionId,
         institutionName: membership.institution.name,
+        institutionIsActive: membership.institution.isActive,
         role: membership.role as unknown as InstitutionMembershipRole,
         membershipStatus: membership.membershipStatus as unknown as SharedMembershipStatus,
         studentCode: membership.studentCode,

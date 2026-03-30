@@ -28,6 +28,7 @@ export class PrismaInstitutionsRepository implements InstitutionsRepository {
       name: institution.name,
       code: institution.code,
       domains: institution.domains.map((domain) => domain.domain),
+      isActive: institution.isActive,
     }));
   }
 
@@ -56,6 +57,52 @@ export class PrismaInstitutionsRepository implements InstitutionsRepository {
       name: institution.name,
       code: institution.code,
       domains: institution.domains.map((domain) => domain.domain),
+      isActive: institution.isActive,
+    };
+  }
+
+  async findById(institutionId: string): Promise<InstitutionSummary | null> {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      include: {
+        domains: {
+          orderBy: [{ isPrimary: 'desc' }, { domain: 'asc' }],
+        },
+      },
+    });
+
+    if (!institution) {
+      return null;
+    }
+
+    return {
+      id: institution.id,
+      name: institution.name,
+      code: institution.code,
+      domains: institution.domains.map((domain) => domain.domain),
+      isActive: institution.isActive,
+    };
+  }
+
+  async updateStatus(institutionId: string, isActive: boolean): Promise<InstitutionSummary> {
+    const institution = await this.prisma.institution.update({
+      where: { id: institutionId },
+      data: {
+        isActive,
+      },
+      include: {
+        domains: {
+          orderBy: [{ isPrimary: 'desc' }, { domain: 'asc' }],
+        },
+      },
+    });
+
+    return {
+      id: institution.id,
+      name: institution.name,
+      code: institution.code,
+      domains: institution.domains.map((domain) => domain.domain),
+      isActive: institution.isActive,
     };
   }
 }

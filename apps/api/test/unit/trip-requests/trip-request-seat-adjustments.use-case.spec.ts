@@ -1,10 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
 import {
+  CancellationTiming,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { AcceptTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/accept-trip-request.use-case';
 import { CancelTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/cancel-trip-request.use-case';
 import { RejectTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/reject-trip-request.use-case';
@@ -24,6 +26,14 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
     cancelTripRequest: jest.fn(),
     markTripRequestAsNoShow: jest.fn(),
   };
+}
+
+function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
+  return {
+    synchronizeAutomaticSanctions: jest.fn(),
+    assertPassengerOperationsAllowed: jest.fn(),
+    assertDriverOperationsAllowed: jest.fn(),
+  } as unknown as jest.Mocked<OperationalSanctionsService>;
 }
 
 function buildTripRequest(
@@ -174,7 +184,8 @@ describe('Trip request seat adjustment use cases', () => {
 
   it('cancels an accepted request and delegates seat release to the repository', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new CancelTripRequestUseCase(repository);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CancelTripRequestUseCase(repository, sanctionsService);
 
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
@@ -196,11 +207,13 @@ describe('Trip request seat adjustment use cases', () => {
     expect(repository.cancelTripRequest).toHaveBeenCalledWith('request-1');
     expect(response.tripRequest.status).toBe(TripRequestStatus.Cancelled);
     expect(response.tripRequest.tripAvailableSeats).toBe(2);
+    expect(sanctionsService.synchronizeAutomaticSanctions).not.toHaveBeenCalled();
   });
 
   it('blocks cancelling a request after the trip changed state', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new CancelTripRequestUseCase(repository);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CancelTripRequestUseCase(repository, sanctionsService);
 
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
@@ -218,5 +231,32 @@ describe('Trip request seat adjustment use cases', () => {
     );
 
     expect(repository.cancelTripRequest).not.toHaveBeenCalled();
+  });
+
+  it('recalculates sanctions after a late passenger cancellation', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CancelTripRequestUseCase(repository, sanctionsService);
+
+    repository.findTripRequestById.mockResolvedValue(
+      buildTripRequest({
+        status: TripRequestStatus.Accepted,
+        tripAvailableSeats: 1,
+      }),
+    );
+    repository.cancelTripRequest.mockResolvedValue(
+      buildTripRequest({
+        status: TripRequestStatus.Cancelled,
+        tripAvailableSeats: 2,
+        cancelledAt: new Date('2030-01-01T09:50:00.000Z'),
+        cancellationTiming: CancellationTiming.Late,
+      }),
+    );
+
+    await useCase.execute('user-passenger', 'request-1');
+
+    expect(sanctionsService.synchronizeAutomaticSanctions).toHaveBeenCalledWith(
+      'membership-passenger',
+    );
   });
 });

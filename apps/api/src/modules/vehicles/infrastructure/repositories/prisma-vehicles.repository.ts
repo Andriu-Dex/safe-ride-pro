@@ -29,7 +29,10 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
     const membership = await this.prisma.userInstitutionMembership.findFirst({
       where: {
         userId,
-        isDefault: true,
+        membershipStatus: 'ACTIVE',
+        institution: {
+          isActive: true,
+        },
       },
       include: {
         institution: true,
@@ -39,6 +42,7 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
           },
         },
       },
+      orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
     });
 
     if (!membership) {

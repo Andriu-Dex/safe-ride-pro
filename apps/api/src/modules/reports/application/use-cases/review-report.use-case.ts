@@ -2,13 +2,14 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import {
   GlobalUserRole,
   InstitutionMembershipRole,
-  MembershipStatus,
+  isOperationalMembership,
   ReportStatus,
 } from '@saferidepro/shared-types';
 
 import { CurrentUserContext } from '../../../auth/application/types/current-user-context.type';
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   REPORTS_REPOSITORY,
   ReportsRepository,
@@ -26,6 +27,7 @@ export class ReviewReportUseCase {
     @Inject(REPORTS_REPOSITORY)
     private readonly reportsRepository: ReportsRepository,
     private readonly auditService: AuditService,
+    private readonly operationalSanctionsService: OperationalSanctionsService,
   ) {}
 
   async execute(currentUser: CurrentUserContext, command: ReviewReportCommand) {
@@ -41,7 +43,7 @@ export class ReviewReportUseCase {
         (membership) =>
           membership.institutionId === report.institutionId &&
           membership.role === InstitutionMembershipRole.InstitutionAdmin &&
-          membership.membershipStatus === MembershipStatus.Active,
+          isOperationalMembership(membership),
       );
 
     if (!canReview) {
@@ -101,6 +103,12 @@ export class ReviewReportUseCase {
         currentStatus: updatedReport.status,
       },
     });
+
+    if (updatedReport.status === ReportStatus.Resolved) {
+      await this.operationalSanctionsService.synchronizeAutomaticSanctions(
+        updatedReport.reportedMembershipId,
+      );
+    }
 
     return {
       message: 'Reporte revisado correctamente.',

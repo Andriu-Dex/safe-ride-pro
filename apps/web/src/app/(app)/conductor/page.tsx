@@ -4,8 +4,10 @@ import { DriverLicenseStatus, DriverVerificationStatus } from '@saferidepro/shar
 import { useEffect, useState } from 'react';
 
 import { InfoCard } from '../../../components/ui/info-card';
+import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import { DriverApplicationForm } from '../../../modules/driver/components/driver-application-form';
 import { getDriverOverview, listDriverLicenseTypes, submitDriverApplication } from '../../../modules/driver/lib/driver-api';
 import {
@@ -36,6 +38,7 @@ function toDateInputValue(isoDate?: string | null): string {
 
 export default function DriverPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
+  const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [driverOverview, setDriverOverview] = useState<DriverOverview | null>(null);
   const [licenseTypes, setLicenseTypes] = useState<LicenseTypeCatalogItem[]>([]);
   const [formValues, setFormValues] = useState(EMPTY_FORM);
@@ -45,7 +48,14 @@ export default function DriverPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isHydrated || !authSession) {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (!authSession || !operationalAccess.hasOperationalMembership) {
+      setDriverOverview(null);
+      setLicenseTypes([]);
+      setIsLoading(false);
       return;
     }
 
@@ -79,6 +89,10 @@ export default function DriverPage() {
           return;
         }
 
+        if (error instanceof ApiError && error.status === 403) {
+          await refreshSession().catch(() => undefined);
+        }
+
         if (error instanceof ApiError) {
           setErrorMessage(error.message);
         } else {
@@ -96,7 +110,7 @@ export default function DriverPage() {
     return () => {
       isMounted = false;
     };
-  }, [authSession, isHydrated]);
+  }, [authSession, isHydrated, operationalAccess.hasOperationalMembership]);
 
   const handleFormChange = (field: keyof typeof EMPTY_FORM, value: string) => {
     setFormValues((currentValues) => ({
@@ -130,6 +144,10 @@ export default function DriverPage() {
       setSuccessMessage(response.message);
       await refreshSession();
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
       } else {
@@ -151,6 +169,29 @@ export default function DriverPage() {
     licenseStatus,
     driverOverview?.driverProfile?.licenseExpiresInDays ?? driverOverview?.membership?.licenseExpiresInDays,
   );
+
+  if (!isLoading && !operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message) {
+    return (
+      <>
+        <header className="topbar">
+          <div>
+            <h1 className="topbar-title">Conductor</h1>
+            <p className="topbar-subtitle">
+              Gestiona tu habilitacion como conductor institucional antes de registrar vehiculos y publicar viajes.
+            </p>
+          </div>
+          <StatusPill label="Operacion bloqueada" tone="warning" />
+        </header>
+
+        <section className="empty-state">
+          <OperationalAccessCard
+            message={operationalAccess.message}
+            title={operationalAccess.title}
+          />
+        </section>
+      </>
+    );
+  }
 
   return (
     <>

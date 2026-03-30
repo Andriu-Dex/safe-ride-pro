@@ -29,12 +29,16 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
     const membership = await this.prisma.userInstitutionMembership.findFirst({
       where: {
         userId,
-        isDefault: true,
+        membershipStatus: 'ACTIVE',
+        institution: {
+          isActive: true,
+        },
       },
       include: {
         institution: true,
         user: true,
       },
+      orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
     });
 
     if (!membership) {

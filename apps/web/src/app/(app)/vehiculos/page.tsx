@@ -5,8 +5,10 @@ import { useEffect, useState } from 'react';
 
 import { ApiError } from '../../../lib/api-client';
 import { InfoCard } from '../../../components/ui/info-card';
+import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import {
   getDriverLicenseAlertMessage,
   getDriverStatusLabel,
@@ -45,7 +47,8 @@ const EMPTY_FORM = {
 };
 
 export default function VehiclesPage() {
-  const { authSession, isHydrated } = useAuth();
+  const { authSession, isHydrated, refreshSession } = useAuth();
+  const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [vehicleOverview, setVehicleOverview] = useState<VehicleOverview | null>(null);
   const [brands, setBrands] = useState<VehicleBrandCatalogItem[]>([]);
   const [models, setModels] = useState<VehicleModelCatalogItem[]>([]);
@@ -58,7 +61,14 @@ export default function VehiclesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isHydrated || !authSession) {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (!authSession || !operationalAccess.hasOperationalMembership) {
+      setVehicleOverview(null);
+      setBrands([]);
+      setIsLoading(false);
       return;
     }
 
@@ -85,6 +95,10 @@ export default function VehiclesPage() {
           return;
         }
 
+        if (error instanceof ApiError && error.status === 403) {
+          await refreshSession().catch(() => undefined);
+        }
+
         if (error instanceof ApiError) {
           setErrorMessage(error.message);
         } else {
@@ -102,10 +116,10 @@ export default function VehiclesPage() {
     return () => {
       isMounted = false;
     };
-  }, [authSession, isHydrated]);
+  }, [authSession, isHydrated, operationalAccess.hasOperationalMembership]);
 
   useEffect(() => {
-    if (!authSession || isManualBrand || !formValues.brandId) {
+    if (!authSession || !operationalAccess.hasOperationalMembership || isManualBrand || !formValues.brandId) {
       setModels([]);
       return;
     }
@@ -136,7 +150,7 @@ export default function VehiclesPage() {
     return () => {
       isMounted = false;
     };
-  }, [authSession, formValues.brandId, formValues.vehicleType, isManualBrand]);
+  }, [authSession, formValues.brandId, formValues.vehicleType, isManualBrand, operationalAccess.hasOperationalMembership]);
 
   const handleFormChange = (field: keyof typeof EMPTY_FORM, value: string) => {
     setFormValues((currentValues) => ({
@@ -203,6 +217,10 @@ export default function VehiclesPage() {
       setIsManualModel(false);
       setModels([]);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
       } else {
@@ -223,6 +241,29 @@ export default function VehiclesPage() {
     licenseStatus,
     vehicleOverview?.membership?.licenseExpiresInDays,
   );
+
+  if (!isLoading && !operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message) {
+    return (
+      <>
+        <header className="topbar">
+          <div>
+            <h1 className="topbar-title">Vehiculos</h1>
+            <p className="topbar-subtitle">
+              Registra y visualiza los vehiculos asociados a tu perfil de conductor institucional.
+            </p>
+          </div>
+          <StatusPill label="Operacion bloqueada" tone="warning" />
+        </header>
+
+        <section className="empty-state">
+          <OperationalAccessCard
+            message={operationalAccess.message}
+            title={operationalAccess.title}
+          />
+        </section>
+      </>
+    );
+  }
 
   return (
     <>

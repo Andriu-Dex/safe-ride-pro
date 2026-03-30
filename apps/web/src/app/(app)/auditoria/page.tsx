@@ -3,7 +3,7 @@
 import {
   GlobalUserRole,
   InstitutionMembershipRole,
-  MembershipStatus,
+  isOperationalMembership,
   ReportStatus,
 } from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
@@ -56,7 +56,7 @@ function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
 }
 
 export default function AuditPage() {
-  const { authSession, isHydrated } = useAuth();
+  const { authSession, isHydrated, refreshSession } = useAuth();
   const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
   const [reviewableReports, setReviewableReports] = useState<ReportRecord[]>([]);
   const [auditFilterValues, setAuditFilterValues] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
@@ -75,7 +75,7 @@ export default function AuditPage() {
       authSession?.user.memberships.filter(
         (membership) =>
           membership.role === InstitutionMembershipRole.InstitutionAdmin &&
-          membership.membershipStatus === MembershipStatus.Active,
+          isOperationalMembership(membership),
       ) ?? [],
     [authSession],
   );
@@ -118,6 +118,10 @@ export default function AuditPage() {
     try {
       await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setErrorMessage(
         getApiErrorMessage(error, 'No fue posible sincronizar auditoria y reportes administrativos.'),
       );
@@ -153,6 +157,10 @@ export default function AuditPage() {
       } catch (error) {
         if (!isMounted) {
           return;
+        }
+
+        if (error instanceof ApiError && error.status === 403) {
+          await refreshSession().catch(() => undefined);
         }
 
         setErrorMessage(
@@ -255,6 +263,10 @@ export default function AuditPage() {
         [reportId]: '',
       }));
     } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
       setErrorMessage(getApiErrorMessage(error, 'No fue posible actualizar el reporte.'));
       await refreshData();
     } finally {

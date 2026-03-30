@@ -11,6 +11,7 @@ import {
 
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
+import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { ReviewReportUseCase } from '../../../src/modules/reports/application/use-cases/review-report.use-case';
 import type { CurrentUserContext } from '../../../src/modules/auth/application/types/current-user-context.type';
 import type { ReportRecord, ReportsRepository } from '../../../src/modules/reports/application/ports/reports.repository';
@@ -29,6 +30,14 @@ function createReportsRepositoryMock(): jest.Mocked<ReportsRepository> {
   };
 }
 
+function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
+  return {
+    synchronizeAutomaticSanctions: jest.fn(),
+    assertPassengerOperationsAllowed: jest.fn(),
+    assertDriverOperationsAllowed: jest.fn(),
+  } as unknown as jest.Mocked<OperationalSanctionsService>;
+}
+
 function buildAdminUser(): CurrentUserContext {
   return {
     id: 'admin-1',
@@ -41,6 +50,7 @@ function buildAdminUser(): CurrentUserContext {
         id: 'membership-admin',
         institutionId: 'institution-1',
         institutionName: 'UTA',
+        institutionIsActive: true,
         role: InstitutionMembershipRole.InstitutionAdmin,
         membershipStatus: MembershipStatus.Active,
         studentCode: 'ADMIN-001',
@@ -86,7 +96,8 @@ describe('ReviewReportUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new ReviewReportUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
 
     repository.findReportById.mockResolvedValue(buildReport(ReportStatus.Pending));
 
@@ -116,7 +127,8 @@ describe('ReviewReportUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new ReviewReportUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
 
     repository.findReportById.mockResolvedValue(buildReport(ReportStatus.Pending));
     repository.reviewReport.mockResolvedValue(buildReport(ReportStatus.Resolved));
@@ -145,6 +157,9 @@ describe('ReviewReportUseCase', () => {
         currentStatus: ReportStatus.Resolved,
       },
     });
+    expect(sanctionsService.synchronizeAutomaticSanctions).toHaveBeenCalledWith(
+      'membership-driver',
+    );
   });
 
   it('blocks institution admins from reviewing reports where they participate directly', async () => {
@@ -152,7 +167,8 @@ describe('ReviewReportUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new ReviewReportUseCase(repository, auditService);
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
 
     repository.findReportById.mockResolvedValue(
       buildReport(ReportStatus.Pending),
@@ -174,6 +190,38 @@ describe('ReviewReportUseCase', () => {
       new ForbiddenException(
         'No puedes revisar un reporte en el que participas directamente.',
       ),
+    );
+  });
+
+  it('rejects inactive institutional contexts even when the role is administrative', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
+
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.Pending));
+
+    await expect(
+      useCase.execute(
+        {
+          ...buildAdminUser(),
+          memberships: [
+            {
+              ...buildAdminUser().memberships[0],
+              institutionIsActive: false,
+            },
+          ],
+        },
+        {
+          reportId: 'report-1',
+          status: ReportStatus.UnderReview,
+          reviewNote: 'Revisando',
+        },
+      ),
+    ).rejects.toThrow(
+      new ForbiddenException('No tienes permisos para revisar reportes de esta institucion.'),
     );
   });
 });
