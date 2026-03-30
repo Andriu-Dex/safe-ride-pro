@@ -49,7 +49,7 @@ export type CreateUserWithMembershipInput = {
   phone?: string;
   documentType: string;
   documentNumber: string;
-  studentCode: string;
+  studentCode?: string;
   institutionId: string;
 };
 

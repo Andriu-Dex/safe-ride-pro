@@ -15,7 +15,7 @@ type LoginResponse = {
 
 type RegisterResponse = {
   message: string;
-  verificationToken: string;
+  verificationCode: string;
   user: {
     id: string;
     email: string;
@@ -63,8 +63,22 @@ function createSuffix(): string {
   return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
 }
 
-function buildDocumentNumber(): string {
-  return `${Date.now()}`.slice(-10);
+function buildDocumentNumber(seed: string): string {
+  const digits = seed.replace(/\D/g, '').padStart(6, '0').slice(-6);
+  const baseDigits = `171${digits}`;
+  const coefficients = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+  const total = coefficients.reduce((sum, coefficient, index) => {
+    let product = Number.parseInt(baseDigits.charAt(index), 10) * coefficient;
+
+    if (product >= 10) {
+      product -= 9;
+    }
+
+    return sum + product;
+  }, 0);
+  const verifierDigit = total % 10 === 0 ? 0 : 10 - (total % 10);
+
+  return `${baseDigits}${verifierDigit}`;
 }
 
 async function apiRequest<T>(
@@ -133,15 +147,14 @@ export async function registerVerifiedUser(prefix: string): Promise<{
       fullName,
       phone: '0999999999',
       documentType: 'NATIONAL_ID',
-      documentNumber: buildDocumentNumber(),
-      studentCode: `E2E-${suffix}`,
+      documentNumber: buildDocumentNumber(suffix),
     },
   });
 
   await apiRequest('/auth/verify-email', {
     method: 'POST',
     body: {
-      token: registerResponse.verificationToken,
+      code: registerResponse.verificationCode,
     },
   });
 

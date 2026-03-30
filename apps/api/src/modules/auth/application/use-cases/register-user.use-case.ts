@@ -1,6 +1,10 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
-import { DocumentType } from '@saferidepro/shared-types';
-import { createHash, randomBytes } from 'node:crypto';
+import {
+  DocumentType,
+  EMAIL_VERIFICATION_CODE_LENGTH,
+  isValidEcuadorianNationalId,
+} from '@saferidepro/shared-types';
+import { createHash, randomInt } from 'node:crypto';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
@@ -18,12 +22,12 @@ export type RegisterUserInput = {
   phone?: string;
   documentType: DocumentType;
   documentNumber: string;
-  studentCode: string;
+  studentCode?: string;
 };
 
 export type RegisterUserOutput = {
   message: string;
-  verificationToken: string;
+  verificationCode: string;
   user: {
     id: string;
     email: string;
@@ -63,6 +67,15 @@ export class RegisterUserUseCase {
       throw new ConflictException('Ya existe una cuenta registrada con este correo.');
     }
 
+    const normalizedDocumentNumber = input.documentNumber.trim();
+
+    if (
+      input.documentType === DocumentType.NationalId &&
+      !isValidEcuadorianNationalId(normalizedDocumentNumber)
+    ) {
+      throw new BadRequestException('La cedula ecuatoriana no es valida.');
+    }
+
     const passwordHash = await this.passwordHasher.hash(input.password);
 
     const createdUser = await this.authUserRepository.createUserWithMembership({
@@ -71,14 +84,17 @@ export class RegisterUserUseCase {
       fullName: input.fullName.trim(),
       phone: input.phone?.trim() || undefined,
       documentType: input.documentType,
-      documentNumber: input.documentNumber.trim(),
-      studentCode: input.studentCode.trim(),
+      documentNumber: normalizedDocumentNumber,
+      studentCode: input.studentCode?.trim() || undefined,
       institutionId: institution.id,
     });
 
-    const verificationToken = randomBytes(24).toString('hex');
-    const verificationTokenHash = createHash('sha256')
-      .update(verificationToken)
+    const verificationCode = randomInt(
+      10 ** (EMAIL_VERIFICATION_CODE_LENGTH - 1),
+      10 ** EMAIL_VERIFICATION_CODE_LENGTH,
+    ).toString();
+    const verificationCodeHash = createHash('sha256')
+      .update(verificationCode)
       .digest('hex');
     const expiresAt = new Date(
       Date.now() + this.environmentService.emailVerificationTokenTtlMinutes * 60 * 1000,
@@ -86,7 +102,7 @@ export class RegisterUserUseCase {
 
     await this.authUserRepository.createEmailVerificationCode(
       createdUser.id,
-      verificationTokenHash,
+      verificationCodeHash,
       expiresAt,
     );
 
@@ -102,8 +118,8 @@ export class RegisterUserUseCase {
     });
 
     return {
-      message: 'Cuenta creada correctamente. Verifica tu correo para activarla.',
-      verificationToken,
+      message: 'Cuenta creada correctamente. Usa el codigo de verificacion para activarla.',
+      verificationCode,
       user: {
         id: createdUser.id,
         email: createdUser.email,

@@ -17,15 +17,15 @@ export class VerifyEmailUseCase {
     private readonly auditService: AuditService,
   ) {}
 
-  async execute(token: string): Promise<{ message: string }> {
-    const tokenHash = createHash('sha256').update(token).digest('hex');
+  async execute(code: string): Promise<{ message: string }> {
+    const tokenHash = createHash('sha256').update(code.trim()).digest('hex');
     const verificationRecord = await this.authUserRepository.findValidEmailVerification(
       tokenHash,
       new Date(),
     );
 
     if (!verificationRecord) {
-      throw new BadRequestException('El token de verificacion es invalido o ha expirado.');
+      throw new BadRequestException('El codigo de verificacion es invalido o ha expirado.');
     }
 
     const verifiedUser = await this.authUserRepository.markEmailAsVerified(

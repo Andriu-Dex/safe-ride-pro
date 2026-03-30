@@ -12,6 +12,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: replaceMock,
   }),
+  useSearchParams: () => ({
+    get: () => null,
+  }),
 }));
 
 vi.mock('../hooks/use-auth', () => ({

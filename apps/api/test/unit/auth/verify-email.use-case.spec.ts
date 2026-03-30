@@ -88,7 +88,7 @@ describe('VerifyEmailUseCase', () => {
     });
   });
 
-  it('rejects an invalid or expired token', async () => {
+  it('rejects an invalid or expired verification code', async () => {
     const repository = createAuthRepositoryMock();
     const auditService = {
       record: jest.fn(),
@@ -98,7 +98,7 @@ describe('VerifyEmailUseCase', () => {
     repository.findValidEmailVerification.mockResolvedValue(null);
 
     await expect(useCase.execute('invalid-token')).rejects.toThrow(
-      new BadRequestException('El token de verificacion es invalido o ha expirado.'),
+      new BadRequestException('El codigo de verificacion es invalido o ha expirado.'),
     );
 
     expect(repository.markEmailAsVerified).not.toHaveBeenCalled();

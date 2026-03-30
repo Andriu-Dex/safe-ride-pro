@@ -37,10 +37,10 @@ describe('Auth real DB integration', () => {
     });
 
     expect(registrationResponse.body.message).toBe(
-      'Cuenta creada correctamente. Verifica tu correo para activarla.',
+      'Cuenta creada correctamente. Usa el codigo de verificacion para activarla.',
     );
     expect(registrationResponse.body.user.email).toBe(email);
-    expect(registrationResponse.body.verificationToken).toEqual(expect.any(String));
+    expect(registrationResponse.body.verificationCode).toEqual(expect.any(String));
 
     const createdUser = await prisma.user.findUnique({
       where: { email },
@@ -56,7 +56,7 @@ describe('Auth real DB integration', () => {
     expect(createdUser?.memberships).toHaveLength(1);
     expect(createdUser?.emailVerificationCodes).toHaveLength(1);
 
-    await verifyUserEmail(app, registrationResponse.body.verificationToken as string);
+    await verifyUserEmail(app, registrationResponse.body.verificationCode as string);
 
     const verifiedUser = await prisma.user.findUnique({
       where: { email },

@@ -52,8 +52,8 @@ describe('AuthController HTTP', () => {
 
   it('registers a user through the HTTP endpoint', async () => {
     registerUserUseCase.execute.mockResolvedValue({
-      message: 'Cuenta creada correctamente. Verifica tu correo para activarla.',
-      verificationToken: 'token-123',
+      message: 'Cuenta creada correctamente. Usa el codigo de verificacion para activarla.',
+      verificationCode: '654321',
       user: {
         id: 'user-1',
         email: 'student@uta.edu.ec',
@@ -69,14 +69,13 @@ describe('AuthController HTTP', () => {
         fullName: 'Usuario Uno',
         phone: '0999999999',
         documentType: DocumentType.NationalId,
-        documentNumber: '0123456789',
-        studentCode: 'STUDENT-001',
+        documentNumber: '1710034065',
       })
       .expect(201);
 
     expect(response.body).toEqual({
-      message: 'Cuenta creada correctamente. Verifica tu correo para activarla.',
-      verificationToken: 'token-123',
+      message: 'Cuenta creada correctamente. Usa el codigo de verificacion para activarla.',
+      verificationCode: '654321',
       user: {
         id: 'user-1',
         email: 'student@uta.edu.ec',
@@ -89,8 +88,7 @@ describe('AuthController HTTP', () => {
       fullName: 'Usuario Uno',
       phone: '0999999999',
       documentType: DocumentType.NationalId,
-      documentNumber: '0123456789',
-      studentCode: 'STUDENT-001',
+      documentNumber: '1710034065',
     });
   });
 

@@ -48,3 +48,12 @@ export type LoginInput = {
   password: string;
 };
 
+export type RegisterInput = {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+  documentType: DocumentType;
+  documentNumber: string;
+};
+

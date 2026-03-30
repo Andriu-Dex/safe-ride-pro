@@ -47,6 +47,96 @@ export function TripCreationForm({
   onChange,
   onSubmit,
 }: TripCreationFormProps) {
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
+  const now = new Date();
+  const originLabel = values.originLabel.trim();
+  const destinationLabel = values.destinationLabel.trim();
+  const originLatitude = Number.parseFloat(values.originLatitude);
+  const originLongitude = Number.parseFloat(values.originLongitude);
+  const destinationLatitude = Number.parseFloat(values.destinationLatitude);
+  const destinationLongitude = Number.parseFloat(values.destinationLongitude);
+  const departureDate = values.departureAt ? new Date(values.departureAt) : null;
+  const estimatedArrivalDate = values.estimatedArrivalAt ? new Date(values.estimatedArrivalAt) : null;
+  const seatCount = Number.parseInt(values.seatCount, 10);
+  const basePriceReference = Number.parseFloat(values.basePriceReference);
+  const detourSurchargeReference = values.detourSurchargeReference
+    ? Number.parseFloat(values.detourSurchargeReference)
+    : 0;
+  const validationIssues: string[] = [];
+  const validationWarnings: string[] = [];
+
+  if (!values.vehicleId) {
+    validationIssues.push('Selecciona un vehiculo antes de crear el viaje.');
+  }
+
+  if (!originLabel || !destinationLabel) {
+    validationIssues.push('Debes completar origen y destino.');
+  } else if (originLabel.toLowerCase() === destinationLabel.toLowerCase()) {
+    validationIssues.push('Origen y destino no pueden ser iguales.');
+  }
+
+  if (
+    Number.isNaN(originLatitude) ||
+    originLatitude < -90 ||
+    originLatitude > 90 ||
+    Number.isNaN(destinationLatitude) ||
+    destinationLatitude < -90 ||
+    destinationLatitude > 90 ||
+    Number.isNaN(originLongitude) ||
+    originLongitude < -180 ||
+    originLongitude > 180 ||
+    Number.isNaN(destinationLongitude) ||
+    destinationLongitude < -180 ||
+    destinationLongitude > 180
+  ) {
+    validationIssues.push('Las coordenadas deben estar dentro de rangos geograficos validos.');
+  } else if (
+    originLatitude === destinationLatitude &&
+    originLongitude === destinationLongitude
+  ) {
+    validationIssues.push('El origen y el destino no pueden tener exactamente las mismas coordenadas.');
+  }
+
+  if (!departureDate || Number.isNaN(departureDate.getTime())) {
+    validationIssues.push('Debes indicar una fecha de salida valida.');
+  } else if (departureDate <= now) {
+    validationIssues.push('La salida debe programarse en una fecha futura.');
+  }
+
+  if (!estimatedArrivalDate || Number.isNaN(estimatedArrivalDate.getTime())) {
+    validationIssues.push('Debes indicar una llegada estimada valida.');
+  } else if (departureDate && estimatedArrivalDate <= departureDate) {
+    validationIssues.push('La llegada estimada debe ser posterior a la salida.');
+  }
+
+  if (Number.isNaN(seatCount) || seatCount < 1) {
+    validationIssues.push('El viaje debe tener al menos 1 cupo disponible.');
+  } else if (selectedVehicle && seatCount > selectedVehicle.seatCount) {
+    validationIssues.push(
+      `El viaje no puede exceder los ${selectedVehicle.seatCount} cupos del vehiculo seleccionado.`,
+    );
+  }
+
+  if (Number.isNaN(basePriceReference) || basePriceReference < 0) {
+    validationIssues.push('El precio base debe ser un numero mayor o igual a 0.');
+  }
+
+  if (Number.isNaN(detourSurchargeReference) || detourSurchargeReference < 0) {
+    validationIssues.push('El recargo por desvio no puede ser negativo.');
+  }
+
+  if (
+    values.routeMode === TripRouteMode.DirectRoute &&
+    values.detourSurchargeReference &&
+    detourSurchargeReference > 0
+  ) {
+    validationWarnings.push(
+      'El viaje es directo, por lo que el recargo por desvio no se utilizara aunque este cargado.',
+    );
+  }
+
+  const canSubmit = !disabled && !isSubmitting && validationIssues.length === 0;
+
   return (
     <article className="panel panel-stack">
       <div>
@@ -203,10 +293,32 @@ export function TripCreationForm({
           value={values.notes}
         />
 
+        {validationIssues.length ? (
+          <div className="validation-card validation-card-danger">
+            <strong>Revisa estos puntos antes de crear el viaje:</strong>
+            <ul className="validation-list">
+              {validationIssues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {validationWarnings.length ? (
+          <div className="validation-card validation-card-warning">
+            <strong>Advertencias utiles para la demo:</strong>
+            <ul className="validation-list">
+              {validationWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
-        <Button disabled={disabled || isSubmitting} type="submit">
+        <Button disabled={!canSubmit} type="submit">
           {isSubmitting ? 'Creando...' : 'Crear viaje'}
         </Button>
       </form>

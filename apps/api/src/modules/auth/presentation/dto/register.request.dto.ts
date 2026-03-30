@@ -22,6 +22,7 @@ export class RegisterRequestDto {
   @IsString()
   documentNumber!: string;
 
+  @IsOptional()
   @IsString()
-  studentCode!: string;
+  studentCode?: string;
 }

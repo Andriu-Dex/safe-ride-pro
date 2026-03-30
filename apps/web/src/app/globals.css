@@ -342,6 +342,41 @@ main {
   font-size: 1.3rem;
 }
 
+.panel-meta-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.panel-meta-item {
+  margin: 0;
+  color: var(--color-text-soft);
+  line-height: 1.65;
+}
+
+.panel-meta-item strong {
+  color: var(--color-text);
+}
+
+.inline-tone-success {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.inline-tone-warning {
+  color: var(--color-warning);
+  font-weight: 700;
+}
+
+.inline-tone-danger {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.inline-tone-neutral {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -430,16 +465,16 @@ main {
 
 .hero-title {
   margin: 0;
-  font-size: clamp(2.6rem, 5vw, 4.8rem);
-  line-height: 0.95;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1.02;
 }
 
 .hero-text {
   margin: 0;
-  max-width: 42ch;
+  max-width: 38ch;
   color: var(--color-text-soft);
-  font-size: 1.04rem;
-  line-height: 1.75;
+  font-size: 0.98rem;
+  line-height: 1.65;
 }
 
 .feature-list {
@@ -451,7 +486,7 @@ main {
   border: 1px solid var(--color-border);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.62);
-  padding: 1rem 1.1rem;
+  padding: 0.9rem 1rem;
 }
 
 .feature-item strong,
@@ -477,7 +512,7 @@ main {
 
 .form-header h2 {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.7rem;
 }
 
 .form-header p {
@@ -537,6 +572,12 @@ main {
 .form-helper {
   background: rgba(15, 118, 110, 0.08);
   color: var(--color-text-soft);
+}
+
+.form-helper-strong {
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--color-primary-strong);
 }
 
 .loading-state,
@@ -658,6 +699,37 @@ main {
   color: var(--color-success);
   padding: 0.85rem 1rem;
   line-height: 1.55;
+}
+
+.validation-card {
+  display: grid;
+  gap: 0.55rem;
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  line-height: 1.55;
+}
+
+.validation-card strong {
+  color: inherit;
+}
+
+.validation-card-danger {
+  border: 1px solid rgba(181, 71, 62, 0.22);
+  background: rgba(181, 71, 62, 0.08);
+  color: var(--color-danger);
+}
+
+.validation-card-warning {
+  border: 1px solid rgba(183, 121, 31, 0.22);
+  background: rgba(183, 121, 31, 0.08);
+  color: var(--color-warning);
+}
+
+.validation-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.15rem;
 }
 
 .panel-header-row {

@@ -59,6 +59,60 @@ export function VehicleRegistrationForm({
   onChange,
   onSubmit,
 }: VehicleRegistrationFormProps) {
+  const currentYear = new Date().getFullYear();
+  const yearValue = Number.parseInt(values.year, 10);
+  const seatCountValue = Number.parseInt(values.seatCount, 10);
+  const plateValue = values.plate.trim();
+  const customBrandName = values.customBrandName.trim();
+  const customModelName = values.customModelName.trim();
+  const colorValue = values.color.trim();
+  const validationIssues: string[] = [];
+  const validationWarnings: string[] = [];
+
+  if (isManualBrand ? !customBrandName : !values.brandId) {
+    validationIssues.push('Debes indicar una marca valida para registrar el vehiculo.');
+  }
+
+  if (isManualModel ? !customModelName : !values.modelId) {
+    validationIssues.push('Debes indicar un modelo valido para registrar el vehiculo.');
+  }
+
+  if (Number.isNaN(yearValue) || yearValue < 1990 || yearValue > currentYear + 1) {
+    validationIssues.push(`El anio debe estar entre 1990 y ${currentYear + 1}.`);
+  }
+
+  if (!colorValue) {
+    validationIssues.push('Debes indicar el color principal del vehiculo.');
+  }
+
+  if (plateValue.length < 6) {
+    validationIssues.push('Ingresa una placa valida de al menos 6 caracteres.');
+  }
+
+  if (Number.isNaN(seatCountValue) || seatCountValue < 1) {
+    validationIssues.push('La capacidad del vehiculo debe ser de al menos 1 pasajero.');
+  }
+
+  if (values.vehicleType === VehicleType.Motorcycle && seatCountValue !== 1) {
+    validationIssues.push('La motocicleta solo puede registrarse con 1 cupo operativo.');
+  }
+
+  if (values.vehicleType === VehicleType.Car && seatCountValue > 4) {
+    validationIssues.push('El automovil no puede exceder 4 cupos operativos en el MVP.');
+  }
+
+  if (values.vehicleType === VehicleType.PickupTruck && seatCountValue > 5) {
+    validationIssues.push('La camioneta no puede exceder 5 cupos operativos en el MVP.');
+  }
+
+  if (!values.registrationDocumentFileKey.trim()) {
+    validationWarnings.push(
+      'Puedes continuar sin la clave documental, pero registrar la evidencia mejora la trazabilidad de la demo.',
+    );
+  }
+
+  const canSubmit = !isSubmitting && !isDisabled && validationIssues.length === 0;
+
   return (
     <article className="panel panel-stack">
       <div>
@@ -207,10 +261,32 @@ export function VehicleRegistrationForm({
           />
         </div>
 
+        {validationIssues.length ? (
+          <div className="validation-card validation-card-danger">
+            <strong>Revisa estos puntos antes de registrar el vehiculo:</strong>
+            <ul className="validation-list">
+              {validationIssues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {validationWarnings.length ? (
+          <div className="validation-card validation-card-warning">
+            <strong>Advertencias utiles para la demo:</strong>
+            <ul className="validation-list">
+              {validationWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
-        <Button disabled={isSubmitting || isDisabled} type="submit">
+        <Button disabled={!canSubmit} type="submit">
           {isSubmitting ? 'Registrando...' : 'Registrar vehiculo'}
         </Button>
       </form>

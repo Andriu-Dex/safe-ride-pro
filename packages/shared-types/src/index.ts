@@ -33,6 +33,13 @@ export enum DocumentType {
   Passport = 'PASSPORT',
 }
 
+export {
+  EMAIL_VERIFICATION_CODE_LENGTH,
+  generateEmailVerificationCode,
+} from './email-verification';
+
+export { isValidEcuadorianNationalId } from './ecuadorian-national-id';
+
 export enum VehicleType {
   Motorcycle = 'MOTORCYCLE',
   Car = 'CAR',

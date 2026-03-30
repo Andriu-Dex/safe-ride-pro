@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
   AccountStatus,
   DocumentType,
@@ -61,7 +61,7 @@ function buildCreatedUser(email: string): AuthUserRecord {
 }
 
 describe('RegisterUserUseCase', () => {
-  it('creates a user, verification token and audit event using normalized data', async () => {
+  it('creates a user, verification code and audit event using normalized data', async () => {
     const repository = createAuthRepositoryMock();
     const passwordHasher = createPasswordHasherMock();
     const environmentService = {
@@ -92,13 +92,12 @@ describe('RegisterUserUseCase', () => {
       fullName: '  Usuario Registrado  ',
       phone: ' 0999999999 ',
       documentType: DocumentType.NationalId,
-      documentNumber: ' 0123456789 ',
-      studentCode: ' ST-001 ',
+      documentNumber: ' 1710034065 ',
     });
 
-    expect(response.message).toBe('Cuenta creada correctamente. Verifica tu correo para activarla.');
+    expect(response.message).toBe('Cuenta creada correctamente. Usa el codigo de verificacion para activarla.');
     expect(response.user.email).toBe('student@uta.edu.ec');
-    expect(response.verificationToken).toHaveLength(48);
+    expect(response.verificationCode).toHaveLength(6);
     expect(passwordHasher.hash).toHaveBeenCalledWith('Password123');
     expect(repository.createUserWithMembership).toHaveBeenCalledWith({
       email: 'student@uta.edu.ec',
@@ -106,8 +105,8 @@ describe('RegisterUserUseCase', () => {
       fullName: 'Usuario Registrado',
       phone: '0999999999',
       documentType: DocumentType.NationalId,
-      documentNumber: '0123456789',
-      studentCode: 'ST-001',
+      documentNumber: '1710034065',
+      studentCode: undefined,
       institutionId: 'institution-1',
     });
     expect(repository.createEmailVerificationCode).toHaveBeenCalledWith(
@@ -156,12 +155,47 @@ describe('RegisterUserUseCase', () => {
         password: 'Password123',
         fullName: 'Usuario',
         documentType: DocumentType.NationalId,
-        documentNumber: '0123456789',
-        studentCode: 'ST-001',
+        documentNumber: '1710034065',
       }),
     ).rejects.toThrow(
       new ConflictException('Ya existe una cuenta registrada con este correo.'),
     );
+
+    expect(repository.createUserWithMembership).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid Ecuadorian national id', async () => {
+    const repository = createAuthRepositoryMock();
+    const passwordHasher = createPasswordHasherMock();
+    const environmentService = {
+      emailVerificationTokenTtlMinutes: 30,
+    } as EnvironmentService;
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new RegisterUserUseCase(
+      repository,
+      passwordHasher,
+      environmentService,
+      auditService,
+    );
+
+    repository.findInstitutionByDomain.mockResolvedValue({
+      id: 'institution-1',
+      name: 'UTA',
+      code: 'UTA',
+    });
+    repository.findUserByEmail.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        email: 'student@uta.edu.ec',
+        password: 'Password123',
+        fullName: 'Usuario',
+        documentType: DocumentType.NationalId,
+        documentNumber: '0123456789',
+      }),
+    ).rejects.toThrow(new BadRequestException('La cedula ecuatoriana no es valida.'));
 
     expect(repository.createUserWithMembership).not.toHaveBeenCalled();
   });

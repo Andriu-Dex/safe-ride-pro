@@ -6,11 +6,11 @@ export async function signInThroughUi(page: Page, email: string, password: strin
   await page.getByLabel('Contrasena').fill(password);
   await page.getByRole('button', { name: 'Entrar al panel' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: 'Panel principal' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Resumen operativo' })).toBeVisible();
 }
 
 export async function openSidebarSection(page: Page, label: string): Promise<void> {
-  await page.getByRole('link', { name: new RegExp(label, 'i') }).click();
+  await page.locator('.app-sidebar').getByRole('link', { name: new RegExp(label, 'i') }).click();
 }
 
 export async function waitForSectionHeading(

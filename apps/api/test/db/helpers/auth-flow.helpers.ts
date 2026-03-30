@@ -8,8 +8,28 @@ type RegisterUserInput = {
   fullName: string;
   phone?: string;
   documentNumber: string;
-  studentCode: string;
+  studentCode?: string;
 };
+
+function buildValidEcuadorianNationalId(seed: string): string {
+  const digits = seed.replace(/\D/g, '').padEnd(6, '0').slice(0, 6);
+  const baseDigits = `171${digits}`;
+  const coefficients = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+
+  const total = coefficients.reduce((sum, coefficient, index) => {
+    let product = Number.parseInt(baseDigits.charAt(index), 10) * coefficient;
+
+    if (product >= 10) {
+      product -= 9;
+    }
+
+    return sum + product;
+  }, 0);
+
+  const verifierDigit = total % 10 === 0 ? 0 : 10 - (total % 10);
+
+  return `${baseDigits}${verifierDigit}`;
+}
 
 export async function registerUser(
   app: INestApplication,
@@ -23,16 +43,16 @@ export async function registerUser(
       fullName: input.fullName,
       phone: input.phone ?? '0999999999',
       documentType: DocumentType.NationalId,
-      documentNumber: input.documentNumber,
+      documentNumber: buildValidEcuadorianNationalId(input.documentNumber),
       studentCode: input.studentCode,
     })
     .expect(201);
 }
 
-export async function verifyUserEmail(app: INestApplication, token: string) {
+export async function verifyUserEmail(app: INestApplication, code: string) {
   return request(app.getHttpServer())
     .post('/api/auth/verify-email')
-    .send({ token })
+    .send({ code })
     .expect(201);
 }
 
@@ -55,9 +75,9 @@ export async function registerVerifyAndLoginUser(
   input: RegisterUserInput,
 ) {
   const registrationResponse = await registerUser(app, input);
-  const verificationToken = registrationResponse.body.verificationToken as string;
+  const verificationCode = registrationResponse.body.verificationCode as string;
 
-  await verifyUserEmail(app, verificationToken);
+  await verifyUserEmail(app, verificationCode);
 
   const loginResponse = await loginUser(app, input.email, input.password);
 

@@ -7,20 +7,65 @@ import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
 import { ApiError } from '../lib/auth-api';
 import { useAuth } from '../hooks/use-auth';
+import { getApiOrigin } from '../../../lib/api-client';
 
-export function LoginForm() {
+const DEMO_EMAIL = 'admin@uta.edu.ec';
+const DEMO_PASSWORD = 'Admin12345';
+
+type LoginFormProps = {
+  initialEmail?: string;
+  nextPath?: string;
+  showVerifiedMessage?: boolean;
+};
+
+export function LoginForm({
+  initialEmail = DEMO_EMAIL,
+  nextPath = '/dashboard',
+  showVerifiedMessage = false,
+}: LoginFormProps) {
   const router = useRouter();
   const { signIn, isSigningIn } = useAuth();
   const [isPending, startTransition] = useTransition();
-  const [email, setEmail] = useState('admin@uta.edu.ec');
-  const [password, setPassword] = useState('Admin12345');
+  const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState(DEMO_PASSWORD);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [helperMessage, setHelperMessage] = useState<string | null>(
+    showVerifiedMessage
+      ? 'Correo verificado correctamente. Ya puedes iniciar sesion.'
+      : null,
+  );
 
   const isBusy = isSigningIn || isPending;
+  const apiHealthUrl = `${getApiOrigin()}/api/health`;
+
+  const handleUseDemoCredentials = (): void => {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    setHelperMessage('Se restauraron las credenciales demo precargadas.');
+  };
+
+  const handleCopyDemoCredentials = async (): Promise<void> => {
+    const credentialSummary = `Correo: ${DEMO_EMAIL}\nContrasena: ${DEMO_PASSWORD}`;
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(credentialSummary);
+        setHelperMessage('Las credenciales demo se copiaron al portapapeles.');
+        return;
+      }
+    } catch {
+      // Fall back to a visible helper message when clipboard access is unavailable.
+    }
+
+    setHelperMessage(
+      `No fue posible copiar automaticamente. Credenciales demo: ${DEMO_EMAIL} / ${DEMO_PASSWORD}`,
+    );
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
+    setHelperMessage(null);
 
     try {
       await signIn({
@@ -29,7 +74,7 @@ export function LoginForm() {
       });
 
       startTransition(() => {
-        router.replace('/dashboard');
+        router.replace(nextPath);
       });
     } catch (error) {
       if (error instanceof ApiError) {
@@ -47,7 +92,7 @@ export function LoginForm() {
         <p className="kicker">Acceso institucional</p>
         <h2>Inicia sesion en tu panel</h2>
         <p>
-          Accede con tus credenciales para revisar solicitudes, registrar vehiculos y gestionar viajes.
+          Accede con tus credenciales para entrar al sistema.
         </p>
       </div>
 
@@ -75,9 +120,9 @@ export function LoginForm() {
 
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
 
-        <div className="form-helper">
-          El flujo de registro llegara en una siguiente iteracion. Por ahora el ingreso se valida contra el API.
-        </div>
+        <div className="form-helper">Puedes entrar con una cuenta creada o usar las credenciales demo.</div>
+
+        {helperMessage ? <div className="form-helper form-helper-strong">{helperMessage}</div> : null}
 
         <Button disabled={isBusy} type="submit">
           {isBusy ? 'Ingresando...' : 'Entrar al panel'}
@@ -85,8 +130,17 @@ export function LoginForm() {
       </form>
 
       <div className="button-row">
-        <a className="button button-secondary" href="http://localhost:3002/api/audit/events" rel="noreferrer" target="_blank">
-          Ver endpoint de auditoria
+        <Button disabled={isBusy} onClick={handleUseDemoCredentials} variant="secondary">
+          Restaurar demo
+        </Button>
+        <Button disabled={isBusy} onClick={() => void handleCopyDemoCredentials()} variant="ghost">
+          Copiar credenciales
+        </Button>
+        <a className="button button-ghost" href="/register">
+          Crear cuenta
+        </a>
+        <a className="button button-secondary" href={apiHealthUrl} rel="noreferrer" target="_blank">
+          Ver salud del API
         </a>
       </div>
     </div>

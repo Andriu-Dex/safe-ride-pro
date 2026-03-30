@@ -78,6 +78,8 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
   }
 
   async createUserWithMembership(input: CreateUserWithMembershipInput): Promise<AuthUserRecord> {
+    const studentCode = await this.resolveStudentCode(input.institutionId, input.email, input.studentCode);
+
     const createdUser = await this.prisma.user.create({
       data: {
         email: input.email,
@@ -93,7 +95,7 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
             institutionId: input.institutionId,
             role: MembershipRole.STUDENT,
             membershipStatus: MembershipStatus.ACTIVE,
-            studentCode: input.studentCode,
+            studentCode,
             isDefault: true,
             driverVerificationStatus: DriverVerificationStatus.NOT_REQUESTED,
           },
@@ -115,6 +117,46 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
     });
 
     return this.mapUser(createdUser);
+  }
+
+  private async resolveStudentCode(
+    institutionId: string,
+    email: string,
+    requestedStudentCode?: string,
+  ): Promise<string> {
+    const preferredCode =
+      requestedStudentCode?.trim() || this.buildStudentCodeCandidateFromEmail(email);
+    let candidate = preferredCode;
+    let suffix = 2;
+
+    while (
+      await this.prisma.userInstitutionMembership.findFirst({
+        where: {
+          institutionId,
+          studentCode: candidate,
+        },
+        select: {
+          id: true,
+        },
+      })
+    ) {
+      candidate = `${preferredCode}-${suffix}`;
+      suffix += 1;
+    }
+
+    return candidate;
+  }
+
+  private buildStudentCodeCandidateFromEmail(email: string): string {
+    const localPart = email.split('@')[0] ?? 'ESTUDIANTE';
+    const normalizedBase = localPart
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toUpperCase();
+
+    return normalizedBase || 'ESTUDIANTE';
   }
 
   async createEmailVerificationCode(

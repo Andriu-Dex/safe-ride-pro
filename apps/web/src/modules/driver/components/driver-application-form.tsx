@@ -42,6 +42,35 @@ export function DriverApplicationForm({
     : currentStatus === DriverVerificationStatus.PendingVerification
       ? 'Actualizar solicitud'
       : 'Enviar solicitud';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const validationIssues: string[] = [];
+  const validationWarnings: string[] = [];
+  const trimmedLicenseNumber = values.licenseNumber.trim();
+  const licenseExpirationDate = values.licenseExpiresAt ? new Date(values.licenseExpiresAt) : null;
+
+  if (!values.licenseTypeId) {
+    validationIssues.push('Selecciona un tipo de licencia antes de enviar la solicitud.');
+  }
+
+  if (trimmedLicenseNumber.length < 5) {
+    validationIssues.push('Ingresa un numero de licencia valido y suficientemente completo.');
+  }
+
+  if (!values.licenseExpiresAt) {
+    validationIssues.push('Debes indicar la fecha de expiracion de la licencia.');
+  } else if (licenseExpirationDate && licenseExpirationDate < today) {
+    validationIssues.push('La licencia ya esta vencida. Debes registrar una fecha vigente para continuar.');
+  }
+
+  if (!values.identityDocumentFileKey.trim() || !values.licenseDocumentFileKey.trim()) {
+    validationWarnings.push(
+      'La solicitud puede enviarse sin ambos respaldos, pero no podra aprobarse administrativamente hasta registrarlos.',
+    );
+  }
+
+  const canSubmit = !isSubmitting && validationIssues.length === 0;
 
   return (
     <article className="panel panel-stack">
@@ -112,10 +141,32 @@ export function DriverApplicationForm({
           value={values.licenseDocumentFileKey}
         />
 
+        {validationIssues.length ? (
+          <div className="validation-card validation-card-danger">
+            <strong>Revisa estos puntos antes de continuar:</strong>
+            <ul className="validation-list">
+              {validationIssues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {validationWarnings.length ? (
+          <div className="validation-card validation-card-warning">
+            <strong>Advertencias utiles para la demo:</strong>
+            <ul className="validation-list">
+              {validationWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
-        <Button disabled={isSubmitting} type="submit">
+        <Button disabled={!canSubmit} type="submit">
           {isSubmitting ? 'Enviando...' : submitLabel}
         </Button>
       </form>

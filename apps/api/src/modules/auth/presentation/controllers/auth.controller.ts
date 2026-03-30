@@ -22,7 +22,7 @@ export class AuthController {
 
   @Post('verify-email')
   verifyEmail(@Body() body: VerifyEmailRequestDto) {
-    return this.verifyEmailUseCase.execute(body.token);
+    return this.verifyEmailUseCase.execute(body.code);
   }
 
   @Post('login')

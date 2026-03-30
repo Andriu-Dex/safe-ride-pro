@@ -8,7 +8,7 @@ test('el admin puede iniciar sesion y acceder a auditoria', async ({ page }) => 
   await signInThroughUi(page, 'admin@uta.edu.ec', 'Admin12345');
 
   await expect(page.getByText('Sesion protegida')).toBeVisible();
-  await expect(page.getByText('API conectada')).toBeVisible();
+  await expect(page.getByText('Contexto institucional', { exact: true })).toBeVisible();
 
   await openSidebarSection(page, 'Auditoria');
 
