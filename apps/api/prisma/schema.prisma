@@ -118,8 +118,13 @@ enum OperationalSanctionTrigger {
 enum AuditAction {
   AUTH_REGISTERED
   AUTH_EMAIL_VERIFIED
+  AUTH_VERIFICATION_CODE_RESENT
   AUTH_LOGIN_SUCCEEDED
   AUTH_LOGIN_FAILED
+  AUTH_PASSWORD_RESET_REQUESTED
+  AUTH_PASSWORD_RESET_COMPLETED
+  AUTH_SESSION_REFRESHED
+  AUTH_LOGGED_OUT
   DRIVER_APPLICATION_SUBMITTED
   DRIVER_APPLICATION_APPROVED
   DRIVER_APPLICATION_REJECTED
@@ -194,6 +199,8 @@ model User {
   updatedAt              DateTime                    @updatedAt
   memberships            UserInstitutionMembership[]
   emailVerificationCodes EmailVerificationCode[]
+  passwordResetCodes     PasswordResetCode[]
+  refreshTokenSessions   RefreshTokenSession[]
   reviewedDriverProfiles DriverProfile[]             @relation("DriverProfileReviewedBy")
   reviewedReports        Report[]                    @relation("ReportReviewedBy")
   requestedSanctionAppeals OperationalSanctionAppeal[] @relation("SanctionAppealRequestedBy")
@@ -242,7 +249,38 @@ model EmailVerificationCode {
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, createdAt])
   @@map("email_verification_codes")
+}
+
+model PasswordResetCode {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, usedAt, expiresAt])
+  @@map("password_reset_codes")
+}
+
+model RefreshTokenSession {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, revokedAt, expiresAt])
+  @@index([expiresAt, revokedAt])
+  @@map("refresh_token_sessions")
 }
 
 model LicenseType {

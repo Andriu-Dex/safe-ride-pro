@@ -26,6 +26,8 @@ import type { AuthSession } from '../types/auth-session';
 vi.mock('../lib/auth-api', () => ({
   createSession: vi.fn(),
   getCurrentUser: vi.fn(),
+  logout: vi.fn(),
+  refreshSession: vi.fn(),
 }));
 
 function AuthProbe() {
@@ -58,7 +60,8 @@ function AuthProbe() {
 
 function createTestSession(overrides?: Partial<AuthSession>): AuthSession {
   return {
-    accessToken: 'token-123',
+    accessToken: overrides?.accessToken ?? 'token-123',
+    refreshToken: overrides?.refreshToken ?? 'refresh-token-123',
     user: {
       id: 'user-1',
       email: 'admin@uta.edu.ec',
@@ -71,8 +74,8 @@ function createTestSession(overrides?: Partial<AuthSession>): AuthSession {
       accountStatus: AccountStatus.Active,
       emailVerifiedAt: '2026-03-29T00:00:00.000Z',
       memberships: [],
+      ...(overrides?.user ?? {}),
     },
-    ...overrides,
   };
 }
 

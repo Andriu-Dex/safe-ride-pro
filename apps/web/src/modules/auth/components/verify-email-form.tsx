@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
-import { ApiError, verifyEmail } from '../lib/auth-api';
+import { ApiError, resendVerificationCode, verifyEmail } from '../lib/auth-api';
 
 type VerifyEmailFormProps = {
   initialCode?: string;
@@ -17,7 +17,10 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
   const [code, setCode] = useState(initialCode);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [developmentCode, setDevelopmentCode] = useState<string | null>(initialCode || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const validationIssues = useMemo(() => {
     const issues: string[] = [];
@@ -39,6 +42,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
     setIsSubmitting(true);
     setErrorMessage(null);
     setSuccessMessage(null);
+    setResendMessage(null);
 
     try {
       const response = await verifyEmail(code.trim());
@@ -54,14 +58,36 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
     }
   };
 
+  const runResend = async () => {
+    if (!email) {
+      return;
+    }
+
+    setIsResending(true);
+    setErrorMessage(null);
+    setResendMessage(null);
+
+    try {
+      const response = await resendVerificationCode(email);
+      setResendMessage(response.message);
+      setDevelopmentCode(response.verificationCode ?? null);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('No fue posible reenviar el codigo en este momento.');
+      }
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <div className="form-card">
       <div className="form-header">
         <p className="kicker">Verificacion</p>
         <h2>Activa tu cuenta</h2>
-        <p>
-          Confirma el correo institucional para habilitar el inicio de sesion en SafeRidePro.
-        </p>
+        <p>Confirma tu correo institucional para habilitar el inicio de sesion.</p>
       </div>
 
       <form
@@ -72,7 +98,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
         }}
       >
         <InputField
-          hint="Por ahora este codigo se muestra directamente para pruebas. El envio real por correo se puede conectar despues."
+          hint="Revisa tu correo institucional y escribe el codigo recibido."
           label="Codigo de verificacion"
           onChange={(event) => setCode(event.target.value)}
           placeholder="Ingresa el codigo de 6 digitos"
@@ -80,9 +106,9 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
           value={code}
         />
 
-        {initialCode ? (
+        {developmentCode ? (
           <div className="form-helper form-helper-strong">
-            Codigo de prueba: <strong>{initialCode}</strong>
+            Codigo de desarrollo: <strong>{developmentCode}</strong>
           </div>
         ) : null}
 
@@ -99,6 +125,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
 
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
+        {resendMessage ? <div className="form-helper">{resendMessage}</div> : null}
 
         <Button disabled={!canSubmit} type="submit">
           {isSubmitting ? 'Verificando...' : 'Verificar correo'}
@@ -106,6 +133,9 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
       </form>
 
       <div className="button-row">
+        <Button disabled={isResending || !email} onClick={() => void runResend()} variant="ghost">
+          {isResending ? 'Reenviando...' : 'Reenviar codigo'}
+        </Button>
         <Button
           disabled={!successMessage}
           onClick={() =>

@@ -5,7 +5,17 @@ export type AppEnvironment = {
   port: number;
   databaseUrl: string;
   jwtSecret: string;
+  accessTokenTtlMinutes: number;
+  refreshTokenTtlDays: number;
   emailVerificationTokenTtlMinutes: number;
+  passwordResetTokenTtlMinutes: number;
+  authResendCooldownSeconds: number;
+  authFailedAttemptLimit: number;
+  authFailedAttemptWindowMinutes: number;
+  authAllowDebugCodes: boolean;
+  resendApiKey: string | null;
+  resendFromEmail: string | null;
+  resendFromName: string;
   webAppOrigins: string[];
 };
 
@@ -45,6 +55,12 @@ function getRequiredString(name: string): string {
   return value;
 }
 
+function getOptionalString(name: string): string | null {
+  const value = process.env[name]?.trim();
+
+  return value ? value : null;
+}
+
 function getPositiveInteger(name: string, fallback: number): number {
   const rawValue = process.env[name]?.trim();
 
@@ -80,6 +96,24 @@ function getStringList(name: string, fallback: string[]): string[] {
   return values;
 }
 
+function getBoolean(name: string, fallback: boolean): boolean {
+  const rawValue = process.env[name]?.trim().toLowerCase();
+
+  if (!rawValue) {
+    return fallback;
+  }
+
+  if (rawValue === 'true') {
+    return true;
+  }
+
+  if (rawValue === 'false') {
+    return false;
+  }
+
+  throw new Error(`Environment variable ${name} must be either true or false.`);
+}
+
 export function getAppEnvironment(): AppEnvironment {
   if (cachedEnvironment) {
     return cachedEnvironment;
@@ -91,10 +125,26 @@ export function getAppEnvironment(): AppEnvironment {
     port: getPositiveInteger('PORT', 3001),
     databaseUrl: getRequiredString('DATABASE_URL'),
     jwtSecret: getRequiredString('JWT_SECRET'),
+    accessTokenTtlMinutes: getPositiveInteger('ACCESS_TOKEN_TTL_MINUTES', 15),
+    refreshTokenTtlDays: getPositiveInteger('REFRESH_TOKEN_TTL_DAYS', 14),
     emailVerificationTokenTtlMinutes: getPositiveInteger(
       'EMAIL_VERIFICATION_TOKEN_TTL_MINUTES',
       30,
     ),
+    passwordResetTokenTtlMinutes: getPositiveInteger('PASSWORD_RESET_TOKEN_TTL_MINUTES', 30),
+    authResendCooldownSeconds: getPositiveInteger('AUTH_RESEND_COOLDOWN_SECONDS', 60),
+    authFailedAttemptLimit: getPositiveInteger('AUTH_FAILED_ATTEMPT_LIMIT', 5),
+    authFailedAttemptWindowMinutes: getPositiveInteger(
+      'AUTH_FAILED_ATTEMPT_WINDOW_MINUTES',
+      10,
+    ),
+    authAllowDebugCodes: getBoolean(
+      'AUTH_ALLOW_DEBUG_CODES',
+      process.env.NODE_ENV !== 'production',
+    ),
+    resendApiKey: getOptionalString('RESEND_API_KEY'),
+    resendFromEmail: getOptionalString('RESEND_FROM_EMAIL'),
+    resendFromName: getOptionalString('RESEND_FROM_NAME') ?? 'SafeRidePro',
     webAppOrigins: getStringList('WEB_APP_ORIGINS', ['http://localhost:3000']),
   };
 

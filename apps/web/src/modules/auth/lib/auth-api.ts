@@ -5,11 +5,13 @@ export { ApiError };
 
 type LoginResponse = {
   accessToken: string;
+  refreshToken: string;
 };
 
 export type RegisterResponse = {
   message: string;
-  verificationCode: string;
+  deliveryChannel: 'email' | 'development_preview';
+  verificationCode?: string;
   user: {
     id: string;
     email: string;
@@ -18,6 +20,31 @@ export type RegisterResponse = {
 };
 
 export type VerifyEmailResponse = {
+  message: string;
+};
+
+export type ResendVerificationCodeResponse = {
+  message: string;
+  deliveryChannel?: 'email' | 'development_preview';
+  verificationCode?: string;
+};
+
+export type ForgotPasswordResponse = {
+  message: string;
+  deliveryChannel?: 'email' | 'development_preview';
+  resetCode?: string;
+};
+
+export type ResetPasswordResponse = {
+  message: string;
+};
+
+export type RefreshSessionResponse = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+export type LogoutResponse = {
   message: string;
 };
 
@@ -50,12 +77,66 @@ export async function verifyEmail(code: string): Promise<VerifyEmailResponse> {
   });
 }
 
+export async function resendVerificationCode(
+  email: string,
+): Promise<ResendVerificationCodeResponse> {
+  return apiRequest<ResendVerificationCodeResponse>('/auth/resend-verification-code', {
+    method: 'POST',
+    body: {
+      email,
+    },
+  });
+}
+
+export async function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+  return apiRequest<ForgotPasswordResponse>('/auth/forgot-password', {
+    method: 'POST',
+    body: {
+      email,
+    },
+  });
+}
+
+export async function resetPassword(
+  code: string,
+  password: string,
+): Promise<ResetPasswordResponse> {
+  return apiRequest<ResetPasswordResponse>('/auth/reset-password', {
+    method: 'POST',
+    body: {
+      code,
+      password,
+    },
+  });
+}
+
+export async function refreshSession(
+  refreshToken: string,
+): Promise<RefreshSessionResponse> {
+  return apiRequest<RefreshSessionResponse>('/auth/refresh', {
+    method: 'POST',
+    body: {
+      refreshToken,
+    },
+  });
+}
+
+export async function logout(refreshToken: string): Promise<LogoutResponse> {
+  return apiRequest<LogoutResponse>('/auth/logout', {
+    method: 'POST',
+    body: {
+      refreshToken,
+    },
+  });
+}
+
 export async function createSession(input: LoginInput): Promise<AuthSession> {
-  const { accessToken } = await login(input);
+  const { accessToken, refreshToken } = await login(input);
   const user = await getCurrentUser(accessToken);
 
   return {
     accessToken,
+    refreshToken,
     user,
   };
 }

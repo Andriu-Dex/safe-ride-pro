@@ -3,7 +3,7 @@
 import { createContext, useEffect, useState } from 'react';
 
 import { ApiError } from '../../../lib/api-client';
-import { createSession, getCurrentUser } from '../lib/auth-api';
+import { createSession, getCurrentUser, logout, refreshSession as refreshTokens } from '../lib/auth-api';
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../lib/auth-storage';
 import type { AuthSession, LoginInput } from '../types/auth-session';
 
@@ -48,6 +48,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const user = await getCurrentUser(storedSession.accessToken);
         const nextSession = {
           accessToken: storedSession.accessToken,
+          refreshToken: storedSession.refreshToken,
           user,
         } satisfies AuthSession;
 
@@ -56,7 +57,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (isMounted) {
           setAuthSession(nextSession);
         }
-      } catch {
+      } catch (error) {
+        if (
+          storedSession.refreshToken &&
+          error instanceof ApiError &&
+          error.status === 401
+        ) {
+          try {
+            const refreshedTokens = await refreshTokens(storedSession.refreshToken);
+            const user = await getCurrentUser(refreshedTokens.accessToken);
+            const nextSession = {
+              accessToken: refreshedTokens.accessToken,
+              refreshToken: refreshedTokens.refreshToken,
+              user,
+            } satisfies AuthSession;
+
+            writeStoredSession(nextSession);
+
+            if (isMounted) {
+              setAuthSession(nextSession);
+            }
+
+            return;
+          } catch {
+            // Fall through to clearing storage below.
+          }
+        }
+
         clearStoredSession();
 
         if (isMounted) {
@@ -93,19 +120,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const nextSession = {
           accessToken: authSession.accessToken,
+          refreshToken: authSession.refreshToken,
           user,
         } satisfies AuthSession;
 
         writeStoredSession(nextSession);
         setAuthSession(nextSession);
       } catch (error) {
-        if (
-          isActive &&
-          error instanceof ApiError &&
-          error.status === 401
-        ) {
-          clearStoredSession();
-          setAuthSession(null);
+        if (!isActive || !(error instanceof ApiError) || error.status !== 401) {
+          return;
+        }
+
+        try {
+          const refreshedTokens = await refreshTokens(authSession.refreshToken);
+          const user = await getCurrentUser(refreshedTokens.accessToken);
+
+          if (!isActive) {
+            return;
+          }
+
+          const nextSession = {
+            accessToken: refreshedTokens.accessToken,
+            refreshToken: refreshedTokens.refreshToken,
+            user,
+          } satisfies AuthSession;
+
+          writeStoredSession(nextSession);
+          setAuthSession(nextSession);
+        } catch {
+          if (isActive) {
+            clearStoredSession();
+            setAuthSession(null);
+          }
         }
       }
     };
@@ -149,6 +195,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signOut = (): void => {
+    if (authSession?.refreshToken) {
+      void (async () => {
+        try {
+          await logout(authSession.refreshToken);
+        } catch {
+          return undefined;
+        }
+      })();
+    }
+
     clearStoredSession();
     setAuthSession(null);
   };
@@ -161,6 +217,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const user = await getCurrentUser(authSession.accessToken);
     const nextSession = {
       accessToken: authSession.accessToken,
+      refreshToken: authSession.refreshToken,
       user,
     } satisfies AuthSession;
 

@@ -5,6 +5,7 @@ type LoginPageProps = {
     next?: string | string[];
     email?: string | string[];
     verified?: string | string[];
+    reset?: string | string[];
   }>;
 };
 
@@ -17,12 +18,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const nextPath = getSingleSearchParam(resolvedSearchParams.next) ?? '/dashboard';
   const initialEmail = getSingleSearchParam(resolvedSearchParams.email);
   const showVerifiedMessage = getSingleSearchParam(resolvedSearchParams.verified) === '1';
+  const showResetMessage = getSingleSearchParam(resolvedSearchParams.reset) === '1';
 
   return (
     <LoginPageContent
       initialEmail={initialEmail}
       nextPath={nextPath}
       showVerifiedMessage={showVerifiedMessage}
+      showResetMessage={showResetMessage}
     />
   );
 }

@@ -4,7 +4,7 @@ export async function signInThroughUi(page: Page, email: string, password: strin
   await page.goto('/login');
   await page.getByLabel('Correo').fill(email);
   await page.getByLabel('Contrasena').fill(password);
-  await page.getByRole('button', { name: 'Entrar al panel' }).click();
+  await page.getByRole('button', { name: 'Iniciar sesion' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Resumen operativo' })).toBeVisible();
 }

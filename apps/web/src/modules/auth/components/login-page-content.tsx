@@ -11,12 +11,14 @@ type LoginPageContentProps = {
   nextPath?: string;
   initialEmail?: string;
   showVerifiedMessage?: boolean;
+  showResetMessage?: boolean;
 };
 
 export function LoginPageContent({
   nextPath = '/dashboard',
   initialEmail,
   showVerifiedMessage = false,
+  showResetMessage = false,
 }: LoginPageContentProps) {
   const router = useRouter();
   const { authSession, isHydrated } = useAuth();
@@ -33,17 +35,17 @@ export function LoginPageContent({
         <div className="login-showcase">
           <AppLogo />
           <div>
-            <p className="kicker">Portal web MVP</p>
-            <h1 className="hero-title">Ingresa a tu cuenta.</h1>
+            <p className="kicker">Acceso web</p>
+            <h1 className="hero-title">Bienvenido a SafeRidePro.</h1>
           </div>
           <p className="hero-text">
-            Entra con tu cuenta institucional o crea una nueva para comenzar como pasajero.
+            Inicia sesion con tu cuenta institucional o crea una nueva para comenzar.
           </p>
 
           <div className="feature-list">
             <div className="feature-item">
-              <strong>Acceso institucional</strong>
-              <p>El login valida credenciales reales contra el API y mantiene tu sesion activa.</p>
+              <strong>Acceso institucional seguro</strong>
+              <p>Tu cuenta se verifica por correo y se mantiene activa con renovacion controlada de sesion.</p>
             </div>
           </div>
         </div>
@@ -53,6 +55,7 @@ export function LoginPageContent({
             initialEmail={initialEmail}
             nextPath={nextPath}
             showVerifiedMessage={showVerifiedMessage}
+            showResetMessage={showResetMessage}
           />
         </div>
       </section>

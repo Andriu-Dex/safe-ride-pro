@@ -30,6 +30,7 @@ describe('RegisterForm', () => {
   it('registers the user and redirects to verify-email', async () => {
     vi.mocked(register).mockResolvedValue({
       message: 'Cuenta creada correctamente. Usa el codigo de verificacion para activarla.',
+      deliveryChannel: 'development_preview',
       verificationCode: '654321',
       user: {
         id: 'user-1',
@@ -61,7 +62,7 @@ describe('RegisterForm', () => {
     });
 
     expect(replaceMock).toHaveBeenCalledWith(
-      '/verify-email?code=654321&email=nuevo%40uta.edu.ec',
+      '/verify-email?email=nuevo%40uta.edu.ec&code=654321',
     );
   });
 

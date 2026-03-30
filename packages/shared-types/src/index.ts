@@ -38,6 +38,11 @@ export {
   generateEmailVerificationCode,
 } from './email-verification';
 
+export {
+  PASSWORD_RESET_CODE_LENGTH,
+  generatePasswordResetCode,
+} from './password-reset';
+
 export { isValidEcuadorianNationalId } from './ecuadorian-national-id';
 
 export enum VehicleType {

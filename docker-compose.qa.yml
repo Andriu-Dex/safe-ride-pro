@@ -30,6 +30,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-safe_ride_pro_qa}
       JWT_SECRET: ${JWT_SECRET:-qa-jwt-secret}
+      AUTH_ALLOW_DEBUG_CODES: ${AUTH_ALLOW_DEBUG_CODES:-true}
       EMAIL_VERIFICATION_TOKEN_TTL_MINUTES: ${EMAIL_VERIFICATION_TOKEN_TTL_MINUTES:-30}
       WEB_APP_ORIGINS: ${WEB_APP_ORIGINS:-http://localhost:3000}
       PRISMA_HIDE_UPDATE_MESSAGE: "true"

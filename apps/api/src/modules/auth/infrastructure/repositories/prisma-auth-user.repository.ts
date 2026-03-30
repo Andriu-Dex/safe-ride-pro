@@ -6,6 +6,7 @@ import {
   GlobalUserRole,
   MembershipRole,
   MembershipStatus,
+  Prisma,
 } from '@prisma/client';
 import {
   AccountStatus as SharedAccountStatus,
@@ -24,12 +25,30 @@ import {
   AuthUserRepository,
   CreateUserWithMembershipInput,
   EmailVerificationRecord,
+  PasswordResetRecord,
+  RefreshTokenSessionRecord,
   ResolvedInstitution,
 } from '../../application/ports/auth-user.repository';
 
 @Injectable()
 export class PrismaAuthUserRepository implements AuthUserRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  private buildAuthUserInclude(): Prisma.UserInclude {
+    return {
+      memberships: {
+        include: {
+          institution: true,
+          driverProfile: {
+            select: {
+              licenseExpiresAt: true,
+            },
+          },
+        },
+        orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
+      },
+    };
+  }
 
   async findInstitutionByDomain(domain: string): Promise<ResolvedInstitution | null> {
     const institutionDomain = await this.prisma.institutionDomain.findFirst({
@@ -59,19 +78,16 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
   async findUserByEmail(email: string): Promise<AuthUserRecord | null> {
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: {
-        memberships: {
-          include: {
-            institution: true,
-            driverProfile: {
-              select: {
-                licenseExpiresAt: true,
-              },
-            },
-          },
-          orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
-        },
-      },
+      include: this.buildAuthUserInclude(),
+    });
+
+    return user ? this.mapUser(user) : null;
+  }
+
+  async findUserById(userId: string): Promise<AuthUserRecord | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: this.buildAuthUserInclude(),
     });
 
     return user ? this.mapUser(user) : null;
@@ -101,19 +117,7 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
           },
         },
       },
-      include: {
-        memberships: {
-          include: {
-            institution: true,
-            driverProfile: {
-              select: {
-                licenseExpiresAt: true,
-              },
-            },
-          },
-          orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
-        },
-      },
+      include: this.buildAuthUserInclude(),
     });
 
     return this.mapUser(createdUser);
@@ -199,6 +203,37 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
       userId: record.userId,
       expiresAt: record.expiresAt,
       verifiedAt: record.verifiedAt,
+      createdAt: record.createdAt,
+    };
+  }
+
+  async findLatestPendingEmailVerificationByUserId(
+    userId: string,
+    now: Date,
+  ): Promise<EmailVerificationRecord | null> {
+    const record = await this.prisma.emailVerificationCode.findFirst({
+      where: {
+        userId,
+        verifiedAt: null,
+        expiresAt: {
+          gt: now,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    return {
+      id: record.id,
+      userId: record.userId,
+      expiresAt: record.expiresAt,
+      verifiedAt: record.verifiedAt,
+      createdAt: record.createdAt,
     };
   }
 
@@ -218,47 +253,171 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
           emailVerifiedAt: verifiedAt,
           accountStatus: AccountStatus.ACTIVE,
         },
-        include: {
-          memberships: {
-            include: {
-              institution: true,
-              driverProfile: {
-                select: {
-                  licenseExpiresAt: true,
-                },
-              },
-            },
-            orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
-          },
-        },
+        include: this.buildAuthUserInclude(),
       }),
     ]);
 
     return this.mapUser(updatedUser);
   }
 
-  private mapUser(user: {
-    id: string;
-    email: string;
-    passwordHash: string;
-    fullName: string;
-    globalRole: GlobalUserRole;
-    accountStatus: AccountStatus;
-    emailVerifiedAt: Date | null;
-    memberships: {
-      id: string;
-      institutionId: string;
-      role: MembershipRole;
-      membershipStatus: MembershipStatus;
-      studentCode: string;
-      isDefault: boolean;
-      driverVerificationStatus: DriverVerificationStatus;
-      driverProfile?: {
-        licenseExpiresAt: Date;
-      } | null;
-      institution: { name: string; isActive: boolean };
-    }[];
-  }): AuthUserRecord {
+  async createPasswordResetCode(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.prisma.passwordResetCode.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+  }
+
+  async findLatestPendingPasswordResetByUserId(
+    userId: string,
+    now: Date,
+  ): Promise<PasswordResetRecord | null> {
+    const record = await this.prisma.passwordResetCode.findFirst({
+      where: {
+        userId,
+        usedAt: null,
+        expiresAt: {
+          gt: now,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    return {
+      id: record.id,
+      userId: record.userId,
+      expiresAt: record.expiresAt,
+      usedAt: record.usedAt,
+      createdAt: record.createdAt,
+    };
+  }
+
+  async findValidPasswordResetCode(
+    tokenHash: string,
+    now: Date,
+  ): Promise<PasswordResetRecord | null> {
+    const record = await this.prisma.passwordResetCode.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: {
+          gt: now,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    return {
+      id: record.id,
+      userId: record.userId,
+      expiresAt: record.expiresAt,
+      usedAt: record.usedAt,
+      createdAt: record.createdAt,
+    };
+  }
+
+  async markPasswordResetCodeAsUsed(tokenId: string, usedAt: Date): Promise<void> {
+    await this.prisma.passwordResetCode.update({
+      where: { id: tokenId },
+      data: { usedAt },
+    });
+  }
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+      },
+    });
+  }
+
+  async createRefreshTokenSession(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.prisma.refreshTokenSession.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+  }
+
+  async findValidRefreshTokenSession(
+    tokenHash: string,
+    now: Date,
+  ): Promise<RefreshTokenSessionRecord | null> {
+    const session = await this.prisma.refreshTokenSession.findFirst({
+      where: {
+        tokenHash,
+        revokedAt: null,
+        expiresAt: {
+          gt: now,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!session) {
+      return null;
+    }
+
+    return {
+      id: session.id,
+      userId: session.userId,
+      expiresAt: session.expiresAt,
+      revokedAt: session.revokedAt,
+      createdAt: session.createdAt,
+    };
+  }
+
+  async revokeRefreshTokenSession(tokenId: string, revokedAt: Date): Promise<void> {
+    await this.prisma.refreshTokenSession.update({
+      where: { id: tokenId },
+      data: {
+        revokedAt,
+        lastUsedAt: revokedAt,
+      },
+    });
+  }
+
+  async revokeAllRefreshTokenSessionsForUser(userId: string, revokedAt: Date): Promise<void> {
+    await this.prisma.refreshTokenSession.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt,
+        lastUsedAt: revokedAt,
+      },
+    });
+  }
+
+  private mapUser(user: any): AuthUserRecord {
     return {
       id: user.id,
       email: user.email,
@@ -267,7 +426,7 @@ export class PrismaAuthUserRepository implements AuthUserRepository {
       globalRole: user.globalRole as unknown as SharedGlobalUserRole,
       accountStatus: user.accountStatus as unknown as SharedAccountStatus,
       emailVerifiedAt: user.emailVerifiedAt,
-      memberships: user.memberships.map((membership) => ({
+      memberships: user.memberships.map((membership: any) => ({
         id: membership.id,
         institutionId: membership.institutionId,
         institutionName: membership.institution.name,

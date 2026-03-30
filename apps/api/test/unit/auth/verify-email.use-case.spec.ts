@@ -17,10 +17,21 @@ function createAuthRepositoryMock(): jest.Mocked<AuthUserRepository> {
   return {
     findInstitutionByDomain: jest.fn(),
     findUserByEmail: jest.fn(),
+    findUserById: jest.fn(),
     createUserWithMembership: jest.fn(),
     createEmailVerificationCode: jest.fn(),
+    findLatestPendingEmailVerificationByUserId: jest.fn(),
     findValidEmailVerification: jest.fn(),
     markEmailAsVerified: jest.fn(),
+    createPasswordResetCode: jest.fn(),
+    findLatestPendingPasswordResetByUserId: jest.fn(),
+    findValidPasswordResetCode: jest.fn(),
+    markPasswordResetCodeAsUsed: jest.fn(),
+    updatePassword: jest.fn(),
+    createRefreshTokenSession: jest.fn(),
+    findValidRefreshTokenSession: jest.fn(),
+    revokeRefreshTokenSession: jest.fn(),
+    revokeAllRefreshTokenSessionsForUser: jest.fn(),
   };
 }
 
@@ -61,6 +72,7 @@ describe('VerifyEmailUseCase', () => {
       userId: 'user-1',
       expiresAt: new Date('2030-01-01T10:00:00.000Z'),
       verifiedAt: null,
+      createdAt: new Date('2030-01-01T09:00:00.000Z'),
     });
     repository.markEmailAsVerified.mockResolvedValue(buildVerifiedUser());
 

@@ -1,14 +1,19 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import {
   DocumentType,
-  EMAIL_VERIFICATION_CODE_LENGTH,
+  generateEmailVerificationCode,
   isValidEcuadorianNationalId,
 } from '@saferidepro/shared-types';
-import { createHash, randomInt } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
 import { EnvironmentService } from '../../../../shared/infrastructure/config/environment.service';
+import {
+  AUTH_EMAIL_SERVICE,
+  AuthEmailDeliveryChannel,
+  AuthEmailService,
+} from '../ports/auth-email.service';
 import {
   AUTH_USER_REPOSITORY,
   AuthUserRepository,
@@ -27,7 +32,8 @@ export type RegisterUserInput = {
 
 export type RegisterUserOutput = {
   message: string;
-  verificationCode: string;
+  deliveryChannel: AuthEmailDeliveryChannel;
+  verificationCode?: string;
   user: {
     id: string;
     email: string;
@@ -40,6 +46,8 @@ export class RegisterUserUseCase {
   constructor(
     @Inject(AUTH_USER_REPOSITORY)
     private readonly authUserRepository: AuthUserRepository,
+    @Inject(AUTH_EMAIL_SERVICE)
+    private readonly authEmailService: AuthEmailService,
     @Inject(PASSWORD_HASHER)
     private readonly passwordHasher: PasswordHasher,
     private readonly environmentService: EnvironmentService,
@@ -89,10 +97,7 @@ export class RegisterUserUseCase {
       institutionId: institution.id,
     });
 
-    const verificationCode = randomInt(
-      10 ** (EMAIL_VERIFICATION_CODE_LENGTH - 1),
-      10 ** EMAIL_VERIFICATION_CODE_LENGTH,
-    ).toString();
+    const verificationCode = generateEmailVerificationCode();
     const verificationCodeHash = createHash('sha256')
       .update(verificationCode)
       .digest('hex');
@@ -106,6 +111,13 @@ export class RegisterUserUseCase {
       expiresAt,
     );
 
+    const deliveryChannel = await this.authEmailService.sendVerificationCodeEmail({
+      email: createdUser.email,
+      fullName: createdUser.fullName,
+      code: verificationCode,
+      expiresInMinutes: this.environmentService.emailVerificationTokenTtlMinutes,
+    });
+
     await this.auditService.record({
       institutionId: institution.id,
       actorUserId: createdUser.id,
@@ -118,8 +130,11 @@ export class RegisterUserUseCase {
     });
 
     return {
-      message: 'Cuenta creada correctamente. Usa el codigo de verificacion para activarla.',
-      verificationCode,
+      message: 'Cuenta creada correctamente. Revisa tu correo para verificar la cuenta.',
+      deliveryChannel,
+      verificationCode: this.environmentService.authAllowDebugCodes
+        ? verificationCode
+        : undefined,
       user: {
         id: createdUser.id,
         email: createdUser.email,

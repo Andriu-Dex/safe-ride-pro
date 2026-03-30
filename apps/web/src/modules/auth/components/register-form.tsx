@@ -108,9 +108,15 @@ export function RegisterForm() {
 
       setSuccessMessage(response.message);
 
-      router.replace(
-        `/verify-email?code=${encodeURIComponent(response.verificationCode)}&email=${encodeURIComponent(response.user.email)}`,
-      );
+      const query = new URLSearchParams({
+        email: response.user.email,
+      });
+
+      if (response.verificationCode) {
+        query.set('code', response.verificationCode);
+      }
+
+      router.replace(`/verify-email?${query.toString()}`);
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
@@ -128,7 +134,7 @@ export function RegisterForm() {
         <p className="kicker">Registro institucional</p>
         <h2>Crea tu cuenta</h2>
         <p>
-          Registra tus datos base para entrar al MVP como pasajero.
+          Registra tus datos base para crear tu acceso institucional.
         </p>
       </div>
 
@@ -219,10 +225,6 @@ export function RegisterForm() {
           </div>
         ) : null}
 
-        <div className="form-helper">
-          En esta fase el sistema valida el dominio institucional y te entrega un codigo de verificacion de prueba. El envio real por correo se conectara despues.
-        </div>
-
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
@@ -233,7 +235,7 @@ export function RegisterForm() {
 
       <div className="button-row">
         <a className="button button-secondary" href="/login">
-          Ya tengo cuenta
+          Ya tengo una cuenta
         </a>
       </div>
     </div>

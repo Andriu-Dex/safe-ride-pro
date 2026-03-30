@@ -1,8 +1,13 @@
 export enum AuditAction {
   AuthRegistered = 'AUTH_REGISTERED',
   AuthEmailVerified = 'AUTH_EMAIL_VERIFIED',
+  AuthVerificationCodeResent = 'AUTH_VERIFICATION_CODE_RESENT',
   AuthLoginSucceeded = 'AUTH_LOGIN_SUCCEEDED',
   AuthLoginFailed = 'AUTH_LOGIN_FAILED',
+  AuthPasswordResetRequested = 'AUTH_PASSWORD_RESET_REQUESTED',
+  AuthPasswordResetCompleted = 'AUTH_PASSWORD_RESET_COMPLETED',
+  AuthSessionRefreshed = 'AUTH_SESSION_REFRESHED',
+  AuthLoggedOut = 'AUTH_LOGGED_OUT',
   DriverApplicationSubmitted = 'DRIVER_APPLICATION_SUBMITTED',
   DriverApplicationApproved = 'DRIVER_APPLICATION_APPROVED',
   DriverApplicationRejected = 'DRIVER_APPLICATION_REJECTED',

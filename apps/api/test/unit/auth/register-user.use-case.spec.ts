@@ -10,6 +10,7 @@ import {
 
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
+import type { AuthEmailService } from '../../../src/modules/auth/application/ports/auth-email.service';
 import { RegisterUserUseCase } from '../../../src/modules/auth/application/use-cases/register-user.use-case';
 import type {
   AuthUserRecord,
@@ -22,10 +23,21 @@ function createAuthRepositoryMock(): jest.Mocked<AuthUserRepository> {
   return {
     findInstitutionByDomain: jest.fn(),
     findUserByEmail: jest.fn(),
+    findUserById: jest.fn(),
     createUserWithMembership: jest.fn(),
     createEmailVerificationCode: jest.fn(),
+    findLatestPendingEmailVerificationByUserId: jest.fn(),
     findValidEmailVerification: jest.fn(),
     markEmailAsVerified: jest.fn(),
+    createPasswordResetCode: jest.fn(),
+    findLatestPendingPasswordResetByUserId: jest.fn(),
+    findValidPasswordResetCode: jest.fn(),
+    markPasswordResetCodeAsUsed: jest.fn(),
+    updatePassword: jest.fn(),
+    createRefreshTokenSession: jest.fn(),
+    findValidRefreshTokenSession: jest.fn(),
+    revokeRefreshTokenSession: jest.fn(),
+    revokeAllRefreshTokenSessionsForUser: jest.fn(),
   };
 }
 
@@ -33,6 +45,13 @@ function createPasswordHasherMock(): jest.Mocked<PasswordHasher> {
   return {
     hash: jest.fn(),
     compare: jest.fn(),
+  };
+}
+
+function createAuthEmailServiceMock(): jest.Mocked<AuthEmailService> {
+  return {
+    sendVerificationCodeEmail: jest.fn(),
+    sendPasswordResetCodeEmail: jest.fn(),
   };
 }
 
@@ -63,15 +82,18 @@ function buildCreatedUser(email: string): AuthUserRecord {
 describe('RegisterUserUseCase', () => {
   it('creates a user, verification code and audit event using normalized data', async () => {
     const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
     const passwordHasher = createPasswordHasherMock();
     const environmentService = {
       emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
     } as EnvironmentService;
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
     const useCase = new RegisterUserUseCase(
       repository,
+      authEmailService,
       passwordHasher,
       environmentService,
       auditService,
@@ -84,6 +106,7 @@ describe('RegisterUserUseCase', () => {
     });
     repository.findUserByEmail.mockResolvedValue(null);
     passwordHasher.hash.mockResolvedValue('hashed-password');
+    authEmailService.sendVerificationCodeEmail.mockResolvedValue('development_preview');
     repository.createUserWithMembership.mockImplementation(async (input) => buildCreatedUser(input.email));
 
     const response = await useCase.execute({
@@ -95,7 +118,8 @@ describe('RegisterUserUseCase', () => {
       documentNumber: ' 1710034065 ',
     });
 
-    expect(response.message).toBe('Cuenta creada correctamente. Usa el codigo de verificacion para activarla.');
+    expect(response.message).toBe('Cuenta creada correctamente. Revisa tu correo para verificar la cuenta.');
+    expect(response.deliveryChannel).toBe('development_preview');
     expect(response.user.email).toBe('student@uta.edu.ec');
     expect(response.verificationCode).toHaveLength(6);
     expect(passwordHasher.hash).toHaveBeenCalledWith('Password123');
@@ -128,15 +152,18 @@ describe('RegisterUserUseCase', () => {
 
   it('rejects duplicate registered emails', async () => {
     const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
     const passwordHasher = createPasswordHasherMock();
     const environmentService = {
       emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
     } as EnvironmentService;
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
     const useCase = new RegisterUserUseCase(
       repository,
+      authEmailService,
       passwordHasher,
       environmentService,
       auditService,
@@ -166,15 +193,18 @@ describe('RegisterUserUseCase', () => {
 
   it('rejects an invalid Ecuadorian national id', async () => {
     const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
     const passwordHasher = createPasswordHasherMock();
     const environmentService = {
       emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
     } as EnvironmentService;
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
     const useCase = new RegisterUserUseCase(
       repository,
+      authEmailService,
       passwordHasher,
       environmentService,
       auditService,

@@ -10,18 +10,31 @@ import {
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
 import { LoginUseCase } from '../../../src/modules/auth/application/use-cases/login.use-case';
-import type { AccessTokenService } from '../../../src/modules/auth/application/ports/access-token.service';
 import type { AuthUserRecord, AuthUserRepository } from '../../../src/modules/auth/application/ports/auth-user.repository';
 import type { PasswordHasher } from '../../../src/modules/auth/application/ports/password-hasher';
+import { AuthRateLimitService } from '../../../src/modules/auth/application/services/auth-rate-limit.service';
+import { AuthSessionService } from '../../../src/modules/auth/application/services/auth-session.service';
+import { EnvironmentService } from '../../../src/shared/infrastructure/config/environment.service';
 
 function createAuthRepositoryMock(): jest.Mocked<AuthUserRepository> {
   return {
     findInstitutionByDomain: jest.fn(),
     findUserByEmail: jest.fn(),
+    findUserById: jest.fn(),
     createUserWithMembership: jest.fn(),
     createEmailVerificationCode: jest.fn(),
+    findLatestPendingEmailVerificationByUserId: jest.fn(),
     findValidEmailVerification: jest.fn(),
     markEmailAsVerified: jest.fn(),
+    createPasswordResetCode: jest.fn(),
+    findLatestPendingPasswordResetByUserId: jest.fn(),
+    findValidPasswordResetCode: jest.fn(),
+    markPasswordResetCodeAsUsed: jest.fn(),
+    updatePassword: jest.fn(),
+    createRefreshTokenSession: jest.fn(),
+    findValidRefreshTokenSession: jest.fn(),
+    revokeRefreshTokenSession: jest.fn(),
+    revokeAllRefreshTokenSessionsForUser: jest.fn(),
   };
 }
 
@@ -32,10 +45,10 @@ function createPasswordHasherMock(): jest.Mocked<PasswordHasher> {
   };
 }
 
-function createAccessTokenServiceMock(): jest.Mocked<AccessTokenService> {
+function createAuthSessionServiceMock(): jest.Mocked<AuthSessionService> {
   return {
-    sign: jest.fn(),
-  };
+    issueTokens: jest.fn(),
+  } as unknown as jest.Mocked<AuthSessionService>;
 }
 
 function buildUser(overrides: Partial<AuthUserRecord> = {}): AuthUserRecord {
@@ -67,20 +80,36 @@ describe('LoginUseCase', () => {
   it('returns an access token and records a successful audit event', async () => {
     const repository = createAuthRepositoryMock();
     const passwordHasher = createPasswordHasherMock();
-    const accessTokenService = createAccessTokenServiceMock();
+    const authSessionService = createAuthSessionServiceMock();
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
+    const authRateLimitService = {
+      assertAllowed: jest.fn(),
+      recordFailure: jest.fn(),
+      clear: jest.fn(),
+    } as unknown as jest.Mocked<AuthRateLimitService>;
+    const environmentService = {
+      authFailedAttemptLimit: 5,
+      authFailedAttemptWindowMinutes: 10,
+    } as EnvironmentService;
     const useCase = new LoginUseCase(
       repository,
       passwordHasher,
-      accessTokenService,
       auditService,
+      authSessionService,
+      authRateLimitService,
+      environmentService,
     );
 
     repository.findUserByEmail.mockResolvedValue(buildUser());
     passwordHasher.compare.mockResolvedValue(true);
-    accessTokenService.sign.mockResolvedValue('access-token');
+    authSessionService.issueTokens.mockResolvedValue({
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      refreshTokenHash: 'refresh-token-hash',
+      refreshTokenExpiresAt: new Date('2030-01-15T00:00:00.000Z'),
+    });
 
     const response = await useCase.execute({
       email: ' STUDENT@UTA.EDU.EC ',
@@ -88,8 +117,14 @@ describe('LoginUseCase', () => {
     });
 
     expect(response.accessToken).toBe('access-token');
+    expect(response.refreshToken).toBe('refresh-token');
     expect(response.user.email).toBe('student@uta.edu.ec');
-    expect(accessTokenService.sign).toHaveBeenCalledWith('user-1', GlobalUserRole.User);
+    expect(authSessionService.issueTokens).toHaveBeenCalledWith('user-1', GlobalUserRole.User);
+    expect(repository.createRefreshTokenSession).toHaveBeenCalledWith(
+      'user-1',
+      'refresh-token-hash',
+      new Date('2030-01-15T00:00:00.000Z'),
+    );
     expect(auditService.record).toHaveBeenCalledWith({
       institutionId: 'institution-1',
       actorUserId: 'user-1',
@@ -105,15 +140,26 @@ describe('LoginUseCase', () => {
   it('rejects login when the email is not verified and records the failure', async () => {
     const repository = createAuthRepositoryMock();
     const passwordHasher = createPasswordHasherMock();
-    const accessTokenService = createAccessTokenServiceMock();
+    const authSessionService = createAuthSessionServiceMock();
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
+    const authRateLimitService = {
+      assertAllowed: jest.fn(),
+      recordFailure: jest.fn(),
+      clear: jest.fn(),
+    } as unknown as jest.Mocked<AuthRateLimitService>;
+    const environmentService = {
+      authFailedAttemptLimit: 5,
+      authFailedAttemptWindowMinutes: 10,
+    } as EnvironmentService;
     const useCase = new LoginUseCase(
       repository,
       passwordHasher,
-      accessTokenService,
       auditService,
+      authSessionService,
+      authRateLimitService,
+      environmentService,
     );
 
     repository.findUserByEmail.mockResolvedValue(
@@ -143,21 +189,32 @@ describe('LoginUseCase', () => {
         reason: 'EMAIL_NOT_VERIFIED',
       },
     });
-    expect(accessTokenService.sign).not.toHaveBeenCalled();
+    expect(authSessionService.issueTokens).not.toHaveBeenCalled();
   });
 
   it('rejects invalid credentials and records the failure reason', async () => {
     const repository = createAuthRepositoryMock();
     const passwordHasher = createPasswordHasherMock();
-    const accessTokenService = createAccessTokenServiceMock();
+    const authSessionService = createAuthSessionServiceMock();
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
+    const authRateLimitService = {
+      assertAllowed: jest.fn(),
+      recordFailure: jest.fn(),
+      clear: jest.fn(),
+    } as unknown as jest.Mocked<AuthRateLimitService>;
+    const environmentService = {
+      authFailedAttemptLimit: 5,
+      authFailedAttemptWindowMinutes: 10,
+    } as EnvironmentService;
     const useCase = new LoginUseCase(
       repository,
       passwordHasher,
-      accessTokenService,
       auditService,
+      authSessionService,
+      authRateLimitService,
+      environmentService,
     );
 
     repository.findUserByEmail.mockResolvedValue(buildUser());
@@ -180,6 +237,6 @@ describe('LoginUseCase', () => {
         reason: 'INVALID_CREDENTIALS',
       },
     });
-    expect(accessTokenService.sign).not.toHaveBeenCalled();
+    expect(authSessionService.issueTokens).not.toHaveBeenCalled();
   });
 });

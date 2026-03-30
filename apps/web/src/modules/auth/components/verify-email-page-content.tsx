@@ -35,7 +35,7 @@ export function VerifyEmailPageContent({
             <h1 className="hero-title">Activa tu cuenta con un codigo.</h1>
           </div>
           <p className="hero-text">
-            En esta fase el codigo se muestra directamente para pruebas. Una vez verificado, ya puedes iniciar sesion y usar los modulos disponibles.
+            Revisa tu correo institucional, ingresa el codigo y activa tu acceso a SafeRidePro.
           </p>
 
           <div className="feature-list">
@@ -44,8 +44,8 @@ export function VerifyEmailPageContent({
               <p>La verificacion cambia el estado de la cuenta y habilita el inicio de sesion.</p>
             </div>
             <div className="feature-item">
-              <strong>Flujo listo para crecer</strong>
-              <p>Mas adelante este paso puede conectarse a correo real sin rehacer la experiencia base.</p>
+              <strong>Reenvio de codigo</strong>
+              <p>Si no recibes el mensaje, puedes solicitar un nuevo codigo desde la misma pantalla.</p>
             </div>
           </div>
         </div>

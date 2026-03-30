@@ -23,17 +23,17 @@ export default function RegisterPage() {
         <div className="login-showcase">
           <AppLogo />
           <div>
-            <p className="kicker">Onboarding MVP</p>
+            <p className="kicker">Registro web</p>
             <h1 className="hero-title">Crea tu cuenta institucional.</h1>
           </div>
           <p className="hero-text">
-            Registra tu cuenta, valida tu correo y entra al sistema como pasajero.
+            Registra tu cuenta, verifica tu correo y accede a SafeRidePro.
           </p>
 
           <div className="feature-list">
             <div className="feature-item">
               <strong>Registro por institucion</strong>
-              <p>El dominio del correo define si la institucion esta autorizada dentro del sistema.</p>
+              <p>El sistema valida el dominio institucional y protege tu acceso con verificacion por codigo.</p>
             </div>
           </div>
         </div>

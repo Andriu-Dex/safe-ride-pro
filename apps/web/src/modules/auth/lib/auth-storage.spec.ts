@@ -15,6 +15,7 @@ import {
 
 const TEST_SESSION: AuthSession = {
   accessToken: 'token-123',
+  refreshToken: 'refresh-token-123',
   user: {
     id: 'user-1',
     email: 'admin@uta.edu.ec',
