@@ -1,5 +1,3 @@
-import { AppLogo } from '../components/ui/app-logo';
-
 type HomePageProps = {
   searchParams?: Promise<{
     verified?: string | string[];
@@ -25,7 +23,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     <main className="login-shell">
       <section className="login-card">
         <div className="login-showcase">
-          <AppLogo variant="hero" />
+          <img
+            alt="Logo de SafeRidePro"
+            className="auth-hero-logo"
+            loading="eager"
+            src="https://i.imgur.com/7UUGKrJ.png"
+          />
           <div>
             <p className="kicker">Bienvenida a la pagina</p>
             <h1 className="hero-title">Tu comunidad universitaria ya tiene un acceso seguro.</h1>

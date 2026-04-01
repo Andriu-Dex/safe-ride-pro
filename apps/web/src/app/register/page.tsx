@@ -1,11 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
 import { AppLogo } from '../../components/ui/app-logo';
 import { RegisterForm } from '../../modules/auth/components/register-form';
-import { useAuth } from '../../modules/auth/hooks/use-auth';
 
 const REGISTER_TIPS = [
   'Usa tu correo institucional activo.',
@@ -14,15 +10,6 @@ const REGISTER_TIPS = [
 ];
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const { authSession, isHydrated } = useAuth();
-
-  useEffect(() => {
-    if (isHydrated && authSession) {
-      router.replace('/dashboard');
-    }
-  }, [authSession, isHydrated, router]);
-
   return (
     <main className="register-shell">
       <section className="register-layout">

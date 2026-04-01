@@ -9,7 +9,8 @@ import { AppLogo } from '../ui/app-logo';
 import { Button } from '../ui/button';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Resumen', requiresOperationalMembership: false },
+  { href: '/inicio', label: 'Inicio', requiresOperationalMembership: false },
+  { href: '/dashboard', label: 'Dashboard', requiresOperationalMembership: false },
   { href: '/conductor', label: 'Conductor', requiresOperationalMembership: true },
   { href: '/vehiculos', label: 'Vehiculos', requiresOperationalMembership: true },
   { href: '/viajes', label: 'Viajes', requiresOperationalMembership: true },

@@ -1,9 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-import { useAuth } from '../hooks/use-auth';
 import { LoginForm } from './login-form';
 
 type LoginPageContentProps = {
@@ -14,20 +10,11 @@ type LoginPageContentProps = {
 };
 
 export function LoginPageContent({
-  nextPath = '/dashboard',
+  nextPath = '/inicio',
   initialEmail,
   showVerifiedMessage = false,
   showResetMessage = false,
 }: LoginPageContentProps) {
-  const router = useRouter();
-  const { authSession, isHydrated } = useAuth();
-
-  useEffect(() => {
-    if (isHydrated && authSession) {
-      router.replace(nextPath);
-    }
-  }, [authSession, isHydrated, nextPath, router]);
-
   return (
     <main className="login-shell">
       <section className="login-card">

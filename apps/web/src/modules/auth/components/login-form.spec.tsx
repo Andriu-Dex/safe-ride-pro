@@ -29,7 +29,7 @@ describe('LoginForm', () => {
     vi.clearAllMocks();
   });
 
-  it('submits credentials and redirects to the dashboard', async () => {
+  it('submits credentials and redirects to inicio', async () => {
     signInMock.mockResolvedValue(undefined);
 
     render(<LoginForm />);
@@ -49,7 +49,7 @@ describe('LoginForm', () => {
       });
     });
 
-    expect(replaceMock).toHaveBeenCalledWith('/dashboard');
+    expect(replaceMock).toHaveBeenCalledWith('/inicio');
   });
 
   it('shows the API error message when sign in fails', async () => {

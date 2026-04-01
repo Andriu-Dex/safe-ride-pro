@@ -15,7 +15,7 @@ function getSingleSearchParam(value: string | string[] | undefined): string | un
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
-  const nextPath = getSingleSearchParam(resolvedSearchParams.next) ?? '/dashboard';
+  const nextPath = getSingleSearchParam(resolvedSearchParams.next) ?? '/inicio';
   const initialEmail = getSingleSearchParam(resolvedSearchParams.email);
   const showVerifiedMessage = getSingleSearchParam(resolvedSearchParams.verified) === '1';
   const showResetMessage = getSingleSearchParam(resolvedSearchParams.reset) === '1';

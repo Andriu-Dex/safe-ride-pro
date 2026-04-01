@@ -17,7 +17,7 @@ type LoginFormProps = {
 
 export function LoginForm({
   initialEmail = '',
-  nextPath = '/dashboard',
+  nextPath = '/inicio',
   showVerifiedMessage = false,
   showResetMessage = false,
 }: LoginFormProps) {

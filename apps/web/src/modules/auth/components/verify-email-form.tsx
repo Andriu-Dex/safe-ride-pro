@@ -71,7 +71,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
       });
-      router.replace('/dashboard');
+      router.replace('/inicio');
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);

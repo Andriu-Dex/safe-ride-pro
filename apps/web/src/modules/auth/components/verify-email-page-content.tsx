@@ -20,7 +20,7 @@ export function VerifyEmailPageContent({
 
   useEffect(() => {
     if (isHydrated && authSession) {
-      router.replace('/dashboard');
+      router.replace('/inicio');
     }
   }, [authSession, isHydrated, router]);
 
