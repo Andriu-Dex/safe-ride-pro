@@ -87,6 +87,10 @@ function loadEnvironmentFile(): void {
         value = value.slice(1, -1);
       }
 
+      if (Object.prototype.hasOwnProperty.call(process.env, name)) {
+        continue;
+      }
+
       process.env[name] = value;
     }
   }

@@ -128,7 +128,7 @@ describe('Institutions real DB integration', () => {
       email: `session.${uniqueSuffix}@${primaryDomain}`,
       password: 'Suspend123!',
       fullName: 'Usuario Suspendido',
-      documentNumber: `${Date.now()}`.slice(-10),
+      documentNumber: `87${uniqueSuffix.replace(/\D/g, '').slice(-8)}`,
       studentCode: `SUS-${uniqueSuffix.slice(-6)}`,
     });
 

@@ -9,6 +9,7 @@ import { AppLogo } from '../ui/app-logo';
 import { Button } from '../ui/button';
 
 const NAV_ITEMS = [
+  { href: '/perfil', label: 'Perfil', requiresOperationalMembership: false },
   { href: '/inicio', label: 'Inicio', requiresOperationalMembership: false },
   { href: '/dashboard', label: 'Dashboard', requiresOperationalMembership: false },
   { href: '/conductor', label: 'Conductor', requiresOperationalMembership: true },
@@ -26,6 +27,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { authSession, signOut } = useAuth();
+  const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
 
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const currentMembership =
@@ -47,8 +49,9 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
               const isDisabled =
-                item.requiresOperationalMembership &&
-                !operationalAccess.hasOperationalMembership;
+                (requiresOnboarding && item.href !== '/perfil') ||
+                (item.requiresOperationalMembership &&
+                  !operationalAccess.hasOperationalMembership);
 
               if (isDisabled) {
                 return (
@@ -87,6 +90,17 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
             <p className="sidebar-label">Acceso operativo</p>
             <strong>{operationalAccess.title}</strong>
             <p>{operationalAccess.message}</p>
+          </section>
+        ) : null}
+
+        {requiresOnboarding ? (
+          <section className="sidebar-note sidebar-note-warning">
+            <p className="sidebar-label">Onboarding pendiente</p>
+            <strong>Completa tu perfil antes de operar.</strong>
+            <p>
+              Necesitas terminar tu perfil y aceptar las reglas base para usar el resto
+              de modulos de SafeRidePro.
+            </p>
           </section>
         ) : null}
 

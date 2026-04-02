@@ -10,6 +10,14 @@ export async function createRealDbTestApp(): Promise<{
   moduleRef: TestingModule;
   prisma: PrismaService;
 }> {
+  process.env.AUTH_ALLOW_DEBUG_CODES = 'true';
+  process.env.SMTP_HOST = '';
+  process.env.SMTP_USER = '';
+  process.env.SMTP_PASSWORD = '';
+  process.env.SMTP_PASS = '';
+  process.env.SMTP_FROM_EMAIL = '';
+  process.env.SMTP_FROM_NAME = '';
+
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();

@@ -5,6 +5,7 @@ type ResetPasswordPageProps = {
   searchParams?: Promise<{
     code?: string | string[];
     email?: string | string[];
+    sent?: string | string[];
   }>;
 };
 
@@ -16,6 +17,7 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
   const resolvedSearchParams = (await searchParams) ?? {};
   const code = getSingleSearchParam(resolvedSearchParams.code);
   const email = getSingleSearchParam(resolvedSearchParams.email);
+  const sent = getSingleSearchParam(resolvedSearchParams.sent) === '1';
 
   return (
     <main className="login-shell">
@@ -32,7 +34,7 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
         </div>
 
         <div className="login-form-panel">
-          <ResetPasswordForm email={email} initialCode={code} />
+          <ResetPasswordForm email={email} initialCode={code} showSentMessage={sent} />
         </div>
       </section>
     </main>

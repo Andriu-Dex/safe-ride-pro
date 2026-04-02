@@ -13,7 +13,25 @@ Diseñar y modelar un sistema que permita a estudiantes de una misma institució
 
 ## Objetivo general
 
-Modelar y posteriormente implementar (en el segundo parcial) una aplicación que permita a estudiantes publicar y unirse a viajes compartidos, con controles básicos de seguridad y reputación.
+Implementar de forma incremental una aplicacion que permita a estudiantes publicar y unirse a viajes compartidos, con controles de seguridad, reputacion y gobernanza institucional.
+
+## Estado actual del producto (abril 2026)
+
+- El bloque de Identidad y Acceso V2 ya se encuentra implementado en web y API:
+	- registro institucional
+	- verificacion de correo
+	- inicio y cierre de sesion
+	- refresh de sesion
+	- recuperacion y restablecimiento de contrasena
+- La fase actual cambia de MVP base a implementacion funcional completa por modulos.
+
+## Siguiente bloque prioritario
+
+La siguiente fase funcional es **Perfil e incorporacion institucional** (RF2), enfocada en:
+
+- completar perfil base del usuario
+- gestionar contexto institucional activo (membresia)
+- validar reglas de acceso operativo por institucion activa
 
 ## Alcance del sistema
 

@@ -5,6 +5,7 @@ import {
   GlobalUserRole,
   InstitutionMembershipRole,
   MembershipStatus,
+  UserOnboardingStatus,
 } from '@saferidepro/shared-types';
 
 import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
@@ -37,13 +38,22 @@ function buildUserProfile(overrides: Partial<UserProfile> = {}): UserProfile {
     id: 'user-1',
     email: 'user@uta.edu.ec',
     fullName: 'Usuario Uno',
+    career: null,
     phone: null,
+    referenceNeighborhood: null,
     documentType: 'NATIONAL_ID',
     documentNumber: '1234567890',
     profilePhotoUrl: null,
     globalRole: GlobalUserRole.User,
     accountStatus: AccountStatus.Active,
     emailVerifiedAt: new Date('2030-01-01T09:00:00.000Z'),
+    termsAcceptedAt: null,
+    privacyAcceptedAt: null,
+    safetyRulesAcceptedAt: null,
+    onboardingCompletedAt: null,
+    onboardingStatus: UserOnboardingStatus.Incomplete,
+    missingOnboardingRequirements: [],
+    requiresOnboarding: true,
     memberships: [
       {
         id: 'membership-1',

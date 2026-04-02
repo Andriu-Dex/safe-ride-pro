@@ -188,13 +188,19 @@ model User {
   email                  String                      @unique
   passwordHash           String
   fullName               String
+  career                 String?
   phone                  String?
+  referenceNeighborhood  String?
   documentType           DocumentType
   documentNumber         String
   profilePhotoUrl        String?
   globalRole             GlobalUserRole              @default(USER)
   accountStatus          AccountStatus               @default(PENDING_EMAIL_VERIFICATION)
   emailVerifiedAt        DateTime?
+  termsAcceptedAt        DateTime?
+  privacyAcceptedAt      DateTime?
+  safetyRulesAcceptedAt  DateTime?
+  onboardingCompletedAt  DateTime?
   createdAt              DateTime                    @default(now())
   updatedAt              DateTime                    @updatedAt
   memberships            UserInstitutionMembership[]

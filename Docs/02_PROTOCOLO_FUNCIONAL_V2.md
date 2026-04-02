@@ -13,7 +13,7 @@ Esta version no profundiza en politicas de seguridad, retencion, notificaciones,
 
 ---
 
-## 2. Alcance funcional del MVP
+## 2. Alcance funcional de referencia (MVP base)
 
 En el MVP, SafeRidePro permitira:
 
@@ -41,6 +41,48 @@ La app podra mostrar:
 - recargo referencial por desvio planificado
 
 Pero no ejecutara cobros ni conciliaciones dentro del sistema en esta fase.
+
+### Estado de avance (abril 2026)
+
+El bloque de acceso institucional del MVP base ya se encuentra implementado:
+
+- registro institucional web
+- verificacion por codigo
+- reenvio de codigo
+- login
+- refresh token
+- logout
+- forgot/reset password
+
+Con esto, el proyecto entra en etapa de implementacion funcional completa por modulos.
+
+### Siguientes bloques de implementacion completa
+
+Orden recomendado de ejecucion:
+
+1. **Profile & Institutional Onboarding**
+	- perfil base de usuario
+	- membresia y contexto institucional activo
+	- validaciones de operatividad institucional
+2. **Driver Onboarding**
+	- solicitud de conductor
+	- documentos
+	- revision administrativa
+3. **Vehicle Management**
+	- registro, edicion y estado de vehiculos
+	- reglas por tipo de vehiculo
+4. **Trips Core**
+	- publicacion
+	- busqueda y filtros
+	- detalle de viaje
+5. **Trip Requests & Operations**
+	- solicitud/aceptacion/rechazo/cancelacion
+	- inicio y cierre de viaje
+	- no-show y cancelacion tardia
+6. **Trust & Governance**
+	- calificaciones
+	- reportes
+	- sanciones operativas y auditoria administrativa
 
 ---
 

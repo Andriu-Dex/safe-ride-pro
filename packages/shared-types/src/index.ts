@@ -154,6 +154,16 @@ export {
 } from './membership-context';
 
 export {
+  deriveUserOnboardingState,
+  USER_CAREER_MIN_LENGTH,
+  USER_REFERENCE_NEIGHBORHOOD_MIN_LENGTH,
+  UserOnboardingRequirement,
+  UserOnboardingStatus,
+  type UserOnboardingState,
+  type UserOnboardingStateInput,
+} from './user-onboarding';
+
+export {
   getTripStartAvailability,
   TRIP_START_EARLY_WINDOW_MINUTES,
   type TripStartAvailability,

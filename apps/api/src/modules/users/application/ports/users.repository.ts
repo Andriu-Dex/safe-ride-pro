@@ -14,6 +14,8 @@ import {
   TRUST_LOW_RATING_THRESHOLD,
   TRUST_MIN_COMPLETED_INTERACTIONS_FOR_SIGNAL,
   TRUST_MIN_RATINGS_FOR_SIGNAL,
+  UserOnboardingRequirement,
+  UserOnboardingStatus,
   VisibleReputationState,
 } from '@saferidepro/shared-types';
 
@@ -23,13 +25,22 @@ export type UserProfile = {
   id: string;
   email: string;
   fullName: string;
+  career?: string | null;
   phone?: string | null;
+  referenceNeighborhood?: string | null;
   documentType: string;
   documentNumber: string;
   profilePhotoUrl?: string | null;
   globalRole: GlobalUserRole;
   accountStatus: AccountStatus;
   emailVerifiedAt: Date | null;
+  termsAcceptedAt: Date | null;
+  privacyAcceptedAt: Date | null;
+  safetyRulesAcceptedAt: Date | null;
+  onboardingCompletedAt: Date | null;
+  onboardingStatus: UserOnboardingStatus;
+  missingOnboardingRequirements: UserOnboardingRequirement[];
+  requiresOnboarding: boolean;
   memberships: {
     id: string;
     institutionId: string;
@@ -49,8 +60,14 @@ export type UserProfile = {
 
 export type UpdateUserProfileInput = {
   fullName?: string;
-  phone?: string;
-  profilePhotoUrl?: string;
+  career?: string;
+  phone?: string | null;
+  referenceNeighborhood?: string;
+  profilePhotoUrl?: string | null;
+  termsAcceptedAt?: Date;
+  privacyAcceptedAt?: Date;
+  safetyRulesAcceptedAt?: Date;
+  onboardingCompletedAt?: Date | null;
 };
 
 export type TrustSummaryMetrics = {

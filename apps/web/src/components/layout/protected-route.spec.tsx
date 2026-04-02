@@ -62,7 +62,22 @@ describe('ProtectedRoute', () => {
           id: 'user-1',
           email: 'admin@uta.edu.ec',
           fullName: 'Admin',
+          career: null,
+          phone: null,
+          referenceNeighborhood: null,
+          documentType: 'NATIONAL_ID',
+          documentNumber: '1710034065',
+          profilePhotoUrl: null,
           globalRole: 'SUPER_ADMIN',
+          accountStatus: 'ACTIVE',
+          emailVerifiedAt: '2026-04-02T10:00:00.000Z',
+          termsAcceptedAt: '2026-04-02T10:00:00.000Z',
+          privacyAcceptedAt: '2026-04-02T10:00:00.000Z',
+          safetyRulesAcceptedAt: '2026-04-02T10:00:00.000Z',
+          onboardingCompletedAt: '2026-04-02T10:00:00.000Z',
+          onboardingStatus: 'COMPLETE',
+          missingOnboardingRequirements: [],
+          requiresOnboarding: false,
           memberships: [],
         },
       },
@@ -77,5 +92,46 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByText('Panel protegido')).toBeInTheDocument();
     expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it('redirects authenticated users with incomplete onboarding to perfil', async () => {
+    useAuthMock.mockReturnValue({
+      authSession: {
+        accessToken: 'token',
+        user: {
+          id: 'user-1',
+          email: 'admin@uta.edu.ec',
+          fullName: 'Admin',
+          career: null,
+          phone: null,
+          referenceNeighborhood: null,
+          documentType: 'NATIONAL_ID',
+          documentNumber: '1710034065',
+          profilePhotoUrl: null,
+          globalRole: 'SUPER_ADMIN',
+          accountStatus: 'ACTIVE',
+          emailVerifiedAt: '2026-04-02T10:00:00.000Z',
+          termsAcceptedAt: null,
+          privacyAcceptedAt: null,
+          safetyRulesAcceptedAt: null,
+          onboardingCompletedAt: null,
+          onboardingStatus: 'INCOMPLETE',
+          missingOnboardingRequirements: ['CAREER'],
+          requiresOnboarding: true,
+          memberships: [],
+        },
+      },
+      isHydrated: true,
+    });
+
+    render(
+      <ProtectedRoute>
+        <div>Panel protegido</div>
+      </ProtectedRoute>,
+    );
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith('/perfil?next=%2Fviajes');
+    });
   });
 });

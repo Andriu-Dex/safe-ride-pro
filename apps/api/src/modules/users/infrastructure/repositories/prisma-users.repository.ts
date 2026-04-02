@@ -11,6 +11,7 @@ import {
   AccountStatus as SharedAccountStatus,
   CancellationTiming,
   CANCELLATION_LATE_WINDOW_MINUTES,
+  deriveUserOnboardingState,
   getCancellationTiming,
   getReportSeverity,
   ReportSeverity,
@@ -63,8 +64,23 @@ export class PrismaUsersRepository implements UsersRepository {
       where: { id: userId },
       data: {
         fullName: input.fullName?.trim(),
-        phone: input.phone?.trim(),
-        profilePhotoUrl: input.profilePhotoUrl?.trim(),
+        career: input.career?.trim(),
+        phone:
+          input.phone === undefined
+            ? undefined
+            : input.phone?.trim() || null,
+        referenceNeighborhood: input.referenceNeighborhood?.trim(),
+        profilePhotoUrl:
+          input.profilePhotoUrl === undefined
+            ? undefined
+            : input.profilePhotoUrl?.trim() || null,
+        termsAcceptedAt: input.termsAcceptedAt,
+        privacyAcceptedAt: input.privacyAcceptedAt,
+        safetyRulesAcceptedAt: input.safetyRulesAcceptedAt,
+        onboardingCompletedAt:
+          input.onboardingCompletedAt === undefined
+            ? undefined
+            : input.onboardingCompletedAt,
       },
       include: {
         memberships: {
@@ -253,13 +269,19 @@ export class PrismaUsersRepository implements UsersRepository {
     id: string;
     email: string;
     fullName: string;
+    career: string | null;
     phone: string | null;
+    referenceNeighborhood: string | null;
     documentType: DocumentType;
     documentNumber: string;
     profilePhotoUrl: string | null;
     globalRole: GlobalUserRole;
     accountStatus: AccountStatus;
     emailVerifiedAt: Date | null;
+    termsAcceptedAt: Date | null;
+    privacyAcceptedAt: Date | null;
+    safetyRulesAcceptedAt: Date | null;
+    onboardingCompletedAt: Date | null;
     memberships: {
       id: string;
       institutionId: string;
@@ -274,17 +296,37 @@ export class PrismaUsersRepository implements UsersRepository {
       institution: { name: string; isActive: boolean };
     }[];
   }): UserProfile {
+    const onboardingState = deriveUserOnboardingState({
+      accountStatus: user.accountStatus,
+      emailVerifiedAt: user.emailVerifiedAt,
+      career: user.career,
+      referenceNeighborhood: user.referenceNeighborhood,
+      termsAcceptedAt: user.termsAcceptedAt,
+      privacyAcceptedAt: user.privacyAcceptedAt,
+      safetyRulesAcceptedAt: user.safetyRulesAcceptedAt,
+      onboardingCompletedAt: user.onboardingCompletedAt,
+    });
+
     return {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      career: user.career,
       phone: user.phone,
+      referenceNeighborhood: user.referenceNeighborhood,
       documentType: user.documentType,
       documentNumber: user.documentNumber,
       profilePhotoUrl: user.profilePhotoUrl,
       globalRole: user.globalRole as unknown as SharedGlobalUserRole,
       accountStatus: user.accountStatus as unknown as SharedAccountStatus,
       emailVerifiedAt: user.emailVerifiedAt,
+      termsAcceptedAt: user.termsAcceptedAt,
+      privacyAcceptedAt: user.privacyAcceptedAt,
+      safetyRulesAcceptedAt: user.safetyRulesAcceptedAt,
+      onboardingCompletedAt: user.onboardingCompletedAt,
+      onboardingStatus: onboardingState.status,
+      missingOnboardingRequirements: onboardingState.missingRequirements,
+      requiresOnboarding: onboardingState.requiresOnboarding,
       memberships: user.memberships.map((membership) => ({
         id: membership.id,
         institutionId: membership.institutionId,

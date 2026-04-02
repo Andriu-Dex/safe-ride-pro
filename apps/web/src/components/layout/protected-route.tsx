@@ -13,14 +13,25 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { authSession, isHydrated } = useAuth();
+  const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
+  const isProfileRoute = pathname === '/perfil';
 
   useEffect(() => {
-    if (isHydrated && !authSession) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    if (!isHydrated) {
+      return;
     }
-  }, [authSession, isHydrated, pathname, router]);
 
-  if (!isHydrated || !authSession) {
+    if (!authSession) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    if (requiresOnboarding && !isProfileRoute) {
+      router.replace(`/perfil?next=${encodeURIComponent(pathname)}`);
+    }
+  }, [authSession, isHydrated, isProfileRoute, pathname, requiresOnboarding, router]);
+
+  if (!isHydrated || !authSession || (requiresOnboarding && !isProfileRoute)) {
     return (
       <main className="loading-state">
         <div className="loading-card">

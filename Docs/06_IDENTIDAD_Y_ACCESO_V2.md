@@ -67,6 +67,25 @@ Si SMTP esta configurado, el sistema envia los codigos por correo con el proveed
 - el codigo fuente se mantiene en ingles
 - el contenido visible al usuario se mantiene en espanol
 
+## Estado de cierre de fase
+
+La fase `Identidad y Acceso V2` se considera cerrada para MVP base cuando se cumple:
+
+- flujo end-to-end de registro hasta login operativo
+- recuperacion de contrasena validada
+- refresh/logout funcionales
+- auditoria basica de eventos de acceso
+
+Estado actual (abril 2026): **cerrada y operativa**.
+
 ## Siguiente fase
 
-Una vez estabilizada esta capa, la siguiente fase funcional es `Profile & Institutional Onboarding`.
+Una vez cerrada esta capa, la siguiente fase funcional es `Profile & Institutional Onboarding`.
+
+Secuencia recomendada posterior:
+
+1. `Profile & Institutional Onboarding`
+2. `Driver Verification`
+3. `Vehicle Registration`
+4. `Trips + Trip Requests`
+5. `Ratings, Reports & Administrative Governance`

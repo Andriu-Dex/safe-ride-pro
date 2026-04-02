@@ -6,6 +6,8 @@ import {
   GlobalUserRole,
   InstitutionMembershipRole,
   MembershipStatus,
+  UserOnboardingRequirement,
+  UserOnboardingStatus,
 } from '@saferidepro/shared-types';
 
 export type AuthMembership = {
@@ -28,13 +30,22 @@ export type AuthUser = {
   id: string;
   email: string;
   fullName: string;
+  career: string | null;
   phone: string | null;
+  referenceNeighborhood: string | null;
   documentType: DocumentType;
   documentNumber: string;
   profilePhotoUrl: string | null;
   globalRole: GlobalUserRole;
   accountStatus: AccountStatus;
   emailVerifiedAt: string | null;
+  termsAcceptedAt: string | null;
+  privacyAcceptedAt: string | null;
+  safetyRulesAcceptedAt: string | null;
+  onboardingCompletedAt: string | null;
+  onboardingStatus: UserOnboardingStatus;
+  missingOnboardingRequirements: UserOnboardingRequirement[];
+  requiresOnboarding: boolean;
   memberships: AuthMembership[];
 };
 

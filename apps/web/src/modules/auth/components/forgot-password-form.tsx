@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
@@ -11,23 +12,29 @@ type ForgotPasswordFormProps = {
 };
 
 export function ForgotPasswordForm({ initialEmail = '' }: ForgotPasswordFormProps) {
+  const router = useRouter();
   const [email, setEmail] = useState(initialEmail);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [developmentCode, setDevelopmentCode] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
-    setSuccessMessage(null);
-    setDevelopmentCode(null);
     setIsSubmitting(true);
 
     try {
-      const response = await forgotPassword(email.trim().toLowerCase());
-      setSuccessMessage(response.message);
-      setDevelopmentCode(response.resetCode ?? null);
+      const normalizedEmail = email.trim().toLowerCase();
+      const response = await forgotPassword(normalizedEmail);
+      const searchParams = new URLSearchParams({
+        email: normalizedEmail,
+        sent: '1',
+      });
+
+      if (response.resetCode) {
+        searchParams.set('code', response.resetCode);
+      }
+
+      router.replace(`/reset-password?${searchParams.toString()}`);
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
@@ -59,12 +66,6 @@ export function ForgotPasswordForm({ initialEmail = '' }: ForgotPasswordFormProp
         />
 
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-        {successMessage ? <div className="form-success">{successMessage}</div> : null}
-        {developmentCode ? (
-          <div className="form-helper form-helper-strong">
-            Codigo de desarrollo: <strong>{developmentCode}</strong>
-          </div>
-        ) : null}
 
         <Button disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Enviando...' : 'Enviar codigo'}

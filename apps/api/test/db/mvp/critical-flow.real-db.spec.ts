@@ -50,21 +50,21 @@ describe('Critical MVP flow real DB integration', () => {
       email: driverEmail,
       password: driverPassword,
       fullName: 'Conductor DB Real',
-      documentNumber: `18${uniqueSuffix.slice(-8)}`,
+      documentNumber: `101001${uniqueSuffix}`,
       studentCode: `DRV-${uniqueSuffix.slice(-6)}`,
     });
     const passengerSession = await registerVerifyAndLoginUser(app, {
       email: passengerEmail,
       password: passengerPassword,
       fullName: 'Pasajero DB Real',
-      documentNumber: `19${uniqueSuffix.slice(-8)}`,
+      documentNumber: `202002${uniqueSuffix}`,
       studentCode: `PAS-${uniqueSuffix.slice(-6)}`,
     });
     const waitingPassengerSession = await registerVerifyAndLoginUser(app, {
       email: waitingPassengerEmail,
       password: waitingPassengerPassword,
       fullName: 'Pasajero Pendiente DB Real',
-      documentNumber: `17${uniqueSuffix.slice(-8)}`,
+      documentNumber: `303003${uniqueSuffix}`,
       studentCode: `PEN-${uniqueSuffix.slice(-6)}`,
     });
     const adminSession = await loginSeedAdmin(app);

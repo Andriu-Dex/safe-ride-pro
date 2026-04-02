@@ -37,7 +37,7 @@ describe('Auth real DB integration', () => {
     });
 
     expect(registrationResponse.body.message).toBe(
-      'Cuenta creada correctamente. Usa el codigo de verificacion para activarla.',
+      'Cuenta creada correctamente. Revisa tu correo para verificar la cuenta.',
     );
     expect(registrationResponse.body.user.email).toBe(email);
     expect(registrationResponse.body.verificationCode).toEqual(expect.any(String));

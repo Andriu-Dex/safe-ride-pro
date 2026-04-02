@@ -2,6 +2,7 @@ import {
   AccountStatus,
   DocumentType,
   GlobalUserRole,
+  UserOnboardingStatus,
 } from '@saferidepro/shared-types';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -20,13 +21,22 @@ const TEST_SESSION: AuthSession = {
     id: 'user-1',
     email: 'admin@uta.edu.ec',
     fullName: 'SafeRidePro Admin',
+    career: null,
     phone: null,
+    referenceNeighborhood: null,
     documentType: DocumentType.NationalId,
     documentNumber: '0123456789',
     profilePhotoUrl: null,
     globalRole: GlobalUserRole.SuperAdmin,
     accountStatus: AccountStatus.Active,
     emailVerifiedAt: '2026-03-29T00:00:00.000Z',
+    termsAcceptedAt: null,
+    privacyAcceptedAt: null,
+    safetyRulesAcceptedAt: null,
+    onboardingCompletedAt: null,
+    onboardingStatus: UserOnboardingStatus.Incomplete,
+    missingOnboardingRequirements: [],
+    requiresOnboarding: false,
     memberships: [],
   },
 };
