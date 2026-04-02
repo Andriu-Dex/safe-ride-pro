@@ -1,13 +1,16 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { useAuth } from '../../auth/hooks/use-auth';
-import { updateCurrentUserProfile } from '../lib/user-api';
+import {
+  updateCurrentUserProfile,
+  uploadCurrentUserProfilePhoto,
+} from '../lib/user-api';
 import { getOnboardingRequirementLabel } from '../lib/onboarding-labels';
 
 type OnboardingFormState = {
@@ -25,9 +28,13 @@ export function ProfileOnboardingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { authSession, refreshSession } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [photoErrorMessage, setPhotoErrorMessage] = useState<string | null>(null);
+  const [photoSuccessMessage, setPhotoSuccessMessage] = useState<string | null>(null);
   const [formState, setFormState] = useState<OnboardingFormState>({
     fullName: '',
     career: '',
@@ -68,6 +75,47 @@ export function ProfileOnboardingForm() {
 
   const requiresOnboarding = authSession.user.requiresOnboarding;
   const nextPath = searchParams.get('next') ?? '/inicio';
+
+  const handleProfilePhotoSelection = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const selectedFile = event.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setPhotoErrorMessage(null);
+    setPhotoSuccessMessage(null);
+
+    try {
+      const updatedUser = await uploadCurrentUserProfilePhoto(
+        authSession.accessToken,
+        selectedFile,
+      );
+
+      setFormState((current) => ({
+        ...current,
+        profilePhotoUrl: updatedUser.profilePhotoUrl ?? '',
+      }));
+      await refreshSession();
+      setPhotoSuccessMessage(
+        authSession.user.profilePhotoUrl
+          ? 'La foto de perfil se actualizo correctamente.'
+          : 'La foto de perfil se subio correctamente.',
+      );
+    } catch (error) {
+      setPhotoErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible subir la foto de perfil.',
+      );
+    } finally {
+      event.target.value = '';
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -139,6 +187,58 @@ export function ProfileOnboardingForm() {
             <StatusPill label="Editable" tone="neutral" />
           </div>
 
+          <section className="profile-photo-card">
+            <div className="profile-photo-preview">
+              {formState.profilePhotoUrl ? (
+                <img
+                  alt="Foto de perfil actual"
+                  className="profile-photo-image"
+                  src={formState.profilePhotoUrl}
+                />
+              ) : (
+                <div className="profile-photo-fallback" aria-hidden="true">
+                  {authSession.user.fullName
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((token) => token.charAt(0).toUpperCase())
+                    .join('') || 'SR'}
+                </div>
+              )}
+            </div>
+            <div className="profile-photo-content">
+              <strong>Foto de perfil</strong>
+              <p className="panel-text">
+                Sube una imagen JPG, PNG o WEBP. SafeRidePro almacenara un enlace
+                publico de tu avatar para mostrarlo en la plataforma.
+              </p>
+              <div className="button-row">
+                <input
+                  ref={fileInputRef}
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={handleProfilePhotoSelection}
+                  type="file"
+                />
+                <Button
+                  disabled={isUploadingPhoto}
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="secondary"
+                >
+                  {isUploadingPhoto
+                    ? 'Subiendo imagen...'
+                    : formState.profilePhotoUrl
+                      ? 'Cambiar imagen'
+                      : 'Subir imagen'}
+                </Button>
+              </div>
+              {photoErrorMessage ? <div className="form-error">{photoErrorMessage}</div> : null}
+              {photoSuccessMessage ? (
+                <div className="form-success">{photoSuccessMessage}</div>
+              ) : null}
+            </div>
+          </section>
+
           <form className="form-stack" onSubmit={handleSubmit}>
             <InputField
               autoComplete="name"
@@ -192,21 +292,6 @@ export function ProfileOnboardingForm() {
               placeholder="Ej. Ficoa, Huachi Chico, Izamba"
               required
               value={formState.referenceNeighborhood}
-            />
-
-            <InputField
-              autoComplete="url"
-              hint="Opcional: URL publica"
-              label="Foto de perfil"
-              onChange={(event) =>
-                setFormState((current) => ({
-                  ...current,
-                  profilePhotoUrl: event.target.value,
-                }))
-              }
-              placeholder="https://"
-              type="url"
-              value={formState.profilePhotoUrl}
             />
 
             <div className="consent-grid">

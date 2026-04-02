@@ -20,6 +20,8 @@ export type AppEnvironment = {
   smtpPassword: string | null;
   smtpFromEmail: string | null;
   smtpFromName: string;
+  imgurClientId: string | null;
+  imgurClientSecret: string | null;
   webAppOrigins: string[];
 };
 
@@ -200,6 +202,8 @@ export function getAppEnvironment(): AppEnvironment {
     smtpPassword: getOptionalString('SMTP_PASSWORD') ?? getOptionalString('SMTP_PASS'),
     smtpFromEmail: getOptionalString('SMTP_FROM_EMAIL') ?? getOptionalString('SMTP_USER'),
     smtpFromName: getOptionalString('SMTP_FROM_NAME') ?? 'SafeRidePro',
+    imgurClientId: getOptionalString('IMGUR_CLIENT_ID'),
+    imgurClientSecret: getOptionalString('IMGUR_CLIENT_SECRET'),
     webAppOrigins: getStringList('WEB_APP_ORIGINS', ['http://localhost:3000']),
   };
 

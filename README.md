@@ -38,6 +38,15 @@ The first post-MVP phase already includes:
 For local development without a real email provider, keep `AUTH_ALLOW_DEBUG_CODES=true`.
 For real email delivery with SMTP, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, and `SMTP_FROM_NAME`.
 
+## Profile photos
+
+The onboarding flow now supports profile photo uploads.
+
+- Configure `IMGUR_CLIENT_ID` to enable public avatar uploads with Imgur
+- `IMGUR_CLIENT_SECRET` can remain available in env files for future provider extensions, but the current flow only requires the client ID
+- the API stores both the public URL and provider metadata so the storage backend can be replaced later without changing the user-facing domain model
+
+
 ## Notes
 
 - Source code must stay in English.

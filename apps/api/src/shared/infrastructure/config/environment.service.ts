@@ -78,6 +78,14 @@ export class EnvironmentService {
     return this.environment.smtpFromName;
   }
 
+  get imgurClientId(): string | null {
+    return this.environment.imgurClientId;
+  }
+
+  get imgurClientSecret(): string | null {
+    return this.environment.imgurClientSecret;
+  }
+
   get webAppOrigins(): string[] {
     return this.environment.webAppOrigins;
   }

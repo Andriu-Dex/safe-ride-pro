@@ -154,6 +154,10 @@ enum AuditEntityType {
   AUTH_SESSION
 }
 
+enum AssetStorageProvider {
+  IMGUR
+}
+
 model Institution {
   id          String                      @id @default(uuid())
   name        String
@@ -194,6 +198,8 @@ model User {
   documentType           DocumentType
   documentNumber         String
   profilePhotoUrl        String?
+  profilePhotoStorageProvider AssetStorageProvider?
+  profilePhotoStorageKey String?
   globalRole             GlobalUserRole              @default(USER)
   accountStatus          AccountStatus               @default(PENDING_EMAIL_VERIFICATION)
   emailVerifiedAt        DateTime?

@@ -70,6 +70,13 @@ export type UpdateUserProfileInput = {
   onboardingCompletedAt?: Date | null;
 };
 
+export type UserProfilePhotoRecord = {
+  userId: string;
+  profilePhotoUrl: string | null;
+  profilePhotoStorageProvider: string | null;
+  profilePhotoStorageKey: string | null;
+};
+
 export type TrustSummaryMetrics = {
   membershipId: string;
   averageRatingReceived: number | null;
@@ -131,6 +138,15 @@ export const DEFAULT_REPUTATION_POLICY = {
 
 export interface UsersRepository {
   findById(userId: string): Promise<UserProfile | null>;
+  findProfilePhotoRecordById(userId: string): Promise<UserProfilePhotoRecord | null>;
   updateProfile(userId: string, input: UpdateUserProfileInput): Promise<UserProfile>;
+  updateProfilePhoto(
+    userId: string,
+    input: {
+      profilePhotoUrl: string | null;
+      profilePhotoStorageProvider: string | null;
+      profilePhotoStorageKey: string | null;
+    },
+  ): Promise<UserProfile>;
   getTrustSummary(membershipId: string): Promise<TrustSummaryMetrics>;
 }

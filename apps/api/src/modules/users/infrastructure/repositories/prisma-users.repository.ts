@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   AccountStatus,
+  AssetStorageProvider,
   DocumentType,
   DriverVerificationStatus,
   GlobalUserRole,
@@ -59,6 +60,29 @@ export class PrismaUsersRepository implements UsersRepository {
     return user ? this.mapUser(user) : null;
   }
 
+  async findProfilePhotoRecordById(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        profilePhotoUrl: true,
+        profilePhotoStorageProvider: true,
+        profilePhotoStorageKey: true,
+      },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      userId: user.id,
+      profilePhotoUrl: user.profilePhotoUrl,
+      profilePhotoStorageProvider: user.profilePhotoStorageProvider,
+      profilePhotoStorageKey: user.profilePhotoStorageKey,
+    };
+  }
+
   async updateProfile(userId: string, input: UpdateUserProfileInput): Promise<UserProfile> {
     const user = await this.prisma.user.update({
       where: { id: userId },
@@ -81,6 +105,46 @@ export class PrismaUsersRepository implements UsersRepository {
           input.onboardingCompletedAt === undefined
             ? undefined
             : input.onboardingCompletedAt,
+      },
+      include: {
+        memberships: {
+          include: {
+            institution: true,
+            driverProfile: {
+              select: {
+                licenseExpiresAt: true,
+              },
+            },
+          },
+          orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
+        },
+      },
+    }).catch(() => null);
+
+    if (!user) {
+      throw new NotFoundException('El usuario solicitado no existe.');
+    }
+
+    return this.mapUser(user);
+  }
+
+  async updateProfilePhoto(
+    userId: string,
+    input: {
+      profilePhotoUrl: string | null;
+      profilePhotoStorageProvider: string | null;
+      profilePhotoStorageKey: string | null;
+    },
+  ): Promise<UserProfile> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        profilePhotoUrl: input.profilePhotoUrl,
+        profilePhotoStorageProvider:
+          input.profilePhotoStorageProvider === null
+            ? null
+            : (input.profilePhotoStorageProvider as AssetStorageProvider),
+        profilePhotoStorageKey: input.profilePhotoStorageKey,
       },
       include: {
         memberships: {

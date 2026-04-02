@@ -19,7 +19,9 @@ import type {
 function createUsersRepositoryMock(): jest.Mocked<UsersRepository> {
   return {
     findById: jest.fn(),
+    findProfilePhotoRecordById: jest.fn(),
     updateProfile: jest.fn(),
+    updateProfilePhoto: jest.fn(),
     getTrustSummary: jest.fn(),
   };
 }
