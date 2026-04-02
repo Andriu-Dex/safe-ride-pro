@@ -9,7 +9,12 @@ import { StatusPill } from '../../../components/ui/status-pill';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import { DriverApplicationForm } from '../../../modules/driver/components/driver-application-form';
-import { getDriverOverview, listDriverLicenseTypes, submitDriverApplication } from '../../../modules/driver/lib/driver-api';
+import {
+  getDriverOverview,
+  listDriverLicenseTypes,
+  submitDriverApplication,
+  uploadDriverDocument,
+} from '../../../modules/driver/lib/driver-api';
 import {
   getDriverLicenseAlertMessage,
   getDriverLicenseStatusLabel,
@@ -17,7 +22,11 @@ import {
   getDriverStatusLabel,
   getDriverStatusTone,
 } from '../../../modules/driver/lib/driver-status';
-import type { DriverOverview, LicenseTypeCatalogItem } from '../../../modules/driver/types/driver';
+import type {
+  DriverDocumentType,
+  DriverOverview,
+  LicenseTypeCatalogItem,
+} from '../../../modules/driver/types/driver';
 import { ApiError } from '../../../lib/api-client';
 
 const EMPTY_FORM = {
@@ -36,6 +45,15 @@ function toDateInputValue(isoDate?: string | null): string {
   return isoDate.slice(0, 10);
 }
 
+function extractUploadedFileName(fileKey?: string | null): string | null {
+  if (!fileKey) {
+    return null;
+  }
+
+  const segments = fileKey.split('/').filter(Boolean);
+  return segments[segments.length - 1] ?? fileKey;
+}
+
 export default function DriverPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
@@ -44,8 +62,16 @@ export default function DriverPage() {
   const [formValues, setFormValues] = useState(EMPTY_FORM);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingIdentityDocument, setIsUploadingIdentityDocument] = useState(false);
+  const [isUploadingLicenseDocument, setIsUploadingLicenseDocument] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [documentErrorMessage, setDocumentErrorMessage] = useState<string | null>(null);
+  const [documentSuccessMessage, setDocumentSuccessMessage] = useState<string | null>(null);
+  const [identityDocumentFileName, setIdentityDocumentFileName] = useState<string | null>(null);
+  const [licenseDocumentFileName, setLicenseDocumentFileName] = useState<string | null>(null);
+  const [identityDocumentPreviewUrl, setIdentityDocumentPreviewUrl] = useState<string | null>(null);
+  const [licenseDocumentPreviewUrl, setLicenseDocumentPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -64,6 +90,8 @@ export default function DriverPage() {
     const loadDriverData = async () => {
       setIsLoading(true);
       setErrorMessage(null);
+      setDocumentErrorMessage(null);
+      setDocumentSuccessMessage(null);
 
       try {
         const [overview, licenseTypeItems] = await Promise.all([
@@ -84,6 +112,12 @@ export default function DriverPage() {
           identityDocumentFileKey: overview.driverProfile?.identityDocumentFileKey ?? '',
           licenseDocumentFileKey: overview.driverProfile?.licenseDocumentFileKey ?? '',
         });
+        setIdentityDocumentFileName(
+          extractUploadedFileName(overview.driverProfile?.identityDocumentFileKey),
+        );
+        setLicenseDocumentFileName(
+          extractUploadedFileName(overview.driverProfile?.licenseDocumentFileKey),
+        );
       } catch (error) {
         if (!isMounted) {
           return;
@@ -112,11 +146,124 @@ export default function DriverPage() {
     };
   }, [authSession, isHydrated, operationalAccess.hasOperationalMembership]);
 
+  useEffect(() => {
+    return () => {
+      if (identityDocumentPreviewUrl) {
+        URL.revokeObjectURL(identityDocumentPreviewUrl);
+      }
+
+      if (licenseDocumentPreviewUrl) {
+        URL.revokeObjectURL(licenseDocumentPreviewUrl);
+      }
+    };
+  }, [identityDocumentPreviewUrl, licenseDocumentPreviewUrl]);
+
   const handleFormChange = (field: keyof typeof EMPTY_FORM, value: string) => {
     setFormValues((currentValues) => ({
       ...currentValues,
       [field]: value,
     }));
+  };
+
+  const handleUploadDocument = async (
+    documentType: DriverDocumentType,
+    file: File,
+  ) => {
+    if (!authSession) {
+      return;
+    }
+
+    if (documentType === 'identity') {
+      setIsUploadingIdentityDocument(true);
+    } else {
+      setIsUploadingLicenseDocument(true);
+    }
+
+    setDocumentErrorMessage(null);
+    setDocumentSuccessMessage(null);
+
+    try {
+      const response = await uploadDriverDocument(
+        authSession.accessToken,
+        documentType,
+        file,
+      );
+
+      setFormValues((currentValues) => ({
+        ...currentValues,
+        identityDocumentFileKey:
+          documentType === 'identity'
+            ? response.fileKey
+            : currentValues.identityDocumentFileKey,
+        licenseDocumentFileKey:
+          documentType === 'license'
+            ? response.fileKey
+            : currentValues.licenseDocumentFileKey,
+      }));
+
+      if (documentType === 'identity') {
+        setIdentityDocumentFileName(file.name);
+        if (file.type.startsWith('image/')) {
+          setIdentityDocumentPreviewUrl((currentPreviewUrl) => {
+            if (currentPreviewUrl) {
+              URL.revokeObjectURL(currentPreviewUrl);
+            }
+
+            return URL.createObjectURL(file);
+          });
+        } else {
+          setIdentityDocumentPreviewUrl((currentPreviewUrl) => {
+            if (currentPreviewUrl) {
+              URL.revokeObjectURL(currentPreviewUrl);
+            }
+
+            return null;
+          });
+        }
+      } else {
+        setLicenseDocumentFileName(file.name);
+        if (file.type.startsWith('image/')) {
+          setLicenseDocumentPreviewUrl((currentPreviewUrl) => {
+            if (currentPreviewUrl) {
+              URL.revokeObjectURL(currentPreviewUrl);
+            }
+
+            return URL.createObjectURL(file);
+          });
+        } else {
+          setLicenseDocumentPreviewUrl((currentPreviewUrl) => {
+            if (currentPreviewUrl) {
+              URL.revokeObjectURL(currentPreviewUrl);
+            }
+
+            return null;
+          });
+        }
+      }
+
+      setDocumentSuccessMessage(response.message);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setDocumentErrorMessage(
+        error instanceof ApiError
+          ? error.message
+          : 'No fue posible cargar el documento del conductor.',
+      );
+    } finally {
+      if (documentType === 'identity') {
+        setIsUploadingIdentityDocument(false);
+      } else {
+        setIsUploadingLicenseDocument(false);
+      }
+    }
+  };
+
+  const handleDocumentValidationError = (message: string) => {
+    setDocumentSuccessMessage(null);
+    setDocumentErrorMessage(message);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -129,6 +276,7 @@ export default function DriverPage() {
     setIsSubmitting(true);
     setErrorMessage(null);
     setSuccessMessage(null);
+    setDocumentErrorMessage(null);
 
     try {
       const response = await submitDriverApplication(authSession.accessToken, {
@@ -249,10 +397,20 @@ export default function DriverPage() {
             <DriverApplicationForm
               currentReviewNotes={driverOverview?.driverProfile?.reviewNotes}
               currentStatus={currentStatus}
+              documentErrorMessage={documentErrorMessage}
+              documentSuccessMessage={documentSuccessMessage}
               errorMessage={errorMessage}
+              identityDocumentFileName={identityDocumentFileName}
+              identityDocumentPreviewUrl={identityDocumentPreviewUrl}
               isSubmitting={isSubmitting}
+              isUploadingIdentityDocument={isUploadingIdentityDocument}
+              isUploadingLicenseDocument={isUploadingLicenseDocument}
+              licenseDocumentFileName={licenseDocumentFileName}
+              licenseDocumentPreviewUrl={licenseDocumentPreviewUrl}
               licenseTypes={licenseTypes}
               onChange={handleFormChange}
+              onDocumentValidationError={handleDocumentValidationError}
+              onUploadDocument={handleUploadDocument}
               onSubmit={handleSubmit}
               successMessage={successMessage}
               values={formValues}

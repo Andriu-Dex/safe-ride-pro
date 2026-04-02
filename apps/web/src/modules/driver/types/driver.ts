@@ -23,6 +23,9 @@ export type DriverMembership = {
 
 export type DriverProfile = {
   membershipId: string;
+  userId: string;
+  userFullName: string;
+  userEmail: string;
   institutionId: string;
   institutionName: string;
   driverVerificationStatus: DriverVerificationStatus;
@@ -61,5 +64,20 @@ export type SubmitDriverApplicationInput = {
   licenseExpiresAt: string;
   identityDocumentFileKey?: string;
   licenseDocumentFileKey?: string;
+};
+
+export type DriverDocumentType = 'identity' | 'license';
+
+export type DriverDocumentUploadResponse = {
+  message: string;
+  documentType: DriverDocumentType;
+  fileKey: string;
+};
+
+export type ReviewableDriverApplicationRecord = DriverProfile;
+
+export type ReviewDriverApplicationInput = {
+  decision: DriverVerificationStatus.Approved | DriverVerificationStatus.Rejected;
+  reviewNotes?: string;
 };
 

@@ -58,13 +58,22 @@ export class SubmitDriverApplicationUseCase {
       throw new BadRequestException('El numero de licencia ya esta registrado en otra solicitud.');
     }
 
+    const identityDocumentFileKey = command.identityDocumentFileKey?.trim() || undefined;
+    const licenseDocumentFileKey = command.licenseDocumentFileKey?.trim() || undefined;
+
+    if (!identityDocumentFileKey || !licenseDocumentFileKey) {
+      throw new BadRequestException(
+        'Debes cargar el documento de identidad y el documento de licencia antes de enviar la solicitud.',
+      );
+    }
+
     const driverProfile = await this.driversRepository.submitDriverApplication({
       membershipId: membership.id,
       licenseTypeId: command.licenseTypeId,
       licenseNumber: normalizedLicenseNumber,
       licenseExpiresAt,
-      identityDocumentFileKey: command.identityDocumentFileKey?.trim() || undefined,
-      licenseDocumentFileKey: command.licenseDocumentFileKey?.trim() || undefined,
+      identityDocumentFileKey,
+      licenseDocumentFileKey,
     });
 
     await this.auditService.record({

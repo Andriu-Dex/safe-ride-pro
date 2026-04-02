@@ -7,6 +7,11 @@ import {
 
 export const DRIVERS_REPOSITORY = Symbol('DRIVERS_REPOSITORY');
 
+export enum DriverDocumentType {
+  Identity = 'identity',
+  License = 'license',
+}
+
 export type DriverMembershipRecord = {
   id: string;
   userId: string;
@@ -25,6 +30,9 @@ export type DriverMembershipRecord = {
 
 export type DriverProfileRecord = {
   membershipId: string;
+  userId: string;
+  userFullName: string;
+  userEmail: string;
   institutionId: string;
   institutionName: string;
   driverVerificationStatus: DriverVerificationStatus;
@@ -44,6 +52,12 @@ export type DriverProfileRecord = {
   reviewedAt: Date | null;
   reviewedByUserId: string | null;
   submittedAt: Date;
+};
+
+export type ListReviewableDriverApplicationsFilters = {
+  institutionIds?: string[];
+  status?: DriverVerificationStatus;
+  limit?: number;
 };
 
 export type SubmitDriverApplicationInput = {
@@ -67,6 +81,9 @@ export interface DriversRepository {
   findMembershipById(membershipId: string): Promise<DriverMembershipRecord | null>;
   findDriverProfileByMembershipId(membershipId: string): Promise<DriverProfileRecord | null>;
   findDriverProfileByLicenseNumber(licenseNumber: string): Promise<DriverProfileRecord | null>;
+  listReviewableDriverApplications(
+    filters: ListReviewableDriverApplicationsFilters,
+  ): Promise<DriverProfileRecord[]>;
   submitDriverApplication(input: SubmitDriverApplicationInput): Promise<DriverProfileRecord>;
   reviewDriverApplication(input: ReviewDriverApplicationInput): Promise<DriverProfileRecord>;
 }

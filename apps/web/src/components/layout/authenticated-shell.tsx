@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import { useAuth } from '../../modules/auth/hooks/use-auth';
 import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
+import { getUserInitials } from '../../modules/users/lib/get-user-initials';
 import { AppLogo } from '../ui/app-logo';
 import { Button } from '../ui/button';
 
@@ -32,6 +33,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const currentMembership =
     operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
+  const userInitials = getUserInitials(authSession?.user.fullName);
 
   const handleSignOut = (): void => {
     signOut();
@@ -41,7 +43,10 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
-        <AppLogo />
+        <AppLogo
+          avatarUrl={authSession?.user.profilePhotoUrl}
+          initials={userInitials}
+        />
 
         <section className="sidebar-section">
           <p className="sidebar-label">Navegacion</p>
@@ -108,9 +113,24 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
 
         <section className="sidebar-user-card">
           <p className="sidebar-label">Sesion activa</p>
-          <strong>{authSession?.user.fullName}</strong>
-          <p>{currentMembership?.institutionName ?? 'Institucion no disponible'}</p>
-          <p>{authSession?.user.email}</p>
+          <div className="sidebar-user-summary">
+            <div className="sidebar-user-avatar" aria-hidden="true">
+              {authSession?.user.profilePhotoUrl ? (
+                <img
+                  alt=""
+                  className="sidebar-user-avatar-image"
+                  src={authSession.user.profilePhotoUrl}
+                />
+              ) : (
+                <div className="sidebar-user-avatar-fallback">{userInitials}</div>
+              )}
+            </div>
+            <div className="sidebar-user-identity">
+              <strong>{authSession?.user.fullName}</strong>
+              <p>{currentMembership?.institutionName ?? 'Institucion no disponible'}</p>
+              <p>{authSession?.user.email}</p>
+            </div>
+          </div>
           <Button variant="secondary" onClick={handleSignOut}>
             Cerrar sesion
           </Button>

@@ -24,6 +24,7 @@ function createDriversRepositoryMock(): jest.Mocked<DriversRepository> {
     findMembershipById: jest.fn(),
     findDriverProfileByMembershipId: jest.fn(),
     findDriverProfileByLicenseNumber: jest.fn(),
+    listReviewableDriverApplications: jest.fn(),
     submitDriverApplication: jest.fn(),
     reviewDriverApplication: jest.fn(),
   };
@@ -72,6 +73,9 @@ function buildDriverProfile(
 ): DriverProfileRecord {
   return {
     membershipId: 'membership-target',
+    userId: 'user-2',
+    userFullName: 'Usuario Dos',
+    userEmail: 'user2@uta.edu.ec',
     institutionId: 'institution-1',
     institutionName: 'UTA',
     driverVerificationStatus: status,

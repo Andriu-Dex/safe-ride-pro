@@ -7,11 +7,13 @@ import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { useAuth } from '../../auth/hooks/use-auth';
+import { suppressAuthSessionSync } from '../../auth/lib/auth-sync-guard';
+import { getUserInitials } from '../lib/get-user-initials';
+import { getOnboardingRequirementLabel } from '../lib/onboarding-labels';
 import {
   updateCurrentUserProfile,
   uploadCurrentUserProfilePhoto,
 } from '../lib/user-api';
-import { getOnboardingRequirementLabel } from '../lib/onboarding-labels';
 
 type OnboardingFormState = {
   fullName: string;
@@ -75,6 +77,10 @@ export function ProfileOnboardingForm() {
 
   const requiresOnboarding = authSession.user.requiresOnboarding;
   const nextPath = searchParams.get('next') ?? '/inicio';
+  const userInitials = getUserInitials(authSession.user.fullName);
+  const activeMembershipName =
+    authSession.user.memberships.find((membership) => membership.isDefault)
+      ?.institutionName ?? 'Sin contexto';
 
   const handleProfilePhotoSelection = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -166,7 +172,7 @@ export function ProfileOnboardingForm() {
           <p className="topbar-subtitle">
             {requiresOnboarding
               ? 'Necesitamos algunos datos base y tus aceptaciones para habilitar el resto del sistema.'
-              : 'Mantén actualizada tu informacion personal y tus aceptaciones institucionales.'}
+              : 'Manten actualizada tu informacion personal y tus aceptaciones institucionales.'}
           </p>
         </div>
         <div className="topbar-actions">
@@ -177,7 +183,7 @@ export function ProfileOnboardingForm() {
         </div>
       </header>
 
-      <section className="page-grid-wide">
+      <section className="page-grid-wide profile-layout">
         <article className="panel panel-stack">
           <div className="panel-header-row">
             <div>
@@ -197,12 +203,7 @@ export function ProfileOnboardingForm() {
                 />
               ) : (
                 <div className="profile-photo-fallback" aria-hidden="true">
-                  {authSession.user.fullName
-                    .split(' ')
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map((token) => token.charAt(0).toUpperCase())
-                    .join('') || 'SR'}
+                  {userInitials}
                 </div>
               )}
             </div>
@@ -217,12 +218,16 @@ export function ProfileOnboardingForm() {
                   ref={fileInputRef}
                   accept="image/jpeg,image/png,image/webp"
                   className="sr-only"
+                  onClick={() => suppressAuthSessionSync()}
                   onChange={handleProfilePhotoSelection}
                   type="file"
                 />
                 <Button
                   disabled={isUploadingPhoto}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    suppressAuthSessionSync();
+                    fileInputRef.current?.click();
+                  }}
                   variant="secondary"
                 >
                   {isUploadingPhoto
@@ -240,125 +245,153 @@ export function ProfileOnboardingForm() {
           </section>
 
           <form className="form-stack" onSubmit={handleSubmit}>
-            <InputField
-              autoComplete="name"
-              label="Nombre completo"
-              onChange={(event) =>
-                setFormState((current) => ({
-                  ...current,
-                  fullName: event.target.value,
-                }))
-              }
-              required
-              value={formState.fullName}
-            />
+            <section className="profile-form-section">
+              <div className="profile-form-section-header">
+                <div>
+                  <p className="section-label">Datos personales</p>
+                  <h3 className="panel-title">Informacion de contacto y contexto</h3>
+                </div>
+                <p className="section-heading-meta">
+                  Completa solo los datos base que el sistema necesita para operar.
+                </p>
+              </div>
 
-            <div className="form-grid form-grid-2">
               <InputField
-                label="Carrera"
+                autoComplete="name"
+                label="Nombre completo"
                 onChange={(event) =>
                   setFormState((current) => ({
                     ...current,
-                    career: event.target.value,
+                    fullName: event.target.value,
                   }))
                 }
-                placeholder="Ej. Ingenieria en Software"
                 required
-                value={formState.career}
+                value={formState.fullName}
               />
+
+              <div className="form-grid form-grid-2">
+                <InputField
+                  label="Carrera"
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      career: event.target.value,
+                    }))
+                  }
+                  placeholder="Ej. Ingenieria en Software"
+                  required
+                  value={formState.career}
+                />
+                <InputField
+                  autoComplete="tel"
+                  hint="Opcional: formato 09XXXXXXXX"
+                  label="Celular"
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      phone: event.target.value,
+                    }))
+                  }
+                  placeholder="0999999999"
+                  value={formState.phone}
+                />
+              </div>
+
               <InputField
-                autoComplete="tel"
-                hint="Opcional: formato 09XXXXXXXX"
-                label="Celular"
+                label="Zona o barrio de referencia"
                 onChange={(event) =>
                   setFormState((current) => ({
                     ...current,
-                    phone: event.target.value,
+                    referenceNeighborhood: event.target.value,
                   }))
                 }
-                placeholder="0999999999"
-                value={formState.phone}
+                placeholder="Ej. Ficoa, Huachi Chico, Izamba"
+                required
+                value={formState.referenceNeighborhood}
               />
-            </div>
+            </section>
 
-            <InputField
-              label="Zona o barrio de referencia"
-              onChange={(event) =>
-                setFormState((current) => ({
-                  ...current,
-                  referenceNeighborhood: event.target.value,
-                }))
-              }
-              placeholder="Ej. Ficoa, Huachi Chico, Izamba"
-              required
-              value={formState.referenceNeighborhood}
-            />
-
-            <div className="consent-grid">
-              <label className="consent-card">
-                <input
-                  checked={formState.acceptTerms}
-                  className="consent-checkbox"
-                  disabled={Boolean(authSession.user.termsAcceptedAt)}
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      acceptTerms: event.target.checked,
-                    }))
-                  }
-                  type="checkbox"
-                />
+            <section className="profile-form-section">
+              <div className="profile-form-section-header">
                 <div>
-                  <strong>Acepto los terminos del servicio</strong>
-                  <p>Necesario para usar SafeRidePro dentro de tu institucion.</p>
+                  <p className="section-label">Aceptaciones</p>
+                  <h3 className="panel-title">Compromisos institucionales</h3>
                 </div>
-              </label>
+                <p className="section-heading-meta">
+                  Debes aceptar estas condiciones una sola vez para habilitar el sistema.
+                </p>
+              </div>
 
-              <label className="consent-card">
-                <input
-                  checked={formState.acceptPrivacy}
-                  className="consent-checkbox"
-                  disabled={Boolean(authSession.user.privacyAcceptedAt)}
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      acceptPrivacy: event.target.checked,
-                    }))
-                  }
-                  type="checkbox"
-                />
-                <div>
-                  <strong>Acepto la politica de privacidad</strong>
-                  <p>Tu informacion se usara solo para la operacion institucional del sistema.</p>
-                </div>
-              </label>
+              <div className="consent-grid">
+                <label className="consent-card">
+                  <input
+                    checked={formState.acceptTerms}
+                    className="consent-checkbox"
+                    disabled={Boolean(authSession.user.termsAcceptedAt)}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        acceptTerms: event.target.checked,
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  <div>
+                    <strong>Acepto los terminos del servicio</strong>
+                    <p>Necesario para usar SafeRidePro dentro de tu institucion.</p>
+                  </div>
+                </label>
 
-              <label className="consent-card">
-                <input
-                  checked={formState.acceptSafetyRules}
-                  className="consent-checkbox"
-                  disabled={Boolean(authSession.user.safetyRulesAcceptedAt)}
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      acceptSafetyRules: event.target.checked,
-                    }))
-                  }
-                  type="checkbox"
-                />
-                <div>
-                  <strong>Acepto las reglas de seguridad</strong>
-                  <p>Incluyen puntualidad, respeto, uso responsable y convivencia segura.</p>
-                </div>
-              </label>
-            </div>
+                <label className="consent-card">
+                  <input
+                    checked={formState.acceptPrivacy}
+                    className="consent-checkbox"
+                    disabled={Boolean(authSession.user.privacyAcceptedAt)}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        acceptPrivacy: event.target.checked,
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  <div>
+                    <strong>Acepto la politica de privacidad</strong>
+                    <p>Tu informacion se usara solo para la operacion institucional del sistema.</p>
+                  </div>
+                </label>
+
+                <label className="consent-card">
+                  <input
+                    checked={formState.acceptSafetyRules}
+                    className="consent-checkbox"
+                    disabled={Boolean(authSession.user.safetyRulesAcceptedAt)}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        acceptSafetyRules: event.target.checked,
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  <div>
+                    <strong>Acepto las reglas de seguridad</strong>
+                    <p>Incluyen puntualidad, respeto, uso responsable y convivencia segura.</p>
+                  </div>
+                </label>
+              </div>
+            </section>
 
             {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
             {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
-            <div className="button-row">
+            <div className="button-row profile-form-actions">
               <Button disabled={isSubmitting} type="submit" variant="primary">
-                {isSubmitting ? 'Guardando...' : requiresOnboarding ? 'Completar perfil' : 'Guardar cambios'}
+                {isSubmitting
+                  ? 'Guardando...'
+                  : requiresOnboarding
+                    ? 'Completar perfil'
+                    : 'Guardar cambios'}
               </Button>
               {!requiresOnboarding ? (
                 <Button
@@ -400,7 +433,7 @@ export function ProfileOnboardingForm() {
             </div>
           )}
 
-          <div className="list-stack">
+          <div className="list-stack profile-aside-stack">
             <div className="list-card">
               <div className="list-card-header">
                 <strong>Correo</strong>
@@ -415,13 +448,7 @@ export function ProfileOnboardingForm() {
             <div className="list-card">
               <div className="list-card-header">
                 <strong>Institucion activa</strong>
-                <StatusPill
-                  label={
-                    authSession.user.memberships.find((membership) => membership.isDefault)
-                      ?.institutionName ?? 'Sin contexto'
-                  }
-                  tone="neutral"
-                />
+                <StatusPill label={activeMembershipName} tone="neutral" />
               </div>
               <p className="panel-text">
                 El perfil base se completa una sola vez y luego puedes editarlo desde esta misma vista.

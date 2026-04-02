@@ -14,6 +14,7 @@ import {
   DriverMembershipRecord,
   DriverProfileRecord,
   DriversRepository,
+  ListReviewableDriverApplicationsFilters,
   ReviewDriverApplicationInput,
   SubmitDriverApplicationInput,
 } from '../../application/ports/drivers.repository';
@@ -69,6 +70,7 @@ export class PrismaDriversRepository implements DriversRepository {
         membership: {
           include: {
             institution: true,
+            user: true,
           },
         },
       },
@@ -87,12 +89,42 @@ export class PrismaDriversRepository implements DriversRepository {
         membership: {
           include: {
             institution: true,
+            user: true,
           },
         },
       },
     });
 
     return driverProfile ? this.mapDriverProfile(driverProfile) : null;
+  }
+
+  async listReviewableDriverApplications(
+    filters: ListReviewableDriverApplicationsFilters,
+  ): Promise<DriverProfileRecord[]> {
+    const items = await this.prisma.driverProfile.findMany({
+      where: {
+        membership: {
+          institutionId: filters.institutionIds
+            ? { in: filters.institutionIds }
+            : undefined,
+          driverVerificationStatus: filters.status,
+          membershipStatus: 'ACTIVE',
+        },
+      },
+      include: {
+        licenseType: true,
+        membership: {
+          include: {
+            institution: true,
+            user: true,
+          },
+        },
+      },
+      orderBy: [{ submittedAt: 'desc' }],
+      take: filters.limit ?? 25,
+    });
+
+    return items.map((item) => this.mapDriverProfile(item));
   }
 
   async submitDriverApplication(
@@ -134,6 +166,7 @@ export class PrismaDriversRepository implements DriversRepository {
           membership: {
             include: {
               institution: true,
+              user: true,
             },
           },
         },
@@ -168,6 +201,7 @@ export class PrismaDriversRepository implements DriversRepository {
           membership: {
             include: {
               institution: true,
+              user: true,
             },
           },
         },
@@ -231,8 +265,13 @@ export class PrismaDriversRepository implements DriversRepository {
       name: string;
     };
     membership: {
+      userId: string;
       institutionId: string;
       driverVerificationStatus: string;
+      user: {
+        email: string;
+        fullName: string;
+      };
       institution: {
         name: string;
       };
@@ -240,6 +279,9 @@ export class PrismaDriversRepository implements DriversRepository {
   }): DriverProfileRecord {
     return {
       membershipId: driverProfile.membershipId,
+      userId: driverProfile.membership.userId,
+      userFullName: driverProfile.membership.user.fullName,
+      userEmail: driverProfile.membership.user.email,
       institutionId: driverProfile.membership.institutionId,
       institutionName: driverProfile.membership.institution.name,
       driverVerificationStatus:

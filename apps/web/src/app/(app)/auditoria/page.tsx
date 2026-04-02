@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  DriverVerificationStatus,
   GlobalUserRole,
   InstitutionMembershipRole,
   isOperationalMembership,
@@ -26,6 +27,18 @@ import {
   requiresDetailedReviewNote,
 } from '../../../modules/reports/lib/report-labels';
 import type { ReportRecord } from '../../../modules/reports/types/report';
+import {
+  downloadDriverApplicationDocument,
+  listReviewableDriverApplications,
+  reviewDriverApplication,
+} from '../../../modules/driver/lib/driver-api';
+import {
+  getDriverLicenseStatusLabel,
+  getDriverLicenseStatusTone,
+  getDriverStatusLabel,
+  getDriverStatusTone,
+} from '../../../modules/driver/lib/driver-status';
+import type { ReviewableDriverApplicationRecord } from '../../../modules/driver/types/driver';
 import {
   liftOperationalSanction,
   listReviewableActiveSanctions,
@@ -89,6 +102,9 @@ export default function AuditPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
   const [reviewableReports, setReviewableReports] = useState<ReportRecord[]>([]);
+  const [reviewableDriverApplications, setReviewableDriverApplications] = useState<
+    ReviewableDriverApplicationRecord[]
+  >([]);
   const [reviewableSanctions, setReviewableSanctions] = useState<
     ReviewableOperationalSanctionRecord[]
   >([]);
@@ -98,13 +114,17 @@ export default function AuditPage() {
   const [auditFilterValues, setAuditFilterValues] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
   const [appliedAuditFilters, setAppliedAuditFilters] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
   const [reportStatusFilter, setReportStatusFilter] = useState<string>('');
+  const [driverApplicationStatusFilter, setDriverApplicationStatusFilter] = useState<string>('');
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [driverReviewNotes, setDriverReviewNotes] = useState<Record<string, string>>({});
   const [appealReviewNotes, setAppealReviewNotes] = useState<Record<string, string>>({});
   const [sanctionLiftNotes, setSanctionLiftNotes] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isReviewingReportId, setIsReviewingReportId] = useState<string | null>(null);
+  const [isReviewingDriverMembershipId, setIsReviewingDriverMembershipId] = useState<string | null>(null);
+  const [isDownloadingDriverDocumentKey, setIsDownloadingDriverDocumentKey] = useState<string | null>(null);
   const [isReviewingAppealId, setIsReviewingAppealId] = useState<string | null>(null);
   const [isLiftingSanctionId, setIsLiftingSanctionId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -132,12 +152,18 @@ export default function AuditPage() {
     accessToken: string,
     filters: AuditFilters,
     nextReportStatusFilter: string,
+    nextDriverApplicationStatusFilter: string,
   ) => {
-    const [auditItems, reportItems, sanctionItems, appealItems] = await Promise.all([
+    const [auditItems, reportItems, driverApplicationItems, sanctionItems, appealItems] = await Promise.all([
       listAuditEvents(accessToken, filters),
       listReviewableReports(accessToken, {
         institutionId: filters.institutionId,
         status: nextReportStatusFilter ? nextReportStatusFilter as ReportStatus : undefined,
+        limit: 25,
+      }),
+      listReviewableDriverApplications(accessToken, {
+        institutionId: filters.institutionId,
+        status: nextDriverApplicationStatusFilter,
         limit: 25,
       }),
       listReviewableActiveSanctions(accessToken, {
@@ -152,6 +178,7 @@ export default function AuditPage() {
 
     setAuditEvents(auditItems);
     setReviewableReports(reportItems);
+    setReviewableDriverApplications(driverApplicationItems);
     setReviewableSanctions(sanctionItems);
     setReviewableAppeals(appealItems);
   };
@@ -166,7 +193,12 @@ export default function AuditPage() {
     }
 
     try {
-      await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
+      await loadData(
+        authSession.accessToken,
+        appliedAuditFilters,
+        reportStatusFilter,
+        driverApplicationStatusFilter,
+      );
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
@@ -203,7 +235,12 @@ export default function AuditPage() {
       setErrorMessage(null);
 
       try {
-        await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
+        await loadData(
+          authSession.accessToken,
+          appliedAuditFilters,
+          reportStatusFilter,
+          driverApplicationStatusFilter,
+        );
       } catch (error) {
         if (!isMounted) {
           return;
@@ -230,7 +267,14 @@ export default function AuditPage() {
     return () => {
       isMounted = false;
     };
-  }, [appliedAuditFilters, authSession, canAccessAdminView, isHydrated, reportStatusFilter]);
+  }, [
+    appliedAuditFilters,
+    authSession,
+    canAccessAdminView,
+    driverApplicationStatusFilter,
+    isHydrated,
+    reportStatusFilter,
+  ]);
 
   useAutoRefresh(
     async () => {
@@ -272,6 +316,7 @@ export default function AuditPage() {
     setAuditFilterValues(EMPTY_AUDIT_FILTERS);
     setAppliedAuditFilters(EMPTY_AUDIT_FILTERS);
     setReportStatusFilter('');
+    setDriverApplicationStatusFilter('');
   };
 
   const handleReviewNoteChange = (reportId: string, value: string) => {
@@ -292,6 +337,13 @@ export default function AuditPage() {
     setSanctionLiftNotes((currentNotes) => ({
       ...currentNotes,
       [sanctionId]: value,
+    }));
+  };
+
+  const handleDriverReviewNoteChange = (membershipId: string, value: string) => {
+    setDriverReviewNotes((currentNotes) => ({
+      ...currentNotes,
+      [membershipId]: value,
     }));
   };
 
@@ -320,7 +372,12 @@ export default function AuditPage() {
         reviewNote,
       });
 
-      await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
+      await loadData(
+        authSession.accessToken,
+        appliedAuditFilters,
+        reportStatusFilter,
+        driverApplicationStatusFilter,
+      );
       setSuccessMessage(response.message);
       setReviewNotes((currentNotes) => ({
         ...currentNotes,
@@ -335,6 +392,112 @@ export default function AuditPage() {
       await refreshData();
     } finally {
       setIsReviewingReportId(null);
+    }
+  };
+
+  const handleReviewDriverApplication = async (
+    membershipId: string,
+    decision: DriverVerificationStatus.Approved | DriverVerificationStatus.Rejected,
+  ) => {
+    if (!authSession) {
+      return;
+    }
+
+    const reviewNote = driverReviewNotes[membershipId]?.trim();
+
+    if (decision === DriverVerificationStatus.Rejected && !reviewNote) {
+      setErrorMessage(
+        'Debes indicar una nota administrativa antes de rechazar la solicitud de conductor.',
+      );
+      return;
+    }
+
+    setIsReviewingDriverMembershipId(membershipId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await reviewDriverApplication(
+        authSession.accessToken,
+        membershipId,
+        {
+          decision,
+          reviewNotes: reviewNote,
+        },
+      );
+
+      await loadData(
+        authSession.accessToken,
+        appliedAuditFilters,
+        reportStatusFilter,
+        driverApplicationStatusFilter,
+      );
+      setSuccessMessage(response.message);
+      setDriverReviewNotes((currentNotes) => ({
+        ...currentNotes,
+        [membershipId]: '',
+      }));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setErrorMessage(
+        getApiErrorMessage(error, 'No fue posible revisar la solicitud de conductor.'),
+      );
+      await refreshData();
+    } finally {
+      setIsReviewingDriverMembershipId(null);
+    }
+  };
+
+  const handleDownloadDriverDocument = async (
+    membershipId: string,
+    documentType: 'identity' | 'license',
+    userFullName: string,
+  ) => {
+    if (!authSession) {
+      return;
+    }
+
+    const downloadKey = `${membershipId}-${documentType}`;
+    setIsDownloadingDriverDocumentKey(downloadKey);
+    setErrorMessage(null);
+
+    try {
+      const blob = await downloadDriverApplicationDocument(
+        authSession.accessToken,
+        membershipId,
+        documentType,
+      );
+      const extension =
+        blob.type === 'application/pdf'
+          ? 'pdf'
+          : blob.type === 'image/png'
+            ? 'png'
+            : blob.type === 'image/webp'
+              ? 'webp'
+              : 'jpg';
+      const fileName = `${documentType === 'identity' ? 'documento-identidad' : 'documento-licencia'}-${userFullName
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '-')}.${extension}`;
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+      }, 1000);
+    } catch (error) {
+      setErrorMessage(
+        getApiErrorMessage(error, 'No fue posible descargar el documento del conductor.'),
+      );
+    } finally {
+      setIsDownloadingDriverDocumentKey(null);
     }
   };
 
@@ -368,7 +531,12 @@ export default function AuditPage() {
         reviewNote,
       });
 
-      await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
+      await loadData(
+        authSession.accessToken,
+        appliedAuditFilters,
+        reportStatusFilter,
+        driverApplicationStatusFilter,
+      );
       setSuccessMessage(response.message);
       setAppealReviewNotes((currentNotes) => ({
         ...currentNotes,
@@ -412,7 +580,12 @@ export default function AuditPage() {
         reviewNote,
       });
 
-      await loadData(authSession.accessToken, appliedAuditFilters, reportStatusFilter);
+      await loadData(
+        authSession.accessToken,
+        appliedAuditFilters,
+        reportStatusFilter,
+        driverApplicationStatusFilter,
+      );
       setSuccessMessage(response.message);
       setSanctionLiftNotes((currentNotes) => ({
         ...currentNotes,
@@ -432,6 +605,11 @@ export default function AuditPage() {
 
   const openReportsCount = reviewableReports.filter(
     (report) => report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview,
+  ).length;
+  const pendingDriverApplicationsCount = reviewableDriverApplications.filter(
+    (application) =>
+      application.driverVerificationStatus ===
+      DriverVerificationStatus.PendingVerification,
   ).length;
   const institutionOptions = adminMemberships.map((membership) => ({
     id: membership.institutionId,
@@ -517,6 +695,11 @@ export default function AuditPage() {
             value={`${institutionOptions.length || (authSession?.user.globalRole === GlobalUserRole.SuperAdmin ? 1 : 0)}`}
           />
           <InfoCard
+            description="Solicitudes de conductor visibles para revision administrativa."
+            label="Solicitudes de conductor"
+            value={`${pendingDriverApplicationsCount}`}
+          />
+          <InfoCard
             description="Sanciones activas actualmente disponibles para levantamiento manual."
             label="Sanciones activas"
             value={`${reviewableSanctions.length}`}
@@ -541,6 +724,158 @@ export default function AuditPage() {
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
         <div className="page-grid page-grid-wide">
+          <article className="panel panel-stack">
+            <div className="section-heading">
+              <h2 className="panel-title">Solicitudes de conductor</h2>
+              <p className="section-heading-meta">{reviewableDriverApplications.length} resultados</p>
+            </div>
+
+            <SelectField
+              label="Estado de la solicitud"
+              onChange={(event) => setDriverApplicationStatusFilter(event.target.value)}
+              value={driverApplicationStatusFilter}
+            >
+              <option value="">Todos</option>
+              <option value={DriverVerificationStatus.PendingVerification}>Pendientes</option>
+              <option value={DriverVerificationStatus.Approved}>Aprobadas</option>
+              <option value={DriverVerificationStatus.Rejected}>Rechazadas</option>
+              <option value={DriverVerificationStatus.Suspended}>Suspendidas</option>
+            </SelectField>
+
+            {reviewableDriverApplications.length ? (
+              <div className="list-stack">
+                {reviewableDriverApplications.map((application) => {
+                  const identityDocumentDownloadKey = `${application.membershipId}-identity`;
+                  const licenseDocumentDownloadKey = `${application.membershipId}-license`;
+
+                  return (
+                    <div key={application.membershipId} className="list-card">
+                      <div className="list-card-header">
+                        <strong>{application.userFullName}</strong>
+                        <div className="button-row">
+                          <StatusPill
+                            label={getDriverStatusLabel(application.driverVerificationStatus)}
+                            tone={getDriverStatusTone(application.driverVerificationStatus)}
+                          />
+                          <StatusPill
+                            label={getDriverLicenseStatusLabel(application.licenseStatus)}
+                            tone={getDriverLicenseStatusTone(application.licenseStatus)}
+                          />
+                        </div>
+                      </div>
+                      <p className="panel-text">
+                        Correo: {application.userEmail} | Institucion: {application.institutionName}
+                      </p>
+                      <p className="panel-text">
+                        Licencia: {application.licenseType.code} - {application.licenseType.name} | Numero: {application.licenseNumber}
+                      </p>
+                      <p className="panel-text">
+                        Expira: {formatDateTime(application.licenseExpiresAt)} | Enviada: {formatDateTime(application.submittedAt)}
+                      </p>
+                      {application.reviewNotes ? (
+                        <p className="panel-text">Nota de revision: {application.reviewNotes}</p>
+                      ) : null}
+
+                      <div className="button-row">
+                        <Button
+                          disabled={
+                            !application.identityDocumentFileKey ||
+                            isDownloadingDriverDocumentKey === identityDocumentDownloadKey
+                          }
+                          onClick={() =>
+                            void handleDownloadDriverDocument(
+                              application.membershipId,
+                              'identity',
+                              application.userFullName,
+                            )
+                          }
+                          variant="secondary"
+                        >
+                          {isDownloadingDriverDocumentKey === identityDocumentDownloadKey
+                            ? 'Descargando...'
+                            : 'Descargar identidad'}
+                        </Button>
+                        <Button
+                          disabled={
+                            !application.licenseDocumentFileKey ||
+                            isDownloadingDriverDocumentKey === licenseDocumentDownloadKey
+                          }
+                          onClick={() =>
+                            void handleDownloadDriverDocument(
+                              application.membershipId,
+                              'license',
+                              application.userFullName,
+                            )
+                          }
+                          variant="secondary"
+                        >
+                          {isDownloadingDriverDocumentKey === licenseDocumentDownloadKey
+                            ? 'Descargando...'
+                            : 'Descargar licencia'}
+                        </Button>
+                      </div>
+
+                      {application.driverVerificationStatus !== DriverVerificationStatus.Approved ? (
+                        <>
+                          <TextareaField
+                            label="Nota administrativa"
+                            onChange={(event) =>
+                              handleDriverReviewNoteChange(
+                                application.membershipId,
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Motivo de aprobacion, correcciones solicitadas o motivo del rechazo"
+                            rows={3}
+                            value={driverReviewNotes[application.membershipId] ?? ''}
+                          />
+                          <div className="button-row">
+                            <Button
+                              disabled={
+                                isReviewingDriverMembershipId === application.membershipId
+                              }
+                              onClick={() =>
+                                void handleReviewDriverApplication(
+                                  application.membershipId,
+                                  DriverVerificationStatus.Approved,
+                                )
+                              }
+                            >
+                              Aprobar solicitud
+                            </Button>
+                            <Button
+                              disabled={
+                                isReviewingDriverMembershipId === application.membershipId ||
+                                !(driverReviewNotes[application.membershipId]?.trim())
+                              }
+                              onClick={() =>
+                                void handleReviewDriverApplication(
+                                  application.membershipId,
+                                  DriverVerificationStatus.Rejected,
+                                )
+                              }
+                              variant="ghost"
+                            >
+                              Rechazar solicitud
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="panel-text">
+                          Esta solicitud ya fue aprobada y el usuario ya puede operar como conductor.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="panel-text">
+                No hay solicitudes de conductor dentro del alcance actual.
+              </p>
+            )}
+          </article>
+
           <article className="panel panel-stack">
             <div className="section-heading">
               <h2 className="panel-title">Eventos registrados</h2>

@@ -10,6 +10,7 @@ import {
   logout,
   refreshSession as refreshTokens,
 } from '../lib/auth-api';
+import { isAuthSessionSyncSuppressed } from '../lib/auth-sync-guard';
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../lib/auth-storage';
 import type { AuthSession, AuthTokens, LoginInput } from '../types/auth-session';
 
@@ -118,6 +119,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     let isActive = true;
 
     const syncSession = async () => {
+      if (isAuthSessionSyncSuppressed()) {
+        return;
+      }
+
       try {
         const user = await getCurrentUser(authSession.accessToken);
 

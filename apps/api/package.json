@@ -28,9 +28,11 @@
     "@nestjs/platform-express": "^11.1.0",
     "@prisma/client": "^6.6.0",
     "@saferidepro/shared-types": "workspace:*",
+    "@types/multer": "^2.1.0",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "multer": "^2.1.1",
     "nodemailer": "^8.0.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

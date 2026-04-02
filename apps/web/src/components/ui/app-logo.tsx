@@ -1,8 +1,14 @@
 type AppLogoProps = {
+  avatarUrl?: string | null;
+  initials?: string;
   variant?: 'default' | 'hero';
 };
 
-export function AppLogo({ variant = 'default' }: AppLogoProps) {
+export function AppLogo({
+  avatarUrl,
+  initials = 'SR',
+  variant = 'default',
+}: AppLogoProps) {
   if (variant === 'hero') {
     return (
       <div className="brand-lockup brand-lockup-hero">
@@ -66,7 +72,15 @@ export function AppLogo({ variant = 'default' }: AppLogoProps) {
   return (
     <div className="brand-lockup">
       <div aria-hidden="true" className="brand-mark">
-        SR
+        {avatarUrl ? (
+          <img
+            alt=""
+            className="brand-mark-image"
+            src={avatarUrl}
+          />
+        ) : (
+          initials
+        )}
       </div>
       <div>
         <p className="brand-title">SafeRidePro</p>

@@ -21,6 +21,7 @@ function createDriversRepositoryMock(): jest.Mocked<DriversRepository> {
     findMembershipById: jest.fn(),
     findDriverProfileByMembershipId: jest.fn(),
     findDriverProfileByLicenseNumber: jest.fn(),
+    listReviewableDriverApplications: jest.fn(),
     submitDriverApplication: jest.fn(),
     reviewDriverApplication: jest.fn(),
   };
@@ -48,6 +49,9 @@ function buildDriverProfile(
 ): DriverProfileRecord {
   return {
     membershipId: input.membershipId,
+    userId: 'user-1',
+    userFullName: 'Usuario Uno',
+    userEmail: 'user@uta.edu.ec',
     institutionId: 'institution-1',
     institutionName: 'UTA',
     driverVerificationStatus: DriverVerificationStatus.PendingVerification,
@@ -68,6 +72,32 @@ function buildDriverProfile(
 }
 
 describe('SubmitDriverApplicationUseCase', () => {
+  it('rejects applications without required documents', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(buildMembership());
+    repository.findDriverProfileByLicenseNumber.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        licenseTypeId: 'license-type-1',
+        licenseNumber: 'ABC-123',
+        licenseExpiresAt: '2030-01-01T10:00:00.000Z',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'Debes cargar el documento de identidad y el documento de licencia antes de enviar la solicitud.',
+      ),
+    );
+
+    expect(repository.submitDriverApplication).not.toHaveBeenCalled();
+  });
+
   it('rejects expired licenses', async () => {
     const repository = createDriversRepositoryMock();
     const auditService = {
