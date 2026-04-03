@@ -98,6 +98,7 @@ export class UpdateCurrentUserUseCase {
 
     const onboardingState = deriveUserOnboardingState({
       accountStatus: currentUser.accountStatus,
+      globalRole: currentUser.globalRole,
       emailVerifiedAt: currentUser.emailVerifiedAt,
       career: normalizedCareer ?? currentUser.career,
       referenceNeighborhood:

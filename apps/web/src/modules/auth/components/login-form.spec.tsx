@@ -37,10 +37,13 @@ describe('LoginForm', () => {
     const user = userEvent.setup();
 
     await user.clear(screen.getByPlaceholderText('tu-correo@institucion.edu'));
-    await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo-admin@uta.edu.ec');
-    await user.clear(screen.getByPlaceholderText('Ingresa tu contraseña'));
-    await user.type(screen.getByPlaceholderText('Ingresa tu contraseña'), 'Password123!');
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+    await user.type(
+      screen.getByPlaceholderText('tu-correo@institucion.edu'),
+      'nuevo-admin@uta.edu.ec',
+    );
+    await user.clear(screen.getByPlaceholderText('Ingresa tu clave'));
+    await user.type(screen.getByPlaceholderText('Ingresa tu clave'), 'Password123!');
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
 
     await waitFor(() => {
       expect(signInMock).toHaveBeenCalledWith({
@@ -59,10 +62,28 @@ describe('LoginForm', () => {
 
     const user = userEvent.setup();
 
-    await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo-admin@uta.edu.ec');
-    await user.type(screen.getByPlaceholderText('Ingresa tu contraseña'), 'Password123!');
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+    await user.type(
+      screen.getByPlaceholderText('tu-correo@institucion.edu'),
+      'nuevo-admin@uta.edu.ec',
+    );
+    await user.type(screen.getByPlaceholderText('Ingresa tu clave'), 'Password123!');
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
 
     expect(await screen.findByText('Credenciales invalidas.')).toBeInTheDocument();
+  });
+
+  it('toggles password visibility from the eye action', async () => {
+    render(<LoginForm />);
+
+    const user = userEvent.setup();
+    const passwordInput = screen.getByLabelText('Clave de acceso');
+
+    expect(passwordInput).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar clave' }));
+    expect(passwordInput).toHaveAttribute('type', 'text');
+
+    await user.click(screen.getByRole('button', { name: 'Ocultar clave' }));
+    expect(passwordInput).toHaveAttribute('type', 'password');
   });
 });

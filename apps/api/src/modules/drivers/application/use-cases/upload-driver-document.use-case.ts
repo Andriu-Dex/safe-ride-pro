@@ -5,7 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MembershipStatus } from '@saferidepro/shared-types';
+import {
+  DriverVerificationStatus,
+  InstitutionMembershipRole,
+  MembershipStatus,
+} from '@saferidepro/shared-types';
 
 import {
   DRIVER_DOCUMENT_STORAGE_SERVICE,
@@ -66,6 +70,21 @@ export class UploadDriverDocumentUseCase {
     if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
       throw new ForbiddenException(
         'No tienes una membresia activa para cargar documentos de conductor.',
+      );
+    }
+
+    if (membership.role === InstitutionMembershipRole.InstitutionAdmin) {
+      throw new ForbiddenException(
+        'La membresia administrativa no puede cargar documentos para habilitacion como conductor.',
+      );
+    }
+
+    if (
+      membership.effectiveDriverVerificationStatus ===
+      DriverVerificationStatus.Approved
+    ) {
+      throw new ForbiddenException(
+        'Tu perfil de conductor ya fue aprobado. Si necesitas actualizar documentos, contacta a administracion.',
       );
     }
 

@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
   DriverVerificationStatus,
+  InstitutionMembershipRole,
   MembershipStatus,
 } from '@saferidepro/shared-types';
 
@@ -35,8 +36,23 @@ export class SubmitDriverApplicationUseCase {
       throw new ForbiddenException('No tienes una membresia activa para solicitar habilitacion como conductor.');
     }
 
+    if (membership.role === InstitutionMembershipRole.InstitutionAdmin) {
+      throw new ForbiddenException(
+        'La membresia administrativa no puede solicitar habilitacion como conductor.',
+      );
+    }
+
     if (membership.driverVerificationStatus === DriverVerificationStatus.Suspended) {
       throw new ForbiddenException('Tu perfil de conductor se encuentra suspendido.');
+    }
+
+    if (
+      membership.effectiveDriverVerificationStatus ===
+      DriverVerificationStatus.Approved
+    ) {
+      throw new ForbiddenException(
+        'Tu perfil de conductor ya fue aprobado. Si necesitas actualizar documentos, contacta a administracion.',
+      );
     }
 
     const licenseExpiresAt = new Date(command.licenseExpiresAt);

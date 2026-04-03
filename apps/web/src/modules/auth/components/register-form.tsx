@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
+import { PasswordField } from '../../../components/ui/password-field';
 import { SelectField } from '../../../components/ui/select-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { register, ApiError } from '../lib/auth-api';
@@ -172,53 +173,6 @@ function getPasswordStrength(password: string): PasswordStrength | null {
   };
 }
 
-function EyeIcon({ isOpen }: { isOpen: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className="field-icon"
-      fill="none"
-      height="18"
-      viewBox="0 0 24 24"
-      width="18"
-    >
-      <path
-        d={
-          isOpen
-            ? 'M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z'
-            : 'M3 4.5 20 19.5'
-        }
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-      {isOpen ? (
-        <>
-          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
-        </>
-      ) : (
-        <>
-          <path
-            d="M10.58 6.24A10.93 10.93 0 0 1 12 6c6.5 0 10 6 10 6a18.7 18.7 0 0 1-3.05 3.6M6.71 8.7A18.08 18.08 0 0 0 2 12s3.5 6 10 6c1.73 0 3.22-.42 4.5-1.04"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-          <path
-            d="M9.88 9.88A3 3 0 0 0 14.12 14.12"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </>
-      )}
-    </svg>
-  );
-}
-
 export function RegisterForm() {
   const router = useRouter();
   const [values, setValues] = useState(INITIAL_VALUES);
@@ -235,9 +189,6 @@ export function RegisterForm() {
     documentNumber: false,
     phone: false,
   });
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
-
   const documentValidation = useMemo(
     () => validateDocument(values.documentType, values.documentNumber),
     [values.documentNumber, values.documentType],
@@ -547,47 +498,29 @@ export function RegisterForm() {
           value={values.phone}
         />
 
-        <InputField
+        <PasswordField
           autoComplete="new-password"
           error={getVisibleFieldError('password')}
           label="Clave de acceso"
+          hideLabel="Ocultar clave"
           onBlur={() => markFieldAsTouched('password')}
           onChange={(event) => handleChange('password', event.target.value)}
           placeholder="Minimo 8 caracteres"
           required
-          trailingAction={
-            <button
-              aria-label={isPasswordVisible ? 'Ocultar clave' : 'Mostrar clave'}
-              className="field-action-button"
-              onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
-              type="button"
-            >
-              <EyeIcon isOpen={isPasswordVisible} />
-            </button>
-          }
-          type={isPasswordVisible ? 'text' : 'password'}
+          showLabel="Mostrar clave"
           value={values.password}
         />
 
-        <InputField
+        <PasswordField
           autoComplete="new-password"
           error={getVisibleFieldError('confirmPassword')}
           label="Confirmar clave"
+          hideLabel="Ocultar confirmacion de clave"
           onBlur={() => markFieldAsTouched('confirmPassword')}
           onChange={(event) => handleChange('confirmPassword', event.target.value)}
           placeholder="Repite tu clave"
           required
-          trailingAction={
-            <button
-              aria-label={isConfirmPasswordVisible ? 'Ocultar confirmacion de clave' : 'Mostrar confirmacion de clave'}
-              className="field-action-button"
-              onClick={() => setIsConfirmPasswordVisible((currentValue) => !currentValue)}
-              type="button"
-            >
-              <EyeIcon isOpen={isConfirmPasswordVisible} />
-            </button>
-          }
-          type={isConfirmPasswordVisible ? 'text' : 'password'}
+          showLabel="Mostrar confirmacion de clave"
           value={values.confirmPassword}
         />
 

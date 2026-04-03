@@ -17,6 +17,7 @@ export const USER_REFERENCE_NEIGHBORHOOD_MIN_LENGTH = 3;
 
 export type UserOnboardingStateInput = {
   accountStatus?: string | null;
+  globalRole?: string | null;
   emailVerifiedAt?: Date | string | null;
   career?: string | null;
   referenceNeighborhood?: string | null;
@@ -42,34 +43,37 @@ export function deriveUserOnboardingState(
   input: UserOnboardingStateInput,
 ): UserOnboardingState {
   const missingRequirements: UserOnboardingRequirement[] = [];
+  const isSuperAdmin = input.globalRole === 'SUPER_ADMIN';
 
   if (input.accountStatus !== 'ACTIVE' || !input.emailVerifiedAt) {
     missingRequirements.push(UserOnboardingRequirement.EmailVerification);
   }
 
-  if (!hasTrimmedValue(input.career, USER_CAREER_MIN_LENGTH)) {
-    missingRequirements.push(UserOnboardingRequirement.Career);
-  }
+  if (!isSuperAdmin) {
+    if (!hasTrimmedValue(input.career, USER_CAREER_MIN_LENGTH)) {
+      missingRequirements.push(UserOnboardingRequirement.Career);
+    }
 
-  if (
-    !hasTrimmedValue(
-      input.referenceNeighborhood,
-      USER_REFERENCE_NEIGHBORHOOD_MIN_LENGTH,
-    )
-  ) {
-    missingRequirements.push(UserOnboardingRequirement.ReferenceNeighborhood);
-  }
+    if (
+      !hasTrimmedValue(
+        input.referenceNeighborhood,
+        USER_REFERENCE_NEIGHBORHOOD_MIN_LENGTH,
+      )
+    ) {
+      missingRequirements.push(UserOnboardingRequirement.ReferenceNeighborhood);
+    }
 
-  if (!input.termsAcceptedAt) {
-    missingRequirements.push(UserOnboardingRequirement.Terms);
-  }
+    if (!input.termsAcceptedAt) {
+      missingRequirements.push(UserOnboardingRequirement.Terms);
+    }
 
-  if (!input.privacyAcceptedAt) {
-    missingRequirements.push(UserOnboardingRequirement.Privacy);
-  }
+    if (!input.privacyAcceptedAt) {
+      missingRequirements.push(UserOnboardingRequirement.Privacy);
+    }
 
-  if (!input.safetyRulesAcceptedAt) {
-    missingRequirements.push(UserOnboardingRequirement.SafetyRules);
+    if (!input.safetyRulesAcceptedAt) {
+      missingRequirements.push(UserOnboardingRequirement.SafetyRules);
+    }
   }
 
   const isComplete = missingRequirements.length === 0;

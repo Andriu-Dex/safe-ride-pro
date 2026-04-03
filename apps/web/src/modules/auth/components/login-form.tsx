@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
+import { PasswordField } from '../../../components/ui/password-field';
 import { ApiError } from '../lib/auth-api';
 import { useAuth } from '../hooks/use-auth';
 
@@ -29,9 +30,9 @@ export function LoginForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [helperMessage, setHelperMessage] = useState<string | null>(
     showVerifiedMessage
-      ? 'Correo verificado correctamente. Ya puedes iniciar sesión.'
+      ? 'Correo verificado correctamente. Ya puedes iniciar sesion.'
       : showResetMessage
-        ? 'La contraseña se actualizó correctamente. Ya puedes iniciar sesión.'
+        ? 'La clave se actualizo correctamente. Ya puedes iniciar sesion.'
         : null,
   );
 
@@ -57,7 +58,7 @@ export function LoginForm({
         return;
       }
 
-      setErrorMessage('No fue posible iniciar sesión. Intenta nuevamente.');
+      setErrorMessage('No fue posible iniciar sesion. Intenta nuevamente.');
     }
   };
 
@@ -65,7 +66,7 @@ export function LoginForm({
     <div className="form-card">
       <div className="form-header">
         <p className="kicker">Acceso institucional</p>
-        <h2>Inicia sesión</h2>
+        <h2>Inicia sesion</h2>
         <p>Usa tu cuenta institucional para acceder a SafeRidePro.</p>
       </div>
 
@@ -80,21 +81,24 @@ export function LoginForm({
           value={email}
         />
 
-        <InputField
+        <PasswordField
           autoComplete="current-password"
-          label="Contraseña"
+          hideLabel="Ocultar clave"
+          label="Clave de acceso"
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Ingresa tu contraseña"
+          placeholder="Ingresa tu clave"
           required
-          type="password"
+          showLabel="Mostrar clave"
           value={password}
         />
 
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-        {helperMessage ? <div className="form-helper form-helper-strong">{helperMessage}</div> : null}
+        {helperMessage ? (
+          <div className="form-helper form-helper-strong">{helperMessage}</div>
+        ) : null}
 
         <Button disabled={isBusy} type="submit">
-          {isBusy ? 'Ingresando...' : 'Iniciar sesión'}
+          {isBusy ? 'Ingresando...' : 'Iniciar sesion'}
         </Button>
       </form>
 
@@ -103,7 +107,7 @@ export function LoginForm({
           Crear cuenta
         </a>
         <a className="button button-secondary" href="/forgot-password">
-          Olvidé mi contraseña
+          Olvide mi clave
         </a>
       </div>
     </div>

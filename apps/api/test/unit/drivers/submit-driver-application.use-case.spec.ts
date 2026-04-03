@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   DriverVerificationStatus,
   InstitutionMembershipRole,
@@ -116,6 +116,69 @@ describe('SubmitDriverApplicationUseCase', () => {
       }),
     ).rejects.toThrow(
       new BadRequestException('La licencia ingresada ya se encuentra vencida.'),
+    );
+
+    expect(repository.submitDriverApplication).not.toHaveBeenCalled();
+  });
+
+  it('rejects institutional admins acting as drivers', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(
+      buildMembership({
+        role: InstitutionMembershipRole.InstitutionAdmin,
+      }),
+    );
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        licenseTypeId: 'license-type-1',
+        licenseNumber: 'abc-123',
+        licenseExpiresAt: '2030-01-01T10:00:00.000Z',
+        identityDocumentFileKey: 'identity-file',
+        licenseDocumentFileKey: 'license-file',
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'La membresia administrativa no puede solicitar habilitacion como conductor.',
+      ),
+    );
+
+    expect(repository.submitDriverApplication).not.toHaveBeenCalled();
+  });
+
+  it('rejects resubmission when the driver profile is already approved and vigente', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(
+      buildMembership({
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+        effectiveDriverVerificationStatus: DriverVerificationStatus.Approved,
+      }),
+    );
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        licenseTypeId: 'license-type-1',
+        licenseNumber: 'abc-123',
+        licenseExpiresAt: '2030-01-01T10:00:00.000Z',
+        identityDocumentFileKey: 'identity-file',
+        licenseDocumentFileKey: 'license-file',
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'Tu perfil de conductor ya fue aprobado. Si necesitas actualizar documentos, contacta a administracion.',
+      ),
     );
 
     expect(repository.submitDriverApplication).not.toHaveBeenCalled();

@@ -1,4 +1,7 @@
+'use client';
+
 import { DriverVerificationStatus } from '@saferidepro/shared-types';
+import { useId } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
@@ -15,6 +18,10 @@ type DriverApplicationFormProps = {
   isSubmitting: boolean;
   isUploadingIdentityDocument: boolean;
   isUploadingLicenseDocument: boolean;
+  isDownloadingIdentityDocument: boolean;
+  isDownloadingLicenseDocument: boolean;
+  isOpeningIdentityPreview: boolean;
+  isOpeningLicensePreview: boolean;
   identityDocumentFileName?: string | null;
   identityDocumentPreviewUrl?: string | null;
   licenseDocumentFileName?: string | null;
@@ -41,6 +48,8 @@ type DriverApplicationFormProps = {
   ) => void;
   onDocumentValidationError: (message: string) => void;
   onUploadDocument: (documentType: DriverDocumentType, file: File) => void;
+  onPreviewDocument: (documentType: DriverDocumentType) => void;
+  onDownloadDocument: (documentType: DriverDocumentType) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 };
 
@@ -50,10 +59,15 @@ type DocumentUploadCardProps = {
   description: string;
   isUploaded: boolean;
   isUploading: boolean;
+  isDownloading: boolean;
+  isOpeningPreview: boolean;
+  isLocked: boolean;
   uploadedFileName?: string | null;
   previewUrl?: string | null;
   onUploadValidationError: (message: string) => void;
   onUploadDocument: (documentType: DriverDocumentType, file: File) => void;
+  onPreviewDocument: (documentType: DriverDocumentType) => void;
+  onDownloadDocument: (documentType: DriverDocumentType) => void;
 };
 
 const MAX_DRIVER_DOCUMENT_SIZE_BYTES = 8 * 1024 * 1024;
@@ -70,11 +84,19 @@ function DocumentUploadCard({
   description,
   isUploaded,
   isUploading,
+  isDownloading,
+  isOpeningPreview,
+  isLocked,
   uploadedFileName,
   previewUrl,
   onUploadValidationError,
   onUploadDocument,
+  onPreviewDocument,
+  onDownloadDocument,
 }: DocumentUploadCardProps) {
+  const inputId = useId();
+  const canInteract = !isLocked && !isUploading;
+
   return (
     <div className="document-upload-card">
       <div className="document-upload-card-copy">
@@ -86,17 +108,36 @@ function DocumentUploadCard({
           label={isUploaded ? 'Documento cargado' : 'Pendiente'}
           tone={isUploaded ? 'success' : 'warning'}
         />
-        {uploadedFileName ? (
-          <p className="document-upload-file-name">{uploadedFileName}</p>
-        ) : null}
-        <label className="field-label document-upload-input-label">
-          Seleccionar archivo
-        </label>
+
+        <div className="document-upload-trigger-row">
+          <label
+            className={[
+              'button',
+              'button-secondary',
+              'document-upload-trigger',
+              canInteract ? '' : 'document-upload-trigger-disabled',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            htmlFor={canInteract ? inputId : undefined}
+            onClick={() => {
+              if (canInteract) {
+                suppressAuthSessionSync();
+              }
+            }}
+          >
+            {isUploading ? 'Subiendo...' : 'Seleccionar archivo'}
+          </label>
+          <span className="document-upload-file-name">
+            {uploadedFileName ?? 'Sin archivo seleccionado'}
+          </span>
+        </div>
+
         <input
           accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp"
-          className="document-upload-input"
-          disabled={isUploading}
-          onClick={() => suppressAuthSessionSync()}
+          className="sr-only"
+          disabled={!canInteract}
+          id={inputId}
           onChange={(event) => {
             const selectedFile = event.target.files?.[0];
 
@@ -123,17 +164,38 @@ function DocumentUploadCard({
           }}
           type="file"
         />
-        {isUploading ? (
-          <p className="field-hint">Subiendo archivo...</p>
-        ) : null}
+
+        <div className="button-row document-upload-action-row">
+          <Button
+            disabled={!isUploaded || isOpeningPreview}
+            onClick={() => onPreviewDocument(documentType)}
+            variant="secondary"
+          >
+            {isOpeningPreview ? 'Abriendo...' : 'Ver documento'}
+          </Button>
+          <Button
+            disabled={!isUploaded || isDownloading}
+            onClick={() => onDownloadDocument(documentType)}
+            variant="ghost"
+          >
+            {isDownloading ? 'Descargando...' : 'Descargar'}
+          </Button>
+        </div>
+
         {previewUrl ? (
-          <div className="document-upload-preview">
-            <img
-              alt={`Previsualizacion de ${title.toLowerCase()}`}
-              className="document-upload-preview-image"
-              src={previewUrl}
-            />
-          </div>
+          <button
+            className="document-upload-preview-button"
+            onClick={() => onPreviewDocument(documentType)}
+            type="button"
+          >
+            <div className="document-upload-preview">
+              <img
+                alt={`Previsualizacion de ${title.toLowerCase()}`}
+                className="document-upload-preview-image"
+                src={previewUrl}
+              />
+            </div>
+          </button>
         ) : null}
       </div>
     </div>
@@ -147,6 +209,10 @@ export function DriverApplicationForm({
   isSubmitting,
   isUploadingIdentityDocument,
   isUploadingLicenseDocument,
+  isDownloadingIdentityDocument,
+  isDownloadingLicenseDocument,
+  isOpeningIdentityPreview,
+  isOpeningLicensePreview,
   identityDocumentFileName,
   identityDocumentPreviewUrl,
   licenseDocumentFileName,
@@ -159,8 +225,11 @@ export function DriverApplicationForm({
   onChange,
   onDocumentValidationError,
   onUploadDocument,
+  onPreviewDocument,
+  onDownloadDocument,
   onSubmit,
 }: DriverApplicationFormProps) {
+  const isApproved = currentStatus === DriverVerificationStatus.Approved;
   const submitLabel =
     currentStatus === DriverVerificationStatus.Rejected ||
     currentStatus === DriverVerificationStatus.Suspended
@@ -200,6 +269,7 @@ export function DriverApplicationForm({
   }
 
   const canSubmit =
+    !isApproved &&
     !isSubmitting &&
     !isUploadingIdentityDocument &&
     !isUploadingLicenseDocument &&
@@ -227,9 +297,17 @@ export function DriverApplicationForm({
         </div>
       ) : null}
 
+      {isApproved ? (
+        <div className="form-helper form-helper-strong">
+          Tu habilitacion como conductor ya fue aprobada. Puedes revisar y descargar tus
+          documentos, pero cualquier actualizacion debe gestionarse con administracion.
+        </div>
+      ) : null}
+
       <form className="form-stack" onSubmit={onSubmit}>
         <div className="form-grid form-grid-2">
           <SelectField
+            disabled={isApproved}
             label="Tipo de licencia"
             onChange={(event) => onChange('licenseTypeId', event.target.value)}
             required
@@ -244,6 +322,7 @@ export function DriverApplicationForm({
           </SelectField>
 
           <InputField
+            disabled={isApproved}
             label="Numero de licencia"
             onChange={(event) => onChange('licenseNumber', event.target.value)}
             placeholder="Ejemplo: X1234567"
@@ -253,6 +332,7 @@ export function DriverApplicationForm({
         </div>
 
         <InputField
+          disabled={isApproved}
           label="Fecha de expiracion"
           onChange={(event) => onChange('licenseExpiresAt', event.target.value)}
           required
@@ -264,31 +344,41 @@ export function DriverApplicationForm({
           <DocumentUploadCard
             description="Carga una imagen o PDF legible de tu documento de identidad."
             documentType="identity"
+            isDownloading={isDownloadingIdentityDocument}
+            isLocked={isApproved}
+            isOpeningPreview={isOpeningIdentityPreview}
             isUploaded={Boolean(values.identityDocumentFileKey)}
             isUploading={isUploadingIdentityDocument}
-            onUploadValidationError={onDocumentValidationError}
+            onDownloadDocument={onDownloadDocument}
+            onPreviewDocument={onPreviewDocument}
             onUploadDocument={onUploadDocument}
+            onUploadValidationError={onDocumentValidationError}
             previewUrl={identityDocumentPreviewUrl}
-            uploadedFileName={identityDocumentFileName}
             title="Documento de identidad"
+            uploadedFileName={identityDocumentFileName}
           />
           <DocumentUploadCard
             description="Carga una imagen o PDF legible de tu licencia vigente."
             documentType="license"
+            isDownloading={isDownloadingLicenseDocument}
+            isLocked={isApproved}
+            isOpeningPreview={isOpeningLicensePreview}
             isUploaded={Boolean(values.licenseDocumentFileKey)}
             isUploading={isUploadingLicenseDocument}
-            onUploadValidationError={onDocumentValidationError}
+            onDownloadDocument={onDownloadDocument}
+            onPreviewDocument={onPreviewDocument}
             onUploadDocument={onUploadDocument}
+            onUploadValidationError={onDocumentValidationError}
             previewUrl={licenseDocumentPreviewUrl}
-            uploadedFileName={licenseDocumentFileName}
             title="Documento de licencia"
+            uploadedFileName={licenseDocumentFileName}
           />
         </div>
 
         {documentErrorMessage ? <div className="form-error">{documentErrorMessage}</div> : null}
         {documentSuccessMessage ? <div className="form-success">{documentSuccessMessage}</div> : null}
 
-        {validationIssues.length ? (
+        {!isApproved && validationIssues.length ? (
           <div className="validation-card validation-card-danger">
             <strong>Revisa estos puntos antes de continuar:</strong>
             <ul className="validation-list">
@@ -302,9 +392,11 @@ export function DriverApplicationForm({
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
-        <Button disabled={!canSubmit} type="submit">
-          {isSubmitting ? 'Enviando...' : submitLabel}
-        </Button>
+        {!isApproved ? (
+          <Button disabled={!canSubmit} type="submit">
+            {isSubmitting ? 'Enviando...' : submitLabel}
+          </Button>
+        ) : null}
       </form>
     </article>
   );

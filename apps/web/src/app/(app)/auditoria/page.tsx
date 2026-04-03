@@ -32,6 +32,7 @@ import {
   listReviewableDriverApplications,
   reviewDriverApplication,
 } from '../../../modules/driver/lib/driver-api';
+import { buildDriverDocumentFileName } from '../../../modules/driver/lib/driver-document-file';
 import {
   getDriverLicenseStatusLabel,
   getDriverLicenseStatusTone,
@@ -56,10 +57,12 @@ import type {
   ReviewableOperationalSanctionRecord,
 } from '../../../modules/sanctions/types/sanction';
 import { Button } from '../../../components/ui/button';
+import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
 import { InfoCard } from '../../../components/ui/info-card';
 import { SelectField } from '../../../components/ui/select-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
+import { downloadBlobFile } from '../../../lib/blob-file';
 import { ApiError } from '../../../lib/api-client';
 import {
   getOperationalSanctionScopeLabel,
@@ -98,6 +101,15 @@ function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof ApiError ? error.message : fallbackMessage;
 }
 
+type DriverDocumentPreviewState = {
+  membershipId: string;
+  documentType: 'identity' | 'license';
+  fileName: string;
+  fileUrl: string;
+  mimeType: string;
+  title: string;
+};
+
 export default function AuditPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
@@ -125,10 +137,16 @@ export default function AuditPage() {
   const [isReviewingReportId, setIsReviewingReportId] = useState<string | null>(null);
   const [isReviewingDriverMembershipId, setIsReviewingDriverMembershipId] = useState<string | null>(null);
   const [isDownloadingDriverDocumentKey, setIsDownloadingDriverDocumentKey] = useState<string | null>(null);
+  const [isOpeningDriverDocumentKey, setIsOpeningDriverDocumentKey] = useState<string | null>(null);
   const [isReviewingAppealId, setIsReviewingAppealId] = useState<string | null>(null);
   const [isLiftingSanctionId, setIsLiftingSanctionId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [driverDocumentPreview, setDriverDocumentPreview] =
+    useState<DriverDocumentPreviewState | null>(null);
+  const [driverDocumentPreviewError, setDriverDocumentPreviewError] = useState<string | null>(
+    null,
+  );
 
   const adminMemberships = useMemo(
     () =>
@@ -285,6 +303,14 @@ export default function AuditPage() {
       intervalMs: 20_000,
     },
   );
+
+  useEffect(() => {
+    return () => {
+      if (driverDocumentPreview?.fileUrl) {
+        URL.revokeObjectURL(driverDocumentPreview.fileUrl);
+      }
+    };
+  }, [driverDocumentPreview]);
 
   const handleFilterChange = (field: keyof AuditFilters, value: string) => {
     setAuditFilterValues((currentFilters) => ({
@@ -451,6 +477,90 @@ export default function AuditPage() {
     }
   };
 
+  const resetDriverDocumentPreview = () => {
+    setDriverDocumentPreviewError(null);
+    setDriverDocumentPreview((currentPreview) => {
+      if (currentPreview?.fileUrl) {
+        URL.revokeObjectURL(currentPreview.fileUrl);
+      }
+
+      return null;
+    });
+  };
+
+  const fetchDriverDocument = async (
+    membershipId: string,
+    documentType: 'identity' | 'license',
+    userFullName: string,
+  ) => {
+    if (!authSession) {
+      throw new ApiError('No fue posible autenticar la descarga del documento.', 401);
+    }
+
+    const blob = await downloadDriverApplicationDocument(
+      authSession.accessToken,
+      membershipId,
+      documentType,
+    );
+
+    return {
+      blob,
+      fileName: buildDriverDocumentFileName(documentType, userFullName, blob.type),
+      title:
+        documentType === 'identity'
+          ? 'Documento de identidad'
+          : 'Documento de licencia',
+    };
+  };
+
+  const handleOpenDriverDocumentPreview = async (
+    membershipId: string,
+    documentType: 'identity' | 'license',
+    userFullName: string,
+  ) => {
+    if (!authSession) {
+      return;
+    }
+
+    const previewKey = `${membershipId}-${documentType}`;
+    setIsOpeningDriverDocumentKey(previewKey);
+    setErrorMessage(null);
+    setDriverDocumentPreviewError(null);
+
+    try {
+      const { blob, fileName, title } = await fetchDriverDocument(
+        membershipId,
+        documentType,
+        userFullName,
+      );
+      const objectUrl = URL.createObjectURL(blob);
+
+      setDriverDocumentPreview((currentPreview) => {
+        if (currentPreview?.fileUrl) {
+          URL.revokeObjectURL(currentPreview.fileUrl);
+        }
+
+        return {
+          membershipId,
+          documentType,
+          fileName,
+          fileUrl: objectUrl,
+          mimeType: blob.type,
+          title,
+        };
+      });
+    } catch (error) {
+      setDriverDocumentPreviewError(
+        getApiErrorMessage(
+          error,
+          'No fue posible abrir la previsualizacion del documento del conductor.',
+        ),
+      );
+    } finally {
+      setIsOpeningDriverDocumentKey(null);
+    }
+  };
+
   const handleDownloadDriverDocument = async (
     membershipId: string,
     documentType: 'identity' | 'license',
@@ -465,33 +575,13 @@ export default function AuditPage() {
     setErrorMessage(null);
 
     try {
-      const blob = await downloadDriverApplicationDocument(
-        authSession.accessToken,
+      const { blob, fileName } = await fetchDriverDocument(
         membershipId,
         documentType,
+        userFullName,
       );
-      const extension =
-        blob.type === 'application/pdf'
-          ? 'pdf'
-          : blob.type === 'image/png'
-            ? 'png'
-            : blob.type === 'image/webp'
-              ? 'webp'
-              : 'jpg';
-      const fileName = `${documentType === 'identity' ? 'documento-identidad' : 'documento-licencia'}-${userFullName
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, '-')}.${extension}`;
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = objectUrl;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => {
-        URL.revokeObjectURL(objectUrl);
-      }, 1000);
+
+      downloadBlobFile(blob, fileName);
     } catch (error) {
       setErrorMessage(
         getApiErrorMessage(error, 'No fue posible descargar el documento del conductor.'),
@@ -780,6 +870,24 @@ export default function AuditPage() {
                         <Button
                           disabled={
                             !application.identityDocumentFileKey ||
+                            isOpeningDriverDocumentKey === identityDocumentDownloadKey
+                          }
+                          onClick={() =>
+                            void handleOpenDriverDocumentPreview(
+                              application.membershipId,
+                              'identity',
+                              application.userFullName,
+                            )
+                          }
+                          variant="secondary"
+                        >
+                          {isOpeningDriverDocumentKey === identityDocumentDownloadKey
+                            ? 'Abriendo...'
+                            : 'Ver identidad'}
+                        </Button>
+                        <Button
+                          disabled={
+                            !application.identityDocumentFileKey ||
                             isDownloadingDriverDocumentKey === identityDocumentDownloadKey
                           }
                           onClick={() =>
@@ -794,6 +902,24 @@ export default function AuditPage() {
                           {isDownloadingDriverDocumentKey === identityDocumentDownloadKey
                             ? 'Descargando...'
                             : 'Descargar identidad'}
+                        </Button>
+                        <Button
+                          disabled={
+                            !application.licenseDocumentFileKey ||
+                            isOpeningDriverDocumentKey === licenseDocumentDownloadKey
+                          }
+                          onClick={() =>
+                            void handleOpenDriverDocumentPreview(
+                              application.membershipId,
+                              'license',
+                              application.userFullName,
+                            )
+                          }
+                          variant="secondary"
+                        >
+                          {isOpeningDriverDocumentKey === licenseDocumentDownloadKey
+                            ? 'Abriendo...'
+                            : 'Ver licencia'}
                         </Button>
                         <Button
                           disabled={
@@ -1193,6 +1319,41 @@ export default function AuditPage() {
           </article>
         </div>
       </section>
+
+      <FilePreviewModal
+        description={
+          driverDocumentPreview?.mimeType?.startsWith('image/')
+            ? 'Pasa el puntero sobre la imagen para ampliar los detalles del documento.'
+            : 'Revisa el archivo antes de descargarlo o continuar con la revision administrativa.'
+        }
+        errorMessage={driverDocumentPreviewError}
+        fileName={driverDocumentPreview?.fileName ?? null}
+        fileUrl={driverDocumentPreview?.fileUrl ?? null}
+        isDownloading={
+          driverDocumentPreview
+            ? isDownloadingDriverDocumentKey ===
+              `${driverDocumentPreview.membershipId}-${driverDocumentPreview.documentType}`
+            : false
+        }
+        isLoading={Boolean(isOpeningDriverDocumentKey)}
+        isOpen={Boolean(driverDocumentPreview) || Boolean(driverDocumentPreviewError)}
+        mimeType={driverDocumentPreview?.mimeType ?? null}
+        onClose={resetDriverDocumentPreview}
+        onDownload={
+          driverDocumentPreview
+            ? () =>
+                void handleDownloadDriverDocument(
+                  driverDocumentPreview.membershipId,
+                  driverDocumentPreview.documentType,
+                  reviewableDriverApplications.find(
+                    (application) =>
+                      application.membershipId === driverDocumentPreview.membershipId,
+                  )?.userFullName ?? 'usuario',
+                )
+            : undefined
+        }
+        title={driverDocumentPreview?.title ?? 'Documento del conductor'}
+      />
     </>
   );
 }

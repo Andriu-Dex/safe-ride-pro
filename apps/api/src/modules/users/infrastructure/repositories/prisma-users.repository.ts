@@ -362,6 +362,7 @@ export class PrismaUsersRepository implements UsersRepository {
   }): UserProfile {
     const onboardingState = deriveUserOnboardingState({
       accountStatus: user.accountStatus,
+      globalRole: user.globalRole,
       emailVerifiedAt: user.emailVerifiedAt,
       career: user.career,
       referenceNeighborhood: user.referenceNeighborhood,
