@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma, TripStatus } from '@prisma/client';
 import {
   DriverLicenseStatus,
   DriverVerificationStatus,
@@ -14,12 +15,37 @@ import { PrismaService } from '../../../../shared/infrastructure/database/prisma
 import {
   CreateVehicleInput,
   LicenseTypeCatalogItem,
+  UpdateVehicleInput,
   VehicleBrandCatalogItem,
   VehicleMembershipRecord,
   VehicleModelCatalogItem,
   VehicleRecord,
   VehiclesRepository,
 } from '../../application/ports/vehicles.repository';
+
+const VEHICLE_WITH_RELATIONS_INCLUDE = {
+  membership: {
+    include: {
+      institution: true,
+    },
+  },
+  brand: true,
+  model: true,
+  trips: {
+    where: {
+      status: {
+        in: [TripStatus.PUBLISHED, TripStatus.FULL, TripStatus.IN_PROGRESS],
+      },
+    },
+    select: {
+      id: true,
+    },
+  },
+} satisfies Prisma.VehicleInclude;
+
+type VehicleWithRelations = Prisma.VehicleGetPayload<{
+  include: typeof VEHICLE_WITH_RELATIONS_INCLUDE;
+}>;
 
 @Injectable()
 export class PrismaVehiclesRepository implements VehiclesRepository {
@@ -81,9 +107,23 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
     }));
   }
 
-  async listVehicleBrands(): Promise<VehicleBrandCatalogItem[]> {
+  async listVehicleBrands(filters?: {
+    vehicleType?: VehicleType;
+  }): Promise<VehicleBrandCatalogItem[]> {
     const brands = await this.prisma.vehicleBrand.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        ...(filters?.vehicleType
+          ? {
+              models: {
+                some: {
+                  isActive: true,
+                  vehicleType: filters.vehicleType,
+                },
+              },
+            }
+          : {}),
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -161,15 +201,22 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
   async findVehicleByPlate(plate: string): Promise<VehicleRecord | null> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { plate },
-      include: {
-        membership: {
-          include: {
-            institution: true,
-          },
-        },
-        brand: true,
-        model: true,
+      include: VEHICLE_WITH_RELATIONS_INCLUDE,
+    });
+
+    return vehicle ? this.mapVehicle(vehicle) : null;
+  }
+
+  async findVehicleByIdForMembership(
+    membershipId: string,
+    vehicleId: string,
+  ): Promise<VehicleRecord | null> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: {
+        id: vehicleId,
+        membershipId,
       },
+      include: VEHICLE_WITH_RELATIONS_INCLUDE,
     });
 
     return vehicle ? this.mapVehicle(vehicle) : null;
@@ -178,15 +225,7 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
   async findVehiclesByMembershipId(membershipId: string): Promise<VehicleRecord[]> {
     const vehicles = await this.prisma.vehicle.findMany({
       where: { membershipId },
-      include: {
-        membership: {
-          include: {
-            institution: true,
-          },
-        },
-        brand: true,
-        model: true,
-      },
+      include: VEHICLE_WITH_RELATIONS_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -209,49 +248,54 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
         luggagePolicy: input.luggagePolicy,
         registrationDocumentFileKey: input.registrationDocumentFileKey,
       },
-      include: {
-        membership: {
-          include: {
-            institution: true,
-          },
-        },
-        brand: true,
-        model: true,
-      },
+      include: VEHICLE_WITH_RELATIONS_INCLUDE,
     });
 
     return this.mapVehicle(vehicle);
   }
 
-  private mapVehicle(vehicle: {
-    id: string;
-    membershipId: string;
-    vehicleType: string;
-    brandId: string | null;
-    modelId: string | null;
-    customBrandName: string | null;
-    customModelName: string | null;
-    year: number;
-    color: string;
-    plate: string;
-    seatCount: number;
-    luggagePolicy: string;
-    registrationDocumentFileKey: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    membership: {
-      institutionId: string;
-      institution: {
-        name: string;
-      };
-    };
-    brand: {
-      name: string;
-    } | null;
-    model: {
-      name: string;
-    } | null;
-  }): VehicleRecord {
+  async updateVehicle(input: UpdateVehicleInput): Promise<VehicleRecord> {
+    const vehicle = await this.prisma.vehicle.update({
+      where: {
+        id: input.vehicleId,
+      },
+      data: {
+        vehicleType: input.vehicleType,
+        brandId: input.brandId,
+        modelId: input.modelId,
+        customBrandName: input.customBrandName,
+        customModelName: input.customModelName,
+        year: input.year,
+        color: input.color,
+        plate: input.plate,
+        seatCount: input.seatCount,
+        luggagePolicy: input.luggagePolicy,
+        registrationDocumentFileKey: input.registrationDocumentFileKey,
+      },
+      include: VEHICLE_WITH_RELATIONS_INCLUDE,
+    });
+
+    return this.mapVehicle(vehicle);
+  }
+
+  async updateVehicleStatus(
+    vehicleId: string,
+    isActive: boolean,
+  ): Promise<VehicleRecord> {
+    const vehicle = await this.prisma.vehicle.update({
+      where: {
+        id: vehicleId,
+      },
+      data: {
+        isActive,
+      },
+      include: VEHICLE_WITH_RELATIONS_INCLUDE,
+    });
+
+    return this.mapVehicle(vehicle);
+  }
+
+  private mapVehicle(vehicle: VehicleWithRelations): VehicleRecord {
     return {
       id: vehicle.id,
       membershipId: vehicle.membershipId,
@@ -271,6 +315,7 @@ export class PrismaVehiclesRepository implements VehiclesRepository {
       luggagePolicy: vehicle.luggagePolicy as LuggagePolicy,
       registrationDocumentFileKey: vehicle.registrationDocumentFileKey,
       isActive: vehicle.isActive,
+      operationalTripCount: vehicle.trips.length,
       createdAt: vehicle.createdAt,
     };
   }

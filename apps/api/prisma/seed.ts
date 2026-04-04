@@ -23,6 +23,8 @@ const vehicleCatalogSeeds = [
     models: [
       { name: 'Corolla', vehicleType: VehicleType.CAR },
       { name: 'Yaris', vehicleType: VehicleType.CAR },
+      { name: 'Prius', vehicleType: VehicleType.CAR },
+      { name: 'RAV4', vehicleType: VehicleType.CAR },
       { name: 'Hilux', vehicleType: VehicleType.PICKUP_TRUCK },
     ],
   },
@@ -30,20 +32,145 @@ const vehicleCatalogSeeds = [
     brand: 'Chevrolet',
     models: [
       { name: 'Aveo', vehicleType: VehicleType.CAR },
+      { name: 'Onix', vehicleType: VehicleType.CAR },
+      { name: 'Sail', vehicleType: VehicleType.CAR },
       { name: 'D-Max', vehicleType: VehicleType.PICKUP_TRUCK },
     ],
   },
   {
     brand: 'Kia',
-    models: [{ name: 'Rio', vehicleType: VehicleType.CAR }],
+    models: [
+      { name: 'Rio', vehicleType: VehicleType.CAR },
+      { name: 'Soluto', vehicleType: VehicleType.CAR },
+      { name: 'Sportage', vehicleType: VehicleType.CAR },
+    ],
+  },
+  {
+    brand: 'Hyundai',
+    models: [
+      { name: 'Accent', vehicleType: VehicleType.CAR },
+      { name: 'Grand i10', vehicleType: VehicleType.CAR },
+      { name: 'Tucson', vehicleType: VehicleType.CAR },
+    ],
+  },
+  {
+    brand: 'Nissan',
+    models: [
+      { name: 'Versa', vehicleType: VehicleType.CAR },
+      { name: 'Sentra', vehicleType: VehicleType.CAR },
+      { name: 'Kicks', vehicleType: VehicleType.CAR },
+      { name: 'Frontier', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
+  },
+  {
+    brand: 'Mazda',
+    models: [
+      { name: 'Mazda2', vehicleType: VehicleType.CAR },
+      { name: 'Mazda3', vehicleType: VehicleType.CAR },
+      { name: 'CX-5', vehicleType: VehicleType.CAR },
+      { name: 'BT-50', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
+  },
+  {
+    brand: 'Suzuki',
+    models: [
+      { name: 'Swift', vehicleType: VehicleType.CAR },
+      { name: 'Dzire', vehicleType: VehicleType.CAR },
+      { name: 'Vitara', vehicleType: VehicleType.CAR },
+    ],
+  },
+  {
+    brand: 'Renault',
+    models: [
+      { name: 'Logan', vehicleType: VehicleType.CAR },
+      { name: 'Sandero', vehicleType: VehicleType.CAR },
+      { name: 'Duster', vehicleType: VehicleType.CAR },
+      { name: 'Oroch', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
+  },
+  {
+    brand: 'Volkswagen',
+    models: [
+      { name: 'Gol', vehicleType: VehicleType.CAR },
+      { name: 'Virtus', vehicleType: VehicleType.CAR },
+      { name: 'Jetta', vehicleType: VehicleType.CAR },
+      { name: 'Amarok', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
+  },
+  {
+    brand: 'Ford',
+    models: [
+      { name: 'Fiesta', vehicleType: VehicleType.CAR },
+      { name: 'Focus', vehicleType: VehicleType.CAR },
+      { name: 'Escape', vehicleType: VehicleType.CAR },
+      { name: 'Ranger', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
+  },
+  {
+    brand: 'Mitsubishi',
+    models: [
+      { name: 'Lancer', vehicleType: VehicleType.CAR },
+      { name: 'ASX', vehicleType: VehicleType.CAR },
+      { name: 'L200', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
   },
   {
     brand: 'Honda',
-    models: [{ name: 'CB125F', vehicleType: VehicleType.MOTORCYCLE }],
+    models: [
+      { name: 'Civic', vehicleType: VehicleType.CAR },
+      { name: 'City', vehicleType: VehicleType.CAR },
+      { name: 'CR-V', vehicleType: VehicleType.CAR },
+      { name: 'CB125F', vehicleType: VehicleType.MOTORCYCLE },
+      { name: 'CB190R', vehicleType: VehicleType.MOTORCYCLE },
+      { name: 'XR150L', vehicleType: VehicleType.MOTORCYCLE },
+    ],
   },
   {
     brand: 'Yamaha',
-    models: [{ name: 'MT-03', vehicleType: VehicleType.MOTORCYCLE }],
+    models: [
+      { name: 'MT-03', vehicleType: VehicleType.MOTORCYCLE },
+      { name: 'FZ-S', vehicleType: VehicleType.MOTORCYCLE },
+      { name: 'XTZ150', vehicleType: VehicleType.MOTORCYCLE },
+      { name: 'YBR125', vehicleType: VehicleType.MOTORCYCLE },
+    ],
+  },
+  {
+    brand: 'Bajaj',
+    models: [
+      { name: 'Discover 125 ST', vehicleType: VehicleType.MOTORCYCLE },
+      { name: 'Pulsar NS160', vehicleType: VehicleType.MOTORCYCLE },
+      { name: 'Pulsar N250', vehicleType: VehicleType.MOTORCYCLE },
+    ],
+  },
+  {
+    brand: 'Shineray',
+    models: [
+      { name: 'XY150-5', vehicleType: VehicleType.MOTORCYCLE },
+      { name: 'Phoenix 200', vehicleType: VehicleType.MOTORCYCLE },
+    ],
+  },
+  {
+    brand: 'JAC',
+    models: [
+      { name: 'S2', vehicleType: VehicleType.CAR },
+      { name: 'S3', vehicleType: VehicleType.CAR },
+      { name: 'T8', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
+  },
+  {
+    brand: 'Chery',
+    models: [
+      { name: 'Arrizo 5', vehicleType: VehicleType.CAR },
+      { name: 'Tiggo 2', vehicleType: VehicleType.CAR },
+      { name: 'Tiggo 7', vehicleType: VehicleType.CAR },
+    ],
+  },
+  {
+    brand: 'Great Wall',
+    models: [
+      { name: 'Wingle 5', vehicleType: VehicleType.PICKUP_TRUCK },
+      { name: 'Poer', vehicleType: VehicleType.PICKUP_TRUCK },
+    ],
   },
 ] as const;
 

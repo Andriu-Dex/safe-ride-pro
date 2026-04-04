@@ -128,9 +128,6 @@ function DocumentUploadCard({
           >
             {isUploading ? 'Subiendo...' : 'Seleccionar archivo'}
           </label>
-          <span className="document-upload-file-name">
-            {uploadedFileName ?? 'Sin archivo seleccionado'}
-          </span>
         </div>
 
         <input

@@ -1,3 +1,4 @@
+import { VehicleType } from '@saferidepro/shared-types';
 import { Inject, Injectable } from '@nestjs/common';
 
 import {
@@ -12,7 +13,7 @@ export class ListVehicleBrandsUseCase {
     private readonly vehiclesRepository: VehiclesRepository,
   ) {}
 
-  async execute() {
-    return this.vehiclesRepository.listVehicleBrands();
+  async execute(filters?: { vehicleType?: VehicleType }) {
+    return this.vehiclesRepository.listVehicleBrands(filters);
   }
 }

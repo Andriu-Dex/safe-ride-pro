@@ -59,6 +59,7 @@ export type VehicleRecord = {
   luggagePolicy: LuggagePolicy;
   registrationDocumentFileKey: string | null;
   isActive: boolean;
+  operationalTripCount: number;
   createdAt: Date;
 };
 
@@ -77,10 +78,16 @@ export type CreateVehicleInput = {
   registrationDocumentFileKey?: string;
 };
 
+export type UpdateVehicleInput = CreateVehicleInput & {
+  vehicleId: string;
+};
+
 export interface VehiclesRepository {
   findDefaultMembershipByUserId(userId: string): Promise<VehicleMembershipRecord | null>;
   listLicenseTypes(): Promise<LicenseTypeCatalogItem[]>;
-  listVehicleBrands(): Promise<VehicleBrandCatalogItem[]>;
+  listVehicleBrands(filters?: {
+    vehicleType?: VehicleType;
+  }): Promise<VehicleBrandCatalogItem[]>;
   listVehicleModels(filters?: {
     brandId?: string;
     vehicleType?: VehicleType;
@@ -88,6 +95,15 @@ export interface VehiclesRepository {
   findVehicleBrandById(brandId: string): Promise<VehicleBrandCatalogItem | null>;
   findVehicleModelById(modelId: string): Promise<VehicleModelCatalogItem | null>;
   findVehicleByPlate(plate: string): Promise<VehicleRecord | null>;
+  findVehicleByIdForMembership(
+    membershipId: string,
+    vehicleId: string,
+  ): Promise<VehicleRecord | null>;
   findVehiclesByMembershipId(membershipId: string): Promise<VehicleRecord[]>;
   createVehicle(input: CreateVehicleInput): Promise<VehicleRecord>;
+  updateVehicle(input: UpdateVehicleInput): Promise<VehicleRecord>;
+  updateVehicleStatus(
+    vehicleId: string,
+    isActive: boolean,
+  ): Promise<VehicleRecord>;
 }

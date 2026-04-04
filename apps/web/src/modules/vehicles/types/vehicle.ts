@@ -37,6 +37,7 @@ export type VehicleRecord = {
   luggagePolicy: LuggagePolicy;
   registrationDocumentFileKey: string | null;
   isActive: boolean;
+  operationalTripCount: number;
   createdAt: string;
 };
 
@@ -71,5 +72,12 @@ export type RegisterVehicleInput = {
   seatCount: number;
   luggagePolicy: LuggagePolicy;
   registrationDocumentFileKey?: string;
+};
+
+export type UpdateVehicleInput = RegisterVehicleInput;
+
+export type VehicleDocumentUploadResponse = {
+  message: string;
+  fileKey: string;
 };
 

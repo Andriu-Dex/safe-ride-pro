@@ -23,8 +23,11 @@ function createVehiclesRepositoryMock(): jest.Mocked<VehiclesRepository> {
     findVehicleBrandById: jest.fn(),
     findVehicleModelById: jest.fn(),
     findVehicleByPlate: jest.fn(),
+    findVehicleByIdForMembership: jest.fn(),
     findVehiclesByMembershipId: jest.fn(),
     createVehicle: jest.fn(),
+    updateVehicle: jest.fn(),
+    updateVehicleStatus: jest.fn(),
   };
 }
 
@@ -48,6 +51,7 @@ function buildCreatedVehicle(input: CreateVehicleInput): VehicleRecord {
     luggagePolicy: input.luggagePolicy,
     registrationDocumentFileKey: input.registrationDocumentFileKey ?? null,
     isActive: true,
+    operationalTripCount: 0,
     createdAt: new Date('2030-01-01T10:00:00.000Z'),
   };
 }
@@ -76,6 +80,7 @@ describe('RegisterVehicleUseCase', () => {
         plate: 'ab-123',
         seatCount: 2,
         luggagePolicy: LuggagePolicy.NotAllowed,
+        registrationDocumentFileKey: 'membership-1/registration/file-1.pdf',
       }),
     ).rejects.toThrow(
       new BadRequestException(
@@ -120,6 +125,7 @@ describe('RegisterVehicleUseCase', () => {
       plate: '  abc-123  ',
       seatCount: 4,
       luggagePolicy: LuggagePolicy.UpToMedium,
+      registrationDocumentFileKey: 'membership-1/registration/file-1.pdf',
     });
 
     expect(response.message).toBe('Vehiculo registrado correctamente.');
@@ -135,7 +141,7 @@ describe('RegisterVehicleUseCase', () => {
       plate: 'ABC-123',
       seatCount: 4,
       luggagePolicy: LuggagePolicy.UpToMedium,
-      registrationDocumentFileKey: undefined,
+      registrationDocumentFileKey: 'membership-1/registration/file-1.pdf',
     });
   });
 
@@ -174,6 +180,7 @@ describe('RegisterVehicleUseCase', () => {
         plate: 'abc-123',
         seatCount: 4,
         luggagePolicy: LuggagePolicy.UpToMedium,
+        registrationDocumentFileKey: 'membership-1/registration/file-1.pdf',
       }),
     ).rejects.toThrow(
       new BadRequestException('El modelo seleccionado no pertenece a la marca indicada.'),
@@ -206,10 +213,11 @@ describe('RegisterVehicleUseCase', () => {
         plate: 'ab-123',
         seatCount: 4,
         luggagePolicy: LuggagePolicy.UpToMedium,
+        registrationDocumentFileKey: 'membership-1/registration/file-1.pdf',
       }),
     ).rejects.toThrow(
       new ForbiddenException(
-        'Tu licencia vencio. Debes actualizarla antes de registrar vehiculos.',
+        'Tu licencia vencio. Debes actualizarla antes de gestionar vehiculos.',
       ),
     );
   });
