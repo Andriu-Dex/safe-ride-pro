@@ -1,4 +1,5 @@
 import {
+  TripAvailabilityFilter,
   TripRouteMode,
   VehicleType,
 } from '@saferidepro/shared-types';
@@ -6,9 +7,11 @@ import {
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
 import { SelectField } from '../../../components/ui/select-field';
+import { isGeoapifyConfigured } from '../lib/geoapify';
 import type { TripFilters } from '../types/trip';
 import { getTripRouteModeLabel } from '../lib/trip-labels';
 import { getVehicleTypeLabel } from '../../vehicles/lib/vehicle-labels';
+import { PlaceAutocompleteField } from './place-autocomplete-field';
 
 type TripFiltersPanelProps = {
   values: TripFilters;
@@ -25,31 +28,60 @@ export function TripFiltersPanel({
   onReset,
   isSubmitting,
 }: TripFiltersPanelProps) {
+  const isGeoSearchEnabled = isGeoapifyConfigured();
+
   return (
     <article className="panel panel-stack">
       <div className="panel-header-row">
         <div>
           <h2 className="panel-title">Filtros de viajes</h2>
           <p className="panel-text">
-            Puedes refinar tanto tus viajes como los viajes disponibles por origen, destino, fecha y modalidad.
+            Refina tus viajes y los viajes disponibles por origen, destino, fecha, horario, modalidad y cupos.
           </p>
         </div>
       </div>
 
       <form className="form-stack" onSubmit={onApply}>
         <div className="form-grid form-grid-2">
-          <InputField
-            label="Origen"
-            onChange={(event) => onChange('origin', event.target.value)}
-            placeholder="Campus Ingahurco"
-            value={values.origin ?? ''}
-          />
-          <InputField
-            label="Destino"
-            onChange={(event) => onChange('destination', event.target.value)}
-            placeholder="Ficoa"
-            value={values.destination ?? ''}
-          />
+          {isGeoSearchEnabled ? (
+            <>
+              <PlaceAutocompleteField
+                hint="Escribe al menos 3 caracteres para sugerencias reales dentro de Ecuador."
+                label="Origen"
+                onClear={() => onChange('origin', '')}
+                onSelect={(place) => onChange('origin', place.label)}
+                onValueChange={(nextValue) => onChange('origin', nextValue)}
+                placeholder="Buscar origen"
+                selectedPlace={null}
+                value={values.origin ?? ''}
+              />
+              <PlaceAutocompleteField
+                hint="Tambien puedes dejar un texto libre si prefieres una busqueda mas amplia."
+                label="Destino"
+                onClear={() => onChange('destination', '')}
+                onSelect={(place) => onChange('destination', place.label)}
+                onValueChange={(nextValue) => onChange('destination', nextValue)}
+                placeholder="Buscar destino"
+                selectedPlace={null}
+                value={values.destination ?? ''}
+              />
+            </>
+          ) : (
+            <>
+              <InputField
+                label="Origen"
+                onChange={(event) => onChange('origin', event.target.value)}
+                placeholder="Campus Ingahurco"
+                value={values.origin ?? ''}
+              />
+              <InputField
+                label="Destino"
+                onChange={(event) => onChange('destination', event.target.value)}
+                placeholder="Ficoa"
+                value={values.destination ?? ''}
+              />
+            </>
+          )}
         </div>
 
         <div className="form-grid form-grid-4">
@@ -65,6 +97,21 @@ export function TripFiltersPanel({
             type="date"
             value={values.dateTo ?? ''}
           />
+          <InputField
+            label="Hora desde"
+            onChange={(event) => onChange('timeFrom', event.target.value)}
+            type="time"
+            value={values.timeFrom ?? ''}
+          />
+          <InputField
+            label="Hora hasta"
+            onChange={(event) => onChange('timeTo', event.target.value)}
+            type="time"
+            value={values.timeTo ?? ''}
+          />
+        </div>
+
+        <div className="form-grid form-grid-3">
           <SelectField
             label="Modo de ruta"
             onChange={(event) => onChange('routeMode', event.target.value)}
@@ -83,6 +130,15 @@ export function TripFiltersPanel({
             <option value={VehicleType.Motorcycle}>{getVehicleTypeLabel(VehicleType.Motorcycle)}</option>
             <option value={VehicleType.Car}>{getVehicleTypeLabel(VehicleType.Car)}</option>
             <option value={VehicleType.PickupTruck}>{getVehicleTypeLabel(VehicleType.PickupTruck)}</option>
+          </SelectField>
+          <SelectField
+            label="Disponibilidad"
+            onChange={(event) => onChange('availability', event.target.value)}
+            value={values.availability ?? ''}
+          >
+            <option value="">Todos</option>
+            <option value={TripAvailabilityFilter.Available}>Solo con cupos</option>
+            <option value={TripAvailabilityFilter.Full}>Solo sin cupos</option>
           </SelectField>
         </div>
 

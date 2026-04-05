@@ -1,11 +1,19 @@
 import { TripRouteMode } from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
+import { DisclosurePanel } from '../../../components/ui/disclosure-panel';
 import { InputField } from '../../../components/ui/input-field';
 import { SelectField } from '../../../components/ui/select-field';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import type { VehicleRecord } from '../../vehicles/types/vehicle';
+import {
+  getGeoapifySetupMessage,
+  isGeoapifyConfigured,
+} from '../lib/geoapify';
 import { getTripRouteModeLabel } from '../lib/trip-labels';
+import { PlaceAutocompleteField } from './place-autocomplete-field';
+import { TripRouteMap } from './trip-route-map';
+import type { PlaceSelection } from '../types/place-selection';
 
 type TripFormValues = {
   vehicleId: string;
@@ -48,6 +56,7 @@ export function TripCreationForm({
   onSubmit,
 }: TripCreationFormProps) {
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
+  const isMapsEnabled = isGeoapifyConfigured();
   const now = new Date();
   const originLabel = values.originLabel.trim();
   const destinationLabel = values.destinationLabel.trim();
@@ -55,6 +64,16 @@ export function TripCreationForm({
   const originLongitude = Number.parseFloat(values.originLongitude);
   const destinationLatitude = Number.parseFloat(values.destinationLatitude);
   const destinationLongitude = Number.parseFloat(values.destinationLongitude);
+  const originSelection = buildPlaceSelection(
+    originLabel,
+    originLatitude,
+    originLongitude,
+  );
+  const destinationSelection = buildPlaceSelection(
+    destinationLabel,
+    destinationLatitude,
+    destinationLongitude,
+  );
   const departureDate = values.departureAt ? new Date(values.departureAt) : null;
   const estimatedArrivalDate = values.estimatedArrivalAt ? new Date(values.estimatedArrivalAt) : null;
   const seatCount = Number.parseInt(values.seatCount, 10);
@@ -158,7 +177,7 @@ export function TripCreationForm({
             <option value="">Selecciona un vehiculo</option>
             {vehicles.map((vehicle) => (
               <option key={vehicle.id} value={vehicle.id}>
-                {(vehicle.customBrandName ?? vehicle.brandName ?? 'Marca')} {(vehicle.customModelName ?? vehicle.modelName ?? 'Modelo')} · {vehicle.plate}
+                {(vehicle.customBrandName ?? vehicle.brandName ?? 'Marca')} {(vehicle.customModelName ?? vehicle.modelName ?? 'Modelo')} - {vehicle.plate}
               </option>
             ))}
           </SelectField>
@@ -179,62 +198,150 @@ export function TripCreationForm({
         </div>
 
         <div className="form-grid form-grid-2">
-          <InputField
-            disabled={disabled}
-            label="Origen"
-            onChange={(event) => onChange('originLabel', event.target.value)}
-            placeholder="Campus Ingahurco"
-            required
-            value={values.originLabel}
-          />
-          <InputField
-            disabled={disabled}
-            label="Destino"
-            onChange={(event) => onChange('destinationLabel', event.target.value)}
-            placeholder="Ficoa"
-            required
-            value={values.destinationLabel}
-          />
+          {isMapsEnabled ? (
+            <>
+              <PlaceAutocompleteField
+                disabled={disabled}
+                hint="Busca el punto exacto de salida dentro de la ciudad o campus."
+                label="Origen"
+                onValueChange={(nextValue) => {
+                  onChange('originLabel', nextValue);
+                  onChange('originLatitude', '');
+                  onChange('originLongitude', '');
+                }}
+                onClear={() => {
+                  onChange('originLabel', '');
+                  onChange('originLatitude', '');
+                  onChange('originLongitude', '');
+                }}
+                onSelect={(place) => {
+                  onChange('originLabel', place.label);
+                  onChange('originLatitude', place.latitude.toFixed(6));
+                  onChange('originLongitude', place.longitude.toFixed(6));
+                }}
+                placeholder="Busca el origen"
+                selectedPlace={originSelection}
+                value={values.originLabel}
+              />
+              <PlaceAutocompleteField
+                disabled={disabled}
+                hint="Busca el punto exacto de llegada para el viaje."
+                label="Destino"
+                onValueChange={(nextValue) => {
+                  onChange('destinationLabel', nextValue);
+                  onChange('destinationLatitude', '');
+                  onChange('destinationLongitude', '');
+                }}
+                onClear={() => {
+                  onChange('destinationLabel', '');
+                  onChange('destinationLatitude', '');
+                  onChange('destinationLongitude', '');
+                }}
+                onSelect={(place) => {
+                  onChange('destinationLabel', place.label);
+                  onChange('destinationLatitude', place.latitude.toFixed(6));
+                  onChange('destinationLongitude', place.longitude.toFixed(6));
+                }}
+                placeholder="Busca el destino"
+                selectedPlace={destinationSelection}
+                value={values.destinationLabel}
+              />
+            </>
+          ) : (
+            <>
+              <InputField
+                disabled={disabled}
+                label="Origen"
+                onChange={(event) => onChange('originLabel', event.target.value)}
+                placeholder="Campus Ingahurco"
+                required
+                value={values.originLabel}
+              />
+              <InputField
+                disabled={disabled}
+                label="Destino"
+                onChange={(event) => onChange('destinationLabel', event.target.value)}
+                placeholder="Ficoa"
+                required
+                value={values.destinationLabel}
+              />
+            </>
+          )}
         </div>
 
-        <div className="form-grid form-grid-4">
-          <InputField
-            disabled={disabled}
-            label="Latitud origen"
-            onChange={(event) => onChange('originLatitude', event.target.value)}
-            placeholder="-1.2414"
-            required
-            type="number"
-            value={values.originLatitude}
-          />
-          <InputField
-            disabled={disabled}
-            label="Longitud origen"
-            onChange={(event) => onChange('originLongitude', event.target.value)}
-            placeholder="-78.6278"
-            required
-            type="number"
-            value={values.originLongitude}
-          />
-          <InputField
-            disabled={disabled}
-            label="Latitud destino"
-            onChange={(event) => onChange('destinationLatitude', event.target.value)}
-            placeholder="-1.2520"
-            required
-            type="number"
-            value={values.destinationLatitude}
-          />
-          <InputField
-            disabled={disabled}
-            label="Longitud destino"
-            onChange={(event) => onChange('destinationLongitude', event.target.value)}
-            placeholder="-78.6160"
-            required
-            type="number"
-            value={values.destinationLongitude}
-          />
-        </div>
+        {isMapsEnabled ? (
+          <DisclosurePanel
+            className="trip-map-disclosure"
+            defaultOpen={false}
+            description="Abre esta seccion solo cuando necesites revisar el punto exacto o confirmar las coordenadas."
+            meta={
+              originSelection || destinationSelection
+                ? 'Ubicacion lista para revisar'
+                : 'Mapa opcional'
+            }
+            title="Mapa y coordenadas"
+          >
+            <TripRouteMap destination={destinationSelection} origin={originSelection} />
+            <div className="trip-location-grid">
+              <TripCoordinateCard
+                emptyMessage="Selecciona un origen para completar automaticamente la coordenada."
+                label="Coordenadas de origen"
+                latitude={values.originLatitude}
+                longitude={values.originLongitude}
+              />
+              <TripCoordinateCard
+                emptyMessage="Selecciona un destino para completar automaticamente la coordenada."
+                label="Coordenadas de destino"
+                latitude={values.destinationLatitude}
+                longitude={values.destinationLongitude}
+              />
+            </div>
+          </DisclosurePanel>
+        ) : (
+          <>
+            <div className="form-helper">
+              {getGeoapifySetupMessage()}
+            </div>
+            <div className="form-grid form-grid-4">
+              <InputField
+                disabled={disabled}
+                label="Latitud origen"
+                onChange={(event) => onChange('originLatitude', event.target.value)}
+                placeholder="-1.2414"
+                required
+                type="number"
+                value={values.originLatitude}
+              />
+              <InputField
+                disabled={disabled}
+                label="Longitud origen"
+                onChange={(event) => onChange('originLongitude', event.target.value)}
+                placeholder="-78.6278"
+                required
+                type="number"
+                value={values.originLongitude}
+              />
+              <InputField
+                disabled={disabled}
+                label="Latitud destino"
+                onChange={(event) => onChange('destinationLatitude', event.target.value)}
+                placeholder="-1.2520"
+                required
+                type="number"
+                value={values.destinationLatitude}
+              />
+              <InputField
+                disabled={disabled}
+                label="Longitud destino"
+                onChange={(event) => onChange('destinationLongitude', event.target.value)}
+                placeholder="-78.6160"
+                required
+                type="number"
+                value={values.destinationLongitude}
+              />
+            </div>
+          </>
+        )}
 
         <div className="form-grid form-grid-2">
           <InputField
@@ -323,5 +430,50 @@ export function TripCreationForm({
         </Button>
       </form>
     </article>
+  );
+}
+
+function buildPlaceSelection(
+  label: string,
+  latitude: number,
+  longitude: number,
+): PlaceSelection | null {
+  if (!label || Number.isNaN(latitude) || Number.isNaN(longitude)) {
+    return null;
+  }
+
+  return {
+    label,
+    address: null,
+    latitude,
+    longitude,
+  };
+}
+
+function TripCoordinateCard({
+  label,
+  latitude,
+  longitude,
+  emptyMessage,
+}: {
+  label: string;
+  latitude: string;
+  longitude: string;
+  emptyMessage: string;
+}) {
+  const hasCoordinates = latitude.trim() && longitude.trim();
+
+  return (
+    <div className="trip-coordinate-card">
+      <span className="trip-coordinate-card-label">{label}</span>
+      {hasCoordinates ? (
+        <div className="trip-coordinate-card-values">
+          <strong>{latitude}</strong>
+          <strong>{longitude}</strong>
+        </div>
+      ) : (
+        <p className="panel-text">{emptyMessage}</p>
+      )}
+    </div>
   );
 }

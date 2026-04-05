@@ -46,6 +46,14 @@ The onboarding flow now supports profile photo uploads.
 - `IMGUR_CLIENT_SECRET` can remain available in env files for future provider extensions, but the current flow only requires the client ID
 - the API stores both the public URL and provider metadata so the storage backend can be replaced later without changing the user-facing domain model
 
+## Maps and place autocomplete
+
+The trip creation and trip filtering flows can use Geoapify + Leaflet for place autocomplete and route preview.
+
+- Configure `NEXT_PUBLIC_GEOAPIFY_API_KEY` in `apps/web/.env.local`
+- Create a free Geoapify project and generate a browser key
+- If the key is missing, the app falls back to manual coordinates in trip creation and plain text filters in `/viajes`
+
 
 ## Notes
 

@@ -9,6 +9,7 @@ import {
   getEffectiveDriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
+  TripAvailabilityFilter,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -24,6 +25,7 @@ import {
   TripsRepository,
   TripVehicleRecord,
 } from '../../application/ports/trips.repository';
+import { matchesTripDepartureTimeWindow } from '../../application/services/trip-search-filtering';
 
 @Injectable()
 export class PrismaTripsRepository implements TripsRepository {
@@ -149,6 +151,12 @@ export class PrismaTripsRepository implements TripsRepository {
         status: filters.statuses ? { in: filters.statuses } : undefined,
         routeMode: filters.routeMode,
         vehicleTypeSnapshot: filters.vehicleType,
+        availableSeats:
+          filters.availability === TripAvailabilityFilter.Available
+            ? { gt: 0 }
+            : filters.availability === TripAvailabilityFilter.Full
+              ? 0
+              : undefined,
         originLabel: filters.originSearch
           ? { contains: filters.originSearch, mode: 'insensitive' }
           : undefined,
@@ -166,7 +174,15 @@ export class PrismaTripsRepository implements TripsRepository {
       },
     });
 
-    return trips.map((trip) => this.mapTrip(trip));
+    return trips
+      .filter((trip) =>
+        matchesTripDepartureTimeWindow(
+          trip.departureAt,
+          filters.timeFromInMinutes,
+          filters.timeToInMinutes,
+        ),
+      )
+      .map((trip) => this.mapTrip(trip));
   }
 
   async findOverlappingTrips(

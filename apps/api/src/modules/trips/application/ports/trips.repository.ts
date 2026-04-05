@@ -4,6 +4,7 @@ import {
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
+  TripAvailabilityFilter,
   TripRouteMode,
   TripStatus,
   VehicleType,
@@ -95,8 +96,11 @@ export type TripFilters = {
   destinationSearch?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  timeFromInMinutes?: number;
+  timeToInMinutes?: number;
   routeMode?: TripRouteMode;
   vehicleType?: VehicleType;
+  availability?: TripAvailabilityFilter;
 };
 
 export interface TripsRepository {

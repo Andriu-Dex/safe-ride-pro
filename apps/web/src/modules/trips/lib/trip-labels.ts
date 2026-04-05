@@ -1,6 +1,7 @@
 import {
   CancellationTiming,
   getTripStartAvailability,
+  TripAvailabilityFilter,
   TRIP_START_EARLY_WINDOW_MINUTES,
   TripRouteMode,
   TripStatus,
@@ -47,6 +48,19 @@ export function getTripRouteModeLabel(routeMode: TripRouteMode): string {
       return 'Ruta con desvio';
     default:
       return routeMode;
+  }
+}
+
+export function getTripAvailabilityFilterLabel(
+  availability: TripAvailabilityFilter,
+): string {
+  switch (availability) {
+    case TripAvailabilityFilter.Available:
+      return 'Solo con cupos';
+    case TripAvailabilityFilter.Full:
+      return 'Solo sin cupos';
+    default:
+      return availability;
   }
 }
 

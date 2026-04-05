@@ -83,7 +83,7 @@ Ejemplos para U-Ride:
 
 - `PrismaTripRepository`
 - `ResendEmailService`
-- `GoogleMapsRouteService`
+- `GeoapifyPlaceSearchService`
 - `S3FileStorageService`
 
 ### 3.4 Presentation
@@ -116,7 +116,7 @@ La direccion correcta de dependencias es:
 
 `infrastructure -> application -> domain`
 
-El `domain` no conoce `NestJS`, `Prisma`, `HTTP`, `Redis`, `Google Maps` ni ninguna tecnologia externa.
+El `domain` no conoce `NestJS`, `Prisma`, `HTTP`, `Redis`, `Geoapify` ni ninguna tecnologia externa.
 
 ---
 
@@ -298,7 +298,7 @@ trips/
     persistence/
       prisma-trip.repository.ts
     services/
-      google-maps-route.service.ts
+      geoapify-place-search.service.ts
     mappers/
       trip-prisma.mapper.ts
   presentation/
@@ -346,7 +346,7 @@ Ejemplo: crear un viaje
 
 - Prisma
 - Resend
-- Google Maps
+- Geoapify / Leaflet
 - Redis
 - S3
 

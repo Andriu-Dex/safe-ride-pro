@@ -168,3 +168,9 @@ export {
   TRIP_START_EARLY_WINDOW_MINUTES,
   type TripStartAvailability,
 } from './trip-timing';
+
+export {
+  isTripTimeFilterValue,
+  TripAvailabilityFilter,
+  TRIP_TIME_FILTER_PATTERN,
+} from './trip-search';

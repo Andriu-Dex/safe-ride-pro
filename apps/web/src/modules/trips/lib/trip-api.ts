@@ -12,8 +12,11 @@ function mapTripFilters(filters?: TripFilters): Record<string, string | undefine
     destination: filters?.destination?.trim() || undefined,
     dateFrom: filters?.dateFrom || undefined,
     dateTo: filters?.dateTo || undefined,
+    timeFrom: filters?.timeFrom || undefined,
+    timeTo: filters?.timeTo || undefined,
     routeMode: filters?.routeMode,
     vehicleType: filters?.vehicleType,
+    availability: filters?.availability,
   };
 }
 

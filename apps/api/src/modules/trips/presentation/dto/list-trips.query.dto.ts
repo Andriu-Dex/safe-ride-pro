@@ -1,6 +1,18 @@
 import { Transform } from 'class-transformer';
-import { TripRouteMode, VehicleType } from '@saferidepro/shared-types';
-import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  TripAvailabilityFilter,
+  TripRouteMode,
+  TRIP_TIME_FILTER_PATTERN,
+  VehicleType,
+} from '@saferidepro/shared-types';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 
 export class ListTripsQueryDto {
   @IsOptional()
@@ -39,10 +51,22 @@ export class ListTripsQueryDto {
   dateTo?: string;
 
   @IsOptional()
+  @Matches(TRIP_TIME_FILTER_PATTERN)
+  timeFrom?: string;
+
+  @IsOptional()
+  @Matches(TRIP_TIME_FILTER_PATTERN)
+  timeTo?: string;
+
+  @IsOptional()
   @IsEnum(TripRouteMode)
   routeMode?: TripRouteMode;
 
   @IsOptional()
   @IsEnum(VehicleType)
   vehicleType?: VehicleType;
+
+  @IsOptional()
+  @IsEnum(TripAvailabilityFilter)
+  availability?: TripAvailabilityFilter;
 }

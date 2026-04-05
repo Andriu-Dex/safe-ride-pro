@@ -72,11 +72,11 @@
 
 | Area | Herramienta | Version aprox. | Estado |
 |---|---|---|---|
-| Plataforma de mapas | Google Maps Platform | latest | Actual |
-| Mapa web | Maps JavaScript API | latest | Actual |
-| Busqueda de lugares | Places API | latest | Actual |
-| Geocodificacion | Geocoding API | latest | Actual |
-| Calculo de rutas | Routes API | latest | Actual |
+| Plataforma geografica | Geoapify | latest | Actual |
+| Mapa web | Leaflet | 1.9.x | Actual |
+| Busqueda de lugares | Geoapify Geocoding Autocomplete | latest | Actual |
+| Geocodificacion | Geoapify Geocoding API | latest | Actual |
+| Calculo visual de trayecto | Polyline en mapa web | - | Actual |
 | Tracking en vivo | GPS + WebSockets | - | Futuro cercano |
 
 ---

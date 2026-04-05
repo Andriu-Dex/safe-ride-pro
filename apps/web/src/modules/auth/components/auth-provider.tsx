@@ -137,7 +137,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } satisfies AuthSession;
 
         writeStoredSession(nextSession);
-        setAuthSession(nextSession);
+        setAuthSession((currentSession) =>
+          areAuthSessionsEqual(currentSession, nextSession) ? currentSession : nextSession,
+        );
       } catch (error) {
         if (!isActive || !(error instanceof ApiError) || error.status !== 401) {
           return;
@@ -158,7 +160,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           } satisfies AuthSession;
 
           writeStoredSession(nextSession);
-          setAuthSession(nextSession);
+          setAuthSession((currentSession) =>
+            areAuthSessionsEqual(currentSession, nextSession) ? currentSession : nextSession,
+          );
         } catch {
           if (isActive) {
             clearStoredSession();
@@ -258,6 +262,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     >
       {children}
     </AuthContext.Provider>
+  );
+}
+
+function areAuthSessionsEqual(
+  currentSession: AuthSession | null,
+  nextSession: AuthSession,
+): boolean {
+  if (!currentSession) {
+    return false;
+  }
+
+  return (
+    currentSession.accessToken === nextSession.accessToken &&
+    currentSession.refreshToken === nextSession.refreshToken &&
+    JSON.stringify(currentSession.user) === JSON.stringify(nextSession.user)
   );
 }
 

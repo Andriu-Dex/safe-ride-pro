@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 
 import { ApiError } from '../../../lib/api-client';
 import { Button } from '../../../components/ui/button';
+import { DisclosurePanel } from '../../../components/ui/disclosure-panel';
 import { InfoCard } from '../../../components/ui/info-card';
 import { InputField } from '../../../components/ui/input-field';
 import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
@@ -46,6 +47,7 @@ import {
 import type { TripRequestRecord } from '../../../modules/trip-requests/types/trip-request';
 import { TripCreationForm } from '../../../modules/trips/components/trip-creation-form';
 import { TripFiltersPanel } from '../../../modules/trips/components/trip-filters-panel';
+import { TripOverviewCard } from '../../../modules/trips/components/trip-overview-card';
 import {
   cancelTrip,
   completeTrip,
@@ -57,16 +59,15 @@ import {
 } from '../../../modules/trips/lib/trip-api';
 import {
   canStartTripNow,
+  getTripAvailabilityFilterLabel,
   getCancellationTimingLabel,
   getCancellationTimingTone,
   getTripRouteModeLabel,
   getTripStartAvailabilityMessage,
-  getTripStatusLabel,
-  getTripStatusTone,
 } from '../../../modules/trips/lib/trip-labels';
 import type { TripFilters, TripRecord } from '../../../modules/trips/types/trip';
 import { getVehicleOverview } from '../../../modules/vehicles/lib/vehicle-api';
-import { getLuggagePolicyLabel, getVehicleTypeLabel } from '../../../modules/vehicles/lib/vehicle-labels';
+import { getVehicleTypeLabel } from '../../../modules/vehicles/lib/vehicle-labels';
 import type { VehicleOverview } from '../../../modules/vehicles/types/vehicle';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
 import {
@@ -100,8 +101,11 @@ const EMPTY_TRIP_FILTERS: TripFilters = {
   destination: undefined,
   dateFrom: undefined,
   dateTo: undefined,
+  timeFrom: undefined,
+  timeTo: undefined,
   routeMode: undefined,
   vehicleType: undefined,
+  availability: undefined,
 };
 
 type TripRequestDraft = {
@@ -132,6 +136,48 @@ function formatDateTime(value: string): string {
 
 function countActiveFilters(filters: TripFilters): number {
   return Object.values(filters).filter(Boolean).length;
+}
+
+function buildTripFilterLabels(filters: TripFilters): string[] {
+  const labels: string[] = [];
+
+  if (filters.origin) {
+    labels.push(`Origen: ${filters.origin}`);
+  }
+
+  if (filters.destination) {
+    labels.push(`Destino: ${filters.destination}`);
+  }
+
+  if (filters.dateFrom) {
+    labels.push(`Desde: ${filters.dateFrom}`);
+  }
+
+  if (filters.dateTo) {
+    labels.push(`Hasta: ${filters.dateTo}`);
+  }
+
+  if (filters.timeFrom) {
+    labels.push(`Hora desde: ${filters.timeFrom}`);
+  }
+
+  if (filters.timeTo) {
+    labels.push(`Hora hasta: ${filters.timeTo}`);
+  }
+
+  if (filters.routeMode) {
+    labels.push(getTripRouteModeLabel(filters.routeMode));
+  }
+
+  if (filters.vehicleType) {
+    labels.push(`Tipo: ${getVehicleTypeLabel(filters.vehicleType)}`);
+  }
+
+  if (filters.availability) {
+    labels.push(getTripAvailabilityFilterLabel(filters.availability));
+  }
+
+  return labels;
 }
 
 function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -300,7 +346,7 @@ export default function TripsPage() {
     },
     {
       enabled: Boolean(authSession && isHydrated && operationalAccess.hasOperationalMembership),
-      intervalMs: 20_000,
+      refreshOnVisible: true,
     },
   );
 
@@ -608,6 +654,7 @@ export default function TripsPage() {
     (trip) => trip.driverMembershipId !== defaultMembershipId,
   );
   const activeFiltersCount = countActiveFilters(tripFilters);
+  const activeFilterLabels = buildTripFilterLabels(tripFilters);
 
   if (isLoading) {
     return (
@@ -704,13 +751,45 @@ export default function TripsPage() {
           />
         </div>
 
-        <TripFiltersPanel
-          isSubmitting={isFiltering}
-          onApply={handleApplyFilters}
-          onChange={handleFilterChange}
-          onReset={handleResetFilters}
-          values={filterFormValues}
-        />
+        <DisclosurePanel
+          defaultOpen={activeFiltersCount > 0}
+          description="Activa solo los filtros que necesites para no sobrecargar la pantalla."
+          meta={activeFiltersCount > 0 ? `${activeFiltersCount} activos` : 'Opcional'}
+          title="Filtros de viajes"
+        >
+          <TripFiltersPanel
+            isSubmitting={isFiltering}
+            onApply={handleApplyFilters}
+            onChange={handleFilterChange}
+            onReset={handleResetFilters}
+            values={filterFormValues}
+          />
+        </DisclosurePanel>
+
+        <article className="panel panel-stack trip-search-summary-panel">
+          <div className="section-heading">
+            <h2 className="panel-title">Lectura rapida de la busqueda</h2>
+            <p className="section-heading-meta">
+              {visibleAvailableTrips.length} viajes visibles · {myTrips.length} propios
+            </p>
+          </div>
+          <p className="panel-text">
+            Usa los filtros para comparar disponibilidad, horarios y modalidad sin perder de vista tus viajes activos.
+          </p>
+          {activeFilterLabels.length ? (
+            <div className="chip-row trip-filter-chip-row">
+              {activeFilterLabels.map((label) => (
+                <span key={label} className="status-pill status-pill-neutral">
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="panel-text">
+              No hay filtros activos. Estas viendo todos los viajes publicados y tus viajes registrados dentro de tu institucion.
+            </p>
+          )}
+        </article>
 
         {!canCreateTrips ? (
           <div className="form-helper">
@@ -749,16 +828,24 @@ export default function TripsPage() {
         {requestSuccessMessage ? <div className="form-success">{requestSuccessMessage}</div> : null}
 
         <div className="page-grid page-grid-wide">
-          <TripCreationForm
-            disabled={!canCreateTrips}
-            errorMessage={null}
-            isSubmitting={isCreatingTrip}
-            onChange={handleTripFormChange}
-            onSubmit={handleCreateTrip}
-            successMessage={null}
-            values={tripForm}
-            vehicles={activeVehicles}
-          />
+          <DisclosurePanel
+            className="trip-create-disclosure"
+            defaultOpen={myTrips.length === 0}
+            description="Mantiene el formulario plegado hasta que realmente necesites registrar un nuevo viaje."
+            meta={canCreateTrips ? 'Borrador nuevo' : 'No disponible'}
+            title="Crear viaje"
+          >
+            <TripCreationForm
+              disabled={!canCreateTrips}
+              errorMessage={null}
+              isSubmitting={isCreatingTrip}
+              onChange={handleTripFormChange}
+              onSubmit={handleCreateTrip}
+              successMessage={null}
+              values={tripForm}
+              vehicles={activeVehicles}
+            />
+          </DisclosurePanel>
 
           <article className="panel panel-stack">
             <div className="section-heading">
@@ -774,96 +861,85 @@ export default function TripsPage() {
                   );
 
                   return (
-                  <div key={trip.id} className="list-card">
-                    <div className="list-card-header">
-                      <strong>{trip.originLabel} -&gt; {trip.destinationLabel}</strong>
-                      <StatusPill
-                        label={getTripStatusLabel(trip.status)}
-                        tone={getTripStatusTone(trip.status)}
-                      />
-                    </div>
-                    <p className="panel-text">
-                      {formatDateTime(trip.departureAt)} | {trip.vehicleDisplayName} | {trip.vehiclePlate}
-                    </p>
-                    <p className="panel-text">
-                      {getTripRouteModeLabel(trip.routeMode)} | Cupos {trip.availableSeats}/{trip.seatCount}
-                    </p>
-                    <p className="panel-text">
-                      Tipo: {getVehicleTypeLabel(trip.vehicleTypeSnapshot)} | Equipaje: {getLuggagePolicyLabel(trip.luggagePolicySnapshot)}
-                    </p>
-                    {trip.status === TripStatus.Cancelled && trip.cancellationTiming ? (
+                    <TripOverviewCard
+                      key={trip.id}
+                      helperContent={
+                        <>
+                          {trip.status === TripStatus.Cancelled && trip.cancellationTiming ? (
+                            <StatusPill
+                              label={getCancellationTimingLabel(trip.cancellationTiming) ?? 'Cancelacion'}
+                              tone={getCancellationTimingTone(trip.cancellationTiming)}
+                            />
+                          ) : null}
+                          {licenseStatus === DriverLicenseStatus.Expired &&
+                          (trip.status === TripStatus.Draft ||
+                            trip.status === TripStatus.Published ||
+                            trip.status === TripStatus.Full) ? (
+                            <p className="panel-text">
+                              No puedes publicar ni iniciar este viaje mientras tu licencia siga vencida.
+                            </p>
+                          ) : null}
+                          {(trip.status === TripStatus.Published || trip.status === TripStatus.Full) &&
+                          startAvailabilityMessage ? (
+                            <p className="panel-text">
+                              {startAvailabilityMessage}
+                            </p>
+                          ) : null}
+                        </>
+                      }
+                      trip={trip}
+                    >
                       <div className="button-row">
-                        <StatusPill
-                          label={getCancellationTimingLabel(trip.cancellationTiming) ?? 'Cancelacion'}
-                          tone={getCancellationTimingTone(trip.cancellationTiming)}
-                        />
+                        {trip.status === TripStatus.Draft ? (
+                          <Button
+                            disabled={
+                              isMutatingTripId === trip.id ||
+                              licenseStatus === DriverLicenseStatus.Expired ||
+                              trustRestrictions.blocksDriver
+                            }
+                            onClick={() => void handleTripAction(trip.id, 'publish')}
+                            variant="primary"
+                          >
+                            Publicar
+                          </Button>
+                        ) : null}
+                        {(trip.status === TripStatus.Published || trip.status === TripStatus.Full) ? (
+                          <Button
+                            disabled={
+                              isMutatingTripId === trip.id ||
+                              licenseStatus === DriverLicenseStatus.Expired ||
+                              trustRestrictions.blocksDriver ||
+                              !canStartTripNow(trip.departureAt, trip.estimatedArrivalAt)
+                            }
+                            onClick={() => void handleTripAction(trip.id, 'start')}
+                            title={startAvailabilityMessage ?? undefined}
+                            variant="secondary"
+                          >
+                            Iniciar
+                          </Button>
+                        ) : null}
+                        {trip.status === TripStatus.InProgress ? (
+                          <Button
+                            disabled={isMutatingTripId === trip.id}
+                            onClick={() => void handleTripAction(trip.id, 'complete')}
+                            variant="secondary"
+                          >
+                            Finalizar
+                          </Button>
+                        ) : null}
+                        {trip.status !== TripStatus.Completed &&
+                        trip.status !== TripStatus.InProgress &&
+                        trip.status !== TripStatus.Cancelled ? (
+                          <Button
+                            disabled={isMutatingTripId === trip.id}
+                            onClick={() => void handleTripAction(trip.id, 'cancel')}
+                            variant="ghost"
+                          >
+                            Cancelar
+                          </Button>
+                        ) : null}
                       </div>
-                    ) : null}
-                    {licenseStatus === DriverLicenseStatus.Expired &&
-                    (trip.status === TripStatus.Draft ||
-                      trip.status === TripStatus.Published ||
-                      trip.status === TripStatus.Full) ? (
-                      <p className="panel-text">
-                        No puedes publicar ni iniciar este viaje mientras tu licencia siga vencida.
-                      </p>
-                    ) : null}
-                    {(trip.status === TripStatus.Published || trip.status === TripStatus.Full) &&
-                    startAvailabilityMessage ? (
-                      <p className="panel-text">
-                        {startAvailabilityMessage}
-                      </p>
-                    ) : null}
-                    <div className="button-row">
-                      {trip.status === TripStatus.Draft ? (
-                        <Button
-                          disabled={
-                            isMutatingTripId === trip.id ||
-                            licenseStatus === DriverLicenseStatus.Expired ||
-                            trustRestrictions.blocksDriver
-                          }
-                          onClick={() => void handleTripAction(trip.id, 'publish')}
-                          variant="primary"
-                        >
-                          Publicar
-                        </Button>
-                      ) : null}
-                      {(trip.status === TripStatus.Published || trip.status === TripStatus.Full) ? (
-                        <Button
-                          disabled={
-                            isMutatingTripId === trip.id ||
-                            licenseStatus === DriverLicenseStatus.Expired ||
-                            trustRestrictions.blocksDriver ||
-                            !canStartTripNow(trip.departureAt, trip.estimatedArrivalAt)
-                          }
-                          onClick={() => void handleTripAction(trip.id, 'start')}
-                          title={startAvailabilityMessage ?? undefined}
-                          variant="secondary"
-                        >
-                          Iniciar
-                        </Button>
-                      ) : null}
-                      {trip.status === TripStatus.InProgress ? (
-                        <Button
-                          disabled={isMutatingTripId === trip.id}
-                          onClick={() => void handleTripAction(trip.id, 'complete')}
-                          variant="secondary"
-                        >
-                          Finalizar
-                        </Button>
-                      ) : null}
-                      {trip.status !== TripStatus.Completed &&
-                      trip.status !== TripStatus.InProgress &&
-                      trip.status !== TripStatus.Cancelled ? (
-                        <Button
-                          disabled={isMutatingTripId === trip.id}
-                          onClick={() => void handleTripAction(trip.id, 'cancel')}
-                          variant="ghost"
-                        >
-                          Cancelar
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
+                    </TripOverviewCard>
                   );
                 })}
               </div>
@@ -875,167 +951,175 @@ export default function TripsPage() {
           </article>
         </div>
 
-        <div className="page-grid page-grid-wide">
-          <article className="panel panel-stack">
-            <div className="section-heading">
-              <h2 className="panel-title">Solicitudes recibidas</h2>
-              <p className="section-heading-meta">{incomingRequests.length} resultados</p>
-            </div>
-            {incomingRequests.length ? (
-              <div className="list-stack">
-                {incomingRequests.map((request) => (
-                  <div key={request.id} className="list-card">
-                    <div className="list-card-header">
-                      <strong>{request.passengerFullName}</strong>
-                      <StatusPill
-                        label={getTripRequestStatusLabel(request.status)}
-                        tone={getTripRequestStatusTone(request.status)}
-                      />
-                    </div>
-                    <p className="panel-text">
-                      Viaje: {request.tripOriginLabel} -&gt; {request.tripDestinationLabel}
-                    </p>
-                    <p className="panel-text">Salida: {formatDateTime(request.tripDepartureAt)}</p>
-                    {request.requestMessage ? (
-                      <p className="panel-text">Mensaje: {request.requestMessage}</p>
-                    ) : null}
-                    {request.status === TripRequestStatus.Pending &&
-                    request.tripStatus === TripStatus.Full ? (
-                      <p className="panel-text">
-                        El viaje ya completo sus cupos. Puedes rechazar esta solicitud o esperar a que se libere uno.
-                      </p>
-                    ) : null}
-                    {request.status === TripRequestStatus.Pending &&
-                    request.tripStatus !== TripStatus.Published &&
-                    request.tripStatus !== TripStatus.Full ? (
-                      <p className="panel-text">
-                        Esta solicitud quedo desactualizada porque el viaje cambio de estado. La vista se sincronizara automaticamente.
-                      </p>
-                    ) : null}
-                    {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
-                      <div className="button-row">
+        <DisclosurePanel
+          className="trip-requests-disclosure"
+          defaultOpen={incomingRequests.length > 0 || myRequests.length > 0}
+          description="Agrupa las solicitudes recibidas y las que enviaste para mantener la pantalla principal mas limpia."
+          meta={`${incomingRequests.length + myRequests.length} registros`}
+          title="Solicitudes"
+        >
+          <div className="page-grid page-grid-wide">
+            <article className="panel panel-stack">
+              <div className="section-heading">
+                <h2 className="panel-title">Solicitudes recibidas</h2>
+                <p className="section-heading-meta">{incomingRequests.length} resultados</p>
+              </div>
+              {incomingRequests.length ? (
+                <div className="list-stack">
+                  {incomingRequests.map((request) => (
+                    <div key={request.id} className="list-card">
+                      <div className="list-card-header">
+                        <strong>{request.passengerFullName}</strong>
                         <StatusPill
-                          label={
-                            getTripRequestCancellationTimingLabel(request.cancellationTiming) ??
-                            'Cancelacion'
-                          }
-                          tone={
-                            request.cancellationTiming === CancellationTiming.Late
-                              ? 'warning'
-                              : 'neutral'
-                          }
+                          label={getTripRequestStatusLabel(request.status)}
+                          tone={getTripRequestStatusTone(request.status)}
                         />
                       </div>
-                    ) : null}
-                    {canMarkRequestAsNoShow(request) ? (
-                      <TextareaField
-                        label="Nota no-show"
-                        onChange={(event) =>
-                          handleNoShowNoteChange(request.id, event.target.value)
-                        }
-                        placeholder="Describe brevemente que el pasajero no se presento."
-                        rows={2}
-                        value={noShowNotes[request.id] ?? DEFAULT_NO_SHOW_NOTE}
-                      />
-                    ) : null}
-                    <div className="button-row">
-                      {canAcceptIncomingRequest(request) ? (
-                        <Button
-                          disabled={isMutatingRequestId === request.id}
-                          onClick={() => void handleIncomingRequestAction(request.id, 'accept')}
-                        >
-                          Aceptar
-                        </Button>
+                      <p className="panel-text">
+                        Viaje: {request.tripOriginLabel} -&gt; {request.tripDestinationLabel}
+                      </p>
+                      <p className="panel-text">Salida: {formatDateTime(request.tripDepartureAt)}</p>
+                      {request.requestMessage ? (
+                        <p className="panel-text">Mensaje: {request.requestMessage}</p>
                       ) : null}
-                      {canRejectIncomingRequest(request) ? (
-                        <Button
-                          disabled={isMutatingRequestId === request.id}
-                          onClick={() => void handleIncomingRequestAction(request.id, 'reject')}
-                          variant="secondary"
-                        >
-                          Rechazar
-                        </Button>
+                      {request.status === TripRequestStatus.Pending &&
+                      request.tripStatus === TripStatus.Full ? (
+                        <p className="panel-text">
+                          El viaje ya completo sus cupos. Puedes rechazar esta solicitud o esperar a que se libere uno.
+                        </p>
+                      ) : null}
+                      {request.status === TripRequestStatus.Pending &&
+                      request.tripStatus !== TripStatus.Published &&
+                      request.tripStatus !== TripStatus.Full ? (
+                        <p className="panel-text">
+                          Esta solicitud quedo desactualizada porque el viaje cambio de estado. La vista se sincronizara automaticamente.
+                        </p>
+                      ) : null}
+                      {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
+                        <div className="button-row">
+                          <StatusPill
+                            label={
+                              getTripRequestCancellationTimingLabel(request.cancellationTiming) ??
+                              'Cancelacion'
+                            }
+                            tone={
+                              request.cancellationTiming === CancellationTiming.Late
+                                ? 'warning'
+                                : 'neutral'
+                            }
+                          />
+                        </div>
                       ) : null}
                       {canMarkRequestAsNoShow(request) ? (
-                        <Button
-                          disabled={isMutatingRequestId === request.id}
-                          onClick={() => void handleMarkNoShow(request.id)}
-                          variant="ghost"
-                        >
-                          Registrar no-show
-                        </Button>
+                        <TextareaField
+                          label="Nota no-show"
+                          onChange={(event) =>
+                            handleNoShowNoteChange(request.id, event.target.value)
+                          }
+                          placeholder="Describe brevemente que el pasajero no se presento."
+                          rows={2}
+                          value={noShowNotes[request.id] ?? DEFAULT_NO_SHOW_NOTE}
+                        />
                       ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="panel-text">Todavia no hay solicitudes entrantes para tus viajes.</p>
-            )}
-          </article>
-
-          <article className="panel panel-stack">
-            <div className="section-heading">
-              <h2 className="panel-title">Mis solicitudes</h2>
-              <p className="section-heading-meta">{myRequests.length} resultados</p>
-            </div>
-            {myRequests.length ? (
-              <div className="list-stack">
-                {myRequests.map((request) => (
-                  <div key={request.id} className="list-card">
-                    <div className="list-card-header">
-                      <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
-                      <StatusPill
-                        label={getTripRequestStatusLabel(request.status)}
-                        tone={getTripRequestStatusTone(request.status)}
-                      />
-                    </div>
-                    <p className="panel-text">Conductor: {request.driverFullName}</p>
-                    <p className="panel-text">Salida: {formatDateTime(request.tripDepartureAt)}</p>
-                    {request.reviewNote ? (
-                      <p className="panel-text">Revision: {request.reviewNote}</p>
-                    ) : null}
-                    {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
                       <div className="button-row">
+                        {canAcceptIncomingRequest(request) ? (
+                          <Button
+                            disabled={isMutatingRequestId === request.id}
+                            onClick={() => void handleIncomingRequestAction(request.id, 'accept')}
+                          >
+                            Aceptar
+                          </Button>
+                        ) : null}
+                        {canRejectIncomingRequest(request) ? (
+                          <Button
+                            disabled={isMutatingRequestId === request.id}
+                            onClick={() => void handleIncomingRequestAction(request.id, 'reject')}
+                            variant="secondary"
+                          >
+                            Rechazar
+                          </Button>
+                        ) : null}
+                        {canMarkRequestAsNoShow(request) ? (
+                          <Button
+                            disabled={isMutatingRequestId === request.id}
+                            onClick={() => void handleMarkNoShow(request.id)}
+                            variant="ghost"
+                          >
+                            Registrar no-show
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="panel-text">Todavia no hay solicitudes entrantes para tus viajes.</p>
+              )}
+            </article>
+
+            <article className="panel panel-stack">
+              <div className="section-heading">
+                <h2 className="panel-title">Mis solicitudes</h2>
+                <p className="section-heading-meta">{myRequests.length} resultados</p>
+              </div>
+              {myRequests.length ? (
+                <div className="list-stack">
+                  {myRequests.map((request) => (
+                    <div key={request.id} className="list-card">
+                      <div className="list-card-header">
+                        <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
                         <StatusPill
-                          label={
-                            getTripRequestCancellationTimingLabel(request.cancellationTiming) ??
-                            'Cancelacion'
-                          }
-                          tone={
-                            request.cancellationTiming === CancellationTiming.Late
-                              ? 'warning'
-                              : 'neutral'
-                          }
+                          label={getTripRequestStatusLabel(request.status)}
+                          tone={getTripRequestStatusTone(request.status)}
                         />
                       </div>
-                    ) : null}
-                    {(request.status === TripRequestStatus.Pending ||
-                      request.status === TripRequestStatus.Accepted) &&
-                    !canCancelOwnRequest(request) ? (
-                      <p className="panel-text">
-                        Esta solicitud ya no puede cancelarse porque el viaje cambio de estado y la pantalla se actualizara automaticamente.
-                      </p>
-                    ) : null}
-                    {canCancelOwnRequest(request) ? (
-                      <div className="button-row">
-                        <Button
-                          disabled={isMutatingRequestId === request.id}
-                          onClick={() => void handleCancelMyRequest(request.id)}
-                          variant="ghost"
-                        >
-                          Cancelar solicitud
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="panel-text">Aun no has enviado solicitudes de viaje.</p>
-            )}
-          </article>
-        </div>
+                      <p className="panel-text">Conductor: {request.driverFullName}</p>
+                      <p className="panel-text">Salida: {formatDateTime(request.tripDepartureAt)}</p>
+                      {request.reviewNote ? (
+                        <p className="panel-text">Revision: {request.reviewNote}</p>
+                      ) : null}
+                      {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
+                        <div className="button-row">
+                          <StatusPill
+                            label={
+                              getTripRequestCancellationTimingLabel(request.cancellationTiming) ??
+                              'Cancelacion'
+                            }
+                            tone={
+                              request.cancellationTiming === CancellationTiming.Late
+                                ? 'warning'
+                                : 'neutral'
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      {(request.status === TripRequestStatus.Pending ||
+                        request.status === TripRequestStatus.Accepted) &&
+                      !canCancelOwnRequest(request) ? (
+                        <p className="panel-text">
+                          Esta solicitud ya no puede cancelarse porque el viaje cambio de estado y la pantalla se actualizara automaticamente.
+                        </p>
+                      ) : null}
+                      {canCancelOwnRequest(request) ? (
+                        <div className="button-row">
+                          <Button
+                            disabled={isMutatingRequestId === request.id}
+                            onClick={() => void handleCancelMyRequest(request.id)}
+                            variant="ghost"
+                          >
+                            Cancelar solicitud
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="panel-text">Aun no has enviado solicitudes de viaje.</p>
+              )}
+            </article>
+          </div>
+        </DisclosurePanel>
 
         <article className="panel panel-stack">
           <div className="section-heading">
@@ -1056,34 +1140,19 @@ export default function TripsPage() {
                 const isPassengerOperationBlocked = trustRestrictions.blocksPassenger;
 
                 return (
-                  <div key={trip.id} className="list-card list-card-strong">
-                    <div className="list-card-header">
-                      <strong>{trip.originLabel} -&gt; {trip.destinationLabel}</strong>
-                      <StatusPill
-                        label={getTripStatusLabel(trip.status)}
-                        tone={getTripStatusTone(trip.status)}
-                      />
-                    </div>
-                    <p className="panel-text">
-                      Conductor: {trip.driverFullName} | Salida: {formatDateTime(trip.departureAt)}
-                    </p>
-                    <p className="panel-text">
-                      {getTripRouteModeLabel(trip.routeMode)} | Cupos {trip.availableSeats}/{trip.seatCount}
-                    </p>
-                    <p className="panel-text">
-                      Tipo: {getVehicleTypeLabel(trip.vehicleTypeSnapshot)} | Precio base: ${trip.basePriceReference.toFixed(2)}
-                    </p>
-                    {trip.detourSurchargeReference ? (
-                      <p className="panel-text">
-                        Recargo por desvio: ${trip.detourSurchargeReference.toFixed(2)}
-                      </p>
-                    ) : null}
-                    {trip.status === TripStatus.Full ? (
-                      <p className="panel-text">
-                        Este viaje ya completo sus cupos. Si se libera uno, podras solicitarlo al actualizar la vista.
-                      </p>
-                    ) : null}
-
+                  <TripOverviewCard
+                    key={trip.id}
+                    emphasis
+                    helperContent={
+                      trip.status === TripStatus.Full ? (
+                        <p className="panel-text">
+                          Este viaje ya completo sus cupos. Si se libera uno, podras solicitarlo al actualizar la vista.
+                        </p>
+                      ) : null
+                    }
+                    showDriver
+                    trip={trip}
+                  >
                     {trip.routeMode === TripRouteMode.PlannedDetour ? (
                       <div className="form-grid form-grid-4 compact-grid">
                         <InputField
@@ -1134,12 +1203,12 @@ export default function TripsPage() {
                           ? 'Ya solicitaste este viaje'
                           : isPassengerOperationBlocked
                             ? 'Solicitud restringida'
-                          : trip.status === TripStatus.Full
-                            ? 'Sin cupos disponibles'
-                            : 'Solicitar cupo'}
+                            : trip.status === TripStatus.Full
+                              ? 'Sin cupos disponibles'
+                              : 'Solicitar cupo'}
                       </Button>
                     </div>
-                  </div>
+                  </TripOverviewCard>
                 );
               })}
             </div>

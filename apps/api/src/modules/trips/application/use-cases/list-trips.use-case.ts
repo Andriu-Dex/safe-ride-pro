@@ -1,11 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { TripStatus } from '@saferidepro/shared-types';
+import { TripAvailabilityFilter, TripStatus } from '@saferidepro/shared-types';
 
 import {
   TRIPS_REPOSITORY,
   TripFilters,
   TripsRepository,
 } from '../ports/trips.repository';
+import {
+  parseTripDateFilterEnd,
+  parseTripDateFilterStart,
+  parseTripTimeFilter,
+} from '../services/trip-search-filtering';
 
 export type ListTripsQuery = {
   userId: string;
@@ -14,8 +19,11 @@ export type ListTripsQuery = {
   destination?: string;
   dateFrom?: string;
   dateTo?: string;
+  timeFrom?: string;
+  timeTo?: string;
   routeMode?: TripFilters['routeMode'];
   vehicleType?: TripFilters['vehicleType'];
+  availability?: TripAvailabilityFilter;
 };
 
 @Injectable()
@@ -37,14 +45,17 @@ export class ListTripsUseCase {
       destinationSearch: query.destination?.trim() || undefined,
       routeMode: query.routeMode,
       vehicleType: query.vehicleType,
+      availability: query.availability,
+      timeFromInMinutes: parseTripTimeFilter(query.timeFrom),
+      timeToInMinutes: parseTripTimeFilter(query.timeTo),
     };
 
     if (query.dateFrom) {
-      filters.dateFrom = new Date(query.dateFrom);
+      filters.dateFrom = parseTripDateFilterStart(query.dateFrom);
     }
 
     if (query.dateTo) {
-      filters.dateTo = new Date(query.dateTo);
+      filters.dateTo = parseTripDateFilterEnd(query.dateTo);
     }
 
     if (query.mine) {

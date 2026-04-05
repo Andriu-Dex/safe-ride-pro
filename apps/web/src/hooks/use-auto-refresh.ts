@@ -2,12 +2,13 @@ import { useEffect, useEffectEvent } from 'react';
 
 type UseAutoRefreshOptions = {
   enabled: boolean;
-  intervalMs: number;
+  intervalMs?: number;
+  refreshOnVisible?: boolean;
 };
 
 export function useAutoRefresh(
   onRefresh: () => Promise<void> | void,
-  { enabled, intervalMs }: UseAutoRefreshOptions,
+  { enabled, intervalMs, refreshOnVisible = true }: UseAutoRefreshOptions,
 ) {
   const handleRefresh = useEffectEvent(async () => {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
@@ -38,21 +39,31 @@ export function useAutoRefresh(
       }
     };
 
-    const intervalId = window.setInterval(() => {
-      void triggerRefresh();
-    }, intervalMs);
+    const intervalId =
+      typeof intervalMs === 'number'
+        ? window.setInterval(() => {
+            void triggerRefresh();
+          }, intervalMs)
+        : null;
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (refreshOnVisible && document.visibilityState === 'visible') {
         void triggerRefresh();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    if (refreshOnVisible) {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
 
     return () => {
-      window.clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+
+      if (refreshOnVisible) {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
     };
-  }, [enabled, intervalMs, handleRefresh]);
+  }, [enabled, intervalMs, refreshOnVisible, handleRefresh]);
 }

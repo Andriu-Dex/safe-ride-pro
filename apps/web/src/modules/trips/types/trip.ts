@@ -1,5 +1,6 @@
 import {
   CancellationTiming,
+  TripAvailabilityFilter,
   TripRouteMode,
   VehicleType,
 } from '@saferidepro/shared-types';
@@ -36,8 +37,11 @@ export type TripFilters = {
   destination?: string;
   dateFrom?: string;
   dateTo?: string;
+  timeFrom?: string;
+  timeTo?: string;
   routeMode?: TripRouteMode;
   vehicleType?: VehicleType;
+  availability?: TripAvailabilityFilter;
 };
 
 export type CreateTripInput = {

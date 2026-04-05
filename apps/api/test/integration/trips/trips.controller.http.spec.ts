@@ -6,6 +6,7 @@ import {
   GlobalUserRole,
   InstitutionMembershipRole,
   MembershipStatus,
+  TripAvailabilityFilter,
   TripRouteMode,
   TripStatus,
   VehicleType,
@@ -207,6 +208,9 @@ describe('TripsController HTTP', () => {
       .query({
         origin: 'Huachi',
         destination: 'Centro',
+        timeFrom: '07:00',
+        timeTo: '09:30',
+        availability: TripAvailabilityFilter.Available,
         vehicleType: VehicleType.Car,
         mine: 'true',
       })
@@ -219,8 +223,11 @@ describe('TripsController HTTP', () => {
       destination: 'Centro',
       dateFrom: undefined,
       dateTo: undefined,
+      timeFrom: '07:00',
+      timeTo: '09:30',
       routeMode: undefined,
       vehicleType: VehicleType.Car,
+      availability: TripAvailabilityFilter.Available,
     });
   });
 });

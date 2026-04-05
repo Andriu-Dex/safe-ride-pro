@@ -72,8 +72,11 @@ export class TripsController {
       destination: query.destination,
       dateFrom: query.dateFrom,
       dateTo: query.dateTo,
+      timeFrom: query.timeFrom,
+      timeTo: query.timeTo,
       routeMode: query.routeMode,
       vehicleType: query.vehicleType,
+      availability: query.availability,
     });
   }
 

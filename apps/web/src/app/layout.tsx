@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import 'leaflet/dist/leaflet.css';
 
 import { AuthProvider } from '../modules/auth/components/auth-provider';
 import './globals.css';
