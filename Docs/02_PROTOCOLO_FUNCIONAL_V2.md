@@ -235,6 +235,12 @@ Un conductor puede tener vehiculos registrados, pero cada viaje debe vincularse 
 8. Define modalidad de ruta.
 9. Publica el viaje.
 
+### 8.1.1 Reutilizacion de rutas
+
+- el conductor puede reutilizar la ultima ruta usada como punto de partida
+- la reutilizacion copia origen, destino, coordenadas, modalidad, precio y notas
+- la fecha y hora deben confirmarse de nuevo antes de crear el siguiente viaje
+
 ### 8.2 Modalidades de ruta
 
 #### Ruta directa

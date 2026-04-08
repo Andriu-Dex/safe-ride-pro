@@ -178,6 +178,14 @@ La formula exacta queda sujeta a ajustes posteriores.
 - si el viaje cambia de estado mientras un usuario lo esta viendo, la interfaz debe refrescar y reflejar el nuevo estado
 - si un viaje inicia, las solicitudes pendientes deben cerrarse automaticamente para evitar estados inconsistentes
 
+### 5.6 Viajes no iniciados o no cerrados
+
+- si un viaje sigue `PUBLISHED` o `FULL` y supera la salida programada por mas de 20 minutos sin iniciar, el sistema debe autocancelarlo
+- esta autocancelacion se considera operativamente equivalente a una cancelacion tardia del conductor
+- la autocancelacion debe cerrar tambien las solicitudes activas asociadas
+- si un viaje sigue `IN_PROGRESS` y supera ampliamente la llegada estimada sin finalizarse, la interfaz debe mostrar una alerta de revision operativa
+- en esta fase, los viajes atrasados en `IN_PROGRESS` no se autocompletan para evitar cerrar como valido un recorrido posiblemente no realizado
+
 ---
 
 ## 6. Reglas por tipo de vehiculo

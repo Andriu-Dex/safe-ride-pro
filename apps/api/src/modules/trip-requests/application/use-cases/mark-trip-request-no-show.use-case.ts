@@ -1,11 +1,19 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
 
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   TRIP_REQUESTS_REPOSITORY,
   TripRequestsRepository,
 } from '../ports/trip-requests.repository';
-import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 
 @Injectable()
 export class MarkTripRequestNoShowUseCase {
@@ -13,6 +21,8 @@ export class MarkTripRequestNoShowUseCase {
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
     private readonly operationalSanctionsService: OperationalSanctionsService,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(userId: string, requestId: string, reviewNote?: string) {
@@ -61,6 +71,16 @@ export class MarkTripRequestNoShowUseCase {
     await this.operationalSanctionsService.synchronizeAutomaticSanctions(
       updatedTripRequest.passengerMembershipId,
     );
+
+    this.realtimeEventsService.publishTripRequestChanged({
+      actorUserId: userId,
+      driverMembershipId: updatedTripRequest.driverMembershipId,
+      institutionId: updatedTripRequest.institutionId,
+      passengerMembershipId: updatedTripRequest.passengerMembershipId,
+      reason: 'no_show',
+      requestId: updatedTripRequest.id,
+      tripId: updatedTripRequest.tripId,
+    });
 
     return {
       message: 'No-show registrado correctamente.',

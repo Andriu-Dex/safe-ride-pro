@@ -170,7 +170,26 @@ export {
 } from './trip-timing';
 
 export {
+  isTripCompletionOverdue,
+  shouldAutoCancelTripForDriverAbsence,
+  TRIP_COMPLETION_OVERDUE_GRACE_MINUTES,
+  TRIP_DRIVER_ABSENCE_GRACE_MINUTES,
+} from './trip-lifecycle';
+
+export {
   isTripTimeFilterValue,
   TripAvailabilityFilter,
   TRIP_TIME_FILTER_PATTERN,
 } from './trip-search';
+
+export {
+  REALTIME_CONNECTED_EVENT,
+  REALTIME_TRIP_CHANGED_EVENT,
+  REALTIME_TRIP_REQUEST_CHANGED_EVENT,
+  type RealtimeConnectedEvent,
+  type RealtimeEvent,
+  type RealtimeTripChangedEvent,
+  type RealtimeTripChangeReason,
+  type RealtimeTripRequestChangedEvent,
+  type RealtimeTripRequestChangeReason,
+} from './realtime-events';

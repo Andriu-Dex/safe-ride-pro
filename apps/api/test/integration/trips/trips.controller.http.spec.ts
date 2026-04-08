@@ -17,6 +17,7 @@ import { CancelTripUseCase } from '../../../src/modules/trips/application/use-ca
 import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-cases/complete-trip.use-case';
 import { CreateTripUseCase } from '../../../src/modules/trips/application/use-cases/create-trip.use-case';
 import { GetTripByIdUseCase } from '../../../src/modules/trips/application/use-cases/get-trip-by-id.use-case';
+import { GetLatestTripRouteTemplateUseCase } from '../../../src/modules/trips/application/use-cases/get-latest-trip-route-template.use-case';
 import { ListTripsUseCase } from '../../../src/modules/trips/application/use-cases/list-trips.use-case';
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../../src/modules/trips/application/use-cases/start-trip.use-case';
@@ -33,6 +34,9 @@ describe('TripsController HTTP', () => {
     execute: jest.fn(),
   };
   const getTripByIdUseCase = {
+    execute: jest.fn(),
+  };
+  const getLatestTripRouteTemplateUseCase = {
     execute: jest.fn(),
   };
   const publishTripUseCase = {
@@ -86,6 +90,10 @@ describe('TripsController HTTP', () => {
           useValue: getTripByIdUseCase,
         },
         {
+          provide: GetLatestTripRouteTemplateUseCase,
+          useValue: getLatestTripRouteTemplateUseCase,
+        },
+        {
           provide: PublishTripUseCase,
           useValue: publishTripUseCase,
         },
@@ -117,6 +125,21 @@ describe('TripsController HTTP', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     authenticatedHttpContext.applyAuthenticatedUser();
+  });
+
+  it('returns the latest reusable route template for the authenticated driver', async () => {
+    getLatestTripRouteTemplateUseCase.execute.mockResolvedValue({
+      sourceTripId: 'trip-1',
+      originLabel: 'Campus Huachi',
+      destinationLabel: 'Ficoa',
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/trips/templates/latest')
+      .set('Authorization', 'Bearer test-token')
+      .expect(200);
+
+    expect(getLatestTripRouteTemplateUseCase.execute).toHaveBeenCalledWith('user-1');
   });
 
   it('creates a trip through HTTP using the authenticated user context', async () => {

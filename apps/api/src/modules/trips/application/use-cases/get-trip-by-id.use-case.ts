@@ -4,12 +4,14 @@ import {
   TRIPS_REPOSITORY,
   TripsRepository,
 } from '../ports/trips.repository';
+import { TripLifecycleMaintenanceService } from '../services/trip-lifecycle-maintenance.service';
 
 @Injectable()
 export class GetTripByIdUseCase {
   constructor(
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
+    private readonly tripLifecycleMaintenanceService: TripLifecycleMaintenanceService,
   ) {}
 
   async execute(userId: string, tripId: string) {
@@ -25,39 +27,41 @@ export class GetTripByIdUseCase {
       throw new NotFoundException('El viaje solicitado no existe.');
     }
 
-    if (trip.institutionId !== membership.institutionId) {
+    const reconciledTrip = await this.tripLifecycleMaintenanceService.reconcileTripLifecycle(trip);
+
+    if (reconciledTrip.institutionId !== membership.institutionId) {
       throw new NotFoundException('El viaje solicitado no existe.');
     }
 
-    const isOwner = trip.driverMembershipId === membership.id;
+    const isOwner = reconciledTrip.driverMembershipId === membership.id;
 
     return {
-      id: trip.id,
-      institutionId: trip.institutionId,
-      institutionName: trip.institutionName,
-      driverMembershipId: trip.driverMembershipId,
-      driverFullName: trip.driverFullName,
-      vehicleId: trip.vehicleId,
-      vehiclePlate: trip.vehiclePlate,
-      vehicleDisplayName: trip.vehicleDisplayName,
-      status: trip.status,
-      routeMode: trip.routeMode,
-      originLabel: trip.originLabel,
-      destinationLabel: trip.destinationLabel,
-      originLatitude: isOwner ? trip.originLatitude : null,
-      originLongitude: isOwner ? trip.originLongitude : null,
-      destinationLatitude: isOwner ? trip.destinationLatitude : null,
-      destinationLongitude: isOwner ? trip.destinationLongitude : null,
-      departureAt: trip.departureAt,
-      estimatedArrivalAt: trip.estimatedArrivalAt,
-      seatCount: trip.seatCount,
-      availableSeats: trip.availableSeats,
-      vehicleTypeSnapshot: trip.vehicleTypeSnapshot,
-      luggagePolicySnapshot: trip.luggagePolicySnapshot,
-      basePriceReference: trip.basePriceReference,
-      detourSurchargeReference: trip.detourSurchargeReference,
-      notes: trip.notes,
-      createdAt: trip.createdAt,
+      id: reconciledTrip.id,
+      institutionId: reconciledTrip.institutionId,
+      institutionName: reconciledTrip.institutionName,
+      driverMembershipId: reconciledTrip.driverMembershipId,
+      driverFullName: reconciledTrip.driverFullName,
+      vehicleId: reconciledTrip.vehicleId,
+      vehiclePlate: reconciledTrip.vehiclePlate,
+      vehicleDisplayName: reconciledTrip.vehicleDisplayName,
+      status: reconciledTrip.status,
+      routeMode: reconciledTrip.routeMode,
+      originLabel: reconciledTrip.originLabel,
+      destinationLabel: reconciledTrip.destinationLabel,
+      originLatitude: isOwner ? reconciledTrip.originLatitude : null,
+      originLongitude: isOwner ? reconciledTrip.originLongitude : null,
+      destinationLatitude: isOwner ? reconciledTrip.destinationLatitude : null,
+      destinationLongitude: isOwner ? reconciledTrip.destinationLongitude : null,
+      departureAt: reconciledTrip.departureAt,
+      estimatedArrivalAt: reconciledTrip.estimatedArrivalAt,
+      seatCount: reconciledTrip.seatCount,
+      availableSeats: reconciledTrip.availableSeats,
+      vehicleTypeSnapshot: reconciledTrip.vehicleTypeSnapshot,
+      luggagePolicySnapshot: reconciledTrip.luggagePolicySnapshot,
+      basePriceReference: reconciledTrip.basePriceReference,
+      detourSurchargeReference: reconciledTrip.detourSurchargeReference,
+      notes: reconciledTrip.notes,
+      createdAt: reconciledTrip.createdAt,
     };
   }
 }

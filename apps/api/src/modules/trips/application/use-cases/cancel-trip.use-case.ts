@@ -1,8 +1,9 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { CancellationTiming, MembershipStatus, TripStatus } from '@saferidepro/shared-types';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   TRIPS_REPOSITORY,
@@ -16,6 +17,8 @@ export class CancelTripUseCase {
     private readonly tripsRepository: TripsRepository,
     private readonly auditService: AuditService,
     private readonly operationalSanctionsService: OperationalSanctionsService,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(userId: string, tripId: string) {
@@ -59,6 +62,13 @@ export class CancelTripUseCase {
     if (updatedTrip.cancellationTiming === CancellationTiming.Late) {
       await this.operationalSanctionsService.synchronizeAutomaticSanctions(membership.id);
     }
+
+    this.realtimeEventsService.publishTripChanged({
+      actorUserId: userId,
+      institutionId: trip.institutionId,
+      reason: 'cancelled',
+      tripId: trip.id,
+    });
 
     return {
       message: 'Viaje cancelado correctamente.',

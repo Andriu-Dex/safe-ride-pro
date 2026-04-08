@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Optional } from '@nestjs/common';
 import {
   DriverLicenseStatus,
   DriverVerificationStatus,
@@ -8,6 +8,7 @@ import {
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   CreateTripInput,
@@ -37,6 +38,8 @@ export class CreateTripUseCase {
     private readonly tripsRepository: TripsRepository,
     private readonly auditService: AuditService,
     private readonly operationalSanctionsService: OperationalSanctionsService,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(command: CreateTripCommand) {
@@ -144,6 +147,13 @@ export class CreateTripUseCase {
         routeMode: trip.routeMode,
         departureAt: trip.departureAt.toISOString(),
       },
+    });
+
+    this.realtimeEventsService.publishTripChanged({
+      actorUserId: command.userId,
+      institutionId: membership.institutionId,
+      reason: 'created',
+      tripId: trip.id,
     });
 
     return {

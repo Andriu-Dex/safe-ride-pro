@@ -1,5 +1,8 @@
-import { getLuggagePolicyLabel, getVehicleTypeLabel } from '../../vehicles/lib/vehicle-labels';
 import { StatusPill } from '../../../components/ui/status-pill';
+import {
+  getLuggagePolicyLabel,
+  getVehicleTypeLabel,
+} from '../../vehicles/lib/vehicle-labels';
 import {
   getTripRouteModeLabel,
   getTripStatusLabel,
@@ -23,12 +26,16 @@ export function TripOverviewCard({
   children,
 }: TripOverviewCardProps) {
   return (
-    <article className={['trip-overview-card', emphasis ? 'trip-overview-card-emphasis' : null].filter(Boolean).join(' ')}>
+    <article
+      className={['trip-overview-card', emphasis ? 'trip-overview-card-emphasis' : null]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="trip-overview-header">
         <div className="trip-overview-route-block">
           <span className="trip-overview-kicker">Ruta</span>
           <h3 className="trip-overview-route">
-            {trip.originLabel} <span aria-hidden="true">→</span> {trip.destinationLabel}
+            {trip.originLabel} <span aria-hidden="true">&rarr;</span> {trip.destinationLabel}
           </h3>
         </div>
         <StatusPill
@@ -39,15 +46,9 @@ export function TripOverviewCard({
 
       <div className="trip-overview-grid">
         {showDriver ? (
-          <TripOverviewStat
-            label="Conductor"
-            value={trip.driverFullName}
-          />
+          <TripOverviewStat label="Conductor" value={trip.driverFullName} />
         ) : null}
-        <TripOverviewStat
-          label="Salida"
-          value={formatTripDeparture(trip.departureAt)}
-        />
+        <TripOverviewStat label="Salida" value={formatTripDeparture(trip.departureAt)} />
         <TripOverviewStat
           label="Vehiculo"
           secondaryValue={trip.vehiclePlate}
@@ -57,10 +58,7 @@ export function TripOverviewCard({
           label="Modalidad"
           value={getTripRouteModeLabel(trip.routeMode)}
         />
-        <TripOverviewStat
-          label="Cupos"
-          value={`${trip.availableSeats}/${trip.seatCount}`}
-        />
+        <TripOverviewStat label="Cupos" value={`${trip.availableSeats}/${trip.seatCount}`} />
         <TripOverviewStat
           label="Tipo"
           value={getVehicleTypeLabel(trip.vehicleTypeSnapshot)}
@@ -124,7 +122,7 @@ function formatTripDeparture(value: string): string {
     hour12: false,
   }).format(date);
 
-  return `${formattedDate} · ${formattedTime}`;
+  return `${formattedDate} | ${formattedTime}`;
 }
 
 function formatCurrency(value: number): string {

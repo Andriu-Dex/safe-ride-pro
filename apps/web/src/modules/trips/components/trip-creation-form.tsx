@@ -1,11 +1,11 @@
 import { TripRouteMode } from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
-import { DisclosurePanel } from '../../../components/ui/disclosure-panel';
 import { InputField } from '../../../components/ui/input-field';
 import { SelectField } from '../../../components/ui/select-field';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import type { VehicleRecord } from '../../vehicles/types/vehicle';
+import type { LatestTripRouteTemplate } from '../types/trip';
 import {
   getGeoapifySetupMessage,
   isGeoapifyConfigured,
@@ -41,6 +41,8 @@ type TripCreationFormProps = {
   successMessage: string | null;
   onChange: (field: keyof TripFormValues, value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  latestRouteTemplate: LatestTripRouteTemplate | null;
+  onUseLatestRoute: () => void;
 };
 
 const ROUTE_MODES = [TripRouteMode.DirectRoute, TripRouteMode.PlannedDetour] as const;
@@ -54,6 +56,8 @@ export function TripCreationForm({
   successMessage,
   onChange,
   onSubmit,
+  latestRouteTemplate,
+  onUseLatestRoute,
 }: TripCreationFormProps) {
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
   const isMapsEnabled = isGeoapifyConfigured();
@@ -165,6 +169,35 @@ export function TripCreationForm({
         </p>
       </div>
 
+      {latestRouteTemplate ? (
+        <section className="trip-template-card">
+          <div className="section-heading">
+            <div>
+              <h3 className="panel-title">Ultima ruta usada</h3>
+              <p className="panel-text">
+                {latestRouteTemplate.originLabel} -&gt; {latestRouteTemplate.destinationLabel}
+              </p>
+            </div>
+            <Button
+              disabled={disabled}
+              onClick={onUseLatestRoute}
+              type="button"
+              variant="secondary"
+            >
+              Usar ultima ruta
+            </Button>
+          </div>
+          <div className="trip-template-meta">
+            <span>
+              Vehiculo sugerido: {latestRouteTemplate.vehicleDisplayName} ({latestRouteTemplate.vehiclePlate})
+            </span>
+            <span>
+              Ultimo uso: {new Date(latestRouteTemplate.departureAt).toLocaleString('es-EC')}
+            </span>
+          </div>
+        </section>
+      ) : null}
+
       <form className="form-stack" onSubmit={onSubmit}>
         <div className="form-grid form-grid-2">
           <SelectField
@@ -270,17 +303,13 @@ export function TripCreationForm({
         </div>
 
         {isMapsEnabled ? (
-          <DisclosurePanel
-            className="trip-map-disclosure"
-            defaultOpen={false}
-            description="Abre esta seccion solo cuando necesites revisar el punto exacto o confirmar las coordenadas."
-            meta={
-              originSelection || destinationSelection
-                ? 'Ubicacion lista para revisar'
-                : 'Mapa opcional'
-            }
-            title="Mapa y coordenadas"
-          >
+          <section className="trip-map-card trip-map-card-always-open" aria-label="Mapa y coordenadas del viaje">
+            <div className="section-heading">
+              <h3 className="panel-title">Mapa y coordenadas</h3>
+              <p className="section-heading-meta">
+                {originSelection || destinationSelection ? 'Ubicacion lista para revisar' : 'Selecciona origen y destino'}
+              </p>
+            </div>
             <TripRouteMap destination={destinationSelection} origin={originSelection} />
             <div className="trip-location-grid">
               <TripCoordinateCard
@@ -296,7 +325,7 @@ export function TripCreationForm({
                 longitude={values.destinationLongitude}
               />
             </div>
-          </DisclosurePanel>
+          </section>
         ) : (
           <>
             <div className="form-helper">

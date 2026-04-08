@@ -1,15 +1,23 @@
-﻿import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import {
   MembershipStatus,
   TripRouteMode,
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
+import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   TRIP_REQUESTS_REPOSITORY,
   TripRequestsRepository,
 } from '../ports/trip-requests.repository';
-import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 
 export type CreateTripRequestCommand = {
   userId: string;
@@ -27,6 +35,8 @@ export class CreateTripRequestUseCase {
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
     private readonly operationalSanctionsService: OperationalSanctionsService,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(command: CreateTripRequestCommand) {
@@ -79,6 +89,16 @@ export class CreateTripRequestUseCase {
       requestedDropoffLatitude: command.requestedDropoffLatitude,
       requestedDropoffLongitude: command.requestedDropoffLongitude,
       requestMessage: command.requestMessage?.trim() || undefined,
+    });
+
+    this.realtimeEventsService.publishTripRequestChanged({
+      actorUserId: command.userId,
+      driverMembershipId: trip.driverMembershipId,
+      institutionId: trip.institutionId,
+      passengerMembershipId: tripRequest.passengerMembershipId,
+      reason: 'created',
+      requestId: tripRequest.id,
+      tripId: trip.id,
     });
 
     return {

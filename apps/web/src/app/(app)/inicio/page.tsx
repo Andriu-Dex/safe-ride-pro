@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
+import { canAccessAudit } from '../../../modules/audit/lib/audit-access';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import {
@@ -170,6 +171,7 @@ export default function HomePage() {
     currentMembership?.licenseExpiresInDays,
   );
   const displayName = getPreferredDisplayName(authSession?.user.fullName);
+  const auditVisible = canAccessAudit(authSession?.user);
   const hasRestrictions =
     restrictions.blocksPassenger ||
     restrictions.blocksDriver ||
@@ -185,15 +187,12 @@ export default function HomePage() {
           : 'Sin bloqueos';
 
   return (
-    <section className="experience-stack">
-      <section className="experience-hero">
-        <div className="experience-hero-main">
+    <section className="home-shell">
+      <section className="home-hero">
+        <div className="home-hero-main">
           <p className="section-label">Inicio</p>
-          <h1 className="experience-title">Hola, {displayName}. Este es tu punto de partida.</h1>
-          <p className="experience-support">
-            Usa esta vista para orientarte rapido, entender el estado actual de tu cuenta
-            y decidir si te conviene ir a viajes, confianza o al panel analitico.
-          </p>
+          <h1 className="home-title">Hola, {displayName}.</h1>
+          <p className="home-subtitle">Tu operacion de hoy en un vistazo.</p>
 
           <div className="chip-row">
             <span className="topbar-badge">SafeRidePro</span>
@@ -207,24 +206,27 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="button-row">
-            <Link className="button button-primary" href="/viajes">
-              Explorar viajes
+          <div className="home-cta-row">
+            <Link className="home-cta home-cta-primary" href="/viajes">
+              <strong>Ir a viajes</strong>
+              <span>Publicar, solicitar y gestionar.</span>
             </Link>
-            <Link className="button button-secondary" href="/dashboard">
-              Abrir dashboard
+            <Link className="home-cta" href="/dashboard">
+              <strong>Dashboard</strong>
+              <span>Lectura analitica de estado.</span>
             </Link>
-            <Link className="button button-secondary" href="/confianza">
-              Revisar confianza
+            <Link className="home-cta" href="/confianza">
+              <strong>Confianza</strong>
+              <span>Reputacion y alertas activas.</span>
             </Link>
           </div>
         </div>
 
-        <aside className="experience-side-card">
-          <div className="section-card-header">
+        <aside className="home-status-card">
+          <div className="home-status-head">
             <div>
-              <p className="section-label">Estado de hoy</p>
-              <h2 className="section-title">Tu cuenta en este momento</h2>
+              <p className="section-label">Estado actual</p>
+              <h2 className="section-title">Cuenta en tiempo real</h2>
             </div>
             <StatusPill
               label={currentMembership ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus) : 'Sin membresia'}
@@ -234,21 +236,21 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="snapshot-list">
-            <div className="snapshot-item">
+          <div className="home-status-grid">
+            <div className="home-status-item">
               <span>Institucion</span>
               <strong>{currentMembership?.institutionName ?? 'Sin contexto operativo'}</strong>
             </div>
-            <div className="snapshot-item">
-              <span>Perfil actual</span>
+            <div className="home-status-item">
+              <span>Perfil</span>
               <strong>{getGlobalRoleLabel(authSession?.user.globalRole ?? GlobalUserRole.User)}</strong>
             </div>
-            <div className="snapshot-item">
+            <div className="home-status-item">
               <span>Rol institucional</span>
               <strong>{getMembershipRoleLabel(currentMembership?.role)}</strong>
             </div>
-            <div className="snapshot-item">
-              <span>Riesgo administrativo</span>
+            <div className="home-status-item">
+              <span>Riesgo</span>
               <strong>
                 {trustSummary
                   ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
@@ -261,81 +263,75 @@ export default function HomePage() {
         </aside>
       </section>
 
-      <section className="summary-grid">
-        <article className="summary-tile">
-          <span className="summary-label">Institucion activa</span>
-          <strong className="summary-value">
+      <section className="home-metric-grid">
+        <article className="home-metric-card">
+          <span className="home-metric-label">Institucion activa</span>
+          <strong className="home-metric-value">
             {currentMembership?.institutionName ?? 'Sin institucion'}
           </strong>
-          <p className="summary-text">
+          <p className="home-metric-note">
             {currentMembership
               ? `${getMembershipRoleLabel(currentMembership.role)} en contexto operativo.`
-              : 'Necesitas una membresia operativa para usar todos los modulos.'}
+              : 'Necesitas membresia operativa para habilitar modulos.'}
           </p>
         </article>
 
-        <article className="summary-tile">
-          <span className="summary-label">Confianza</span>
-          <strong className="summary-value">
+        <article className="home-metric-card">
+          <span className="home-metric-label">Confianza</span>
+          <strong className="home-metric-value">
             {trustSummary
               ? getVisibleReputationStateLabel(trustSummary.visibleReputationState)
               : 'Pendiente'}
           </strong>
-          <p className="summary-text">
+          <p className="home-metric-note">
             {trustSummary
               ? `Riesgo: ${getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}.`
-              : 'El resumen aparecera cuando la cuenta opere con una institucion activa.'}
+              : 'Aparecera cuando exista contexto operativo.'}
           </p>
         </article>
 
-        <article className="summary-tile">
-          <span className="summary-label">Restricciones</span>
-          <strong className="summary-value">
+        <article className="home-metric-card">
+          <span className="home-metric-label">Restricciones</span>
+          <strong className="home-metric-value">
             {hasRestrictions ? restrictionTitle : 'Sin bloqueos'}
           </strong>
-          <p className="summary-text">
-            {restrictions.message ?? 'No hay restricciones operativas activas en este momento.'}
+          <p className="home-metric-note">
+            {restrictions.message ?? 'No hay restricciones activas por ahora.'}
           </p>
         </article>
       </section>
 
-      <section className="section-grid-two">
-        <article className="section-card section-card-highlight">
-          <div className="section-card-header">
+      <section className="home-main-grid">
+        <article className="home-card home-card-priority">
+          <div className="home-card-head">
             <div>
-              <p className="section-label">Siguiente paso</p>
-              <h2 className="section-title">Que te conviene hacer ahora</h2>
+              <p className="section-label">Siguiente movimiento</p>
+              <h2 className="section-title">Que deberias hacer ahora</h2>
             </div>
-            <StatusPill label="Orientacion" tone="success" />
+            <StatusPill label="3 pasos" tone="success" />
           </div>
 
-          <div className="guided-list">
-            <div className="guided-item">
-              <strong>1. Revisa tu estado operativo</strong>
-              <p>
-                Confirma si tu cuenta, tu institucion y tu perfil de conductor estan listos para operar.
-              </p>
-            </div>
-            <div className="guided-item">
-              <strong>2. Decide tu objetivo principal</strong>
-              <p>
-                Si vas a viajar, entra a Viajes. Si vas a conducir, pasa por Conductor y Vehiculos.
-              </p>
-            </div>
-            <div className="guided-item">
-              <strong>3. Usa Dashboard para analisis</strong>
-              <p>
-                El dashboard queda como una vista mas analitica para monitoreo, no como tu pantalla de bienvenida.
-              </p>
-            </div>
+          <div className="home-step-list">
+            <Link className="home-step" href="/conductor">
+              <strong>1. Valida tu estado de conductor</strong>
+              <span>Revisa licencia, documentos y aprobacion.</span>
+            </Link>
+            <Link className="home-step" href="/vehiculos">
+              <strong>2. Asegura tus vehiculos activos</strong>
+              <span>Confirma unidades listas para operar.</span>
+            </Link>
+            <Link className="home-step" href="/viajes">
+              <strong>3. Ejecuta en viajes</strong>
+              <span>Publica, acepta solicitudes o busca cupos.</span>
+            </Link>
           </div>
         </article>
 
-        <article className="section-card">
-          <div className="section-card-header">
+        <article className="home-card">
+          <div className="home-card-head">
             <div>
               <p className="section-label">Accesos rapidos</p>
-              <h2 className="section-title">Rutas utiles</h2>
+              <h2 className="section-title">Rutas de uso frecuente</h2>
             </div>
             <StatusPill
               label={isLoading ? 'Sincronizando' : isRefreshing ? 'Actualizando' : 'Listo'}
@@ -343,41 +339,43 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="quick-link-grid">
-            <Link className="quick-link-card" href="/conductor">
+          <div className="home-link-grid">
+            <Link className="home-link-card" href="/conductor">
               <strong>Conductor</strong>
-              <p>Gestiona tu solicitud, estado y documentos para conducir.</p>
+              <span>Solicitud y estado operativo.</span>
             </Link>
-            <Link className="quick-link-card" href="/vehiculos">
+            <Link className="home-link-card" href="/vehiculos">
               <strong>Vehiculos</strong>
-              <p>Registra y revisa los vehiculos disponibles para operar.</p>
+              <span>Registro y disponibilidad.</span>
             </Link>
-            <Link className="quick-link-card" href="/viajes">
+            <Link className="home-link-card" href="/viajes">
               <strong>Viajes</strong>
-              <p>Busca, publica o administra tus viajes desde un solo lugar.</p>
+              <span>Publicacion y gestion.</span>
             </Link>
-            <Link className="quick-link-card" href="/confianza">
+            <Link className="home-link-card" href="/confianza">
               <strong>Confianza</strong>
-              <p>Consulta sanciones, reputacion y estado de apelaciones.</p>
+              <span>Reputacion y sanciones.</span>
             </Link>
-            <Link className="quick-link-card" href="/auditoria">
-              <strong>Auditoria</strong>
-              <p>Accede a revision administrativa y trazabilidad del sistema.</p>
-            </Link>
+            {auditVisible ? (
+              <Link className="home-link-card" href="/auditoria">
+                <strong>Auditoria</strong>
+                <span>Trazabilidad y control.</span>
+              </Link>
+            ) : null}
             <button
-              className="quick-link-card quick-link-card-action"
+              className="home-link-card home-link-card-action"
               onClick={() => void refreshHome(true)}
               type="button"
             >
               <strong>{isRefreshing ? 'Actualizando...' : 'Actualizar inicio'}</strong>
-              <p>Sincroniza esta vista con el estado mas reciente de tu cuenta.</p>
+              <span>Sincroniza esta vista con tu estado actual.</span>
             </button>
           </div>
         </article>
       </section>
 
       {driverLicenseMessage ? (
-        <section className="section-card compact-banner">
+        <section className="home-license-alert">
           <StatusPill
             label={getDriverLicenseStatusLabel(currentMembership?.licenseStatus)}
             tone={getDriverLicenseStatusTone(currentMembership?.licenseStatus)}

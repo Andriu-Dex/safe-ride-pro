@@ -7,6 +7,8 @@ type DisclosurePanelProps = {
   meta?: string;
   description?: string;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (nextOpen: boolean) => void;
   className?: string;
   children: React.ReactNode;
 };
@@ -16,10 +18,24 @@ export function DisclosurePanel({
   meta,
   description,
   defaultOpen = false,
+  open,
+  onOpenChange,
   className,
   children,
 }: DisclosurePanelProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = typeof open === 'boolean';
+  const isOpen = isControlled ? open : internalOpen;
+
+  const toggleOpen = () => {
+    const nextOpen = !isOpen;
+
+    if (!isControlled) {
+      setInternalOpen(nextOpen);
+    }
+
+    onOpenChange?.(nextOpen);
+  };
 
   return (
     <article
@@ -36,7 +52,7 @@ export function DisclosurePanel({
       <button
         aria-expanded={isOpen}
         className="disclosure-summary"
-        onClick={() => setIsOpen((currentValue) => !currentValue)}
+        onClick={toggleOpen}
         type="button"
       >
         <span className="disclosure-summary-copy">

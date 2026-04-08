@@ -13,6 +13,7 @@ import {
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
 import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
+import { TripLifecycleMaintenanceService } from '../../../src/modules/trips/application/services/trip-lifecycle-maintenance.service';
 import { CancelTripUseCase } from '../../../src/modules/trips/application/use-cases/cancel-trip.use-case';
 import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-cases/complete-trip.use-case';
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
@@ -25,9 +26,11 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     findVehicleByIdForMembership: jest.fn(),
     createTrip: jest.fn(),
     findTripById: jest.fn(),
+    findLatestReusableTripByDriverMembershipId: jest.fn(),
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
     updateTripStatus: jest.fn(),
+    autoCancelTripForDriverAbsence: jest.fn(),
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
   };
@@ -40,6 +43,14 @@ function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctio
     assertPassengerOperationsAllowed: jest.fn(),
     assertDriverOperationsAllowed: jest.fn(),
   } as unknown as jest.Mocked<OperationalSanctionsService>;
+}
+
+function createTripLifecycleMaintenanceServiceMock(): jest.Mocked<TripLifecycleMaintenanceService> {
+  return {
+    reconcileTripLifecycle: jest.fn(async (trip) => trip),
+    reconcileTripCollection: jest.fn(async (trips) => trips),
+    filterTripsByStatuses: jest.fn((trips) => trips),
+  } as unknown as jest.Mocked<TripLifecycleMaintenanceService>;
 }
 
 function buildTrip(status: TripStatus, overrides: Partial<TripRecord> = {}): TripRecord {
@@ -222,7 +233,13 @@ describe('Trip status transition use cases', () => {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new StartTripUseCase(repository, auditService, sanctionsService);
+    const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new StartTripUseCase(
+      repository,
+      auditService,
+      sanctionsService,
+      lifecycleService,
+    );
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -265,7 +282,13 @@ describe('Trip status transition use cases', () => {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new StartTripUseCase(repository, auditService, sanctionsService);
+    const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new StartTripUseCase(
+      repository,
+      auditService,
+      sanctionsService,
+      lifecycleService,
+    );
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -299,13 +322,56 @@ describe('Trip status transition use cases', () => {
     );
   });
 
+  it('rejects starting a trip when it was auto-cancelled by lifecycle reconciliation', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new StartTripUseCase(
+      repository,
+      auditService,
+      sanctionsService,
+      lifecycleService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Published));
+    lifecycleService.reconcileTripLifecycle.mockResolvedValue(
+      buildTrip(TripStatus.Cancelled, {
+        cancelledAt: new Date('2030-01-01T10:20:00.000Z'),
+      }),
+    );
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new BadRequestException(
+        'Este viaje fue cancelado automaticamente porque la salida programada ya vencio sin que se iniciara a tiempo.',
+      ),
+    );
+
+    expect(repository.startTripAndClosePendingRequests).not.toHaveBeenCalled();
+  });
+
   it('blocks starting a trip when the approved driver license is expired', async () => {
     const repository = createTripsRepositoryMock();
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new StartTripUseCase(repository, auditService, sanctionsService);
+    const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new StartTripUseCase(
+      repository,
+      auditService,
+      sanctionsService,
+      lifecycleService,
+    );
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -426,7 +492,13 @@ describe('Trip status transition use cases', () => {
     } as unknown as jest.Mocked<AuditService>;
     const sanctionsService = createOperationalSanctionsServiceMock();
     const publishUseCase = new PublishTripUseCase(repository, auditService, sanctionsService);
-    const startUseCase = new StartTripUseCase(repository, auditService, sanctionsService);
+    const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+    const startUseCase = new StartTripUseCase(
+      repository,
+      auditService,
+      sanctionsService,
+      lifecycleService,
+    );
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',

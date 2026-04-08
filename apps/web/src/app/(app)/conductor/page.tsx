@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   DriverLicenseStatus,
   DriverVerificationStatus,
@@ -8,7 +9,6 @@ import {
 import { useEffect, useState } from 'react';
 
 import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
-import { InfoCard } from '../../../components/ui/info-card';
 import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
@@ -462,17 +462,20 @@ export default function DriverPage() {
     operationalAccess.message
   ) {
     return (
-      <>
-        <header className="topbar">
-          <div>
-            <h1 className="topbar-title">Conductor</h1>
-            <p className="topbar-subtitle">
+      <section className="driver-shell">
+        <section className="driver-command">
+          <div className="driver-command-copy">
+            <p className="section-label">Conductor</p>
+            <h1 className="driver-command-title">Habilitacion operativa</h1>
+            <p className="driver-command-subtitle">
               Gestiona tu habilitacion como conductor institucional antes de registrar
               vehiculos y publicar viajes.
             </p>
           </div>
-          <StatusPill label="Operacion bloqueada" tone="warning" />
-        </header>
+          <div className="driver-command-actions">
+            <StatusPill label="Operacion bloqueada" tone="warning" />
+          </div>
+        </section>
 
         <section className="empty-state">
           <OperationalAccessCard
@@ -480,23 +483,26 @@ export default function DriverPage() {
             title={operationalAccess.title}
           />
         </section>
-      </>
+      </section>
     );
   }
 
   if (!isLoading && isAdministrativeMembership) {
     return (
-      <>
-        <header className="topbar">
-          <div>
-            <h1 className="topbar-title">Conductor</h1>
-            <p className="topbar-subtitle">
+      <section className="driver-shell">
+        <section className="driver-command">
+          <div className="driver-command-copy">
+            <p className="section-label">Conductor</p>
+            <h1 className="driver-command-title">Habilitacion no disponible</h1>
+            <p className="driver-command-subtitle">
               La habilitacion como conductor esta reservada para membresias operativas
               no administrativas.
             </p>
           </div>
-          <StatusPill label="No disponible" tone="warning" />
-        </header>
+          <div className="driver-command-actions">
+            <StatusPill label="No disponible" tone="warning" />
+          </div>
+        </section>
 
         <section className="empty-state">
           <div className="empty-state-card">
@@ -508,26 +514,12 @@ export default function DriverPage() {
             </p>
           </div>
         </section>
-      </>
+      </section>
     );
   }
 
   return (
     <>
-      <header className="topbar">
-        <div>
-          <h1 className="topbar-title">Conductor</h1>
-          <p className="topbar-subtitle">
-            Gestiona tu habilitacion como conductor institucional antes de registrar
-            vehiculos y publicar viajes.
-          </p>
-        </div>
-        <StatusPill
-          label={getDriverStatusLabel(currentStatus)}
-          tone={getDriverStatusTone(currentStatus)}
-        />
-      </header>
-
       {isLoading ? (
         <section className="loading-state compact-loading-state">
           <div className="loading-card">
@@ -539,35 +531,64 @@ export default function DriverPage() {
           </div>
         </section>
       ) : (
-        <section className="content-grid">
-          <div className="metrics-grid">
-            <InfoCard
-              description="La solicitud se asocia a tu membresia institucional activa."
-              label="Institucion"
-              value={driverOverview?.membership?.institutionName ?? 'No disponible'}
-            />
-            <InfoCard
-              description="Este estado controla si puedes registrar vehiculos y crear viajes."
-              label="Estado del conductor"
-              value={getDriverStatusLabel(currentStatus)}
-            />
-            <InfoCard
-              description="La vigencia de la licencia afecta automaticamente el acceso a vehiculos y viajes."
-              label="Vigencia"
-              value={getDriverLicenseStatusLabel(licenseStatus)}
-            />
+        <section className="driver-shell">
+          <section className="driver-command">
+            <div className="driver-command-copy">
+              <p className="section-label">Conductor</p>
+              <h1 className="driver-command-title">Habilitacion operativa</h1>
+              <p className="driver-command-subtitle">
+                Gestiona tu estado de conductor, valida documentos y asegura que tu cuenta
+                este lista para publicar viajes.
+              </p>
+            </div>
+            <div className="driver-command-actions">
+              <StatusPill
+                label={getDriverStatusLabel(currentStatus)}
+                tone={getDriverStatusTone(currentStatus)}
+              />
+              <StatusPill
+                label={getDriverLicenseStatusLabel(licenseStatus)}
+                tone={getDriverLicenseStatusTone(licenseStatus)}
+              />
+            </div>
+          </section>
+
+          <section className="driver-kpi-grid">
+            <article className="driver-kpi-card">
+              <span className="driver-kpi-label">Institucion</span>
+              <strong className="driver-kpi-value">{driverOverview?.membership?.institutionName ?? 'No disponible'}</strong>
+              <p className="driver-kpi-note">Contexto activo de la solicitud.</p>
+            </article>
+            <article className="driver-kpi-card">
+              <span className="driver-kpi-label">Estado del conductor</span>
+              <strong className="driver-kpi-value">{getDriverStatusLabel(currentStatus)}</strong>
+              <p className="driver-kpi-note">Define si puedes registrar vehiculos y operar.</p>
+            </article>
+            <article className="driver-kpi-card">
+              <span className="driver-kpi-label">Licencia</span>
+              <strong className="driver-kpi-value">{getDriverLicenseStatusLabel(licenseStatus)}</strong>
+              <p className="driver-kpi-note">Vigencia legal para conducir en plataforma.</p>
+            </article>
+            <article className="driver-kpi-card">
+              <span className="driver-kpi-label">Documentos</span>
+              <strong className="driver-kpi-value">
+                {driverOverview?.driverProfile?.hasRequiredDocuments ? 'Completos' : 'Pendientes'}
+              </strong>
+              <p className="driver-kpi-note">Identidad y licencia requeridas.</p>
+            </article>
+          </section>
+
+          <div className="driver-alert-stack">
+            {licenseAlertMessage ? <div className="form-helper">{licenseAlertMessage}</div> : null}
+            {driverOverview?.driverProfile && !driverOverview.driverProfile.hasRequiredDocuments ? (
+              <div className="form-helper">
+                Para aprobar la solicitud debes contar con clave del documento de identidad
+                y clave del documento de licencia.
+              </div>
+            ) : null}
           </div>
 
-          {licenseAlertMessage ? <div className="form-helper">{licenseAlertMessage}</div> : null}
-
-          {driverOverview?.driverProfile && !driverOverview.driverProfile.hasRequiredDocuments ? (
-            <div className="form-helper">
-              Para aprobar la solicitud debes contar con clave del documento de identidad
-              y clave del documento de licencia.
-            </div>
-          ) : null}
-
-          <div className="page-grid page-grid-wide">
+          <section className="driver-main-grid">
             <DriverApplicationForm
               currentReviewNotes={driverOverview?.driverProfile?.reviewNotes}
               currentStatus={currentStatus}
@@ -596,72 +617,67 @@ export default function DriverPage() {
               values={formValues}
             />
 
-            <article className="panel panel-stack">
-              <h2 className="panel-title">Resumen de la solicitud</h2>
+            <article className="driver-summary-card">
+              <div className="driver-summary-head">
+                <h2 className="panel-title">Resumen de solicitud</h2>
+                {driverOverview?.driverProfile ? (
+                  <StatusPill
+                    label={getDriverLicenseStatusLabel(driverOverview.driverProfile.licenseStatus)}
+                    tone={getDriverLicenseStatusTone(driverOverview.driverProfile.licenseStatus)}
+                  />
+                ) : null}
+              </div>
+
               {driverOverview?.driverProfile ? (
-                <>
-                  <div className="panel-header-row">
-                    <h3 className="panel-title panel-title-sm">Estado documental</h3>
-                    <StatusPill
-                      label={getDriverLicenseStatusLabel(
-                        driverOverview.driverProfile.licenseStatus,
-                      )}
-                      tone={getDriverLicenseStatusTone(
-                        driverOverview.driverProfile.licenseStatus,
-                      )}
-                    />
+                <dl className="detail-list">
+                  <div>
+                    <dt>Tipo de licencia</dt>
+                    <dd>{driverOverview.driverProfile.licenseType.name}</dd>
                   </div>
-                  <dl className="detail-list">
-                    <div>
-                      <dt>Tipo de licencia</dt>
-                      <dd>{driverOverview.driverProfile.licenseType.name}</dd>
-                    </div>
-                    <div>
-                      <dt>Numero de licencia</dt>
-                      <dd>{driverOverview.driverProfile.licenseNumber}</dd>
-                    </div>
-                    <div>
-                      <dt>Expira el</dt>
-                      <dd>
-                        {new Date(
-                          driverOverview.driverProfile.licenseExpiresAt,
-                        ).toLocaleDateString('es-EC')}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Enviada el</dt>
-                      <dd>
-                        {new Date(
-                          driverOverview.driverProfile.submittedAt,
-                        ).toLocaleString('es-EC')}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Documento de identidad</dt>
-                      <dd>
-                        {driverOverview.driverProfile.identityDocumentFileKey
-                          ? 'Registrado'
-                          : 'Pendiente'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Documento de licencia</dt>
-                      <dd>
-                        {driverOverview.driverProfile.licenseDocumentFileKey
-                          ? 'Registrado'
-                          : 'Pendiente'}
-                      </dd>
-                    </div>
-                  </dl>
-                </>
+                  <div>
+                    <dt>Numero de licencia</dt>
+                    <dd>{driverOverview.driverProfile.licenseNumber}</dd>
+                  </div>
+                  <div>
+                    <dt>Expira el</dt>
+                    <dd>
+                      {new Date(driverOverview.driverProfile.licenseExpiresAt).toLocaleDateString('es-EC')}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Enviada el</dt>
+                    <dd>
+                      {new Date(driverOverview.driverProfile.submittedAt).toLocaleString('es-EC')}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Documento de identidad</dt>
+                    <dd>{driverOverview.driverProfile.identityDocumentFileKey ? 'Registrado' : 'Pendiente'}</dd>
+                  </div>
+                  <div>
+                    <dt>Documento de licencia</dt>
+                    <dd>{driverOverview.driverProfile.licenseDocumentFileKey ? 'Registrado' : 'Pendiente'}</dd>
+                  </div>
+                </dl>
               ) : (
                 <p className="panel-text">
                   Aun no has enviado una solicitud. Completa el formulario para activar
                   tu proceso de conductor.
                 </p>
               )}
+
+              <div className="driver-quick-grid">
+                <Link className="driver-quick-link" href="/vehiculos">
+                  <strong>Vehiculos</strong>
+                  <span>Configura tu flota para operar.</span>
+                </Link>
+                <Link className="driver-quick-link" href="/viajes">
+                  <strong>Viajes</strong>
+                  <span>Publica y gestiona trayectos.</span>
+                </Link>
+              </div>
             </article>
-          </div>
+          </section>
         </section>
       )}
 

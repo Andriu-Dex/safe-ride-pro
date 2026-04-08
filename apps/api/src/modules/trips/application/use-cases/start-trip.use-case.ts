@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import {
   DriverLicenseStatus,
   getTripStartAvailability,
@@ -9,11 +9,13 @@ import {
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   TRIPS_REPOSITORY,
   TripsRepository,
 } from '../ports/trips.repository';
+import { TripLifecycleMaintenanceService } from '../services/trip-lifecycle-maintenance.service';
 
 @Injectable()
 export class StartTripUseCase {
@@ -25,6 +27,9 @@ export class StartTripUseCase {
     private readonly tripsRepository: TripsRepository,
     private readonly auditService: AuditService,
     private readonly operationalSanctionsService: OperationalSanctionsService,
+    private readonly tripLifecycleMaintenanceService: TripLifecycleMaintenanceService,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(userId: string, tripId: string) {
@@ -42,14 +47,22 @@ export class StartTripUseCase {
 
     await this.operationalSanctionsService.assertDriverOperationsAllowed(membership.id);
 
-    const trip = await this.tripsRepository.findTripById(tripId);
+    const currentTrip = await this.tripsRepository.findTripById(tripId);
 
-    if (!trip) {
+    if (!currentTrip) {
       throw new NotFoundException('El viaje solicitado no existe.');
     }
 
+    const trip = await this.tripLifecycleMaintenanceService.reconcileTripLifecycle(currentTrip);
+
     if (trip.driverMembershipId !== membership.id) {
       throw new ForbiddenException('Solo el conductor duenio puede iniciar este viaje.');
+    }
+
+    if (trip.status === TripStatus.Cancelled) {
+      throw new BadRequestException(
+        'Este viaje fue cancelado automaticamente porque la salida programada ya vencio sin que se iniciara a tiempo.',
+      );
     }
 
     if (trip.status !== TripStatus.Published && trip.status !== TripStatus.Full) {
@@ -87,6 +100,13 @@ export class StartTripUseCase {
       metadata: {
         status: updatedTrip.status,
       },
+    });
+
+    this.realtimeEventsService.publishTripChanged({
+      actorUserId: userId,
+      institutionId: trip.institutionId,
+      reason: 'started',
+      tripId: trip.id,
     });
 
     return {

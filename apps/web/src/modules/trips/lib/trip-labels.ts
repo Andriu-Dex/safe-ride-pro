@@ -1,7 +1,9 @@
 import {
   CancellationTiming,
+  isTripCompletionOverdue,
   getTripStartAvailability,
   TripAvailabilityFilter,
+  TRIP_COMPLETION_OVERDUE_GRACE_MINUTES,
   TRIP_START_EARLY_WINDOW_MINUTES,
   TripRouteMode,
   TripStatus,
@@ -110,4 +112,15 @@ export function getTripStartAvailabilityMessage(
     default:
       return null;
   }
+}
+
+export function getTripCompletionOverdueMessage(
+  status: TripStatus,
+  estimatedArrivalAt: string,
+): string | null {
+  if (!isTripCompletionOverdue({ status, estimatedArrivalAt })) {
+    return null;
+  }
+
+  return `Este viaje supera por mas de ${Math.floor(TRIP_COMPLETION_OVERDUE_GRACE_MINUTES / 60)} horas su llegada estimada y deberia revisarse o finalizarse.`;
 }

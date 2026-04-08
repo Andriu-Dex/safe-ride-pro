@@ -60,3 +60,23 @@ export type CreateTripInput = {
   detourSurchargeReference?: number;
   notes?: string;
 };
+
+export type LatestTripRouteTemplate = {
+  sourceTripId: string;
+  vehicleId: string;
+  vehicleDisplayName: string;
+  vehiclePlate: string;
+  routeMode: TripRouteMode;
+  originLabel: string;
+  destinationLabel: string;
+  originLatitude: number;
+  originLongitude: number;
+  destinationLatitude: number;
+  destinationLongitude: number;
+  seatCount: number;
+  basePriceReference: number;
+  detourSurchargeReference: number | null;
+  notes: string | null;
+  createdAt: string;
+  departureAt: string;
+};

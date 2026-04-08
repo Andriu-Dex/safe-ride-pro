@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { TRIP_REQUESTS_REPOSITORY } from './application/ports/trip-requests.repository';
 import { AcceptTripRequestUseCase } from './application/use-cases/accept-trip-request.use-case';
 import { CancelTripRequestUseCase } from './application/use-cases/cancel-trip-request.use-case';
@@ -13,7 +14,7 @@ import { PrismaTripRequestsRepository } from './infrastructure/repositories/pris
 import { TripRequestsController } from './presentation/controllers/trip-requests.controller';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, RealtimeModule],
   controllers: [TripRequestsController],
   providers: [
     {

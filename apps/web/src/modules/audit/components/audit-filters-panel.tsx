@@ -27,7 +27,7 @@ export function AuditFiltersPanel({
   onReset,
 }: AuditFiltersPanelProps) {
   return (
-    <article className="panel panel-stack">
+    <article className="panel panel-stack audit-filters-panel">
       <div className="section-heading">
         <h2 className="panel-title">Filtros de auditoria</h2>
         <p className="section-heading-meta">Consulta eventos y reportes revisables</p>

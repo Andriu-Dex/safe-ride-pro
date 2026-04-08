@@ -58,7 +58,6 @@ import type {
 } from '../../../modules/sanctions/types/sanction';
 import { Button } from '../../../components/ui/button';
 import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
-import { InfoCard } from '../../../components/ui/info-card';
 import { SelectField } from '../../../components/ui/select-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
@@ -101,6 +100,82 @@ function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof ApiError ? error.message : fallbackMessage;
 }
 
+type MetadataEntry = {
+  key: string;
+  value: string;
+};
+
+function formatMetadataValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return 'No disponible';
+  }
+
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return 'Sin elementos';
+    }
+
+    const preview = value
+      .slice(0, 3)
+      .map((item) => formatMetadataValue(item))
+      .join(', ');
+
+    return value.length > 3 ? `${preview} (+${value.length - 3})` : preview;
+  }
+
+  if (typeof value === 'object') {
+    const keys = Object.keys(value as Record<string, unknown>);
+    return keys.length ? `Objeto con ${keys.length} campos` : 'Objeto vacio';
+  }
+
+  return String(value);
+}
+
+function extractMetadataEntries(metadata: Record<string, unknown> | null): MetadataEntry[] {
+  if (!metadata) {
+    return [];
+  }
+
+  const entries: MetadataEntry[] = [];
+
+  const walkObject = (
+    objectValue: Record<string, unknown>,
+    parentKey = '',
+    depth = 0,
+  ) => {
+    Object.entries(objectValue).forEach(([key, value]) => {
+      const fullKey = parentKey ? `${parentKey}.${key}` : key;
+      const canWalkNestedObject =
+        value !== null &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        depth < 1;
+
+      if (canWalkNestedObject) {
+        walkObject(value as Record<string, unknown>, fullKey, depth + 1);
+        return;
+      }
+
+      entries.push({
+        key: fullKey,
+        value: formatMetadataValue(value),
+      });
+    });
+  };
+
+  walkObject(metadata);
+  return entries;
+}
+
 type DriverDocumentPreviewState = {
   membershipId: string;
   documentType: 'identity' | 'license';
@@ -109,6 +184,13 @@ type DriverDocumentPreviewState = {
   mimeType: string;
   title: string;
 };
+
+type AuditWorkspaceSection =
+  | 'driver'
+  | 'events'
+  | 'reports'
+  | 'sanctions'
+  | 'appeals';
 
 export default function AuditPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
@@ -147,6 +229,9 @@ export default function AuditPage() {
   const [driverDocumentPreviewError, setDriverDocumentPreviewError] = useState<string | null>(
     null,
   );
+  const [activeWorkspace, setActiveWorkspace] =
+    useState<AuditWorkspaceSection>('reports');
+  const [expandedAuditEventIds, setExpandedAuditEventIds] = useState<Record<string, boolean>>({});
 
   const adminMemberships = useMemo(
     () =>
@@ -370,6 +455,13 @@ export default function AuditPage() {
     setDriverReviewNotes((currentNotes) => ({
       ...currentNotes,
       [membershipId]: value,
+    }));
+  };
+
+  const toggleAuditEventExpanded = (eventId: string) => {
+    setExpandedAuditEventIds((currentMap) => ({
+      ...currentMap,
+      [eventId]: !currentMap[eventId],
     }));
   };
 
@@ -701,6 +793,21 @@ export default function AuditPage() {
       application.driverVerificationStatus ===
       DriverVerificationStatus.PendingVerification,
   ).length;
+  const pendingAppealsCount = reviewableAppeals.filter(
+    (appeal) => appeal.status === OperationalSanctionAppealStatus.Pending,
+  ).length;
+  const highSeverityOpenReportsCount = reviewableReports.filter(
+    (report) =>
+      requiresDetailedReviewNote(report.reason) &&
+      (report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview),
+  ).length;
+  const activeAuditFiltersCount = [
+    appliedAuditFilters.institutionId,
+    appliedAuditFilters.action,
+    appliedAuditFilters.entityType,
+    appliedAuditFilters.from,
+    appliedAuditFilters.to,
+  ].filter(Boolean).length;
   const institutionOptions = adminMemberships.map((membership) => ({
     id: membership.institutionId,
     name: membership.institutionName,
@@ -722,14 +829,19 @@ export default function AuditPage() {
 
   if (!canAccessAdminView) {
     return (
-      <>
-        <header className="topbar">
-          <div>
-            <h1 className="topbar-title">Auditoria</h1>
-            <p className="topbar-subtitle">Vista reservada para administradores institucionales y superadministracion.</p>
+      <section className="audit-shell">
+        <section className="audit-command">
+          <div className="audit-command-copy">
+            <p className="section-label">Admin</p>
+            <h1 className="audit-command-title">Auditoria institucional</h1>
+            <p className="audit-command-subtitle">
+              Vista reservada para administradores institucionales y superadministracion.
+            </p>
           </div>
-          <StatusPill label="Acceso restringido" tone="warning" />
-        </header>
+          <div className="audit-command-actions">
+            <StatusPill label="Acceso restringido" tone="warning" />
+          </div>
+        </section>
 
         <section className="empty-state">
           <div className="empty-state-card">
@@ -739,67 +851,67 @@ export default function AuditPage() {
             </p>
           </div>
         </section>
-      </>
+      </section>
     );
   }
 
   return (
     <>
-      <header className="topbar">
-        <div>
-          <h1 className="topbar-title">Auditoria</h1>
-          <p className="topbar-subtitle">
-            Supervisa eventos criticos del sistema y revisa los reportes abiertos de tus instituciones.
-          </p>
-        </div>
-        <div className="topbar-actions">
-          <Button
-            disabled={isRefreshingData}
-            onClick={() => void refreshData(true)}
-            variant="secondary"
-          >
-            {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
-          </Button>
-          <StatusPill
-            label={openReportsCount ? `${openReportsCount} reportes abiertos` : 'Bandeja al dia'}
-            tone={openReportsCount ? 'warning' : 'success'}
-          />
-        </div>
-      </header>
+      <section className="audit-shell">
+        <section className="audit-command">
+          <div className="audit-command-copy">
+            <p className="section-label">Admin</p>
+            <h1 className="audit-command-title">Auditoria institucional</h1>
+            <p className="audit-command-subtitle">
+              Supervisa eventos criticos del sistema y revisa los reportes abiertos de tus instituciones.
+            </p>
+          </div>
+          <div className="audit-command-actions">
+            <Button
+              disabled={isRefreshingData}
+              onClick={() => void refreshData(true)}
+              variant="secondary"
+            >
+              {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
+            </Button>
+            <StatusPill
+              label={openReportsCount ? `${openReportsCount} reportes abiertos` : 'Bandeja al dia'}
+              tone={openReportsCount ? 'warning' : 'success'}
+            />
+            {activeAuditFiltersCount ? (
+              <StatusPill label={`${activeAuditFiltersCount} filtros activos`} tone="neutral" />
+            ) : null}
+          </div>
+        </section>
 
-      <section className="content-grid">
-        <div className="metrics-grid">
-          <InfoCard
-            description="Eventos devueltos por la consulta actual de auditoria."
-            label="Eventos visibles"
-            value={`${auditEvents.length}`}
-          />
-          <InfoCard
-            description="Reportes pendientes o en revision disponibles para gestion administrativa."
-            label="Reportes abiertos"
-            value={`${openReportsCount}`}
-          />
-          <InfoCard
-            description="Instituciones administrativas accesibles desde tu sesion activa."
-            label="Instituciones"
-            value={`${institutionOptions.length || (authSession?.user.globalRole === GlobalUserRole.SuperAdmin ? 1 : 0)}`}
-          />
-          <InfoCard
-            description="Solicitudes de conductor visibles para revision administrativa."
-            label="Solicitudes de conductor"
-            value={`${pendingDriverApplicationsCount}`}
-          />
-          <InfoCard
-            description="Sanciones activas actualmente disponibles para levantamiento manual."
-            label="Sanciones activas"
-            value={`${reviewableSanctions.length}`}
-          />
-          <InfoCard
-            description="Apelaciones de sanciones visibles con el alcance administrativo actual."
-            label="Apelaciones"
-            value={`${reviewableAppeals.length}`}
-          />
-        </div>
+        <section className="audit-kpi-grid">
+          <article className="audit-kpi-card">
+            <span className="audit-kpi-label">Eventos visibles</span>
+            <strong className="audit-kpi-value">{auditEvents.length}</strong>
+            <p className="audit-kpi-note">Resultados de la consulta actual.</p>
+          </article>
+          <article className="audit-kpi-card">
+            <span className="audit-kpi-label">Reportes abiertos</span>
+            <strong className="audit-kpi-value">{openReportsCount}</strong>
+            <p className="audit-kpi-note">
+              {highSeverityOpenReportsCount > 0
+                ? `${highSeverityOpenReportsCount} de alta severidad.`
+                : 'Sin casos de alta severidad abiertos.'}
+            </p>
+          </article>
+          <article className="audit-kpi-card">
+            <span className="audit-kpi-label">Conductores pendientes</span>
+            <strong className="audit-kpi-value">{pendingDriverApplicationsCount}</strong>
+            <p className="audit-kpi-note">Solicitudes listas para revision.</p>
+          </article>
+          <article className="audit-kpi-card">
+            <span className="audit-kpi-label">Sanciones y apelaciones</span>
+            <strong className="audit-kpi-value">
+              {reviewableSanctions.length} / {pendingAppealsCount}
+            </strong>
+            <p className="audit-kpi-note">Activas y apelaciones pendientes.</p>
+          </article>
+        </section>
 
         <AuditFiltersPanel
           institutionOptions={institutionOptions}
@@ -810,10 +922,86 @@ export default function AuditPage() {
           values={auditFilterValues}
         />
 
-        {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-        {successMessage ? <div className="form-success">{successMessage}</div> : null}
+        <div className="audit-alert-stack">
+          {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
+          {successMessage ? <div className="form-success">{successMessage}</div> : null}
+        </div>
 
-        <div className="page-grid page-grid-wide">
+        <section aria-label="Secciones de auditoria" className="audit-workspace-switch">
+          <button
+            aria-pressed={activeWorkspace === 'reports'}
+            className={[
+              'audit-workspace-tab',
+              activeWorkspace === 'reports' ? 'audit-workspace-tab-active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setActiveWorkspace('reports')}
+            type="button"
+          >
+            <span>Reportes</span>
+            <small>{openReportsCount} abiertos</small>
+          </button>
+          <button
+            aria-pressed={activeWorkspace === 'driver'}
+            className={[
+              'audit-workspace-tab',
+              activeWorkspace === 'driver' ? 'audit-workspace-tab-active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setActiveWorkspace('driver')}
+            type="button"
+          >
+            <span>Conductores</span>
+            <small>{pendingDriverApplicationsCount} pendientes</small>
+          </button>
+          <button
+            aria-pressed={activeWorkspace === 'events'}
+            className={[
+              'audit-workspace-tab',
+              activeWorkspace === 'events' ? 'audit-workspace-tab-active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setActiveWorkspace('events')}
+            type="button"
+          >
+            <span>Eventos</span>
+            <small>{auditEvents.length} visibles</small>
+          </button>
+          <button
+            aria-pressed={activeWorkspace === 'sanctions'}
+            className={[
+              'audit-workspace-tab',
+              activeWorkspace === 'sanctions' ? 'audit-workspace-tab-active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setActiveWorkspace('sanctions')}
+            type="button"
+          >
+            <span>Sanciones</span>
+            <small>{reviewableSanctions.length} activas</small>
+          </button>
+          <button
+            aria-pressed={activeWorkspace === 'appeals'}
+            className={[
+              'audit-workspace-tab',
+              activeWorkspace === 'appeals' ? 'audit-workspace-tab-active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setActiveWorkspace('appeals')}
+            type="button"
+          >
+            <span>Apelaciones</span>
+            <small>{pendingAppealsCount} pendientes</small>
+          </button>
+        </section>
+
+        <div className="page-grid page-grid-wide audit-main-grid">
+          {activeWorkspace === 'driver' ? (
           <article className="panel panel-stack">
             <div className="section-heading">
               <h2 className="panel-title">Solicitudes de conductor</h2>
@@ -942,50 +1130,53 @@ export default function AuditPage() {
                       </div>
 
                       {application.driverVerificationStatus !== DriverVerificationStatus.Approved ? (
-                        <>
-                          <TextareaField
-                            label="Nota administrativa"
-                            onChange={(event) =>
-                              handleDriverReviewNoteChange(
-                                application.membershipId,
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Motivo de aprobacion, correcciones solicitadas o motivo del rechazo"
-                            rows={3}
-                            value={driverReviewNotes[application.membershipId] ?? ''}
-                          />
-                          <div className="button-row">
-                            <Button
-                              disabled={
-                                isReviewingDriverMembershipId === application.membershipId
-                              }
-                              onClick={() =>
-                                void handleReviewDriverApplication(
+                        <details className="audit-action-details">
+                          <summary>Revisar solicitud</summary>
+                          <div className="audit-action-body">
+                            <TextareaField
+                              label="Nota administrativa"
+                              onChange={(event) =>
+                                handleDriverReviewNoteChange(
                                   application.membershipId,
-                                  DriverVerificationStatus.Approved,
+                                  event.target.value,
                                 )
                               }
-                            >
-                              Aprobar solicitud
-                            </Button>
-                            <Button
-                              disabled={
-                                isReviewingDriverMembershipId === application.membershipId ||
-                                !(driverReviewNotes[application.membershipId]?.trim())
-                              }
-                              onClick={() =>
-                                void handleReviewDriverApplication(
-                                  application.membershipId,
-                                  DriverVerificationStatus.Rejected,
-                                )
-                              }
-                              variant="ghost"
-                            >
-                              Rechazar solicitud
-                            </Button>
+                              placeholder="Motivo de aprobacion, correcciones solicitadas o motivo del rechazo"
+                              rows={3}
+                              value={driverReviewNotes[application.membershipId] ?? ''}
+                            />
+                            <div className="button-row">
+                              <Button
+                                disabled={
+                                  isReviewingDriverMembershipId === application.membershipId
+                                }
+                                onClick={() =>
+                                  void handleReviewDriverApplication(
+                                    application.membershipId,
+                                    DriverVerificationStatus.Approved,
+                                  )
+                                }
+                              >
+                                Aprobar solicitud
+                              </Button>
+                              <Button
+                                disabled={
+                                  isReviewingDriverMembershipId === application.membershipId ||
+                                  !(driverReviewNotes[application.membershipId]?.trim())
+                                }
+                                onClick={() =>
+                                  void handleReviewDriverApplication(
+                                    application.membershipId,
+                                    DriverVerificationStatus.Rejected,
+                                  )
+                                }
+                                variant="ghost"
+                              >
+                                Rechazar solicitud
+                              </Button>
+                            </div>
                           </div>
-                        </>
+                        </details>
                       ) : (
                         <p className="panel-text">
                           Esta solicitud ya fue aprobada y el usuario ya puede operar como conductor.
@@ -1001,7 +1192,9 @@ export default function AuditPage() {
               </p>
             )}
           </article>
+          ) : null}
 
+          {activeWorkspace === 'events' ? (
           <article className="panel panel-stack">
             <div className="section-heading">
               <h2 className="panel-title">Eventos registrados</h2>
@@ -1009,23 +1202,58 @@ export default function AuditPage() {
             </div>
             {auditEvents.length ? (
               <div className="list-stack">
-                {auditEvents.map((event) => (
-                  <div key={event.id} className="list-card">
-                    <div className="list-card-header">
-                      <strong>{getAuditActionLabel(event.action)}</strong>
-                      <StatusPill label={getAuditEntityTypeLabel(event.entityType)} tone="neutral" />
+                {auditEvents.map((event) => {
+                  const metadataEntries = extractMetadataEntries(event.metadata);
+                  const isEventExpanded = Boolean(expandedAuditEventIds[event.id]);
+
+                  return (
+                    <div key={event.id} className="list-card">
+                      <div className="list-card-header">
+                        <strong>{getAuditActionLabel(event.action)}</strong>
+                        <div className="button-row">
+                          <StatusPill label={getAuditEntityTypeLabel(event.entityType)} tone="neutral" />
+                          <Button
+                            onClick={() => toggleAuditEventExpanded(event.id)}
+                            variant="ghost"
+                          >
+                            {isEventExpanded ? 'Ocultar detalle' : 'Ver detalle'}
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="panel-text">
+                        Actor: {event.actorFullName ?? 'Sistema'} | Fecha: {formatDateTime(event.createdAt)}
+                      </p>
+
+                      {isEventExpanded ? (
+                        <>
+                          <p className="panel-text">
+                            Institucion: {event.institutionName ?? 'No aplica'} | Entidad: {event.entityId ?? 'Sin referencia'}
+                          </p>
+
+                          {metadataEntries.length ? (
+                            <div className="audit-metadata-grid">
+                              {metadataEntries.slice(0, 6).map((entry, index) => (
+                                <div key={`${event.id}-${entry.key}-${index}`} className="audit-metadata-item">
+                                  <span>{entry.key}</span>
+                                  <strong>{entry.value}</strong>
+                                </div>
+                              ))}
+                              {metadataEntries.length > 6 ? (
+                                <p className="panel-text">
+                                  +{metadataEntries.length - 6} campos adicionales en metadatos.
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <p className="panel-text">Este evento no incluye metadatos adicionales.</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="panel-text">Detalle contraido para una lectura mas rapida.</p>
+                      )}
                     </div>
-                    <p className="panel-text">
-                      Actor: {event.actorFullName ?? 'Sistema'} | Fecha: {formatDateTime(event.createdAt)}
-                    </p>
-                    <p className="panel-text">
-                      Institucion: {event.institutionName ?? 'No aplica'} | Entidad: {event.entityId ?? 'Sin referencia'}
-                    </p>
-                    {event.metadata ? (
-                      <pre className="json-block">{JSON.stringify(event.metadata, null, 2)}</pre>
-                    ) : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="panel-text">
@@ -1033,7 +1261,9 @@ export default function AuditPage() {
               </p>
             )}
           </article>
+          ) : null}
 
+          {activeWorkspace === 'reports' ? (
           <article className="panel panel-stack">
             <div className="section-heading">
               <h2 className="panel-title">Bandeja de reportes</h2>
@@ -1089,61 +1319,64 @@ export default function AuditPage() {
                     ) : null}
 
                     {report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview ? (
-                      <>
-                        <TextareaField
-                          label="Nota administrativa"
-                          onChange={(event) => handleReviewNoteChange(report.id, event.target.value)}
-                          placeholder="Comentario interno o motivo de la decision"
-                          rows={3}
-                          value={reviewNotes[report.id] ?? ''}
-                        />
-                        <div className="button-row">
-                          {report.status === ReportStatus.Pending ? (
+                      <details className="audit-action-details">
+                        <summary>Gestionar reporte</summary>
+                        <div className="audit-action-body">
+                          <TextareaField
+                            label="Nota administrativa"
+                            onChange={(event) => handleReviewNoteChange(report.id, event.target.value)}
+                            placeholder="Comentario interno o motivo de la decision"
+                            rows={3}
+                            value={reviewNotes[report.id] ?? ''}
+                          />
+                          <div className="button-row">
+                            {report.status === ReportStatus.Pending ? (
+                              <Button
+                                disabled={isReviewingReportId === report.id}
+                                onClick={() => void handleReviewReport(report.id, ReportStatus.UnderReview)}
+                                variant="secondary"
+                              >
+                                Marcar en revision
+                              </Button>
+                            ) : null}
                             <Button
-                              disabled={isReviewingReportId === report.id}
-                              onClick={() => void handleReviewReport(report.id, ReportStatus.UnderReview)}
-                              variant="secondary"
+                              disabled={
+                                isReviewingReportId === report.id ||
+                                !(reviewNotes[report.id]?.trim()) ||
+                                (
+                                  requiresDetailedReviewNote(report.reason) &&
+                                  report.status === ReportStatus.Pending
+                                ) ||
+                                (
+                                  requiresDetailedReviewNote(report.reason) &&
+                                  (reviewNotes[report.id]?.trim().length ?? 0) < HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH
+                                )
+                              }
+                              onClick={() => void handleReviewReport(report.id, ReportStatus.Resolved)}
                             >
-                              Marcar en revision
+                              Resolver
                             </Button>
-                          ) : null}
-                          <Button
-                            disabled={
-                              isReviewingReportId === report.id ||
-                              !(reviewNotes[report.id]?.trim()) ||
-                              (
-                                requiresDetailedReviewNote(report.reason) &&
-                                report.status === ReportStatus.Pending
-                              ) ||
-                              (
-                                requiresDetailedReviewNote(report.reason) &&
-                                (reviewNotes[report.id]?.trim().length ?? 0) < HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH
-                              )
-                            }
-                            onClick={() => void handleReviewReport(report.id, ReportStatus.Resolved)}
-                          >
-                            Resolver
-                          </Button>
-                          <Button
-                            disabled={
-                              isReviewingReportId === report.id ||
-                              !(reviewNotes[report.id]?.trim()) ||
-                              (
-                                requiresDetailedReviewNote(report.reason) &&
-                                report.status === ReportStatus.Pending
-                              ) ||
-                              (
-                                requiresDetailedReviewNote(report.reason) &&
-                                (reviewNotes[report.id]?.trim().length ?? 0) < HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH
-                              )
-                            }
-                            onClick={() => void handleReviewReport(report.id, ReportStatus.Dismissed)}
-                            variant="ghost"
-                          >
-                            Desestimar
-                          </Button>
+                            <Button
+                              disabled={
+                                isReviewingReportId === report.id ||
+                                !(reviewNotes[report.id]?.trim()) ||
+                                (
+                                  requiresDetailedReviewNote(report.reason) &&
+                                  report.status === ReportStatus.Pending
+                                ) ||
+                                (
+                                  requiresDetailedReviewNote(report.reason) &&
+                                  (reviewNotes[report.id]?.trim().length ?? 0) < HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH
+                                )
+                              }
+                              onClick={() => void handleReviewReport(report.id, ReportStatus.Dismissed)}
+                              variant="ghost"
+                            >
+                              Desestimar
+                            </Button>
+                          </div>
                         </div>
-                      </>
+                      </details>
                     ) : (
                       <p className="panel-text">
                         Este reporte ya fue cerrado por {report.reviewedByFullName ?? 'administracion'}.
@@ -1158,7 +1391,9 @@ export default function AuditPage() {
               </p>
             )}
           </article>
+          ) : null}
 
+          {activeWorkspace === 'sanctions' ? (
           <article className="panel panel-stack">
             <div className="section-heading">
               <h2 className="panel-title">Sanciones activas</h2>
@@ -1191,29 +1426,34 @@ export default function AuditPage() {
                         Fin estimado: {formatDateTime(sanction.endsAt)}
                       </p>
                     ) : null}
-                    <TextareaField
-                      label="Nota administrativa para levantar"
-                      onChange={(event) =>
-                        handleSanctionLiftNoteChange(sanction.id, event.target.value)
-                      }
-                      placeholder="Justifica por que corresponde levantar manualmente esta sancion"
-                      rows={3}
-                      value={sanctionLiftNotes[sanction.id] ?? ''}
-                    />
-                    <div className="button-row">
-                      <Button
-                        disabled={
-                          isLiftingSanctionId === sanction.id ||
-                          (sanctionLiftNotes[sanction.id]?.trim().length ?? 0) <
-                            MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH
-                        }
-                        onClick={() => void handleLiftSanction(sanction.id)}
-                      >
-                        {isLiftingSanctionId === sanction.id
-                          ? 'Levantando...'
-                          : 'Levantar manualmente'}
-                      </Button>
-                    </div>
+                    <details className="audit-action-details">
+                      <summary>Levantar sancion</summary>
+                      <div className="audit-action-body">
+                        <TextareaField
+                          label="Nota administrativa para levantar"
+                          onChange={(event) =>
+                            handleSanctionLiftNoteChange(sanction.id, event.target.value)
+                          }
+                          placeholder="Justifica por que corresponde levantar manualmente esta sancion"
+                          rows={3}
+                          value={sanctionLiftNotes[sanction.id] ?? ''}
+                        />
+                        <div className="button-row">
+                          <Button
+                            disabled={
+                              isLiftingSanctionId === sanction.id ||
+                              (sanctionLiftNotes[sanction.id]?.trim().length ?? 0) <
+                                MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH
+                            }
+                            onClick={() => void handleLiftSanction(sanction.id)}
+                          >
+                            {isLiftingSanctionId === sanction.id
+                              ? 'Levantando...'
+                              : 'Levantar manualmente'}
+                          </Button>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 ))}
               </div>
@@ -1223,7 +1463,9 @@ export default function AuditPage() {
               </p>
             )}
           </article>
+          ) : null}
 
+          {activeWorkspace === 'appeals' ? (
           <article className="panel panel-stack">
             <div className="section-heading">
               <h2 className="panel-title">Apelaciones de sanciones</h2>
@@ -1259,50 +1501,53 @@ export default function AuditPage() {
                     ) : null}
 
                     {appeal.status === OperationalSanctionAppealStatus.Pending ? (
-                      <>
-                        <TextareaField
-                          label="Nota administrativa"
-                          onChange={(event) =>
-                            handleAppealReviewNoteChange(appeal.id, event.target.value)
-                          }
-                          placeholder="Explica la decision administrativa sobre la apelacion"
-                          rows={3}
-                          value={appealReviewNotes[appeal.id] ?? ''}
-                        />
-                        <div className="button-row">
-                          <Button
-                            disabled={
-                              isReviewingAppealId === appeal.id ||
-                              (appealReviewNotes[appeal.id]?.trim().length ?? 0) <
-                                SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
+                      <details className="audit-action-details">
+                        <summary>Revisar apelacion</summary>
+                        <div className="audit-action-body">
+                          <TextareaField
+                            label="Nota administrativa"
+                            onChange={(event) =>
+                              handleAppealReviewNoteChange(appeal.id, event.target.value)
                             }
-                            onClick={() =>
-                              void handleReviewAppeal(
-                                appeal.id,
-                                OperationalSanctionAppealStatus.Approved,
-                              )
-                            }
-                          >
-                            Aprobar apelacion
-                          </Button>
-                          <Button
-                            disabled={
-                              isReviewingAppealId === appeal.id ||
-                              (appealReviewNotes[appeal.id]?.trim().length ?? 0) <
-                                SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
-                            }
-                            onClick={() =>
-                              void handleReviewAppeal(
-                                appeal.id,
-                                OperationalSanctionAppealStatus.Rejected,
-                              )
-                            }
-                            variant="ghost"
-                          >
-                            Rechazar apelacion
-                          </Button>
+                            placeholder="Explica la decision administrativa sobre la apelacion"
+                            rows={3}
+                            value={appealReviewNotes[appeal.id] ?? ''}
+                          />
+                          <div className="button-row">
+                            <Button
+                              disabled={
+                                isReviewingAppealId === appeal.id ||
+                                (appealReviewNotes[appeal.id]?.trim().length ?? 0) <
+                                  SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
+                              }
+                              onClick={() =>
+                                void handleReviewAppeal(
+                                  appeal.id,
+                                  OperationalSanctionAppealStatus.Approved,
+                                )
+                              }
+                            >
+                              Aprobar apelacion
+                            </Button>
+                            <Button
+                              disabled={
+                                isReviewingAppealId === appeal.id ||
+                                (appealReviewNotes[appeal.id]?.trim().length ?? 0) <
+                                  SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
+                              }
+                              onClick={() =>
+                                void handleReviewAppeal(
+                                  appeal.id,
+                                  OperationalSanctionAppealStatus.Rejected,
+                                )
+                              }
+                              variant="ghost"
+                            >
+                              Rechazar apelacion
+                            </Button>
+                          </div>
                         </div>
-                      </>
+                      </details>
                     ) : (
                       <p className="panel-text">
                         Esta apelacion ya fue cerrada por {appeal.reviewedByFullName ?? 'administracion'}.
@@ -1317,6 +1562,7 @@ export default function AuditPage() {
               </p>
             )}
           </article>
+          ) : null}
         </div>
       </section>
 

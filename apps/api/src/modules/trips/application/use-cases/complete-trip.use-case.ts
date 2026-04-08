@@ -1,8 +1,9 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { MembershipStatus, TripStatus } from '@saferidepro/shared-types';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import {
   TRIPS_REPOSITORY,
   TripsRepository,
@@ -14,6 +15,8 @@ export class CompleteTripUseCase {
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
     private readonly auditService: AuditService,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(userId: string, tripId: string) {
@@ -48,6 +51,13 @@ export class CompleteTripUseCase {
       metadata: {
         status: updatedTrip.status,
       },
+    });
+
+    this.realtimeEventsService.publishTripChanged({
+      actorUserId: userId,
+      institutionId: trip.institutionId,
+      reason: 'completed',
+      tripId: trip.id,
     });
 
     return {

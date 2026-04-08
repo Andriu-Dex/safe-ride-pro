@@ -1,4 +1,9 @@
-import type { CreateTripInput, TripFilters, TripRecord } from '../types/trip';
+import type {
+  CreateTripInput,
+  LatestTripRouteTemplate,
+  TripFilters,
+  TripRecord,
+} from '../types/trip';
 import { apiRequest } from '../../../lib/api-client';
 
 type TripMutationResponse = {
@@ -48,6 +53,14 @@ export async function createTrip(accessToken: string, input: CreateTripInput): P
     method: 'POST',
     accessToken,
     body: input,
+  });
+}
+
+export async function getLatestTripRouteTemplate(
+  accessToken: string,
+): Promise<LatestTripRouteTemplate | null> {
+  return apiRequest<LatestTripRouteTemplate | null>('/trips/templates/latest', {
+    accessToken,
   });
 }
 

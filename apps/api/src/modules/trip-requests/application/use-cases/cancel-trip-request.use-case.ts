@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   CancellationTiming,
@@ -11,6 +12,7 @@ import {
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
   TRIP_REQUESTS_REPOSITORY,
@@ -23,6 +25,8 @@ export class CancelTripRequestUseCase {
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
     private readonly operationalSanctionsService: OperationalSanctionsService,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(userId: string, requestId: string) {
@@ -65,6 +69,16 @@ export class CancelTripRequestUseCase {
         updatedTripRequest.passengerMembershipId,
       );
     }
+
+    this.realtimeEventsService.publishTripRequestChanged({
+      actorUserId: userId,
+      driverMembershipId: updatedTripRequest.driverMembershipId,
+      institutionId: updatedTripRequest.institutionId,
+      passengerMembershipId: updatedTripRequest.passengerMembershipId,
+      reason: 'cancelled',
+      requestId: updatedTripRequest.id,
+      tripId: updatedTripRequest.tripId,
+    });
 
     return {
       message: 'Solicitud cancelada correctamente.',

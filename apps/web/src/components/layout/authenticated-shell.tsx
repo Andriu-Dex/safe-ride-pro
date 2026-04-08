@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
 import { useAuth } from '../../modules/auth/hooks/use-auth';
+import { canAccessAudit } from '../../modules/audit/lib/audit-access';
 import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
 import { getUserInitials } from '../../modules/users/lib/get-user-initials';
 import { AppLogo } from '../ui/app-logo';
@@ -29,6 +30,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const { authSession, signOut } = useAuth();
   const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
+  const auditVisible = canAccessAudit(authSession?.user);
 
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const currentMembership =
@@ -51,7 +53,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         <section className="sidebar-section">
           <p className="sidebar-label">Navegacion</p>
           <nav className="sidebar-nav">
-            {NAV_ITEMS.map((item) => {
+            {NAV_ITEMS.filter((item) => auditVisible || item.href !== '/auditoria').map((item) => {
               const isActive = pathname === item.href;
               const isDisabled =
                 (requiresOnboarding && item.href !== '/perfil') ||

@@ -1,6 +1,14 @@
-﻿import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
 
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import {
   TRIP_REQUESTS_REPOSITORY,
   TripRequestsRepository,
@@ -11,6 +19,8 @@ export class RejectTripRequestUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(userId: string, requestId: string, reviewNote?: string) {
@@ -47,6 +57,16 @@ export class RejectTripRequestUseCase {
         'La solicitud ya no pudo rechazarse por un cambio reciente en su estado.',
       );
     }
+
+    this.realtimeEventsService.publishTripRequestChanged({
+      actorUserId: userId,
+      driverMembershipId: updatedTripRequest.driverMembershipId,
+      institutionId: updatedTripRequest.institutionId,
+      passengerMembershipId: updatedTripRequest.passengerMembershipId,
+      reason: 'rejected',
+      requestId: updatedTripRequest.id,
+      tripId: updatedTripRequest.tripId,
+    });
 
     return {
       message: 'Solicitud rechazada correctamente.',

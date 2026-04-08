@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   DriverLicenseStatus,
   DriverVerificationStatus,
@@ -10,7 +11,6 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
-import { InfoCard } from '../../../components/ui/info-card';
 import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { downloadBlobFile, getFileExtensionFromMimeType } from '../../../lib/blob-file';
@@ -726,10 +726,15 @@ export default function VehiclesPage() {
   const licenseStatus =
     vehicleOverview?.membership?.licenseStatus ?? DriverLicenseStatus.Missing;
   const vehicleManagementEnabled = canRegisterVehicles(driverStatus, licenseStatus);
+  const totalVehicles = vehicleOverview?.vehicles.length ?? 0;
   const activeVehicles =
     vehicleOverview?.vehicles.filter((vehicle) => vehicle.isActive).length ?? 0;
   const vehiclesWithOperationalTrips =
     vehicleOverview?.vehicles.filter((vehicle) => vehicle.operationalTripCount > 0).length ?? 0;
+  const inactiveVehicles = Math.max(totalVehicles - activeVehicles, 0);
+  const vehiclesPendingDocument =
+    vehicleOverview?.vehicles.filter((vehicle) => !vehicle.registrationDocumentFileKey).length ??
+    0;
   const licenseAlertMessage = getDriverLicenseAlertMessage(
     licenseStatus,
     vehicleOverview?.membership?.licenseExpiresInDays,
@@ -742,16 +747,19 @@ export default function VehiclesPage() {
     operationalAccess.message
   ) {
     return (
-      <>
-        <header className="topbar">
-          <div>
-            <h1 className="topbar-title">Vehiculos</h1>
-            <p className="topbar-subtitle">
+      <section className="vehicle-shell">
+        <section className="vehicle-command">
+          <div className="vehicle-command-copy">
+            <span className="section-label">Flota del conductor</span>
+            <h1 className="vehicle-command-title">Gestion de vehiculos</h1>
+            <p className="vehicle-command-subtitle">
               Registra y gestiona los vehiculos asociados a tu perfil de conductor.
             </p>
           </div>
-          <StatusPill label="Operacion bloqueada" tone="warning" />
-        </header>
+          <div className="vehicle-command-actions">
+            <StatusPill label="Operacion bloqueada" tone="warning" />
+          </div>
+        </section>
 
         <section className="empty-state">
           <OperationalAccessCard
@@ -759,225 +767,275 @@ export default function VehiclesPage() {
             title={operationalAccess.title}
           />
         </section>
-      </>
+      </section>
     );
   }
 
   return (
     <>
-      <header className="topbar">
-        <div>
-          <h1 className="topbar-title">Vehiculos</h1>
-          <p className="topbar-subtitle">
-            Registra, edita y activa tus vehiculos antes de utilizarlos en viajes.
-          </p>
-        </div>
-        <StatusPill
-          label={getDriverStatusLabel(driverStatus)}
-          tone={getDriverStatusTone(driverStatus)}
-        />
-      </header>
-
-      {isLoading ? (
-        <section className="loading-state compact-loading-state">
-          <div className="loading-card">
-            <div aria-hidden="true" className="loading-pulse" />
-            <h2 className="panel-title">Cargando vehiculos</h2>
-            <p className="panel-text">
-              Estamos consultando tu membresia de conductor y los vehiculos ya registrados.
+      <section className="vehicle-shell">
+        <section className="vehicle-command">
+          <div className="vehicle-command-copy">
+            <span className="section-label">Flota del conductor</span>
+            <h1 className="vehicle-command-title">Gestion de vehiculos</h1>
+            <p className="vehicle-command-subtitle">
+              Registra, edita y activa tus vehiculos antes de utilizarlos en viajes.
             </p>
           </div>
-        </section>
-      ) : (
-        <section className="content-grid">
-          <div className="metrics-grid">
-            <InfoCard
-              description="Vehiculos totales asociados a tu membresia institucional activa."
-              label="Registrados"
-              value={`${vehicleOverview?.vehicles.length ?? 0}`}
+          <div className="vehicle-command-actions">
+            <StatusPill
+              label={getDriverStatusLabel(driverStatus)}
+              tone={getDriverStatusTone(driverStatus)}
             />
-            <InfoCard
-              description="Vehiculos listos para ser seleccionados al crear nuevos viajes."
-              label="Activos"
-              value={`${activeVehicles}`}
-            />
-            <InfoCard
-              description="Vehiculos que actualmente tienen viajes publicados, llenos o en curso."
-              label="Con viajes operativos"
-              value={`${vehiclesWithOperationalTrips}`}
-            />
+            <StatusPill label={`${totalVehicles} registrados`} tone="neutral" />
           </div>
+        </section>
 
-          {!vehicleManagementEnabled ? (
-            <div className="form-helper">
-              {licenseStatus === DriverLicenseStatus.Expired
-                ? 'Tu licencia vencio. Debes actualizar tu solicitud de conductor antes de registrar o editar vehiculos.'
-                : 'Debes iniciar o aprobar tu proceso de conductor antes de gestionar vehiculos.'}
+        {isLoading ? (
+          <section className="loading-state compact-loading-state">
+            <div className="loading-card">
+              <div aria-hidden="true" className="loading-pulse" />
+              <h2 className="panel-title">Cargando vehiculos</h2>
+              <p className="panel-text">
+                Estamos consultando tu membresia de conductor y los vehiculos ya registrados.
+              </p>
             </div>
-          ) : null}
-
-          {licenseAlertMessage ? <div className="form-helper">{licenseAlertMessage}</div> : null}
-
-          <div className="page-grid page-grid-wide">
-            <VehicleRegistrationForm
-              brands={brands}
-              documentErrorMessage={documentErrorMessage}
-              documentSuccessMessage={documentSuccessMessage}
-              editingVehicleName={editingVehicle ? getVehicleDisplayName(editingVehicle) : null}
-              errorMessage={errorMessage}
-              isDisabled={!vehicleManagementEnabled}
-              isDownloadingRegistrationDocument={isDownloadingRegistrationDocument}
-              isEditing={Boolean(editingVehicle)}
-              isManualBrand={isManualBrand}
-              isManualModel={isManualModel}
-              isOpeningRegistrationDocumentPreview={isOpeningRegistrationDocumentPreview}
-              isSubmitting={isSubmitting}
-              isUploadingRegistrationDocument={isUploadingRegistrationDocument}
-              models={models}
-              onCancelEdit={resetFormState}
-              onChange={handleFormChange}
-              onDownloadRegistrationDocument={() => void handleDownloadRegistrationDocument()}
-              onPreviewRegistrationDocument={() => void handlePreviewRegistrationDocument()}
-              onSubmit={handleSubmit}
-              onToggleManualBrand={toggleManualBrand}
-              onToggleManualModel={toggleManualModel}
-              onUploadRegistrationDocument={(file) => void handleUploadRegistrationDocument(file)}
-              onUploadValidationError={handleUploadValidationError}
-              registrationDocumentFileName={currentFormDocumentFileName}
-              registrationDocumentPreviewUrl={currentFormDocumentPreviewUrl}
-              successMessage={successMessage}
-              values={formValues}
-            />
-
-            <article className="panel panel-stack">
-              <div className="panel-header-row">
-                <div>
-                  <h2 className="panel-title">Mis vehiculos</h2>
-                  <p className="panel-text">
-                    Edita los datos del vehiculo o controla si debe seguir disponible para nuevos viajes.
-                  </p>
-                </div>
-                <StatusPill
-                  label={`${vehicleOverview?.vehicles.length ?? 0} registrados`}
-                  tone="neutral"
-                />
-              </div>
-
-              {vehicleOverview?.vehicles.length ? (
-                <div className="list-stack">
-                  {vehicleOverview.vehicles.map((vehicle) => {
-                    const isBusy = isTogglingVehicleId === vehicle.id;
-                    const isLockedByTrips = vehicle.operationalTripCount > 0;
-                    const isEditingCurrentVehicle = editingVehicleId === vehicle.id;
-                    const hasRegistrationDocument = Boolean(vehicle.registrationDocumentFileKey);
-
-                    return (
-                      <div key={vehicle.id} className="list-card">
-                        <div className="list-card-header">
-                          <strong>{getVehicleDisplayName(vehicle)}</strong>
-                          <div className="button-row">
-                            <StatusPill
-                              label={vehicle.isActive ? 'Activo' : 'Inactivo'}
-                              tone={vehicle.isActive ? 'success' : 'warning'}
-                            />
-                            {isLockedByTrips ? (
-                              <StatusPill label="Con viajes operativos" tone="warning" />
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className="analytics-detail-grid">
-                          <div className="analytics-detail-card">
-                            <span>Tipo</span>
-                            <strong>{getVehicleTypeLabel(vehicle.vehicleType)}</strong>
-                            <p>
-                              Capacidad {vehicle.seatCount} | Equipaje {getLuggagePolicyLabel(vehicle.luggagePolicy)}
-                            </p>
-                          </div>
-                          <div className="analytics-detail-card">
-                            <span>Identificacion</span>
-                            <strong>{vehicle.plate}</strong>
-                            <p>
-                              {vehicle.color} | {vehicle.year}
-                            </p>
-                          </div>
-                          <div className="analytics-detail-card">
-                            <span>Documento</span>
-                            <strong>{hasRegistrationDocument ? 'Registrado' : 'Pendiente'}</strong>
-                            <p>
-                              {hasRegistrationDocument
-                                ? 'Disponible para previsualizar o descargar.'
-                                : 'Aun no se ha cargado el documento de matricula.'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {hasRegistrationDocument ? (
-                          <div className="button-row">
-                            <Button
-                              disabled={previewLoadingVehicleId === vehicle.id}
-                              onClick={() => void handlePreviewStoredVehicleDocument(vehicle)}
-                              variant="secondary"
-                            >
-                              {previewLoadingVehicleId === vehicle.id
-                                ? 'Abriendo...'
-                                : 'Ver documento'}
-                            </Button>
-                            <Button
-                              disabled={downloadingVehicleId === vehicle.id}
-                              onClick={() => void handleDownloadStoredVehicleDocument(vehicle)}
-                              variant="ghost"
-                            >
-                              {downloadingVehicleId === vehicle.id
-                                ? 'Descargando...'
-                                : 'Descargar'}
-                            </Button>
-                          </div>
-                        ) : null}
-
-                        {isLockedByTrips ? (
-                          <div className="form-helper">
-                            Este vehiculo tiene viajes publicados, llenos o en curso. No puede editarse ni desactivarse hasta cerrar esos trayectos.
-                          </div>
-                        ) : null}
-
-                        <div className="button-row">
-                          <Button
-                            disabled={!vehicleManagementEnabled || isLockedByTrips}
-                            onClick={() => void startEditingVehicle(vehicle)}
-                            variant={isEditingCurrentVehicle ? 'primary' : 'secondary'}
-                          >
-                            {isEditingCurrentVehicle ? 'Editando' : 'Editar'}
-                          </Button>
-                          <Button
-                            disabled={
-                              !vehicleManagementEnabled ||
-                              isBusy ||
-                              (vehicle.isActive && isLockedByTrips)
-                            }
-                            onClick={() => void handleToggleVehicleStatus(vehicle)}
-                            variant="ghost"
-                          >
-                            {isBusy
-                              ? 'Actualizando...'
-                              : vehicle.isActive
-                                ? 'Desactivar'
-                                : 'Activar'}
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="panel-text">
-                  Aun no has registrado vehiculos. Crea el primero para continuar con la publicacion de viajes.
+          </section>
+        ) : (
+          <>
+            <section className="vehicle-kpi-grid">
+              <article className="vehicle-kpi-card">
+                <span className="vehicle-kpi-label">Registrados</span>
+                <strong className="vehicle-kpi-value">{totalVehicles}</strong>
+                <p className="vehicle-kpi-note">Vehiculos asociados a tu membresia activa.</p>
+              </article>
+              <article className="vehicle-kpi-card">
+                <span className="vehicle-kpi-label">Activos</span>
+                <strong className="vehicle-kpi-value">{activeVehicles}</strong>
+                <p className="vehicle-kpi-note">
+                  Listos para seleccionar en nuevas publicaciones.
                 </p>
-              )}
-            </article>
-          </div>
-        </section>
-      )}
+              </article>
+              <article className="vehicle-kpi-card">
+                <span className="vehicle-kpi-label">En pausa</span>
+                <strong className="vehicle-kpi-value">{inactiveVehicles}</strong>
+                <p className="vehicle-kpi-note">
+                  Vehiculos no disponibles para nuevos trayectos.
+                </p>
+              </article>
+              <article className="vehicle-kpi-card">
+                <span className="vehicle-kpi-label">Con viajes operativos</span>
+                <strong className="vehicle-kpi-value">{vehiclesWithOperationalTrips}</strong>
+                <p className="vehicle-kpi-note">
+                  {vehiclesPendingDocument > 0
+                    ? `${vehiclesPendingDocument} con documentacion pendiente.`
+                    : 'Documentacion vehicular al dia.'}
+                </p>
+              </article>
+            </section>
+
+            {(!vehicleManagementEnabled || licenseAlertMessage) && (
+              <section className="vehicle-alert-stack">
+                {!vehicleManagementEnabled ? (
+                  <div className="form-helper vehicle-inline-alert">
+                    {licenseStatus === DriverLicenseStatus.Expired
+                      ? 'Tu licencia vencio. Debes actualizar tu solicitud de conductor antes de registrar o editar vehiculos.'
+                      : 'Debes iniciar o aprobar tu proceso de conductor antes de gestionar vehiculos.'}
+                  </div>
+                ) : null}
+
+                {licenseAlertMessage ? (
+                  <div className="form-helper vehicle-inline-alert">{licenseAlertMessage}</div>
+                ) : null}
+              </section>
+            )}
+
+            <section className="vehicle-main-grid">
+              <VehicleRegistrationForm
+                brands={brands}
+                documentErrorMessage={documentErrorMessage}
+                documentSuccessMessage={documentSuccessMessage}
+                editingVehicleName={editingVehicle ? getVehicleDisplayName(editingVehicle) : null}
+                errorMessage={errorMessage}
+                isDisabled={!vehicleManagementEnabled}
+                isDownloadingRegistrationDocument={isDownloadingRegistrationDocument}
+                isEditing={Boolean(editingVehicle)}
+                isManualBrand={isManualBrand}
+                isManualModel={isManualModel}
+                isOpeningRegistrationDocumentPreview={isOpeningRegistrationDocumentPreview}
+                isSubmitting={isSubmitting}
+                isUploadingRegistrationDocument={isUploadingRegistrationDocument}
+                models={models}
+                onCancelEdit={resetFormState}
+                onChange={handleFormChange}
+                onDownloadRegistrationDocument={() => void handleDownloadRegistrationDocument()}
+                onPreviewRegistrationDocument={() => void handlePreviewRegistrationDocument()}
+                onSubmit={handleSubmit}
+                onToggleManualBrand={toggleManualBrand}
+                onToggleManualModel={toggleManualModel}
+                onUploadRegistrationDocument={(file) => void handleUploadRegistrationDocument(file)}
+                onUploadValidationError={handleUploadValidationError}
+                registrationDocumentFileName={currentFormDocumentFileName}
+                registrationDocumentPreviewUrl={currentFormDocumentPreviewUrl}
+                successMessage={successMessage}
+                values={formValues}
+              />
+
+              <aside className="vehicle-side-stack">
+                <article className="panel panel-stack">
+                  <div className="panel-header-row">
+                    <div>
+                      <h2 className="panel-title">Mis vehiculos</h2>
+                      <p className="panel-text">
+                        Edita los datos del vehiculo o controla si debe seguir disponible para nuevos viajes.
+                      </p>
+                    </div>
+                  </div>
+
+                  {vehicleOverview?.vehicles.length ? (
+                    <div className="list-stack">
+                      {vehicleOverview.vehicles.map((vehicle) => {
+                        const isBusy = isTogglingVehicleId === vehicle.id;
+                        const isLockedByTrips = vehicle.operationalTripCount > 0;
+                        const isEditingCurrentVehicle = editingVehicleId === vehicle.id;
+                        const hasRegistrationDocument = Boolean(vehicle.registrationDocumentFileKey);
+
+                        return (
+                          <div key={vehicle.id} className="list-card">
+                            <div className="list-card-header">
+                              <strong>{getVehicleDisplayName(vehicle)}</strong>
+                              <div className="button-row">
+                                <StatusPill
+                                  label={vehicle.isActive ? 'Activo' : 'Inactivo'}
+                                  tone={vehicle.isActive ? 'success' : 'warning'}
+                                />
+                                {isLockedByTrips ? (
+                                  <StatusPill label="Con viajes operativos" tone="warning" />
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className="analytics-detail-grid">
+                              <div className="analytics-detail-card">
+                                <span>Tipo</span>
+                                <strong>{getVehicleTypeLabel(vehicle.vehicleType)}</strong>
+                                <p>
+                                  Capacidad {vehicle.seatCount} | Equipaje {getLuggagePolicyLabel(vehicle.luggagePolicy)}
+                                </p>
+                              </div>
+                              <div className="analytics-detail-card">
+                                <span>Identificacion</span>
+                                <strong>{vehicle.plate}</strong>
+                                <p>
+                                  {vehicle.color} | {vehicle.year}
+                                </p>
+                              </div>
+                              <div className="analytics-detail-card">
+                                <span>Documento</span>
+                                <strong>{hasRegistrationDocument ? 'Registrado' : 'Pendiente'}</strong>
+                                <p>
+                                  {hasRegistrationDocument
+                                    ? 'Disponible para previsualizar o descargar.'
+                                    : 'Aun no se ha cargado el documento de matricula.'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {hasRegistrationDocument ? (
+                              <div className="button-row">
+                                <Button
+                                  disabled={previewLoadingVehicleId === vehicle.id}
+                                  onClick={() => void handlePreviewStoredVehicleDocument(vehicle)}
+                                  variant="secondary"
+                                >
+                                  {previewLoadingVehicleId === vehicle.id
+                                    ? 'Abriendo...'
+                                    : 'Ver documento'}
+                                </Button>
+                                <Button
+                                  disabled={downloadingVehicleId === vehicle.id}
+                                  onClick={() => void handleDownloadStoredVehicleDocument(vehicle)}
+                                  variant="ghost"
+                                >
+                                  {downloadingVehicleId === vehicle.id
+                                    ? 'Descargando...'
+                                    : 'Descargar'}
+                                </Button>
+                              </div>
+                            ) : null}
+
+                            {isLockedByTrips ? (
+                              <div className="form-helper">
+                                Este vehiculo tiene viajes publicados, llenos o en curso. No puede editarse ni desactivarse hasta cerrar esos trayectos.
+                              </div>
+                            ) : null}
+
+                            <div className="button-row">
+                              <Button
+                                disabled={!vehicleManagementEnabled || isLockedByTrips}
+                                onClick={() => void startEditingVehicle(vehicle)}
+                                variant={isEditingCurrentVehicle ? 'primary' : 'secondary'}
+                              >
+                                {isEditingCurrentVehicle ? 'Editando' : 'Editar'}
+                              </Button>
+                              <Button
+                                disabled={
+                                  !vehicleManagementEnabled ||
+                                  isBusy ||
+                                  (vehicle.isActive && isLockedByTrips)
+                                }
+                                onClick={() => void handleToggleVehicleStatus(vehicle)}
+                                variant="ghost"
+                              >
+                                {isBusy
+                                  ? 'Actualizando...'
+                                  : vehicle.isActive
+                                    ? 'Desactivar'
+                                    : 'Activar'}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="panel-text">
+                      Aun no has registrado vehiculos. Crea el primero para continuar con la publicacion de viajes.
+                    </p>
+                  )}
+                </article>
+
+                <article className="vehicle-guide-card">
+                  <div className="vehicle-guide-head">
+                    <div>
+                      <h2 className="panel-title">Siguiente paso operativo</h2>
+                      <p className="panel-text">
+                        Mantener tu flota consistente reduce rechazos y mejora la confianza al publicar viajes.
+                      </p>
+                    </div>
+                    <StatusPill label={vehicleManagementEnabled ? 'Listo para operar' : 'Pendiente'} tone={vehicleManagementEnabled ? 'success' : 'warning'} />
+                  </div>
+
+                  <div className="vehicle-guide-grid">
+                    <Link className="vehicle-guide-link" href="/conductor">
+                      <strong>Revisar estado de conductor</strong>
+                      <span>Valida licencia y documentacion para desbloquear la gestion total.</span>
+                    </Link>
+                    <Link className="vehicle-guide-link" href="/viajes">
+                      <strong>Publicar viajes con tu flota</strong>
+                      <span>Una vez activo, usa tu vehiculo para abrir nuevos trayectos.</span>
+                    </Link>
+                    <Link className="vehicle-guide-link" href="/perfil">
+                      <strong>Actualizar datos de perfil</strong>
+                      <span>Sincroniza telefono y datos personales para soporte operativo.</span>
+                    </Link>
+                  </div>
+                </article>
+              </aside>
+            </section>
+          </>
+        )}
+      </section>
 
       <FilePreviewModal
         description={

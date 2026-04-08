@@ -7,6 +7,7 @@ import {
   VehicleType,
 } from '@saferidepro/shared-types';
 
+import { TripLifecycleMaintenanceService } from '../../../src/modules/trips/application/services/trip-lifecycle-maintenance.service';
 import { ListTripsUseCase } from '../../../src/modules/trips/application/use-cases/list-trips.use-case';
 import type { TripsRepository } from '../../../src/modules/trips/application/ports/trips.repository';
 
@@ -16,18 +17,29 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     findVehicleByIdForMembership: jest.fn(),
     createTrip: jest.fn(),
     findTripById: jest.fn(),
+    findLatestReusableTripByDriverMembershipId: jest.fn(),
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
     updateTripStatus: jest.fn(),
+    autoCancelTripForDriverAbsence: jest.fn(),
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
   };
 }
 
+function createTripLifecycleMaintenanceServiceMock(): jest.Mocked<TripLifecycleMaintenanceService> {
+  return {
+    reconcileTripLifecycle: jest.fn(),
+    reconcileTripCollection: jest.fn(async (trips) => trips),
+    filterTripsByStatuses: jest.fn((trips) => trips),
+  } as unknown as jest.Mocked<TripLifecycleMaintenanceService>;
+}
+
 describe('ListTripsUseCase', () => {
   it('builds filters for available trips using ecuador day bounds, time window and availability', async () => {
     const repository = createTripsRepositoryMock();
-    const useCase = new ListTripsUseCase(repository);
+    const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new ListTripsUseCase(repository, lifecycleService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -68,7 +80,8 @@ describe('ListTripsUseCase', () => {
 
   it('uses the current membership when listing only the user trips', async () => {
     const repository = createTripsRepositoryMock();
-    const useCase = new ListTripsUseCase(repository);
+    const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new ListTripsUseCase(repository, lifecycleService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-2',

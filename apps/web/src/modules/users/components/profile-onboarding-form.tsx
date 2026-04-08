@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -81,6 +82,19 @@ export function ProfileOnboardingForm() {
   const activeMembershipName =
     authSession.user.memberships.find((membership) => membership.isDefault)
       ?.institutionName ?? 'Sin contexto';
+  const acceptedConsentsCount = [
+    authSession.user.termsAcceptedAt,
+    authSession.user.privacyAcceptedAt,
+    authSession.user.safetyRulesAcceptedAt,
+  ].filter(Boolean).length;
+  const requiredProfileFieldsCount = [
+    formState.fullName.trim(),
+    formState.career.trim(),
+    formState.referenceNeighborhood.trim(),
+  ].filter(Boolean).length;
+  const onboardingProgress = Math.round(
+    ((6 - missingRequirementLabels.length) / 6) * 100,
+  );
 
   const handleProfilePhotoSelection = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -163,28 +177,53 @@ export function ProfileOnboardingForm() {
   };
 
   return (
-    <>
-      <header className="topbar">
-        <div>
-          <h1 className="topbar-title">
-            {requiresOnboarding ? 'Completa tu perfil antes de continuar' : 'Gestiona tu perfil'}
+    <section className="profile-shell">
+      <section className="profile-command">
+        <div className="profile-command-copy">
+          <p className="section-label">Perfil base</p>
+          <h1 className="profile-command-title">
+            {requiresOnboarding ? 'Completa tu perfil' : 'Gestion de perfil'}
           </h1>
-          <p className="topbar-subtitle">
+          <p className="profile-command-subtitle">
             {requiresOnboarding
-              ? 'Necesitamos algunos datos base y tus aceptaciones para habilitar el resto del sistema.'
-              : 'Manten actualizada tu informacion personal y tus aceptaciones institucionales.'}
+              ? 'Necesitamos tus datos clave y aceptaciones para habilitar correctamente el resto del sistema.'
+              : 'Manten tu informacion personal actualizada para operar sin fricciones.'}
           </p>
         </div>
-        <div className="topbar-actions">
+        <div className="profile-command-actions">
           <StatusPill
             label={requiresOnboarding ? 'Onboarding pendiente' : 'Perfil completo'}
             tone={requiresOnboarding ? 'warning' : 'success'}
           />
+          <StatusPill label={`${onboardingProgress}% completo`} tone="neutral" />
         </div>
-      </header>
+      </section>
 
-      <section className="page-grid-wide profile-layout">
-        <article className="panel panel-stack">
+      <section className="profile-kpi-grid">
+        <article className="profile-kpi-card">
+          <span className="profile-kpi-label">Datos requeridos</span>
+          <strong className="profile-kpi-value">{requiredProfileFieldsCount}/3</strong>
+          <p className="profile-kpi-note">Nombre, carrera y zona de referencia.</p>
+        </article>
+        <article className="profile-kpi-card">
+          <span className="profile-kpi-label">Aceptaciones</span>
+          <strong className="profile-kpi-value">{acceptedConsentsCount}/3</strong>
+          <p className="profile-kpi-note">Terminos, privacidad y seguridad.</p>
+        </article>
+        <article className="profile-kpi-card">
+          <span className="profile-kpi-label">Pendientes</span>
+          <strong className="profile-kpi-value">{missingRequirementLabels.length}</strong>
+          <p className="profile-kpi-note">Puntos por completar para habilitar cuenta.</p>
+        </article>
+        <article className="profile-kpi-card">
+          <span className="profile-kpi-label">Institucion activa</span>
+          <strong className="profile-kpi-value">{activeMembershipName}</strong>
+          <p className="profile-kpi-note">Contexto operativo de esta sesion.</p>
+        </article>
+      </section>
+
+      <section className="profile-main-grid">
+        <article className="panel panel-stack profile-form-panel">
           <div className="panel-header-row">
             <div>
               <p className="section-label">Perfil base</p>
@@ -406,65 +445,89 @@ export function ProfileOnboardingForm() {
           </form>
         </article>
 
-        <aside className="panel panel-stack compact-helper">
-          <div className="panel-header-row">
-            <div>
-              <p className="section-label">Checklist</p>
-              <h2 className="panel-title">Estado del onboarding</h2>
-            </div>
-            <StatusPill
-              label={requiresOnboarding ? 'Pendiente' : 'Completado'}
-              tone={requiresOnboarding ? 'warning' : 'success'}
-            />
-          </div>
-
-          {missingRequirementLabels.length ? (
-            <div className="validation-card validation-card-warning">
-              <strong>Faltan estos puntos para habilitar tu cuenta:</strong>
-              <ul className="validation-list">
-                {missingRequirementLabels.map((label) => (
-                  <li key={label}>{label}</li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <div className="form-success">
-              Tu perfil ya cumple el onboarding minimo y puedes seguir operando con normalidad.
-            </div>
-          )}
-
-          <div className="list-stack profile-aside-stack">
-            <div className="list-card">
-              <div className="list-card-header">
-                <strong>Correo</strong>
-                <StatusPill
-                  label={authSession.user.emailVerifiedAt ? 'Verificado' : 'Pendiente'}
-                  tone={authSession.user.emailVerifiedAt ? 'success' : 'warning'}
-                />
+        <aside className="profile-side-stack">
+          <article className="profile-checklist-card">
+            <div className="panel-header-row">
+              <div>
+                <p className="section-label">Checklist</p>
+                <h2 className="panel-title">Estado del onboarding</h2>
               </div>
-              <p className="panel-text">{authSession.user.email}</p>
+              <StatusPill
+                label={requiresOnboarding ? 'Pendiente' : 'Completado'}
+                tone={requiresOnboarding ? 'warning' : 'success'}
+              />
             </div>
 
-            <div className="list-card">
-              <div className="list-card-header">
-                <strong>Institucion activa</strong>
-                <StatusPill label={activeMembershipName} tone="neutral" />
+            {missingRequirementLabels.length ? (
+              <div className="validation-card validation-card-warning">
+                <strong>Faltan estos puntos para habilitar tu cuenta:</strong>
+                <ul className="validation-list">
+                  {missingRequirementLabels.map((label) => (
+                    <li key={label}>{label}</li>
+                  ))}
+                </ul>
               </div>
-              <p className="panel-text">
-                El perfil base se completa una sola vez y luego puedes editarlo desde esta misma vista.
-              </p>
+            ) : (
+              <div className="form-success">
+                Tu perfil ya cumple el onboarding minimo y puedes seguir operando con normalidad.
+              </div>
+            )}
+
+            <div className="list-stack profile-aside-stack">
+              <div className="list-card">
+                <div className="list-card-header">
+                  <strong>Correo</strong>
+                  <StatusPill
+                    label={authSession.user.emailVerifiedAt ? 'Verificado' : 'Pendiente'}
+                    tone={authSession.user.emailVerifiedAt ? 'success' : 'warning'}
+                  />
+                </div>
+                <p className="panel-text">{authSession.user.email}</p>
+              </div>
+
+              <div className="list-card">
+                <div className="list-card-header">
+                  <strong>Institucion activa</strong>
+                  <StatusPill label={activeMembershipName} tone="neutral" />
+                </div>
+                <p className="panel-text">
+                  El perfil base se completa una sola vez y luego puedes editarlo desde esta misma vista.
+                </p>
+              </div>
+
+              <div className="list-card list-card-strong">
+                <strong>Siguiente paso</strong>
+                <p className="panel-text">
+                  Cuando termines este bloque, ya podremos continuar correctamente con el flujo de
+                  conductor, vehiculos y viajes.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article className="profile-quick-card">
+            <div className="profile-quick-head">
+              <h2 className="panel-title">Continuidad operativa</h2>
+              <StatusPill label="Acciones" tone="neutral" />
             </div>
 
-            <div className="list-card list-card-strong">
-              <strong>Siguiente paso</strong>
-              <p className="panel-text">
-                Cuando termines este bloque, ya podremos continuar correctamente con el flujo de
-                conductor, vehiculos y viajes.
-              </p>
+            <div className="profile-quick-grid">
+              <Link className="profile-quick-link" href="/conductor">
+                <strong>Conductor</strong>
+                <span>Valida tu estado y documentacion para operar.</span>
+              </Link>
+              <Link className="profile-quick-link" href="/vehiculos">
+                <strong>Vehiculos</strong>
+                <span>Registra y activa tu flota antes de publicar.</span>
+              </Link>
+              <Link className="profile-quick-link" href="/viajes">
+                <strong>Viajes</strong>
+                <span>Gestiona solicitudes y trayectos de forma diaria.</span>
+              </Link>
             </div>
-          </div>
+          </article>
         </aside>
       </section>
-    </>
+    </section>
   );
 }

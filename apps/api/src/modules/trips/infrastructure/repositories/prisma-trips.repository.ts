@@ -143,6 +143,29 @@ export class PrismaTripsRepository implements TripsRepository {
     return trip ? this.mapTrip(trip) : null;
   }
 
+  async findLatestReusableTripByDriverMembershipId(
+    driverMembershipId: string,
+  ): Promise<TripRecord | null> {
+    const trip = await this.prisma.trip.findFirst({
+      where: {
+        driverMembershipId,
+        status: {
+          in: [
+            TripStatus.Draft,
+            TripStatus.Published,
+            TripStatus.Full,
+            TripStatus.InProgress,
+            TripStatus.Completed,
+          ],
+        },
+      },
+      include: this.tripInclude(),
+      orderBy: [{ createdAt: 'desc' }, { departureAt: 'desc' }],
+    });
+
+    return trip ? this.mapTrip(trip) : null;
+  }
+
   async listTrips(filters: TripFilters): Promise<TripRecord[]> {
     const trips = await this.prisma.trip.findMany({
       where: {
@@ -223,6 +246,48 @@ export class PrismaTripsRepository implements TripsRepository {
     });
 
     return this.mapTrip(trip);
+  }
+
+  async autoCancelTripForDriverAbsence(tripId: string): Promise<TripRecord | null> {
+    const trip = await this.prisma.$transaction(async (transaction) => {
+      const cancellationDate = new Date();
+      const updatedTrips = await transaction.trip.updateMany({
+        where: {
+          id: tripId,
+          status: {
+            in: [TripStatus.Published, TripStatus.Full],
+          },
+        },
+        data: {
+          status: TripStatus.Cancelled,
+          cancelledAt: cancellationDate,
+        },
+      });
+
+      if (updatedTrips.count === 0) {
+        return null;
+      }
+
+      await transaction.tripRequest.updateMany({
+        where: {
+          tripId,
+          status: {
+            in: [TripRequestStatus.Pending, TripRequestStatus.Accepted],
+          },
+        },
+        data: {
+          status: TripRequestStatus.Cancelled,
+          cancelledAt: cancellationDate,
+        },
+      });
+
+      return transaction.trip.findUnique({
+        where: { id: tripId },
+        include: this.tripInclude(),
+      });
+    });
+
+    return trip ? this.mapTrip(trip) : null;
   }
 
   async cancelTripAndActiveRequests(tripId: string): Promise<TripRecord> {

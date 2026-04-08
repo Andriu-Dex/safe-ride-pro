@@ -49,7 +49,7 @@
 |---|---|---|---|
 | Framework backend | NestJS | 11.x | Actual |
 | API | REST | - | Actual |
-| Tiempo real | Socket.IO | 4.x | Futuro cercano |
+| Tiempo real | SSE autenticado sobre fetch streaming | - | Actual |
 | Documentacion API | Swagger / OpenAPI | latest | Actual |
 | Testing API | Jest | 30.x | Actual |
 | Integracion API | Supertest | 7.x | Actual |

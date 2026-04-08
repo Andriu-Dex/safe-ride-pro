@@ -108,6 +108,9 @@ export interface TripsRepository {
   findVehicleByIdForMembership(membershipId: string, vehicleId: string): Promise<TripVehicleRecord | null>;
   createTrip(input: CreateTripInput): Promise<TripRecord>;
   findTripById(tripId: string): Promise<TripRecord | null>;
+  findLatestReusableTripByDriverMembershipId(
+    driverMembershipId: string,
+  ): Promise<TripRecord | null>;
   listTrips(filters: TripFilters): Promise<TripRecord[]>;
   findOverlappingTrips(
     driverMembershipId: string,
@@ -116,6 +119,7 @@ export interface TripsRepository {
     excludeTripId?: string,
   ): Promise<TripRecord[]>;
   updateTripStatus(tripId: string, status: TripStatus): Promise<TripRecord>;
+  autoCancelTripForDriverAbsence(tripId: string): Promise<TripRecord | null>;
   cancelTripAndActiveRequests(tripId: string): Promise<TripRecord>;
   startTripAndClosePendingRequests(tripId: string, autoReviewNote: string): Promise<TripRecord>;
 }

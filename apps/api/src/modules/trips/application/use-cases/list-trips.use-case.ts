@@ -11,6 +11,7 @@ import {
   parseTripDateFilterStart,
   parseTripTimeFilter,
 } from '../services/trip-search-filtering';
+import { TripLifecycleMaintenanceService } from '../services/trip-lifecycle-maintenance.service';
 
 export type ListTripsQuery = {
   userId: string;
@@ -31,6 +32,7 @@ export class ListTripsUseCase {
   constructor(
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
+    private readonly tripLifecycleMaintenanceService: TripLifecycleMaintenanceService,
   ) {}
 
   async execute(query: ListTripsQuery) {
@@ -66,8 +68,13 @@ export class ListTripsUseCase {
     }
 
     const trips = await this.tripsRepository.listTrips(filters);
+    const reconciledTrips = await this.tripLifecycleMaintenanceService.reconcileTripCollection(trips);
+    const visibleTrips = this.tripLifecycleMaintenanceService.filterTripsByStatuses(
+      reconciledTrips,
+      filters.statuses,
+    );
 
-    return trips.map((trip) => ({
+    return visibleTrips.map((trip) => ({
       id: trip.id,
       institutionId: trip.institutionId,
       institutionName: trip.institutionName,

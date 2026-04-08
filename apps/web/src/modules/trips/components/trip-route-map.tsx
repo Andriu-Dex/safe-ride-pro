@@ -102,18 +102,10 @@ export function TripRouteMap({ origin, destination }: TripRouteMapProps) {
   }, [destination, origin]);
 
   return (
-    <section className="trip-map-card">
-      <div className="section-heading">
-        <h3 className="panel-title">Mapa de referencia</h3>
-        <p className="section-heading-meta">Origen y destino exactos para el viaje</p>
-      </div>
+    <>
       {errorMessage ? <div className="form-helper">{errorMessage}</div> : null}
       <div className="trip-map-canvas" ref={mapRef} />
-      <p className="panel-text">
-        Selecciona origen y destino desde la busqueda geografica. El sistema guardara las
-        coordenadas exactas y mostrara solo la informacion permitida segun el contexto del viaje.
-      </p>
-    </section>
+    </>
   );
 }
 

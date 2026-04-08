@@ -6,6 +6,7 @@ import { DriversModule } from './modules/drivers/drivers.module';
 import { HealthModule } from './modules/health/health.module';
 import { InstitutionsModule } from './modules/institutions/institutions.module';
 import { RatingsModule } from './modules/ratings/ratings.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SanctionsModule } from './modules/sanctions/sanctions.module';
 import { TripsModule } from './modules/trips/trips.module';
@@ -25,6 +26,7 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
     InstitutionsModule,
     DriversModule,
     VehiclesModule,
+    RealtimeModule,
     SanctionsModule,
     TripsModule,
     TripRequestsModule,
