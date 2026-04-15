@@ -52,6 +52,7 @@ export type TripRequestRecord = {
   tripDestinationLabel: string;
   tripDepartureAt: Date;
   tripEstimatedArrivalAt: Date;
+  tripCancelledAt: Date | null;
   tripSeatCount: number;
   tripAvailableSeats: number;
   requestedPickupLatitude: number | null;

@@ -83,6 +83,8 @@ export class PrismaReportsRepository implements ReportsRepository {
       originLabel: trip.originLabel,
       destinationLabel: trip.destinationLabel,
       departureAt: trip.departureAt,
+      estimatedArrivalAt: trip.estimatedArrivalAt,
+      cancelledAt: trip.cancelledAt,
     };
   }
 

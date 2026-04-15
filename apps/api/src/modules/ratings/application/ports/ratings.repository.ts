@@ -25,6 +25,8 @@ export type RatingTripRecord = {
   originLabel: string;
   destinationLabel: string;
   departureAt: Date;
+  estimatedArrivalAt: Date;
+  cancelledAt: Date | null;
 };
 
 export type RatingRecord = {

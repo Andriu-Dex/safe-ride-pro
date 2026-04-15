@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  canCreateTripRating,
   MembershipStatus,
-  TripStatus,
 } from '@saferidepro/shared-types';
 
 import {
@@ -41,8 +41,16 @@ export class CreateRatingUseCase {
       throw new ForbiddenException('Solo puedes calificar viajes de tu institucion activa.');
     }
 
-    if (trip.status !== TripStatus.Completed) {
-      throw new BadRequestException('Solo puedes calificar viajes completados.');
+    if (
+      !canCreateTripRating({
+        status: trip.status,
+        departureAt: trip.departureAt,
+        estimatedArrivalAt: trip.estimatedArrivalAt,
+      })
+    ) {
+      throw new BadRequestException(
+        'Solo puedes calificar viajes completados dentro de la ventana de cierre.',
+      );
     }
 
     if (command.targetMembershipId === membership.id) {

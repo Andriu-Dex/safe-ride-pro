@@ -18,6 +18,7 @@ export type ReportOpportunity = {
   tripDestinationLabel: string;
   tripDepartureAt: string;
   directionLabel: string;
+  incidentSummary: string;
 };
 
 type ReportDraft = {
@@ -56,6 +57,7 @@ export function ReportOpportunityCard({
         Viaje: {opportunity.tripOriginLabel} -&gt; {opportunity.tripDestinationLabel}
       </p>
       <p className="panel-text">Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
+      <p className="form-helper compact-helper">{opportunity.incidentSummary}</p>
 
       <div className="form-grid form-grid-2 compact-grid">
         <SelectField

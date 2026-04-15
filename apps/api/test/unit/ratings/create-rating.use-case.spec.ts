@@ -68,6 +68,8 @@ describe('CreateRatingUseCase', () => {
       originLabel: 'Huachi',
       destinationLabel: 'Centro',
       departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      cancelledAt: null,
     });
     repository.hasAcceptedTripRequest.mockResolvedValue(true);
     repository.findRatingByTripAuthorAndTarget.mockResolvedValue(null);
@@ -114,6 +116,8 @@ describe('CreateRatingUseCase', () => {
       originLabel: 'Huachi',
       destinationLabel: 'Centro',
       departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      cancelledAt: null,
     });
     repository.hasAcceptedTripRequest.mockResolvedValue(true);
     repository.findRatingByTripAuthorAndTarget.mockResolvedValue(
@@ -137,5 +141,54 @@ describe('CreateRatingUseCase', () => {
     );
 
     expect(repository.createRating).not.toHaveBeenCalled();
+  });
+
+  it('rejects ratings outside the post-trip closure window', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2030-01-05T12:00:00.000Z'));
+
+    try {
+      const repository = createRatingsRepositoryMock();
+      const useCase = new CreateRatingUseCase(repository);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-passenger',
+        userId: 'user-passenger',
+        fullName: 'Pasajero Uno',
+        institutionId: 'institution-1',
+        institutionName: 'UTA',
+        membershipStatus: MembershipStatus.Active,
+      });
+      repository.findTripById.mockResolvedValue({
+        id: 'trip-1',
+        institutionId: 'institution-1',
+        institutionName: 'UTA',
+        status: TripStatus.Completed,
+        driverMembershipId: 'membership-driver',
+        driverUserId: 'user-driver',
+        driverFullName: 'Conductor Uno',
+        originLabel: 'Huachi',
+        destinationLabel: 'Centro',
+        departureAt: new Date('2030-01-01T10:00:00.000Z'),
+        estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+        cancelledAt: null,
+      });
+
+      await expect(
+        useCase.execute({
+          userId: 'user-passenger',
+          tripId: 'trip-1',
+          targetMembershipId: 'membership-driver',
+          score: 4,
+        }),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'Solo puedes calificar viajes completados dentro de la ventana de cierre.',
+        ),
+      );
+
+      expect(repository.createRating).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

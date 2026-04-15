@@ -392,7 +392,7 @@ Reglas base:
 
 1. El conductor marca el viaje como finalizado.
 2. El sistema cambia el estado a `COMPLETED`.
-3. Se habilitan calificaciones y reportes.
+3. Se habilita el cierre post-viaje dentro de una ventana operativa acotada.
 
 ---
 
@@ -404,6 +404,8 @@ Despues de finalizar un viaje:
 
 - pasajero puede calificar al conductor
 - conductor puede calificar al pasajero
+- las calificaciones solo permanecen abiertas durante la ventana de cierre configurada
+- fuera de esa ventana ya no deben aparecer acciones pendientes de calificacion
 
 ### 14.2 Reportes
 
@@ -412,6 +414,19 @@ Si existio una incidencia:
 - el usuario puede crear un reporte
 - puede adjuntar evidencia segun reglas permitidas
 - el reporte entra a revision administrativa
+
+Casos habilitados en esta fase:
+
+- viaje `COMPLETED` dentro de la ventana de cierre
+- viaje `CANCELLED` por cancelacion tardia del conductor dentro de la ventana de cierre
+- viaje `CANCELLED` por ausencia del conductor detectada por autocancelacion
+- viaje `IN_PROGRESS` vencido operativamente y aun no cerrado
+
+Restricciones funcionales:
+
+- en cancelacion tardia o ausencia del conductor, solo el pasajero confirmado puede reportar al conductor
+- el conductor no debe poder usar esos escenarios para reportar a pasajeros
+- los reportes deben mantenerse acotados a participantes confirmados del viaje
 
 ### 14.3 Reputacion
 

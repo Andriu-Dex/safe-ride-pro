@@ -477,6 +477,7 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       destinationLabel: string;
       departureAt: Date;
       estimatedArrivalAt: Date;
+      cancelledAt: Date | null;
       seatCount: number;
       availableSeats: number;
       status: string;
@@ -511,6 +512,7 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       tripDestinationLabel: tripRequest.trip.destinationLabel,
       tripDepartureAt: tripRequest.trip.departureAt,
       tripEstimatedArrivalAt: tripRequest.trip.estimatedArrivalAt,
+      tripCancelledAt: tripRequest.trip.cancelledAt,
       tripSeatCount: tripRequest.trip.seatCount,
       tripAvailableSeats: tripRequest.trip.availableSeats,
       requestedPickupLatitude: tripRequest.requestedPickupLatitude,

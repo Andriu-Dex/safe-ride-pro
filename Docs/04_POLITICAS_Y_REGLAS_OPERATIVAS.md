@@ -186,6 +186,15 @@ La formula exacta queda sujeta a ajustes posteriores.
 - si un viaje sigue `IN_PROGRESS` y supera ampliamente la llegada estimada sin finalizarse, la interfaz debe mostrar una alerta de revision operativa
 - en esta fase, los viajes atrasados en `IN_PROGRESS` no se autocompletan para evitar cerrar como valido un recorrido posiblemente no realizado
 
+### 5.7 Ventana de cierre post-viaje
+
+- calificaciones y reportes no deben quedar abiertos indefinidamente
+- la ventana operativa de cierre post-viaje es de `72` horas desde el cierre o incidente relevante
+- para viajes `COMPLETED`, la referencia es la hora estimada de llegada
+- para viajes cancelados tarde o por ausencia del conductor, la referencia es `cancelledAt`
+- para viajes `IN_PROGRESS` vencidos sin cierre, la referencia es la llegada estimada
+- al vencer esta ventana, la interfaz ya no debe seguir mostrando acciones pendientes de calificacion o reporte
+
 ---
 
 ## 6. Reglas por tipo de vehiculo
@@ -595,6 +604,24 @@ Reglas iniciales:
 - una combinacion de `1` reporte resuelto de severidad alta y reincidencia reciente en reportes resueltos puede escalar mas fuerte que dos reportes bajos o medios
 - los reportes bajos o medios por si solos favorecen seguimiento u observacion antes que una suspension automatica fuerte
 - los reportes de alta severidad exigen mas control de cierre para reducir falsos positivos y decisiones apresuradas
+
+### 11.8 Reglas de habilitacion de reportes post-viaje
+
+- no todo reporte debe depender estrictamente de un viaje `COMPLETED`
+- un reporte tambien puede habilitarse cuando existe un incidente de cierre operativo verificable
+
+Escenarios habilitados:
+
+- viaje completado dentro de ventana
+- cancelacion tardia del conductor dentro de ventana
+- autocancelacion por ausencia del conductor
+- viaje `IN_PROGRESS` vencido y todavia sin cierre
+
+Restricciones de actor:
+
+- en cancelacion tardia o ausencia del conductor, solo pasajeros confirmados pueden reportar al conductor
+- en esos mismos escenarios, el conductor no puede reportar a pasajeros
+- en viajes completados o vencidos sin cierre, siguen aplicando reportes entre participantes confirmados
 
 ---
 

@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  deriveTripClosureIncidentType,
   MembershipStatus,
-  TripStatus,
+  TripClosureIncidentType,
 } from '@saferidepro/shared-types';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
@@ -45,8 +46,17 @@ export class CreateReportUseCase {
       throw new ForbiddenException('Solo puedes reportar viajes de tu institucion activa.');
     }
 
-    if (trip.status !== TripStatus.Completed) {
-      throw new BadRequestException('Solo puedes reportar incidentes en viajes completados.');
+    const incidentType = deriveTripClosureIncidentType({
+      status: trip.status,
+      departureAt: trip.departureAt,
+      estimatedArrivalAt: trip.estimatedArrivalAt,
+      cancelledAt: trip.cancelledAt,
+    });
+
+    if (!incidentType) {
+      throw new BadRequestException(
+        'Solo puedes reportar viajes cerrados o incidentes de cierre dentro de la ventana vigente.',
+      );
     }
 
     if (command.reportedMembershipId === membership.id) {
@@ -64,13 +74,33 @@ export class CreateReportUseCase {
     }
 
     const reportedIsDriver = trip.driverMembershipId === command.reportedMembershipId;
-    const reportedIsAcceptedPassenger = await this.reportsRepository.hasAcceptedTripRequest(
-      trip.id,
-      command.reportedMembershipId,
-    );
 
-    if (!reportedIsDriver && !reportedIsAcceptedPassenger) {
-      throw new BadRequestException('Solo puedes reportar a participantes confirmados de este viaje.');
+    if (
+      incidentType === TripClosureIncidentType.DriverAbsence ||
+      incidentType === TripClosureIncidentType.LateDriverCancellation
+    ) {
+      if (!reporterIsAcceptedPassenger) {
+        throw new ForbiddenException(
+          'Solo los pasajeros confirmados pueden reportar al conductor por cancelacion tardia o ausencia.',
+        );
+      }
+
+      if (!reportedIsDriver) {
+        throw new BadRequestException(
+          'En incidentes de cancelacion tardia o ausencia solo puedes reportar al conductor del viaje.',
+        );
+      }
+    } else {
+      const reportedIsAcceptedPassenger = await this.reportsRepository.hasAcceptedTripRequest(
+        trip.id,
+        command.reportedMembershipId,
+      );
+
+      if (!reportedIsDriver && !reportedIsAcceptedPassenger) {
+        throw new BadRequestException(
+          'Solo puedes reportar a participantes confirmados de este viaje.',
+        );
+      }
     }
 
     const existingReport = await this.reportsRepository.findExistingReport(

@@ -1,11 +1,13 @@
 'use client';
 
 import {
+  canCreateTripRating,
+  deriveTripClosureIncidentType,
   isOperationalMembership,
   OperationalSanctionType,
   selectOperationalMembership,
   TripRequestStatus,
-  TripStatus,
+  TripClosureIncidentType,
 } from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -72,13 +74,7 @@ const EMPTY_RATING_DRAFT: RatingDraft = {
   comment: '',
 };
 
-const EMPTY_REPORT_DRAFT: ReportDraft = {
-  reason: 'UNSAFE_DRIVING',
-  description: '',
-  evidenceFileKey: '',
-};
-
-type ParticipationOpportunity = {
+type RatingParticipationOpportunity = {
   id: string;
   tripId: string;
   targetMembershipId: string;
@@ -87,7 +83,20 @@ type ParticipationOpportunity = {
   tripDestinationLabel: string;
   tripDepartureAt: string;
   ratingDirectionLabel: string;
+};
+
+type ReportParticipationOpportunity = {
+  id: string;
+  tripId: string;
+  targetMembershipId: string;
+  targetFullName: string;
+  tripOriginLabel: string;
+  tripDestinationLabel: string;
+  tripDepartureAt: string;
   reportDirectionLabel: string;
+  incidentType: TripClosureIncidentType;
+  incidentSummary: string;
+  suggestedReason: string;
 };
 
 function formatDateTime(value: string): string {
@@ -102,18 +111,53 @@ function formatAverageScore(score: number | null): string {
   return score === null ? 'Sin datos' : `${score.toFixed(1)}/5`;
 }
 
-function buildParticipationOpportunities(
+function sortByDepartureDateDescending<T extends { tripDepartureAt: string }>(items: T[]): T[] {
+  return items.sort(
+    (left, right) =>
+      new Date(right.tripDepartureAt).getTime() - new Date(left.tripDepartureAt).getTime(),
+  );
+}
+
+function getIncidentSummary(incidentType: TripClosureIncidentType): string {
+  switch (incidentType) {
+    case TripClosureIncidentType.Completed:
+      return 'Viaje completado dentro de la ventana de cierre. Si hubo un problema, registralo ahora.';
+    case TripClosureIncidentType.LateDriverCancellation:
+      return 'El conductor cancelo tarde un viaje que ya tenia participantes confirmados.';
+    case TripClosureIncidentType.DriverAbsence:
+      return 'El viaje fue cancelado por ausencia del conductor despues de la hora prevista de salida.';
+    case TripClosureIncidentType.OverdueInProgress:
+      return 'El viaje sigue abierto fuera del tiempo estimado y puede requerir cierre o revision administrativa.';
+    default:
+      return 'Incidente operativo disponible para revision.';
+  }
+}
+
+function getSuggestedReportReason(incidentType: TripClosureIncidentType): string {
+  switch (incidentType) {
+    case TripClosureIncidentType.LateDriverCancellation:
+    case TripClosureIncidentType.DriverAbsence:
+      return 'NO_SHOW';
+    case TripClosureIncidentType.OverdueInProgress:
+      return 'OTHER';
+    case TripClosureIncidentType.Completed:
+    default:
+      return 'UNSAFE_DRIVING';
+  }
+}
+
+function buildRatingOpportunities(
   membershipId: string | undefined,
   myRequests: TripRequestRecord[],
   incomingRequests: TripRequestRecord[],
-): ParticipationOpportunity[] {
+): RatingParticipationOpportunity[] {
   if (!membershipId) {
     return [];
   }
 
-  const items = new Map<string, ParticipationOpportunity>();
+  const items = new Map<string, RatingParticipationOpportunity>();
 
-  const registerOpportunity = (opportunity: ParticipationOpportunity) => {
+  const registerOpportunity = (opportunity: RatingParticipationOpportunity) => {
     if (!items.has(opportunity.id)) {
       items.set(opportunity.id, opportunity);
     }
@@ -122,7 +166,11 @@ function buildParticipationOpportunities(
   myRequests.forEach((request) => {
     if (
       request.status !== TripRequestStatus.Accepted ||
-      request.tripStatus !== TripStatus.Completed
+      !canCreateTripRating({
+        status: request.tripStatus,
+        departureAt: request.tripDepartureAt,
+        estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      })
     ) {
       return;
     }
@@ -136,7 +184,6 @@ function buildParticipationOpportunities(
       tripDestinationLabel: request.tripDestinationLabel,
       tripDepartureAt: request.tripDepartureAt,
       ratingDirectionLabel: 'Calificar al conductor',
-      reportDirectionLabel: 'Reportar al conductor',
     });
   });
 
@@ -144,7 +191,11 @@ function buildParticipationOpportunities(
     if (
       request.driverMembershipId !== membershipId ||
       request.status !== TripRequestStatus.Accepted ||
-      request.tripStatus !== TripStatus.Completed
+      !canCreateTripRating({
+        status: request.tripStatus,
+        departureAt: request.tripDepartureAt,
+        estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      })
     ) {
       return;
     }
@@ -158,14 +209,107 @@ function buildParticipationOpportunities(
       tripDestinationLabel: request.tripDestinationLabel,
       tripDepartureAt: request.tripDepartureAt,
       ratingDirectionLabel: 'Calificar al pasajero',
-      reportDirectionLabel: 'Reportar al pasajero',
     });
   });
 
-  return Array.from(items.values()).sort(
-    (left, right) =>
-      new Date(right.tripDepartureAt).getTime() - new Date(left.tripDepartureAt).getTime(),
-  );
+  return sortByDepartureDateDescending(Array.from(items.values()));
+}
+
+function buildReportOpportunities(
+  membershipId: string | undefined,
+  myRequests: TripRequestRecord[],
+  incomingRequests: TripRequestRecord[],
+): ReportParticipationOpportunity[] {
+  if (!membershipId) {
+    return [];
+  }
+
+  const items = new Map<string, ReportParticipationOpportunity>();
+
+  const registerOpportunity = (opportunity: ReportParticipationOpportunity) => {
+    if (!items.has(opportunity.id)) {
+      items.set(opportunity.id, opportunity);
+    }
+  };
+
+  myRequests.forEach((request) => {
+    if (request.status !== TripRequestStatus.Accepted) {
+      return;
+    }
+
+    const incidentType = deriveTripClosureIncidentType({
+      status: request.tripStatus,
+      departureAt: request.tripDepartureAt,
+      estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      cancelledAt: request.tripCancelledAt,
+    });
+
+    if (!incidentType) {
+      return;
+    }
+
+    registerOpportunity({
+      id: `${request.tripId}:${request.driverMembershipId}`,
+      tripId: request.tripId,
+      targetMembershipId: request.driverMembershipId,
+      targetFullName: request.driverFullName,
+      tripOriginLabel: request.tripOriginLabel,
+      tripDestinationLabel: request.tripDestinationLabel,
+      tripDepartureAt: request.tripDepartureAt,
+      reportDirectionLabel: 'Reportar al conductor',
+      incidentType,
+      incidentSummary: getIncidentSummary(incidentType),
+      suggestedReason: getSuggestedReportReason(incidentType),
+    });
+  });
+
+  incomingRequests.forEach((request) => {
+    if (
+      request.driverMembershipId !== membershipId ||
+      request.status !== TripRequestStatus.Accepted
+    ) {
+      return;
+    }
+
+    const incidentType = deriveTripClosureIncidentType({
+      status: request.tripStatus,
+      departureAt: request.tripDepartureAt,
+      estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      cancelledAt: request.tripCancelledAt,
+    });
+
+    if (
+      !incidentType ||
+      incidentType === TripClosureIncidentType.DriverAbsence ||
+      incidentType === TripClosureIncidentType.LateDriverCancellation
+    ) {
+      return;
+    }
+
+    registerOpportunity({
+      id: `${request.tripId}:${request.passengerMembershipId}`,
+      tripId: request.tripId,
+      targetMembershipId: request.passengerMembershipId,
+      targetFullName: request.passengerFullName,
+      tripOriginLabel: request.tripOriginLabel,
+      tripDestinationLabel: request.tripDestinationLabel,
+      tripDepartureAt: request.tripDepartureAt,
+      reportDirectionLabel: 'Reportar al pasajero',
+      incidentType,
+      incidentSummary: getIncidentSummary(incidentType),
+      suggestedReason: getSuggestedReportReason(incidentType),
+    });
+  });
+
+  return sortByDepartureDateDescending(Array.from(items.values()));
+}
+
+function getInitialReportDraft(opportunity?: ReportParticipationOpportunity): ReportDraft {
+  return {
+    reason: opportunity?.suggestedReason ?? 'UNSAFE_DRIVING',
+    description: '',
+    evidenceFileKey: '',
+  };
 }
 
 export default function TrustPage() {
@@ -305,8 +449,12 @@ export default function TrustPage() {
     },
   );
 
-  const participationOpportunities = useMemo(
-    () => buildParticipationOpportunities(defaultMembershipId, myRequests, incomingRequests),
+  const ratingOpportunities = useMemo(
+    () => buildRatingOpportunities(defaultMembershipId, myRequests, incomingRequests),
+    [defaultMembershipId, incomingRequests, myRequests],
+  );
+  const reportOpportunities = useMemo(
+    () => buildReportOpportunities(defaultMembershipId, myRequests, incomingRequests),
     [defaultMembershipId, incomingRequests, myRequests],
   );
 
@@ -332,10 +480,10 @@ export default function TrustPage() {
     [sanctionAppeals],
   );
 
-  const pendingRatingOpportunities = participationOpportunities.filter(
+  const pendingRatingOpportunities = ratingOpportunities.filter(
     (opportunity) => !givenRatingKeys.has(opportunity.id),
   );
-  const pendingReportOpportunities = participationOpportunities.filter(
+  const pendingReportOpportunities = reportOpportunities.filter(
     (opportunity) => !reportedKeys.has(opportunity.id),
   );
 
@@ -354,6 +502,7 @@ export default function TrustPage() {
   };
 
   const handleReportDraftChange = (
+    opportunity: ReportParticipationOpportunity,
     opportunityId: string,
     field: keyof ReportDraft,
     value: string,
@@ -361,7 +510,7 @@ export default function TrustPage() {
     setReportDrafts((currentDrafts) => ({
       ...currentDrafts,
       [opportunityId]: {
-        ...(currentDrafts[opportunityId] ?? EMPTY_REPORT_DRAFT),
+        ...(currentDrafts[opportunityId] ?? getInitialReportDraft(opportunity)),
         [field]: value,
       },
     }));
@@ -374,7 +523,7 @@ export default function TrustPage() {
     }));
   };
 
-  const handleCreateRating = async (opportunity: ParticipationOpportunity) => {
+  const handleCreateRating = async (opportunity: RatingParticipationOpportunity) => {
     if (!authSession) {
       return;
     }
@@ -410,12 +559,12 @@ export default function TrustPage() {
     }
   };
 
-  const handleCreateReport = async (opportunity: ParticipationOpportunity) => {
+  const handleCreateReport = async (opportunity: ReportParticipationOpportunity) => {
     if (!authSession) {
       return;
     }
 
-    const draft = reportDrafts[opportunity.id] ?? EMPTY_REPORT_DRAFT;
+    const draft = reportDrafts[opportunity.id] ?? getInitialReportDraft(opportunity);
     setIsSubmittingReportId(opportunity.id);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -433,7 +582,7 @@ export default function TrustPage() {
       setSuccessMessage(response.message);
       setReportDrafts((currentDrafts) => ({
         ...currentDrafts,
-        [opportunity.id]: EMPTY_REPORT_DRAFT,
+        [opportunity.id]: getInitialReportDraft(opportunity),
       }));
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
@@ -501,7 +650,7 @@ export default function TrustPage() {
           <div>
             <h1 className="topbar-title">Confianza</h1>
             <p className="topbar-subtitle">
-              Revisa tu reputacion, califica a otros participantes y registra incidentes de viajes completados.
+              Revisa tu reputacion, califica interacciones cerradas y registra incidentes de cierre operativo.
             </p>
           </div>
           <StatusPill label="Operacion bloqueada" tone="warning" />
@@ -523,7 +672,7 @@ export default function TrustPage() {
         <div>
           <h1 className="topbar-title">Confianza</h1>
           <p className="topbar-subtitle">
-            Revisa tu reputacion, califica a otros participantes y registra incidentes de viajes completados.
+            Revisa tu reputacion, califica interacciones cerradas y registra incidentes de cierre operativo.
           </p>
         </div>
         <div className="topbar-actions">
@@ -558,12 +707,12 @@ export default function TrustPage() {
             }
           />
           <InfoCard
-            description="Viajes completados donde aun puedes registrar una calificacion."
+            description="Interacciones cerradas dentro de la ventana vigente donde aun puedes registrar una calificacion."
             label="Calificaciones pendientes"
             value={`${pendingRatingOpportunities.length}`}
           />
           <InfoCard
-            description="Casos disponibles para reportar dentro de tus viajes completados."
+            description="Casos disponibles para reportar en viajes cerrados o con incidentes de cierre."
             label="Reportes pendientes"
             value={`${pendingReportOpportunities.length}`}
           />
@@ -848,7 +997,9 @@ export default function TrustPage() {
                   <ReportOpportunityCard
                     key={opportunity.id}
                     isSubmitting={isSubmittingReportId === opportunity.id}
-                    onChange={(field, value) => handleReportDraftChange(opportunity.id, field, value)}
+                    onChange={(field, value) =>
+                      handleReportDraftChange(opportunity, opportunity.id, field, value)
+                    }
                     onSubmit={() => void handleCreateReport(opportunity)}
                     opportunity={{
                       id: opportunity.id,
@@ -859,14 +1010,15 @@ export default function TrustPage() {
                       tripDestinationLabel: opportunity.tripDestinationLabel,
                       tripDepartureAt: opportunity.tripDepartureAt,
                       directionLabel: opportunity.reportDirectionLabel,
+                      incidentSummary: opportunity.incidentSummary,
                     } satisfies ReportOpportunity}
-                    value={reportDrafts[opportunity.id] ?? EMPTY_REPORT_DRAFT}
+                    value={reportDrafts[opportunity.id] ?? getInitialReportDraft(opportunity)}
                   />
                 ))}
               </div>
             ) : (
               <p className="panel-text">
-                No tienes reportes pendientes. Si todo salio bien, no necesitas registrar incidentes.
+                No tienes reportes pendientes. No se detectan cierres anomalos o incidentes disponibles para registrar.
               </p>
             )}
           </article>

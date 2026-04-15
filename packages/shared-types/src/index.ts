@@ -177,6 +177,15 @@ export {
 } from './trip-lifecycle';
 
 export {
+  canCreateTripIncidentReport,
+  canCreateTripRating,
+  deriveTripClosureIncidentType,
+  isWithinTripPostActionWindow,
+  TripClosureIncidentType,
+  TRIP_POST_ACTION_WINDOW_HOURS,
+} from './trip-post-closure';
+
+export {
   isTripTimeFilterValue,
   TripAvailabilityFilter,
   TRIP_TIME_FILTER_PATTERN,
