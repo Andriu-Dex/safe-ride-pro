@@ -34,6 +34,10 @@ export class GetTripByIdUseCase {
     }
 
     const isOwner = reconciledTrip.driverMembershipId === membership.id;
+    const isAcceptedPassenger = isOwner
+      ? false
+      : await this.tripsRepository.hasAcceptedTripRequest(tripId, membership.id);
+    const canViewPreciseRoute = isOwner || isAcceptedPassenger;
 
     return {
       id: reconciledTrip.id,
@@ -48,10 +52,10 @@ export class GetTripByIdUseCase {
       routeMode: reconciledTrip.routeMode,
       originLabel: reconciledTrip.originLabel,
       destinationLabel: reconciledTrip.destinationLabel,
-      originLatitude: isOwner ? reconciledTrip.originLatitude : null,
-      originLongitude: isOwner ? reconciledTrip.originLongitude : null,
-      destinationLatitude: isOwner ? reconciledTrip.destinationLatitude : null,
-      destinationLongitude: isOwner ? reconciledTrip.destinationLongitude : null,
+      originLatitude: canViewPreciseRoute ? reconciledTrip.originLatitude : null,
+      originLongitude: canViewPreciseRoute ? reconciledTrip.originLongitude : null,
+      destinationLatitude: canViewPreciseRoute ? reconciledTrip.destinationLatitude : null,
+      destinationLongitude: canViewPreciseRoute ? reconciledTrip.destinationLongitude : null,
       departureAt: reconciledTrip.departureAt,
       estimatedArrivalAt: reconciledTrip.estimatedArrivalAt,
       seatCount: reconciledTrip.seatCount,
@@ -61,6 +65,8 @@ export class GetTripByIdUseCase {
       basePriceReference: reconciledTrip.basePriceReference,
       detourSurchargeReference: reconciledTrip.detourSurchargeReference,
       notes: reconciledTrip.notes,
+      cancelledAt: reconciledTrip.cancelledAt,
+      cancellationTiming: reconciledTrip.cancellationTiming,
       createdAt: reconciledTrip.createdAt,
     };
   }

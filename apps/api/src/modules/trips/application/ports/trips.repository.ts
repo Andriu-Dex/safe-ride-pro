@@ -108,6 +108,7 @@ export interface TripsRepository {
   findVehicleByIdForMembership(membershipId: string, vehicleId: string): Promise<TripVehicleRecord | null>;
   createTrip(input: CreateTripInput): Promise<TripRecord>;
   findTripById(tripId: string): Promise<TripRecord | null>;
+  hasAcceptedTripRequest(tripId: string, passengerMembershipId: string): Promise<boolean>;
   findLatestReusableTripByDriverMembershipId(
     driverMembershipId: string,
   ): Promise<TripRecord | null>;

@@ -1048,9 +1048,11 @@ export default function TripsPage() {
 
             {activeWorkspace === 'operation' ? (
               <TripsOperationWorkspace
+                accessToken={authSession?.accessToken}
                 activeVehicles={activeVehicles}
                 blocksDriver={trustRestrictions.blocksDriver}
                 canCreateTrips={canCreateTrips}
+                incomingRequests={incomingRequests}
                 isCreateTripPanelOpen={isCreateTripPanelOpen}
                 isCreatingTrip={isCreatingTrip}
                 isLoadingLatestRoute={isLoadingLatestRoute}
@@ -1065,12 +1067,15 @@ export default function TripsPage() {
                 onTripAction={(tripId, action) => void handleTripAction(tripId, action)}
                 onTripFormChange={handleTripFormChange}
                 onUseLatestRoute={handleUseLatestRoute}
+                realtimeStatusLabel={realtimeStatusLabel}
+                realtimeStatusTone={realtimeStatusTone}
                 tripForm={tripForm}
               />
             ) : null}
 
             {activeWorkspace === 'requests' ? (
               <TripsRequestsWorkspace
+                accessToken={authSession?.accessToken}
                 canAcceptIncomingRequest={canAcceptIncomingRequest}
                 canCancelOwnRequest={canCancelOwnRequest}
                 canMarkRequestAsNoShow={canMarkRequestAsNoShow}
@@ -1087,6 +1092,8 @@ export default function TripsPage() {
                   void handleIncomingRequestAction(requestId, action)}
                 onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
                 onNoShowNoteChange={handleNoShowNoteChange}
+                realtimeStatusLabel={realtimeStatusLabel}
+                realtimeStatusTone={realtimeStatusTone}
               />
             ) : null}
 

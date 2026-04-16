@@ -25,6 +25,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     findVehicleByIdForMembership: jest.fn(),
     createTrip: jest.fn(),
     findTripById: jest.fn(),
+    hasAcceptedTripRequest: jest.fn(),
     findLatestReusableTripByDriverMembershipId: jest.fn(),
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),

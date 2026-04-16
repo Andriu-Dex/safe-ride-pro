@@ -350,7 +350,14 @@ El pasajero confirmado podra ver:
 
 ### 11.3 Durante viaje activo
 
-Solo participantes confirmados y actores autorizados podran ver tracking en vivo si esa funcion esta habilitada.
+Solo participantes confirmados y actores autorizados podran ver seguimiento del viaje segun la fase implementada.
+
+En la fase actual `Tracking v1`:
+
+- se muestra la ruta planificada del trayecto
+- se muestra el estado operativo del viaje en tiempo real
+- se muestran hitos de salida, trayecto y cierre
+- no se comparte todavia GPS continuo del conductor
 
 ---
 
@@ -387,6 +394,10 @@ Reglas base:
 - no se permiten nuevos desvios no aprobados previamente
 - no se deben agregar nuevos pasajeros
 - el sistema mantiene trazabilidad de eventos importantes
+- el panel de tracking muestra ruta planificada y estado actualizado del viaje
+- el conductor dispone de un centro de mando con foco en pasajeros confirmados, estado y siguiente accion operativa
+- el pasajero confirmado dispone de una vista de trayecto activo con conductor asignado, estado y resumen del recorrido
+- el tracking GPS continuo queda para una fase posterior
 
 ### 13.3 Finalizacion
 

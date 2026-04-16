@@ -9,6 +9,11 @@ import {
   getTripRequestStatusTone,
 } from '../../trip-requests/lib/trip-request-labels';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
+import {
+  TripLiveTrackingPanel,
+  type TripTrackingCandidate,
+} from './trip-live-tracking-panel';
+import { PassengerActiveRidePanel } from './passenger-active-ride-panel';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
 
@@ -28,6 +33,9 @@ type TripsRequestsWorkspaceProps = {
   onCancelMyRequest: (requestId: string) => void;
   isRefreshingData?: boolean;
   onExploreTrips: () => void;
+  accessToken?: string;
+  realtimeStatusLabel: string;
+  realtimeStatusTone: 'neutral' | 'success' | 'warning' | 'danger';
 };
 
 export function TripsRequestsWorkspace({
@@ -46,10 +54,37 @@ export function TripsRequestsWorkspace({
   onCancelMyRequest,
   isRefreshingData = false,
   onExploreTrips,
+  accessToken,
+  realtimeStatusLabel,
+  realtimeStatusTone,
 }: TripsRequestsWorkspaceProps) {
+  const passengerTrackingCandidates = buildPassengerTrackingCandidates(myRequests);
+
   return (
     <section className="trips-workspace-grid">
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="requests" /> : null}
+
+      <div className="trip-live-panel-span">
+        <TripLiveTrackingPanel
+          accessToken={accessToken}
+          candidates={passengerTrackingCandidates}
+          description="Seguimiento del trayecto para pasajero confirmado: ves la ruta prevista, el estado actual y los hitos del viaje sin depender todavia de GPS continuo."
+          emptyDescription="Cuando una de tus solicitudes sea aceptada y el viaje quede proximo o en curso, aqui veras su panel de seguimiento."
+          emptyTitle="Todavia no tienes un viaje confirmado para seguir"
+          realtimeStatusLabel={realtimeStatusLabel}
+          realtimeStatusTone={realtimeStatusTone}
+          title="Seguimiento de mis trayectos"
+        />
+      </div>
+
+      <div className="trip-live-panel-span">
+        <PassengerActiveRidePanel
+          canCancelOwnRequest={canCancelOwnRequest}
+          isMutatingRequestId={isMutatingRequestId}
+          myRequests={myRequests}
+          onCancelMyRequest={onCancelMyRequest}
+        />
+      </div>
 
       <article className="panel panel-stack trips-stream-panel">
         <div className="section-heading">
@@ -222,6 +257,51 @@ export function TripsRequestsWorkspace({
       </article>
     </section>
   );
+}
+
+function buildPassengerTrackingCandidates(myRequests: TripRequestRecord[]): TripTrackingCandidate[] {
+  return myRequests
+    .filter(
+      (request) =>
+        request.status === TripRequestStatus.Accepted
+        && (request.tripStatus === TripStatus.Published
+          || request.tripStatus === TripStatus.Full
+          || request.tripStatus === TripStatus.InProgress),
+    )
+    .sort((left, right) => {
+      const statusPriority =
+        getTrackingPriority(left.tripStatus) - getTrackingPriority(right.tripStatus);
+
+      if (statusPriority !== 0) {
+        return statusPriority;
+      }
+
+      return new Date(left.tripDepartureAt).getTime() - new Date(right.tripDepartureAt).getTime();
+    })
+    .map((request) => ({
+      id: request.id,
+      tripId: request.tripId,
+      title: `${request.tripOriginLabel} -> ${request.tripDestinationLabel}`,
+      subtitle: `Conductor asignado: ${request.driverFullName}`,
+      status: request.tripStatus,
+      departureAt: request.tripDepartureAt,
+      estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      availableSeats: request.tripAvailableSeats,
+      seatCount: request.tripSeatCount,
+    }));
+}
+
+function getTrackingPriority(status: TripStatus): number {
+  switch (status) {
+    case TripStatus.InProgress:
+      return 0;
+    case TripStatus.Full:
+      return 1;
+    case TripStatus.Published:
+      return 2;
+    default:
+      return 3;
+  }
 }
 
 function formatDateTime(value: string): string {

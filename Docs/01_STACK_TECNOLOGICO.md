@@ -77,7 +77,8 @@
 | Busqueda de lugares | Geoapify Geocoding Autocomplete | latest | Actual |
 | Geocodificacion | Geoapify Geocoding API | latest | Actual |
 | Calculo visual de trayecto | Polyline en mapa web | - | Actual |
-| Tracking en vivo | GPS + WebSockets | - | Futuro cercano |
+| Tracking v1 | Ruta planificada + estado compartido | - | Actual |
+| Tracking GPS fino | GPS + WebSockets | - | Futuro cercano |
 
 ---
 

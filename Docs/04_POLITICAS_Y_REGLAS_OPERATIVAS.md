@@ -129,6 +129,16 @@ El tracking en vivo, si esta habilitado, solo sera visible para:
 - pasajeros confirmados
 - administradores autorizados en caso de soporte
 
+En la fase web actual se implementa `Tracking v1` con estas reglas:
+
+- se comparte la ruta planificada del viaje
+- se comparte el estado operativo del trayecto
+- el detalle preciso de origen y destino solo se expone al conductor y a pasajeros confirmados
+- el conductor opera el viaje desde un centro de mando resumido
+- el pasajero confirmado consulta el trayecto desde una vista activa de acompanamiento
+- no se comparte todavia ubicacion GPS continua del conductor
+- GPS continuo y tracking fino por coordenadas en movimiento quedan para una fase posterior
+
 ### 4.4 Regla de privacidad
 
 Las coordenadas exactas no deben mostrarse a:

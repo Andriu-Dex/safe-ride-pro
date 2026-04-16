@@ -143,6 +143,24 @@ export class PrismaTripsRepository implements TripsRepository {
     return trip ? this.mapTrip(trip) : null;
   }
 
+  async hasAcceptedTripRequest(
+    tripId: string,
+    passengerMembershipId: string,
+  ): Promise<boolean> {
+    const acceptedTripRequest = await this.prisma.tripRequest.findFirst({
+      where: {
+        tripId,
+        passengerMembershipId,
+        status: TripRequestStatus.Accepted,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return Boolean(acceptedTripRequest);
+  }
+
   async findLatestReusableTripByDriverMembershipId(
     driverMembershipId: string,
   ): Promise<TripRecord | null> {

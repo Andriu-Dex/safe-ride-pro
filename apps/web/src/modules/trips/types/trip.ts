@@ -32,6 +32,13 @@ export type TripRecord = {
   createdAt: string;
 };
 
+export type TripDetailRecord = TripRecord & {
+  originLatitude: number | null;
+  originLongitude: number | null;
+  destinationLatitude: number | null;
+  destinationLongitude: number | null;
+};
+
 export type TripFilters = {
   origin?: string;
   destination?: string;
