@@ -18,7 +18,7 @@ function createReportsRepositoryMock(): jest.Mocked<ReportsRepository> {
   return {
     findDefaultMembershipByUserId: jest.fn(),
     findTripById: jest.fn(),
-    hasAcceptedTripRequest: jest.fn(),
+    hasReportableTripParticipation: jest.fn(),
     findReportById: jest.fn(),
     findExistingReport: jest.fn(),
     createReport: jest.fn(),
@@ -87,7 +87,7 @@ describe('CreateReportUseCase', () => {
       estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
       cancelledAt: null,
     });
-    repository.hasAcceptedTripRequest.mockResolvedValue(true);
+    repository.hasReportableTripParticipation.mockResolvedValue(true);
     repository.findExistingReport.mockResolvedValue(null);
     repository.createReport.mockImplementation(async (input) => buildCreatedReport(input));
 
@@ -150,7 +150,7 @@ describe('CreateReportUseCase', () => {
       estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
       cancelledAt: new Date('2030-01-01T09:50:00.000Z'),
     });
-    repository.hasAcceptedTripRequest.mockResolvedValue(true);
+    repository.hasReportableTripParticipation.mockResolvedValue(true);
     repository.findExistingReport.mockResolvedValue(null);
     repository.createReport.mockImplementation(async (input) => buildCreatedReport(input));
 

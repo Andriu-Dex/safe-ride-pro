@@ -64,7 +64,7 @@ export class CreateReportUseCase {
     }
 
     const reporterIsDriver = trip.driverMembershipId === membership.id;
-    const reporterIsAcceptedPassenger = await this.reportsRepository.hasAcceptedTripRequest(
+    const reporterIsAcceptedPassenger = await this.reportsRepository.hasReportableTripParticipation(
       trip.id,
       membership.id,
     );
@@ -91,7 +91,7 @@ export class CreateReportUseCase {
         );
       }
     } else {
-      const reportedIsAcceptedPassenger = await this.reportsRepository.hasAcceptedTripRequest(
+      const reportedIsAcceptedPassenger = await this.reportsRepository.hasReportableTripParticipation(
         trip.id,
         command.reportedMembershipId,
       );

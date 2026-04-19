@@ -21,7 +21,7 @@ function createReportsRepositoryMock(): jest.Mocked<ReportsRepository> {
   return {
     findDefaultMembershipByUserId: jest.fn(),
     findTripById: jest.fn(),
-    hasAcceptedTripRequest: jest.fn(),
+    hasReportableTripParticipation: jest.fn(),
     findReportById: jest.fn(),
     findExistingReport: jest.fn(),
     createReport: jest.fn(),

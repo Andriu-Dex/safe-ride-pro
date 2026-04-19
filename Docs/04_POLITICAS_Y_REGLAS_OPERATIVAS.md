@@ -204,6 +204,8 @@ La formula exacta queda sujeta a ajustes posteriores.
 - para viajes cancelados tarde o por ausencia del conductor, la referencia es `cancelledAt`
 - para viajes `IN_PROGRESS` vencidos sin cierre, la referencia es la llegada estimada
 - al vencer esta ventana, la interfaz ya no debe seguir mostrando acciones pendientes de calificacion o reporte
+- la interfaz debe mostrar de manera visible la fecha limite de cierre disponible para cada trayecto elegible
+- si un pasajero confirmado queda `CANCELLED` por cancelacion tardia o ausencia del conductor, mantiene elegibilidad para reportar dentro de la misma ventana
 
 ---
 

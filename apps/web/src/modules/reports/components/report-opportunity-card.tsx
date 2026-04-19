@@ -3,7 +3,9 @@
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
 import { SelectField } from '../../../components/ui/select-field';
+import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
+import { formatTripClosureDeadline } from '../../trips/lib/trip-closure';
 import {
   REPORT_REASON_OPTIONS,
   getReportReasonLabel,
@@ -18,7 +20,10 @@ export type ReportOpportunity = {
   tripDestinationLabel: string;
   tripDepartureAt: string;
   directionLabel: string;
+  incidentLabel: string;
+  incidentTone: 'neutral' | 'success' | 'warning' | 'danger';
   incidentSummary: string;
+  windowClosesAt: string;
 };
 
 type ReportDraft = {
@@ -50,7 +55,10 @@ export function ReportOpportunityCard({
     <div className="list-card">
       <div className="list-card-header">
         <strong>{opportunity.reportedFullName}</strong>
-        <span className="topbar-badge">{opportunity.directionLabel}</span>
+        <div className="button-row">
+          <span className="topbar-badge">{opportunity.directionLabel}</span>
+          <StatusPill label={opportunity.incidentLabel} tone={opportunity.incidentTone} />
+        </div>
       </div>
 
       <p className="panel-text">
@@ -58,6 +66,9 @@ export function ReportOpportunityCard({
       </p>
       <p className="panel-text">Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
       <p className="form-helper compact-helper">{opportunity.incidentSummary}</p>
+      <p className="form-helper compact-helper">
+        Disponible hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}.
+      </p>
 
       <div className="form-grid form-grid-2 compact-grid">
         <SelectField

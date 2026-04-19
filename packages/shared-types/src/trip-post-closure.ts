@@ -26,6 +26,15 @@ type PostActionWindowInput = {
   now?: Date;
 };
 
+export type TripPostClosureSummary = {
+  canCreateRating: boolean;
+  canCreateIncidentReport: boolean;
+  incidentType: TripClosureIncidentType | null;
+  actionReferenceAt: Date | null;
+  actionWindowClosesAt: Date | null;
+  isActionWindowOpen: boolean;
+};
+
 function toDate(value?: Date | string | null): Date | null {
   if (!value) {
     return null;
@@ -40,59 +49,56 @@ function addMinutes(baseDate: Date, minutes: number): Date {
   return new Date(baseDate.getTime() + minutes * 60_000);
 }
 
+export function getTripPostActionWindowClosesAt(
+  referenceAt?: Date | string | null,
+): Date | null {
+  const normalizedReferenceAt = toDate(referenceAt);
+
+  if (!normalizedReferenceAt) {
+    return null;
+  }
+
+  return new Date(
+    normalizedReferenceAt.getTime() + TRIP_POST_ACTION_WINDOW_HOURS * 60 * 60_000,
+  );
+}
+
 export function isWithinTripPostActionWindow({
   referenceAt,
   now = new Date(),
 }: PostActionWindowInput): boolean {
-  const normalizedReferenceAt = toDate(referenceAt);
+  const closingBoundary = getTripPostActionWindowClosesAt(referenceAt);
 
-  if (!normalizedReferenceAt) {
-    return false;
-  }
-
-  const closingBoundary = new Date(
-    normalizedReferenceAt.getTime() + TRIP_POST_ACTION_WINDOW_HOURS * 60 * 60_000,
-  );
-
-  return now <= closingBoundary;
+  return closingBoundary ? now <= closingBoundary : false;
 }
 
-export function canCreateTripRating({
-  status,
-  departureAt,
-  estimatedArrivalAt,
-  now = new Date(),
-}: TripPostClosureInput): boolean {
-  if (status !== 'COMPLETED') {
-    return false;
-  }
-
-  return isWithinTripPostActionWindow({
-    referenceAt: estimatedArrivalAt ?? departureAt,
-    now,
-  });
-}
-
-export function deriveTripClosureIncidentType({
+export function getTripPostClosureSummary({
   status,
   departureAt,
   estimatedArrivalAt,
   cancelledAt,
   now = new Date(),
-}: TripPostClosureInput): TripClosureIncidentType | null {
+}: TripPostClosureInput): TripPostClosureSummary {
   const normalizedDepartureAt = toDate(departureAt);
   const normalizedEstimatedArrivalAt = toDate(estimatedArrivalAt);
   const normalizedCancelledAt = toDate(cancelledAt);
 
   if (status === 'COMPLETED') {
-    return canCreateTripRating({
-      status,
-      departureAt: normalizedDepartureAt,
-      estimatedArrivalAt: normalizedEstimatedArrivalAt,
+    const actionReferenceAt = normalizedEstimatedArrivalAt ?? normalizedDepartureAt;
+    const actionWindowClosesAt = getTripPostActionWindowClosesAt(actionReferenceAt);
+    const isActionWindowOpen = isWithinTripPostActionWindow({
+      referenceAt: actionReferenceAt,
       now,
-    })
-      ? TripClosureIncidentType.Completed
-      : null;
+    });
+
+    return {
+      canCreateRating: isActionWindowOpen,
+      canCreateIncidentReport: isActionWindowOpen,
+      incidentType: isActionWindowOpen ? TripClosureIncidentType.Completed : null,
+      actionReferenceAt,
+      actionWindowClosesAt,
+      isActionWindowOpen,
+    };
   }
 
   if (status === 'CANCELLED') {
@@ -100,17 +106,28 @@ export function deriveTripClosureIncidentType({
       departureAt: normalizedDepartureAt,
       cancelledAt: normalizedCancelledAt,
     });
+    const actionReferenceAt =
+      cancellationTiming === CancellationTiming.Late ? normalizedCancelledAt : null;
+    const actionWindowClosesAt = getTripPostActionWindowClosesAt(actionReferenceAt);
+    const isActionWindowOpen = isWithinTripPostActionWindow({
+      referenceAt: actionReferenceAt,
+      now,
+    });
 
     if (
       cancellationTiming !== CancellationTiming.Late ||
       !normalizedDepartureAt ||
       !normalizedCancelledAt ||
-      !isWithinTripPostActionWindow({
-        referenceAt: normalizedCancelledAt,
-        now,
-      })
+      !isActionWindowOpen
     ) {
-      return null;
+      return {
+        canCreateRating: false,
+        canCreateIncidentReport: false,
+        incidentType: null,
+        actionReferenceAt,
+        actionWindowClosesAt,
+        isActionWindowOpen,
+      };
     }
 
     const driverAbsenceBoundary = addMinutes(
@@ -118,10 +135,25 @@ export function deriveTripClosureIncidentType({
       TRIP_DRIVER_ABSENCE_GRACE_MINUTES,
     );
 
-    return normalizedCancelledAt >= driverAbsenceBoundary
-      ? TripClosureIncidentType.DriverAbsence
-      : TripClosureIncidentType.LateDriverCancellation;
+    return {
+      canCreateRating: false,
+      canCreateIncidentReport: true,
+      incidentType:
+        normalizedCancelledAt >= driverAbsenceBoundary
+          ? TripClosureIncidentType.DriverAbsence
+          : TripClosureIncidentType.LateDriverCancellation,
+      actionReferenceAt,
+      actionWindowClosesAt,
+      isActionWindowOpen,
+    };
   }
+
+  const actionReferenceAt = normalizedEstimatedArrivalAt;
+  const actionWindowClosesAt = getTripPostActionWindowClosesAt(actionReferenceAt);
+  const isActionWindowOpen = isWithinTripPostActionWindow({
+    referenceAt: actionReferenceAt,
+    now,
+  });
 
   if (
     isTripCompletionOverdue({
@@ -129,17 +161,38 @@ export function deriveTripClosureIncidentType({
       estimatedArrivalAt: normalizedEstimatedArrivalAt,
       now,
     }) &&
-    isWithinTripPostActionWindow({
-      referenceAt: normalizedEstimatedArrivalAt,
-      now,
-    })
+    isActionWindowOpen
   ) {
-    return TripClosureIncidentType.OverdueInProgress;
+    return {
+      canCreateRating: false,
+      canCreateIncidentReport: true,
+      incidentType: TripClosureIncidentType.OverdueInProgress,
+      actionReferenceAt,
+      actionWindowClosesAt,
+      isActionWindowOpen,
+    };
   }
 
-  return null;
+  return {
+    canCreateRating: false,
+    canCreateIncidentReport: false,
+    incidentType: null,
+    actionReferenceAt,
+    actionWindowClosesAt,
+    isActionWindowOpen,
+  };
+}
+
+export function canCreateTripRating(input: TripPostClosureInput): boolean {
+  return getTripPostClosureSummary(input).canCreateRating;
+}
+
+export function deriveTripClosureIncidentType(
+  input: TripPostClosureInput,
+): TripClosureIncidentType | null {
+  return getTripPostClosureSummary(input).incidentType;
 }
 
 export function canCreateTripIncidentReport(input: TripPostClosureInput): boolean {
-  return deriveTripClosureIncidentType(input) !== null;
+  return getTripPostClosureSummary(input).canCreateIncidentReport;
 }

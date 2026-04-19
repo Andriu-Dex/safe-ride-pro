@@ -3435,6 +3435,75 @@ main {
   background: rgba(248, 244, 237, 0.82);
 }
 
+.trip-closure-center {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background:
+    linear-gradient(135deg, rgba(255, 251, 245, 0.94), rgba(240, 253, 250, 0.94)),
+    rgba(255, 255, 255, 0.94);
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
+}
+
+.trip-closure-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.trip-closure-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.trip-closure-card,
+.trip-closure-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.15rem 1.2rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.trip-closure-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.trip-closure-pills {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.trip-closure-subtitle {
+  margin: 0.3rem 0 0;
+  color: var(--color-text-soft);
+  font-size: 0.95rem;
+}
+
+.trip-closure-window {
+  margin: 0;
+  color: rgb(13, 148, 136);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.trip-closure-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .trip-location-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4019,6 +4088,7 @@ main {
   .trip-live-stat-grid,
   .trip-command-center-grid,
   .ride-companion-grid,
+  .trip-closure-card-header,
   .trip-command-kpi-grid,
   .ride-companion-stat-grid {
     grid-template-columns: 1fr;
@@ -4026,6 +4096,7 @@ main {
 
   .trip-command-center-header,
   .ride-companion-header,
+  .trip-closure-card-header,
   .trip-command-passenger-head,
   .trip-command-section-heading,
   .ride-companion-section-heading {

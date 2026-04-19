@@ -1,5 +1,7 @@
 import {
   DriverLicenseStatus,
+  getTripPostClosureSummary,
+  TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
 
@@ -12,11 +14,22 @@ import {
   getCancellationTimingTone,
   getTripCompletionOverdueMessage,
   getTripStartAvailabilityMessage,
+  getTripStatusLabel,
+  getTripStatusTone,
 } from '../lib/trip-labels';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
 import type { LatestTripRouteTemplate, TripRecord } from '../types/trip';
 import type { VehicleRecord } from '../../vehicles/types/vehicle';
+import {
+  getTripClosureIncidentLabel,
+  getTripClosureIncidentTone,
+  getTripClosureWindowCopy,
+} from '../lib/trip-closure';
 import { TripCreationForm } from './trip-creation-form';
+import {
+  TripClosureActionCenter,
+  type TripClosureActionItem,
+} from './trip-closure-action-center';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
 import { TripExecutionCommandCenter } from './trip-execution-command-center';
 import {
@@ -77,6 +90,7 @@ export function TripsOperationWorkspace({
   realtimeStatusTone,
 }: TripsOperationWorkspaceProps) {
   const trackingCandidates = buildDriverTrackingCandidates(myTrips);
+  const closureItems = buildDriverClosureItems(myTrips, incomingRequests);
 
   return (
     <section className="trips-workspace-grid trips-operation-stack">
@@ -100,6 +114,14 @@ export function TripsOperationWorkspace({
         licenseStatus={licenseStatus}
         myTrips={myTrips}
         onTripAction={onTripAction}
+      />
+
+      <TripClosureActionCenter
+        description="Los trayectos ya completados o con cierre operativo anomalo aparecen aqui con su ventana de reputacion activa para que no se te pase el seguimiento final."
+        emptyDescription="Cuando completes un trayecto con pasajeros confirmados, aqui veras el recordatorio de cierre para calificar o escalar incidentes dentro del plazo."
+        emptyTitle="No tienes cierres pendientes como conductor"
+        items={closureItems}
+        title="Cierre post-viaje del conductor"
       />
 
       <article className="panel panel-stack trips-stream-panel">
@@ -278,6 +300,61 @@ function buildDriverTrackingCandidates(myTrips: TripRecord[]): TripTrackingCandi
       availableSeats: trip.availableSeats,
       seatCount: trip.seatCount,
     }));
+}
+
+function buildDriverClosureItems(
+  myTrips: TripRecord[],
+  incomingRequests: TripRequestRecord[],
+): TripClosureActionItem[] {
+  return myTrips
+    .map((trip) => {
+      const summary = getTripPostClosureSummary({
+        status: trip.status,
+        departureAt: trip.departureAt,
+        estimatedArrivalAt: trip.estimatedArrivalAt,
+        cancelledAt: trip.cancelledAt,
+      });
+      const acceptedPassengers = incomingRequests.filter(
+        (request) => request.tripId === trip.id && request.status === TripRequestStatus.Accepted,
+      );
+
+      if (
+        acceptedPassengers.length === 0 ||
+        (!summary.canCreateRating && !summary.canCreateIncidentReport)
+      ) {
+        return null;
+      }
+
+      const actionParts: string[] = [];
+
+      if (summary.canCreateRating) {
+        actionParts.push(
+          `calificar a ${acceptedPassengers.length} pasajero${acceptedPassengers.length === 1 ? '' : 's'}`,
+        );
+      }
+
+      if (summary.canCreateIncidentReport) {
+        actionParts.push('registrar un incidente si algo salio mal');
+      }
+
+      return {
+        id: trip.id,
+        title: `${trip.originLabel} -> ${trip.destinationLabel}`,
+        subtitle: `Como conductor • ${acceptedPassengers.length} participante${acceptedPassengers.length === 1 ? '' : 's'} confirmado${acceptedPassengers.length === 1 ? '' : 's'}`,
+        summary: `Este cierre sigue activo. Puedes ${actionParts.join(' y ')} desde Confianza antes de que expire la ventana operativa.`,
+        windowLabel: getTripClosureWindowCopy(summary),
+        tripStatusLabel: getTripStatusLabel(trip.status),
+        tripStatusTone: getTripStatusTone(trip.status),
+        incidentLabel: summary.incidentType
+          ? getTripClosureIncidentLabel(summary.incidentType)
+          : null,
+        incidentTone: summary.incidentType
+          ? getTripClosureIncidentTone(summary.incidentType)
+          : 'neutral',
+      } satisfies TripClosureActionItem;
+    })
+    .filter((item): item is TripClosureActionItem => item !== null)
+    .sort((left, right) => left.title.localeCompare(right.title));
 }
 
 function getTrackingPriority(status: TripStatus): number {

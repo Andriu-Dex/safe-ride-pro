@@ -88,19 +88,42 @@ export class PrismaReportsRepository implements ReportsRepository {
     };
   }
 
-  async hasAcceptedTripRequest(tripId: string, passengerMembershipId: string): Promise<boolean> {
-    const acceptedTripRequest = await this.prisma.tripRequest.findFirst({
+  async hasReportableTripParticipation(
+    tripId: string,
+    passengerMembershipId: string,
+  ): Promise<boolean> {
+    const tripParticipation = await this.prisma.tripRequest.findFirst({
       where: {
         tripId,
         passengerMembershipId,
-        status: 'ACCEPTED',
+        OR: [{ status: 'ACCEPTED' }, { status: 'NO_SHOW' }, { status: 'CANCELLED' }],
       },
       select: {
-        id: true,
+        status: true,
+        reviewedAt: true,
+        cancelledAt: true,
+        trip: {
+          select: {
+            cancelledAt: true,
+          },
+        },
       },
     });
 
-    return Boolean(acceptedTripRequest);
+    if (!tripParticipation) {
+      return false;
+    }
+
+    if (tripParticipation.status === 'ACCEPTED' || tripParticipation.status === 'NO_SHOW') {
+      return true;
+    }
+
+    return Boolean(
+      tripParticipation.reviewedAt &&
+        tripParticipation.cancelledAt &&
+        tripParticipation.trip.cancelledAt &&
+        tripParticipation.cancelledAt.getTime() === tripParticipation.trip.cancelledAt.getTime(),
+    );
   }
 
   async findReportById(reportId: string): Promise<ReportRecord | null> {

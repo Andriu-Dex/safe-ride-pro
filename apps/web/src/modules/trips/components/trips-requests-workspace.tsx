@@ -1,4 +1,9 @@
-import { CancellationTiming, TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
+import {
+  CancellationTiming,
+  getTripPostClosureSummary,
+  TripRequestStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
@@ -8,7 +13,18 @@ import {
   getTripRequestStatusLabel,
   getTripRequestStatusTone,
 } from '../../trip-requests/lib/trip-request-labels';
+import { wasConfirmedBeforeClosure } from '../../trip-requests/lib/trip-request-closure';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
+import {
+  getTripClosureIncidentLabel,
+  getTripClosureIncidentTone,
+  getTripClosureWindowCopy,
+} from '../lib/trip-closure';
+import { getTripStatusLabel, getTripStatusTone } from '../lib/trip-labels';
+import {
+  TripClosureActionCenter,
+  type TripClosureActionItem,
+} from './trip-closure-action-center';
 import {
   TripLiveTrackingPanel,
   type TripTrackingCandidate,
@@ -59,6 +75,7 @@ export function TripsRequestsWorkspace({
   realtimeStatusTone,
 }: TripsRequestsWorkspaceProps) {
   const passengerTrackingCandidates = buildPassengerTrackingCandidates(myRequests);
+  const closureItems = buildPassengerClosureItems(myRequests);
 
   return (
     <section className="trips-workspace-grid">
@@ -85,6 +102,14 @@ export function TripsRequestsWorkspace({
           onCancelMyRequest={onCancelMyRequest}
         />
       </div>
+
+      <TripClosureActionCenter
+        description="Los viajes que ya pasaron a cierre operativo aparecen aqui con su plazo vigente para que el pasajero no pierda la oportunidad de calificar o reportar."
+        emptyDescription="Cuando uno de tus trayectos confirmados llegue a cierre, esta vista te recordara hasta cuando puedes cerrar la interaccion."
+        emptyTitle="No tienes cierres pendientes como pasajero"
+        items={closureItems}
+        title="Cierre post-viaje del pasajero"
+      />
 
       <article className="panel panel-stack trips-stream-panel">
         <div className="section-heading">
@@ -257,6 +282,54 @@ export function TripsRequestsWorkspace({
       </article>
     </section>
   );
+}
+
+function buildPassengerClosureItems(myRequests: TripRequestRecord[]): TripClosureActionItem[] {
+  return myRequests
+    .map((request) => {
+      if (!wasConfirmedBeforeClosure(request)) {
+        return null;
+      }
+
+      const summary = getTripPostClosureSummary({
+        status: request.tripStatus,
+        departureAt: request.tripDepartureAt,
+        estimatedArrivalAt: request.tripEstimatedArrivalAt,
+        cancelledAt: request.tripCancelledAt,
+      });
+
+      if (!summary.canCreateRating && !summary.canCreateIncidentReport) {
+        return null;
+      }
+
+      const actionParts: string[] = [];
+
+      if (summary.canCreateRating) {
+        actionParts.push('calificar al conductor');
+      }
+
+      if (summary.canCreateIncidentReport) {
+        actionParts.push('registrar un reporte si hubo un problema');
+      }
+
+      return {
+        id: request.id,
+        title: `${request.tripOriginLabel} -> ${request.tripDestinationLabel}`,
+        subtitle: `Como pasajero • Conductor asignado: ${request.driverFullName}`,
+        summary: `Este trayecto sigue dentro de la ventana de cierre. Puedes ${actionParts.join(' y ')} antes de que venza el plazo.`,
+        windowLabel: getTripClosureWindowCopy(summary),
+        tripStatusLabel: getTripStatusLabel(request.tripStatus),
+        tripStatusTone: getTripStatusTone(request.tripStatus),
+        incidentLabel: summary.incidentType
+          ? getTripClosureIncidentLabel(summary.incidentType)
+          : null,
+        incidentTone: summary.incidentType
+          ? getTripClosureIncidentTone(summary.incidentType)
+          : 'neutral',
+      } satisfies TripClosureActionItem;
+    })
+    .filter((item): item is TripClosureActionItem => item !== null)
+    .sort((left, right) => left.title.localeCompare(right.title));
 }
 
 function buildPassengerTrackingCandidates(myRequests: TripRequestRecord[]): TripTrackingCandidate[] {

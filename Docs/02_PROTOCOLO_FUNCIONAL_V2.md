@@ -417,6 +417,7 @@ Despues de finalizar un viaje:
 - conductor puede calificar al pasajero
 - las calificaciones solo permanecen abiertas durante la ventana de cierre configurada
 - fuera de esa ventana ya no deben aparecer acciones pendientes de calificacion
+- la web debe mostrar de forma explicita la fecha limite del cierre para evitar acciones omitidas
 
 ### 14.2 Reportes
 
@@ -438,6 +439,7 @@ Restricciones funcionales:
 - en cancelacion tardia o ausencia del conductor, solo el pasajero confirmado puede reportar al conductor
 - el conductor no debe poder usar esos escenarios para reportar a pasajeros
 - los reportes deben mantenerse acotados a participantes confirmados del viaje
+- si una solicitud aceptada pasa a `CANCELLED` por cancelacion tardia del conductor, el sistema debe seguir tratandola como participacion confirmada a efectos de cierre y reporte
 
 ### 14.3 Reputacion
 

@@ -180,9 +180,12 @@ export {
   canCreateTripIncidentReport,
   canCreateTripRating,
   deriveTripClosureIncidentType,
+  getTripPostActionWindowClosesAt,
+  getTripPostClosureSummary,
   isWithinTripPostActionWindow,
   TripClosureIncidentType,
   TRIP_POST_ACTION_WINDOW_HOURS,
+  type TripPostClosureSummary,
 } from './trip-post-closure';
 
 export {

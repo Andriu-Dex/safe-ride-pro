@@ -3,6 +3,7 @@
 import { Button } from '../../../components/ui/button';
 import { SelectField } from '../../../components/ui/select-field';
 import { TextareaField } from '../../../components/ui/textarea-field';
+import { formatTripClosureDeadline } from '../../trips/lib/trip-closure';
 
 export type RatingOpportunity = {
   id: string;
@@ -13,6 +14,7 @@ export type RatingOpportunity = {
   tripDestinationLabel: string;
   tripDepartureAt: string;
   directionLabel: string;
+  windowClosesAt: string;
 };
 
 type RatingDraft = {
@@ -50,6 +52,9 @@ export function RatingOpportunityCard({
         Viaje: {opportunity.tripOriginLabel} -&gt; {opportunity.tripDestinationLabel}
       </p>
       <p className="panel-text">Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
+      <p className="form-helper compact-helper">
+        Disponible hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}.
+      </p>
 
       <div className="form-grid form-grid-2 compact-grid">
         <SelectField

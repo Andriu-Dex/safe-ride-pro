@@ -2,7 +2,7 @@
 
 import {
   canCreateTripRating,
-  deriveTripClosureIncidentType,
+  getTripPostClosureSummary,
   isOperationalMembership,
   OperationalSanctionType,
   selectOperationalMembership,
@@ -35,7 +35,12 @@ import {
 } from '../../../modules/reports/lib/report-labels';
 import type { ReportRecord } from '../../../modules/reports/types/report';
 import { listIncomingTripRequests, listMyTripRequests } from '../../../modules/trip-requests/lib/trip-request-api';
+import { wasConfirmedBeforeClosure } from '../../../modules/trip-requests/lib/trip-request-closure';
 import type { TripRequestRecord } from '../../../modules/trip-requests/types/trip-request';
+import {
+  getTripClosureIncidentLabel,
+  getTripClosureIncidentTone,
+} from '../../../modules/trips/lib/trip-closure';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
 import {
   getAdministrativeRiskStateLabel,
@@ -83,6 +88,7 @@ type RatingParticipationOpportunity = {
   tripDestinationLabel: string;
   tripDepartureAt: string;
   ratingDirectionLabel: string;
+  windowClosesAt: string;
 };
 
 type ReportParticipationOpportunity = {
@@ -95,8 +101,11 @@ type ReportParticipationOpportunity = {
   tripDepartureAt: string;
   reportDirectionLabel: string;
   incidentType: TripClosureIncidentType;
+  incidentLabel: string;
+  incidentTone: 'neutral' | 'success' | 'warning' | 'danger';
   incidentSummary: string;
   suggestedReason: string;
+  windowClosesAt: string;
 };
 
 function formatDateTime(value: string): string {
@@ -164,8 +173,17 @@ function buildRatingOpportunities(
   };
 
   myRequests.forEach((request) => {
+    const closureSummary = getTripPostClosureSummary({
+      status: request.tripStatus,
+      departureAt: request.tripDepartureAt,
+      estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      cancelledAt: request.tripCancelledAt,
+    });
+
     if (
       request.status !== TripRequestStatus.Accepted ||
+      !closureSummary.canCreateRating ||
+      !closureSummary.actionWindowClosesAt ||
       !canCreateTripRating({
         status: request.tripStatus,
         departureAt: request.tripDepartureAt,
@@ -184,13 +202,23 @@ function buildRatingOpportunities(
       tripDestinationLabel: request.tripDestinationLabel,
       tripDepartureAt: request.tripDepartureAt,
       ratingDirectionLabel: 'Calificar al conductor',
+      windowClosesAt: closureSummary.actionWindowClosesAt.toISOString(),
     });
   });
 
   incomingRequests.forEach((request) => {
+    const closureSummary = getTripPostClosureSummary({
+      status: request.tripStatus,
+      departureAt: request.tripDepartureAt,
+      estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      cancelledAt: request.tripCancelledAt,
+    });
+
     if (
       request.driverMembershipId !== membershipId ||
       request.status !== TripRequestStatus.Accepted ||
+      !closureSummary.canCreateRating ||
+      !closureSummary.actionWindowClosesAt ||
       !canCreateTripRating({
         status: request.tripStatus,
         departureAt: request.tripDepartureAt,
@@ -209,6 +237,7 @@ function buildRatingOpportunities(
       tripDestinationLabel: request.tripDestinationLabel,
       tripDepartureAt: request.tripDepartureAt,
       ratingDirectionLabel: 'Calificar al pasajero',
+      windowClosesAt: closureSummary.actionWindowClosesAt.toISOString(),
     });
   });
 
@@ -233,18 +262,22 @@ function buildReportOpportunities(
   };
 
   myRequests.forEach((request) => {
-    if (request.status !== TripRequestStatus.Accepted) {
+    if (!wasConfirmedBeforeClosure(request)) {
       return;
     }
 
-    const incidentType = deriveTripClosureIncidentType({
+    const closureSummary = getTripPostClosureSummary({
       status: request.tripStatus,
       departureAt: request.tripDepartureAt,
       estimatedArrivalAt: request.tripEstimatedArrivalAt,
       cancelledAt: request.tripCancelledAt,
     });
 
-    if (!incidentType) {
+    if (
+      !closureSummary.canCreateIncidentReport ||
+      !closureSummary.incidentType ||
+      !closureSummary.actionWindowClosesAt
+    ) {
       return;
     }
 
@@ -257,9 +290,12 @@ function buildReportOpportunities(
       tripDestinationLabel: request.tripDestinationLabel,
       tripDepartureAt: request.tripDepartureAt,
       reportDirectionLabel: 'Reportar al conductor',
-      incidentType,
-      incidentSummary: getIncidentSummary(incidentType),
-      suggestedReason: getSuggestedReportReason(incidentType),
+      incidentType: closureSummary.incidentType,
+      incidentLabel: getTripClosureIncidentLabel(closureSummary.incidentType),
+      incidentTone: getTripClosureIncidentTone(closureSummary.incidentType),
+      incidentSummary: getIncidentSummary(closureSummary.incidentType),
+      suggestedReason: getSuggestedReportReason(closureSummary.incidentType),
+      windowClosesAt: closureSummary.actionWindowClosesAt.toISOString(),
     });
   });
 
@@ -271,7 +307,7 @@ function buildReportOpportunities(
       return;
     }
 
-    const incidentType = deriveTripClosureIncidentType({
+    const closureSummary = getTripPostClosureSummary({
       status: request.tripStatus,
       departureAt: request.tripDepartureAt,
       estimatedArrivalAt: request.tripEstimatedArrivalAt,
@@ -279,9 +315,11 @@ function buildReportOpportunities(
     });
 
     if (
-      !incidentType ||
-      incidentType === TripClosureIncidentType.DriverAbsence ||
-      incidentType === TripClosureIncidentType.LateDriverCancellation
+      !closureSummary.canCreateIncidentReport ||
+      !closureSummary.incidentType ||
+      !closureSummary.actionWindowClosesAt ||
+      closureSummary.incidentType === TripClosureIncidentType.DriverAbsence ||
+      closureSummary.incidentType === TripClosureIncidentType.LateDriverCancellation
     ) {
       return;
     }
@@ -295,9 +333,12 @@ function buildReportOpportunities(
       tripDestinationLabel: request.tripDestinationLabel,
       tripDepartureAt: request.tripDepartureAt,
       reportDirectionLabel: 'Reportar al pasajero',
-      incidentType,
-      incidentSummary: getIncidentSummary(incidentType),
-      suggestedReason: getSuggestedReportReason(incidentType),
+      incidentType: closureSummary.incidentType,
+      incidentLabel: getTripClosureIncidentLabel(closureSummary.incidentType),
+      incidentTone: getTripClosureIncidentTone(closureSummary.incidentType),
+      incidentSummary: getIncidentSummary(closureSummary.incidentType),
+      suggestedReason: getSuggestedReportReason(closureSummary.incidentType),
+      windowClosesAt: closureSummary.actionWindowClosesAt.toISOString(),
     });
   });
 
@@ -974,6 +1015,7 @@ export default function TrustPage() {
                       tripDestinationLabel: opportunity.tripDestinationLabel,
                       tripDepartureAt: opportunity.tripDepartureAt,
                       directionLabel: opportunity.ratingDirectionLabel,
+                      windowClosesAt: opportunity.windowClosesAt,
                     } satisfies RatingOpportunity}
                     value={ratingDrafts[opportunity.id] ?? EMPTY_RATING_DRAFT}
                   />
@@ -1010,7 +1052,10 @@ export default function TrustPage() {
                       tripDestinationLabel: opportunity.tripDestinationLabel,
                       tripDepartureAt: opportunity.tripDepartureAt,
                       directionLabel: opportunity.reportDirectionLabel,
+                      incidentLabel: opportunity.incidentLabel,
+                      incidentTone: opportunity.incidentTone,
                       incidentSummary: opportunity.incidentSummary,
+                      windowClosesAt: opportunity.windowClosesAt,
                     } satisfies ReportOpportunity}
                     value={reportDrafts[opportunity.id] ?? getInitialReportDraft(opportunity)}
                   />

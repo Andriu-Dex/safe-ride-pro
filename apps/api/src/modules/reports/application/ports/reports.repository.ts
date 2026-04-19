@@ -82,7 +82,7 @@ export type ListReviewableReportsInput = {
 export interface ReportsRepository {
   findDefaultMembershipByUserId(userId: string): Promise<ReportMembershipRecord | null>;
   findTripById(tripId: string): Promise<ReportTripRecord | null>;
-  hasAcceptedTripRequest(tripId: string, passengerMembershipId: string): Promise<boolean>;
+  hasReportableTripParticipation(tripId: string, passengerMembershipId: string): Promise<boolean>;
   findReportById(reportId: string): Promise<ReportRecord | null>;
   findExistingReport(
     tripId: string,
