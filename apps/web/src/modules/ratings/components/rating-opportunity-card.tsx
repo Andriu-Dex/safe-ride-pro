@@ -28,6 +28,8 @@ type RatingOpportunityCardProps = {
   isSubmitting: boolean;
   onChange: (field: keyof RatingDraft, value: string) => void;
   onSubmit: () => void;
+  highlighted?: boolean;
+  elementId?: string;
 };
 
 function formatDateTime(value: string): string {
@@ -40,9 +42,20 @@ export function RatingOpportunityCard({
   isSubmitting,
   onChange,
   onSubmit,
+  highlighted = false,
+  elementId,
 }: RatingOpportunityCardProps) {
   return (
-    <div className="list-card list-card-strong">
+    <div
+      className={[
+        'list-card',
+        'list-card-strong',
+        highlighted ? 'closure-focus-card' : null,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      id={elementId}
+    >
       <div className="list-card-header">
         <strong>{opportunity.targetFullName}</strong>
         <span className="topbar-badge">{opportunity.directionLabel}</span>

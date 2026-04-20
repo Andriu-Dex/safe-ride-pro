@@ -382,6 +382,31 @@ function buildPassengerClosureItems(myRequests: TripRequestRecord[]): TripClosur
         actionParts.push('registrar un reporte si hubo un problema');
       }
 
+      const actions: TripClosureActionItem['actions'] = [];
+
+      if (summary.canCreateRating) {
+        actions.push({
+          label: 'Ir a calificaciones',
+          href: buildTrustClosureHref({
+            focus: 'rating',
+            tripId: request.tripId,
+            membershipId: request.driverMembershipId,
+          }),
+        });
+      }
+
+      if (summary.canCreateIncidentReport) {
+        actions.push({
+          label: 'Ir a reportes',
+          href: buildTrustClosureHref({
+            focus: 'report',
+            tripId: request.tripId,
+            membershipId: request.driverMembershipId,
+          }),
+          variant: summary.canCreateRating ? 'ghost' : 'secondary',
+        });
+      }
+
       return {
         id: request.id,
         title: `${request.tripOriginLabel} -> ${request.tripDestinationLabel}`,
@@ -396,10 +421,32 @@ function buildPassengerClosureItems(myRequests: TripRequestRecord[]): TripClosur
         incidentTone: summary.incidentType
           ? getTripClosureIncidentTone(summary.incidentType)
           : 'neutral',
+        actions,
       } satisfies TripClosureActionItem;
     })
     .filter((item): item is TripClosureActionItem => item !== null)
     .sort((left, right) => left.title.localeCompare(right.title));
+}
+
+function buildTrustClosureHref({
+  focus,
+  tripId,
+  membershipId,
+}: {
+  focus: 'rating' | 'report';
+  tripId: string;
+  membershipId?: string;
+}): string {
+  const searchParams = new URLSearchParams({
+    focus,
+    tripId,
+  });
+
+  if (membershipId) {
+    searchParams.set('membershipId', membershipId);
+  }
+
+  return `/confianza?${searchParams.toString()}`;
 }
 
 function buildPassengerTrackingCandidates(myRequests: TripRequestRecord[]): TripTrackingCandidate[] {

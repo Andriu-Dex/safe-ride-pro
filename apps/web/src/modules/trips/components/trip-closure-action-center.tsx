@@ -2,6 +2,12 @@ import Link from 'next/link';
 
 import { StatusPill } from '../../../components/ui/status-pill';
 
+type TripClosureActionLink = {
+  label: string;
+  href: string;
+  variant?: 'secondary' | 'ghost';
+};
+
 export type TripClosureActionItem = {
   id: string;
   title: string;
@@ -12,6 +18,7 @@ export type TripClosureActionItem = {
   tripStatusTone: 'neutral' | 'success' | 'warning' | 'danger';
   incidentLabel: string | null;
   incidentTone: 'neutral' | 'success' | 'warning' | 'danger';
+  actions: TripClosureActionLink[];
 };
 
 type TripClosureActionCenterProps = {
@@ -60,10 +67,18 @@ export function TripClosureActionCenter({
                 <p className="trip-closure-window">{item.windowLabel}</p>
               ) : null}
 
+              {item.summary ? <p className="trip-closure-summary">{item.summary}</p> : null}
+
               <div className="trip-closure-actions">
-                <Link className="button button-secondary" href="/confianza">
-                  Ir a confianza
-                </Link>
+                {item.actions.map((action) => (
+                  <Link
+                    key={`${item.id}:${action.label}`}
+                    className={`button ${action.variant === 'ghost' ? 'button-ghost' : 'button-secondary'}`}
+                    href={action.href}
+                  >
+                    {action.label}
+                  </Link>
+                ))}
               </div>
             </div>
           ))}

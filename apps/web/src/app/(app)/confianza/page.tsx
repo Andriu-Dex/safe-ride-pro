@@ -9,10 +9,10 @@ import {
   TripRequestStatus,
   TripClosureIncidentType,
 } from '@saferidepro/shared-types';
-import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
-import { InfoCard } from '../../../components/ui/info-card';
 import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
@@ -25,7 +25,11 @@ import { createRating, listMyRatings } from '../../../modules/ratings/lib/rating
 import { getRatingStars } from '../../../modules/ratings/lib/rating-labels';
 import type { RatingList } from '../../../modules/ratings/types/rating';
 import { ReportOpportunityCard, type ReportOpportunity } from '../../../modules/reports/components/report-opportunity-card';
-import { createReport, listMyReports } from '../../../modules/reports/lib/report-api';
+import {
+  createReport,
+  listMyReports,
+  uploadReportEvidence,
+} from '../../../modules/reports/lib/report-api';
 import {
   getReportReasonLabel,
   getReportSeverityLabel,
@@ -72,6 +76,9 @@ type ReportDraft = {
   reason: string;
   description: string;
   evidenceFileKey: string;
+  evidenceFileName: string;
+  evidencePreviewUrl: string | null;
+  evidenceMimeType: string | null;
 };
 
 const EMPTY_RATING_DRAFT: RatingDraft = {
@@ -350,11 +357,39 @@ function getInitialReportDraft(opportunity?: ReportParticipationOpportunity): Re
     reason: opportunity?.suggestedReason ?? 'UNSAFE_DRIVING',
     description: '',
     evidenceFileKey: '',
+    evidenceFileName: '',
+    evidencePreviewUrl: null,
+    evidenceMimeType: null,
   };
+}
+
+function matchesClosureFocus(
+  tripId: string,
+  membershipId: string,
+  focusedTripId: string | null,
+  focusedMembershipId: string | null,
+): boolean {
+  if (!focusedTripId || focusedTripId !== tripId) {
+    return false;
+  }
+
+  if (focusedMembershipId && focusedMembershipId !== membershipId) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildClosureOpportunityElementId(
+  kind: 'rating' | 'report',
+  opportunityId: string,
+): string {
+  return `closure-focus-${kind}-${opportunityId.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 }
 
 export default function TrustPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
+  const searchParams = useSearchParams();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
   const [ratings, setRatings] = useState<RatingList>({ given: [], received: [] });
@@ -369,9 +404,11 @@ export default function TrustPage() {
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isSubmittingRatingId, setIsSubmittingRatingId] = useState<string | null>(null);
   const [isSubmittingReportId, setIsSubmittingReportId] = useState<string | null>(null);
+  const [isUploadingReportEvidenceId, setIsUploadingReportEvidenceId] = useState<string | null>(null);
   const [isSubmittingSanctionAppealId, setIsSubmittingSanctionAppealId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const reportDraftsRef = useRef(reportDrafts);
 
   const defaultMembership = selectOperationalMembership(authSession?.user.memberships);
   const defaultMembershipId =
@@ -490,6 +527,20 @@ export default function TrustPage() {
     },
   );
 
+  useEffect(() => {
+    reportDraftsRef.current = reportDrafts;
+  }, [reportDrafts]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(reportDraftsRef.current).forEach((draft) => {
+        if (draft.evidencePreviewUrl) {
+          URL.revokeObjectURL(draft.evidencePreviewUrl);
+        }
+      });
+    };
+  }, []);
+
   const ratingOpportunities = useMemo(
     () => buildRatingOpportunities(defaultMembershipId, myRequests, incomingRequests),
     [defaultMembershipId, incomingRequests, myRequests],
@@ -527,6 +578,76 @@ export default function TrustPage() {
   const pendingReportOpportunities = reportOpportunities.filter(
     (opportunity) => !reportedKeys.has(opportunity.id),
   );
+  const totalPendingActions = pendingRatingOpportunities.length + pendingReportOpportunities.length;
+  const activeSanctionsCount = trustSummary?.activeSanctions?.length ?? 0;
+  const riskSignalsCount = trustSummary?.riskSignals.length ?? 0;
+  const recentOperationalRiskCount =
+    (trustSummary?.latePassengerTripRequestCancellations ?? 0) +
+    (trustSummary?.passengerNoShows ?? 0);
+  const focusedKind = searchParams.get('focus');
+  const focusedTripId = searchParams.get('tripId');
+  const focusedMembershipId = searchParams.get('membershipId');
+  const highlightedRatingOpportunityIds = useMemo(
+    () =>
+      new Set(
+        pendingRatingOpportunities
+          .filter((opportunity) =>
+            matchesClosureFocus(opportunity.tripId, opportunity.targetMembershipId, focusedTripId, focusedMembershipId),
+          )
+          .map((opportunity) => opportunity.id),
+      ),
+    [focusedMembershipId, focusedTripId, pendingRatingOpportunities],
+  );
+  const highlightedReportOpportunityIds = useMemo(
+    () =>
+      new Set(
+        pendingReportOpportunities
+          .filter((opportunity) =>
+            matchesClosureFocus(
+              opportunity.tripId,
+              opportunity.targetMembershipId,
+              focusedTripId,
+              focusedMembershipId,
+            ),
+          )
+          .map((opportunity) => opportunity.id),
+      ),
+    [focusedMembershipId, focusedTripId, pendingReportOpportunities],
+  );
+
+  useEffect(() => {
+    if (!focusedTripId || (focusedKind !== 'rating' && focusedKind !== 'report')) {
+      return;
+    }
+
+    const highlightedIds = focusedKind === 'rating'
+      ? Array.from(highlightedRatingOpportunityIds)
+      : Array.from(highlightedReportOpportunityIds);
+
+    if (!highlightedIds.length) {
+      return;
+    }
+
+    const targetElement = document.getElementById(
+      buildClosureOpportunityElementId(focusedKind, highlightedIds[0]),
+    );
+
+    if (!targetElement) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      targetElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 120);
+  }, [
+    focusedKind,
+    focusedTripId,
+    highlightedRatingOpportunityIds,
+    highlightedReportOpportunityIds,
+  ]);
 
   const handleRatingDraftChange = (
     opportunityId: string,
@@ -545,7 +666,7 @@ export default function TrustPage() {
   const handleReportDraftChange = (
     opportunity: ReportParticipationOpportunity,
     opportunityId: string,
-    field: keyof ReportDraft,
+    field: 'reason' | 'description',
     value: string,
   ) => {
     setReportDrafts((currentDrafts) => ({
@@ -555,6 +676,61 @@ export default function TrustPage() {
         [field]: value,
       },
     }));
+  };
+
+  const handleReportEvidenceValidationError = (message: string) => {
+    setErrorMessage(message);
+    setSuccessMessage(null);
+  };
+
+  const handleUploadReportEvidence = async (
+    opportunity: ReportParticipationOpportunity,
+    opportunityId: string,
+    file: File,
+  ) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsUploadingReportEvidenceId(opportunityId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await uploadReportEvidence(authSession.accessToken, file);
+      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+
+      setReportDrafts((currentDrafts) => {
+        const currentDraft = currentDrafts[opportunityId] ?? getInitialReportDraft(opportunity);
+
+        if (currentDraft.evidencePreviewUrl) {
+          URL.revokeObjectURL(currentDraft.evidencePreviewUrl);
+        }
+
+        return {
+          ...currentDrafts,
+          [opportunityId]: {
+            ...currentDraft,
+            evidenceFileKey: response.fileKey,
+            evidenceFileName: file.name,
+            evidencePreviewUrl: previewUrl,
+            evidenceMimeType: file.type || null,
+          },
+        };
+      });
+
+      setSuccessMessage(response.message);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setErrorMessage(
+        getApiErrorMessage(error, 'No fue posible cargar la evidencia del reporte.'),
+      );
+    } finally {
+      setIsUploadingReportEvidenceId(null);
+    }
   };
 
   const handleSanctionAppealDraftChange = (sanctionId: string, value: string) => {
@@ -621,10 +797,18 @@ export default function TrustPage() {
 
       await loadData(authSession.accessToken);
       setSuccessMessage(response.message);
-      setReportDrafts((currentDrafts) => ({
-        ...currentDrafts,
-        [opportunity.id]: getInitialReportDraft(opportunity),
-      }));
+      setReportDrafts((currentDrafts) => {
+        const currentDraft = currentDrafts[opportunity.id] ?? getInitialReportDraft(opportunity);
+
+        if (currentDraft.evidencePreviewUrl) {
+          URL.revokeObjectURL(currentDraft.evidencePreviewUrl);
+        }
+
+        return {
+          ...currentDrafts,
+          [opportunity.id]: getInitialReportDraft(opportunity),
+        };
+      });
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
@@ -708,15 +892,16 @@ export default function TrustPage() {
   }
 
   return (
-    <>
-      <header className="topbar">
-        <div>
-          <h1 className="topbar-title">Confianza</h1>
-          <p className="topbar-subtitle">
-            Revisa tu reputacion, califica interacciones cerradas y registra incidentes de cierre operativo.
+    <section className="trust-shell">
+      <header className="trust-command">
+        <div className="trust-command-copy">
+          <p className="section-label">Confianza</p>
+          <h1 className="trust-command-title">Reputacion y cierre operativo</h1>
+          <p className="trust-command-subtitle">
+            Controla tus pendientes de calificacion, reportes y estado administrativo desde un solo lugar.
           </p>
         </div>
-        <div className="topbar-actions">
+        <div className="trust-command-actions">
           <Button
             disabled={isRefreshingData}
             onClick={() => void refreshData(true)}
@@ -725,99 +910,77 @@ export default function TrustPage() {
             {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
           </Button>
           <StatusPill
-            label={`${pendingRatingOpportunities.length + pendingReportOpportunities.length} acciones pendientes`}
-            tone={pendingRatingOpportunities.length || pendingReportOpportunities.length ? 'warning' : 'success'}
+            label={`${totalPendingActions} acciones pendientes`}
+            tone={totalPendingActions ? 'warning' : 'success'}
           />
+          {trustSummary ? (
+            <StatusPill
+              label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+              tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+            />
+          ) : null}
+          {trustSummary ? (
+            <StatusPill
+              label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
+              tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
+            />
+          ) : null}
         </div>
       </header>
 
-      <section className="content-grid">
-        <div className="metrics-grid">
-          <InfoCard
-            description="Estado visible que resume tu confianza actual para otros usuarios."
-            label="Estado visible"
-            value={trustSummary ? getVisibleReputationStateLabel(trustSummary.visibleReputationState) : 'Sin datos'}
+      {focusedKind && focusedTripId ? (
+        <article className="trust-focus-banner">
+          <div>
+            <strong>{focusedKind === 'rating' ? 'Accion de calificacion abierta' : 'Accion de reporte abierta'}</strong>
+            <p>
+              Llegaste aqui desde el cierre post-viaje. La tarjeta correspondiente de este viaje se resaltara mas abajo.
+            </p>
+          </div>
+          <StatusPill
+            label={focusedKind === 'rating' ? 'Calificacion' : 'Reporte'}
+            tone={focusedKind === 'rating' ? 'success' : 'warning'}
           />
-          <InfoCard
-            description="Estado administrativo derivado de riesgos recientes y reincidencia."
-            label="Estado administrativo"
-            value={
-              trustSummary
-                ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
-                : 'Sin datos'
-            }
-          />
-          <InfoCard
-            description="Interacciones cerradas dentro de la ventana vigente donde aun puedes registrar una calificacion."
-            label="Calificaciones pendientes"
-            value={`${pendingRatingOpportunities.length}`}
-          />
-          <InfoCard
-            description="Casos disponibles para reportar en viajes cerrados o con incidentes de cierre."
-            label="Reportes pendientes"
-            value={`${pendingReportOpportunities.length}`}
-          />
-          <InfoCard
-            description="Total de calificaciones recibidas por tu membresia activa."
-            label="Reputacion recibida"
-            value={`${ratings.received.length}`}
-          />
-          <InfoCard
-            description="Promedio actual de calificaciones recibidas por tu membresia activa."
-            label="Promedio actual"
-            value={formatAverageScore(trustSummary?.averageRatingReceived ?? null)}
-          />
-          <InfoCard
-            description="Cantidad total de interacciones completadas que alimentan tu historial."
-            label="Interacciones completadas"
-            value={`${trustSummary?.completedInteractions ?? 0}`}
-          />
-          <InfoCard
-            description="Sanciones o advertencias recientes dentro de la ventana de reincidencia."
-            label="Historial reciente"
-            value={`${
-              trustSummary?.recentBlockingSanctionCount ?? 0
-            } restrictivas / ${trustSummary?.recentSanctionCount ?? 0} totales`}
-          />
-          <InfoCard
-            description="Viajes completados como conductor desde tu membresia activa."
-            label="Viajes como conductor"
-            value={`${trustSummary?.completedTripsAsDriver ?? 0}`}
-          />
-          <InfoCard
-            description="Viajes completados como pasajero desde tu membresia activa."
-            label="Viajes como pasajero"
-            value={`${trustSummary?.completedTripsAsPassenger ?? 0}`}
-          />
-          <InfoCard
-            description="Cancelaciones tardias registradas en tus viajes como conductor."
-            label="Cancelaciones tardias"
-            value={`${trustSummary?.lateDriverTripCancellations ?? 0}`}
-          />
-          <InfoCard
-            description="Solicitudes canceladas tarde y no-shows registrados en tu membresia activa."
-            label="Riesgos operativos"
-            value={`${
-              (trustSummary?.latePassengerTripRequestCancellations ?? 0) +
-              (trustSummary?.passengerNoShows ?? 0)
-            }`}
-          />
-          <InfoCard
-            description="Reportes resueltos de alta severidad dentro de la ventana administrativa actual."
-            label="Reportes graves"
-            value={`${trustSummary?.resolvedHighSeverityReportsReceived ?? 0}`}
-          />
-          <InfoCard
-            description="Apelaciones administrativas registradas desde tu cuenta."
-            label="Apelaciones"
-            value={`${sanctionAppeals.length}`}
-          />
-        </div>
+        </article>
+      ) : null}
 
+      {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
+      {successMessage ? <div className="form-success">{successMessage}</div> : null}
+
+      <section className="trust-kpi-grid">
+        <TrustKpiCard
+          label="Pendientes"
+          note="Acciones de cierre activas"
+          tone={totalPendingActions ? 'warning' : 'success'}
+          value={`${totalPendingActions}`}
+        />
+        <TrustKpiCard
+          label="Promedio"
+          note="Calificacion recibida"
+          tone="neutral"
+          value={formatAverageScore(trustSummary?.averageRatingReceived ?? null)}
+        />
+        <TrustKpiCard
+          label="Interacciones"
+          note="Trayectos cerrados"
+          tone="neutral"
+          value={`${trustSummary?.completedInteractions ?? 0}`}
+        />
+        <TrustKpiCard
+          label="Restricciones"
+          note="Vigentes ahora"
+          tone={activeSanctionsCount ? 'warning' : 'success'}
+          value={`${activeSanctionsCount}`}
+        />
+      </section>
+
+      <section className="trust-main-grid">
         {trustSummary ? (
-          <article className="panel panel-stack">
-            <div className="section-heading">
-              <h2 className="panel-title">Estado de reputacion</h2>
+          <article className="trust-summary-card">
+            <div className="trust-summary-head">
+              <div>
+                <p className="section-label">Resumen</p>
+                <h2 className="panel-title">Estado reputacional</h2>
+              </div>
               <div className="button-row">
                 <StatusPill
                   label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
@@ -830,31 +993,201 @@ export default function TrustPage() {
               </div>
             </div>
 
-            <div className="list-stack">
-              <div className="list-card">
-                <div className="list-card-header">
-                  <strong>Senales actuales</strong>
-                  <span className="section-heading-meta">
-                    {trustSummary.riskSignals.length} detectadas
-                  </span>
-                </div>
-                {trustSummary.riskSignals.length ? (
-                  <div className="list-stack">
-                    {trustSummary.riskSignals.map((signal) => (
-                      <p key={signal} className="panel-text">
-                        {signal}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="panel-text">
-                    No se detectaron observaciones recientes en tu membresia activa.
-                  </p>
-                )}
+            <div className="trust-mini-metric-grid">
+              <TrustMiniMetric
+                label="Calificaciones"
+                value={`${trustSummary.totalRatingsReceived}`}
+              />
+              <TrustMiniMetric
+                label="Riesgos"
+                value={`${riskSignalsCount}`}
+              />
+              <TrustMiniMetric
+                label="Reportes graves"
+                value={`${trustSummary.resolvedHighSeverityReportsReceived}`}
+              />
+              <TrustMiniMetric
+                label="Apelaciones"
+                value={`${sanctionAppeals.length}`}
+              />
+            </div>
+
+            <div className="trust-signal-card">
+              <div className="list-card-header">
+                <strong>Senales actuales</strong>
+                <span className="section-heading-meta">{riskSignalsCount} detectadas</span>
               </div>
+              {trustSummary.riskSignals.length ? (
+                <ul className="trust-signal-list">
+                  {trustSummary.riskSignals.map((signal) => (
+                    <li key={signal} className="trust-signal-item">
+                      {signal}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="panel-text">
+                  No se detectaron observaciones recientes en tu membresia activa.
+                </p>
+              )}
             </div>
           </article>
         ) : null}
+
+        {trustSummary ? (
+          <article className="trust-summary-card trust-summary-card-muted">
+            <div className="trust-summary-head">
+              <div>
+                <p className="section-label">Marco operativo</p>
+                <h2 className="panel-title">Politicas vigentes</h2>
+              </div>
+            </div>
+
+            <div className="trust-policy-grid">
+              <TrustPolicyCard
+                label="Cancelacion tardia"
+                value={`${trustSummary.cancellationPolicy.lateWindowMinutes} min`}
+              />
+              <TrustPolicyCard
+                label="Rating bajo"
+                value={`${trustSummary.reputationPolicy.lowRatingThreshold.toFixed(1)}/5`}
+              />
+              <TrustPolicyCard
+                label="Minimo de ratings"
+                value={`${trustSummary.reputationPolicy.minimumRatingsForSignal}`}
+              />
+              <TrustPolicyCard
+                label="Interacciones minimas"
+                value={`${trustSummary.reputationPolicy.minimumCompletedInteractionsForSignal}`}
+              />
+              <TrustPolicyCard
+                label="Reincidencia"
+                value={`${trustSummary.reputationPolicy.recurrenceWindowDays} dias`}
+              />
+              <TrustPolicyCard
+                label="Ventana de reportes"
+                value={
+                  trustSummary.sanctionPolicy
+                    ? `${trustSummary.sanctionPolicy.reportsWindowDays} dias`
+                    : 'No definida'
+                }
+              />
+            </div>
+
+            <div className="trust-mini-metric-grid">
+              <TrustMiniMetric
+                label="Como conductor"
+                value={`${trustSummary.completedTripsAsDriver}`}
+              />
+              <TrustMiniMetric
+                label="Como pasajero"
+                value={`${trustSummary.completedTripsAsPassenger}`}
+              />
+              <TrustMiniMetric
+                label="Cancelaciones tardias"
+                value={`${trustSummary.lateDriverTripCancellations}`}
+              />
+              <TrustMiniMetric
+                label="No-show y cancelaciones"
+                value={`${recentOperationalRiskCount}`}
+              />
+            </div>
+          </article>
+        ) : null}
+      </section>
+
+      <section className="trust-section-block">
+        <div className="section-heading">
+          <div>
+            <h2 className="panel-title">Bandeja de cierre</h2>
+            <p className="section-heading-meta">
+              {pendingRatingOpportunities.length} calificaciones y {pendingReportOpportunities.length} reportes pendientes
+            </p>
+          </div>
+        </div>
+
+        <div className="page-grid page-grid-wide">
+          <article className="panel panel-stack">
+            <div className="section-heading">
+              <h3 className="panel-title">Calificaciones pendientes</h3>
+              <p className="section-heading-meta">{pendingRatingOpportunities.length} disponibles</p>
+            </div>
+            {pendingRatingOpportunities.length ? (
+              <div className="list-stack">
+                {pendingRatingOpportunities.map((opportunity) => (
+                  <RatingOpportunityCard
+                    elementId={buildClosureOpportunityElementId('rating', opportunity.id)}
+                    highlighted={highlightedRatingOpportunityIds.has(opportunity.id)}
+                    key={opportunity.id}
+                    isSubmitting={isSubmittingRatingId === opportunity.id}
+                    onChange={(field, value) => handleRatingDraftChange(opportunity.id, field, value)}
+                    onSubmit={() => void handleCreateRating(opportunity)}
+                    opportunity={{
+                      id: opportunity.id,
+                      tripId: opportunity.tripId,
+                      targetMembershipId: opportunity.targetMembershipId,
+                      targetFullName: opportunity.targetFullName,
+                      tripOriginLabel: opportunity.tripOriginLabel,
+                      tripDestinationLabel: opportunity.tripDestinationLabel,
+                      tripDepartureAt: opportunity.tripDepartureAt,
+                      directionLabel: opportunity.ratingDirectionLabel,
+                      windowClosesAt: opportunity.windowClosesAt,
+                    } satisfies RatingOpportunity}
+                    value={ratingDrafts[opportunity.id] ?? EMPTY_RATING_DRAFT}
+                  />
+                ))}
+              </div>
+            ) : (
+              <TrustEmptyStateCopy message="No tienes calificaciones pendientes. Tu historial esta al dia con los viajes cerrados actuales." />
+            )}
+          </article>
+
+          <article className="panel panel-stack">
+            <div className="section-heading">
+              <h3 className="panel-title">Reportes pendientes</h3>
+              <p className="section-heading-meta">{pendingReportOpportunities.length} disponibles</p>
+            </div>
+            {pendingReportOpportunities.length ? (
+              <div className="list-stack">
+                {pendingReportOpportunities.map((opportunity) => (
+                  <ReportOpportunityCard
+                    elementId={buildClosureOpportunityElementId('report', opportunity.id)}
+                    highlighted={highlightedReportOpportunityIds.has(opportunity.id)}
+                    key={opportunity.id}
+                    isSubmitting={isSubmittingReportId === opportunity.id}
+                    isUploadingEvidence={isUploadingReportEvidenceId === opportunity.id}
+                    onChange={(field, value) =>
+                      handleReportDraftChange(opportunity, opportunity.id, field, value)
+                    }
+                    onEvidenceValidationError={handleReportEvidenceValidationError}
+                    onUploadEvidence={(file) =>
+                      void handleUploadReportEvidence(opportunity, opportunity.id, file)
+                    }
+                    onSubmit={() => void handleCreateReport(opportunity)}
+                    opportunity={{
+                      id: opportunity.id,
+                      tripId: opportunity.tripId,
+                      reportedMembershipId: opportunity.targetMembershipId,
+                      reportedFullName: opportunity.targetFullName,
+                      tripOriginLabel: opportunity.tripOriginLabel,
+                      tripDestinationLabel: opportunity.tripDestinationLabel,
+                      tripDepartureAt: opportunity.tripDepartureAt,
+                      directionLabel: opportunity.reportDirectionLabel,
+                      incidentLabel: opportunity.incidentLabel,
+                      incidentTone: opportunity.incidentTone,
+                      incidentSummary: opportunity.incidentSummary,
+                      windowClosesAt: opportunity.windowClosesAt,
+                    } satisfies ReportOpportunity}
+                    value={reportDrafts[opportunity.id] ?? getInitialReportDraft(opportunity)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <TrustEmptyStateCopy message="No tienes reportes pendientes. No se detectan cierres anomalos o incidentes disponibles para registrar." />
+            )}
+          </article>
+        </div>
+      </section>
 
         {trustSummary?.activeSanctions?.length ? (
           <article className="panel panel-stack">
@@ -975,101 +1308,7 @@ export default function TrustPage() {
           </article>
         ) : null}
 
-        {trustSummary ? (
-          <div className="form-helper">
-            Ventana de cancelacion tardia vigente: {trustSummary.cancellationPolicy.lateWindowMinutes} minutos antes de la salida.
-            Ultimo calculo: {formatDateTime(trustSummary.cancellationPolicy.lastComputedAt)}.
-            {' '}
-            Umbral de rating bajo: {trustSummary.reputationPolicy.lowRatingThreshold.toFixed(1)}/5 con al menos {trustSummary.reputationPolicy.minimumRatingsForSignal} calificaciones y {trustSummary.reputationPolicy.minimumCompletedInteractionsForSignal} interacciones completadas.
-            {' '}
-            Reincidencia agravada: {trustSummary.reputationPolicy.recurrenceWindowDays} dias.
-            {trustSummary.sanctionPolicy
-              ? ` Evaluacion de sanciones: ${trustSummary.sanctionPolicy.operationalWindowDays} dias para conducta operativa y ${trustSummary.sanctionPolicy.reportsWindowDays} dias para reportes resueltos.`
-              : ''}
-          </div>
-        ) : null}
-
-        {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-        {successMessage ? <div className="form-success">{successMessage}</div> : null}
-
-        <div className="page-grid page-grid-wide">
-          <article className="panel panel-stack">
-            <div className="section-heading">
-              <h2 className="panel-title">Calificaciones pendientes</h2>
-              <p className="section-heading-meta">{pendingRatingOpportunities.length} disponibles</p>
-            </div>
-            {pendingRatingOpportunities.length ? (
-              <div className="list-stack">
-                {pendingRatingOpportunities.map((opportunity) => (
-                  <RatingOpportunityCard
-                    key={opportunity.id}
-                    isSubmitting={isSubmittingRatingId === opportunity.id}
-                    onChange={(field, value) => handleRatingDraftChange(opportunity.id, field, value)}
-                    onSubmit={() => void handleCreateRating(opportunity)}
-                    opportunity={{
-                      id: opportunity.id,
-                      tripId: opportunity.tripId,
-                      targetMembershipId: opportunity.targetMembershipId,
-                      targetFullName: opportunity.targetFullName,
-                      tripOriginLabel: opportunity.tripOriginLabel,
-                      tripDestinationLabel: opportunity.tripDestinationLabel,
-                      tripDepartureAt: opportunity.tripDepartureAt,
-                      directionLabel: opportunity.ratingDirectionLabel,
-                      windowClosesAt: opportunity.windowClosesAt,
-                    } satisfies RatingOpportunity}
-                    value={ratingDrafts[opportunity.id] ?? EMPTY_RATING_DRAFT}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="panel-text">
-                No tienes calificaciones pendientes. Tu historial esta al dia con los viajes completados actuales.
-              </p>
-            )}
-          </article>
-
-          <article className="panel panel-stack">
-            <div className="section-heading">
-              <h2 className="panel-title">Reportes pendientes</h2>
-              <p className="section-heading-meta">{pendingReportOpportunities.length} disponibles</p>
-            </div>
-            {pendingReportOpportunities.length ? (
-              <div className="list-stack">
-                {pendingReportOpportunities.map((opportunity) => (
-                  <ReportOpportunityCard
-                    key={opportunity.id}
-                    isSubmitting={isSubmittingReportId === opportunity.id}
-                    onChange={(field, value) =>
-                      handleReportDraftChange(opportunity, opportunity.id, field, value)
-                    }
-                    onSubmit={() => void handleCreateReport(opportunity)}
-                    opportunity={{
-                      id: opportunity.id,
-                      tripId: opportunity.tripId,
-                      reportedMembershipId: opportunity.targetMembershipId,
-                      reportedFullName: opportunity.targetFullName,
-                      tripOriginLabel: opportunity.tripOriginLabel,
-                      tripDestinationLabel: opportunity.tripDestinationLabel,
-                      tripDepartureAt: opportunity.tripDepartureAt,
-                      directionLabel: opportunity.reportDirectionLabel,
-                      incidentLabel: opportunity.incidentLabel,
-                      incidentTone: opportunity.incidentTone,
-                      incidentSummary: opportunity.incidentSummary,
-                      windowClosesAt: opportunity.windowClosesAt,
-                    } satisfies ReportOpportunity}
-                    value={reportDrafts[opportunity.id] ?? getInitialReportDraft(opportunity)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="panel-text">
-                No tienes reportes pendientes. No se detectan cierres anomalos o incidentes disponibles para registrar.
-              </p>
-            )}
-          </article>
-        </div>
-
-        <div className="page-grid page-grid-wide">
+      <section className="trust-history-grid">
           <article className="panel panel-stack">
             <div className="section-heading">
               <h2 className="panel-title">Calificaciones emitidas</h2>
@@ -1121,7 +1360,7 @@ export default function TrustPage() {
               <p className="panel-text">Aun no has recibido calificaciones en la membresia activa.</p>
             )}
           </article>
-        </div>
+      </section>
 
         <article className="panel panel-stack">
           <div className="section-heading">
@@ -1163,7 +1402,74 @@ export default function TrustPage() {
             <p className="panel-text">Aun no has enviado reportes desde esta membresia.</p>
           )}
         </article>
-      </section>
-    </>
+
+      {trustSummary ? (
+        <div className="form-helper trust-footnote">
+          Cancelacion tardia: {trustSummary.cancellationPolicy.lateWindowMinutes} minutos antes de la salida.
+          Ultimo calculo: {formatDateTime(trustSummary.cancellationPolicy.lastComputedAt)}.
+          {' '}
+          Rating bajo: {trustSummary.reputationPolicy.lowRatingThreshold.toFixed(1)}/5.
+          {' '}
+          Reincidencia: {trustSummary.reputationPolicy.recurrenceWindowDays} dias.
+          {trustSummary.sanctionPolicy
+            ? ` Ventanas administrativas: ${trustSummary.sanctionPolicy.operationalWindowDays} dias operativos y ${trustSummary.sanctionPolicy.reportsWindowDays} dias para reportes.`
+            : ''}
+        </div>
+      ) : null}
+    </section>
   );
+}
+
+function TrustKpiCard({
+  label,
+  value,
+  note,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string;
+  note: string;
+  tone?: 'neutral' | 'success' | 'warning';
+}) {
+  return (
+    <article className={`trust-kpi-card trust-kpi-card-${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <p>{note}</p>
+    </article>
+  );
+}
+
+function TrustMiniMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="trust-mini-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function TrustPolicyCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="trust-policy-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function TrustEmptyStateCopy({ message }: { message: string }) {
+  return <p className="panel-text">{message}</p>;
 }

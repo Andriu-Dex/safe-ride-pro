@@ -36,16 +36,20 @@ export const EMPTY_TRIP_FORM: TripFormValues = {
 
 export type TripRequestDraft = {
   requestMessage: string;
+  requestedPickupLabel: string;
   requestedPickupLatitude: string;
   requestedPickupLongitude: string;
+  requestedDropoffLabel: string;
   requestedDropoffLatitude: string;
   requestedDropoffLongitude: string;
 };
 
 export const EMPTY_REQUEST_DRAFT: TripRequestDraft = {
   requestMessage: '',
+  requestedPickupLabel: '',
   requestedPickupLatitude: '',
   requestedPickupLongitude: '',
+  requestedDropoffLabel: '',
   requestedDropoffLatitude: '',
   requestedDropoffLongitude: '',
 };

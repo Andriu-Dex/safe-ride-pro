@@ -289,6 +289,29 @@ function buildDriverClosureItems(
         actionParts.push('registrar un incidente si algo salio mal');
       }
 
+      const actions: TripClosureActionItem['actions'] = [];
+
+      if (summary.canCreateRating) {
+        actions.push({
+          label: 'Ir a calificaciones',
+          href: buildTrustClosureHref({
+            focus: 'rating',
+            tripId: trip.id,
+          }),
+        });
+      }
+
+      if (summary.canCreateIncidentReport) {
+        actions.push({
+          label: 'Ir a reportes',
+          href: buildTrustClosureHref({
+            focus: 'report',
+            tripId: trip.id,
+          }),
+          variant: summary.canCreateRating ? 'ghost' : 'secondary',
+        });
+      }
+
       return {
         id: trip.id,
         title: `${trip.originLabel} -> ${trip.destinationLabel}`,
@@ -303,10 +326,26 @@ function buildDriverClosureItems(
         incidentTone: summary.incidentType
           ? getTripClosureIncidentTone(summary.incidentType)
           : 'neutral',
+        actions,
       } satisfies TripClosureActionItem;
     })
     .filter((item): item is TripClosureActionItem => item !== null)
     .sort((left, right) => left.title.localeCompare(right.title));
+}
+
+function buildTrustClosureHref({
+  focus,
+  tripId,
+}: {
+  focus: 'rating' | 'report';
+  tripId: string;
+}): string {
+  const searchParams = new URLSearchParams({
+    focus,
+    tripId,
+  });
+
+  return `/confianza?${searchParams.toString()}`;
 }
 
 function getTrackingPriority(status: TripStatus): number {

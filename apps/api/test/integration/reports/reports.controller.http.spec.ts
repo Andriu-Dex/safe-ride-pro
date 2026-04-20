@@ -11,9 +11,11 @@ import {
 
 import { CurrentUserContext } from '../../../src/modules/auth/application/types/current-user-context.type';
 import { CreateReportUseCase } from '../../../src/modules/reports/application/use-cases/create-report.use-case';
+import { GetReportEvidenceUseCase } from '../../../src/modules/reports/application/use-cases/get-report-evidence.use-case';
 import { ListMyReportsUseCase } from '../../../src/modules/reports/application/use-cases/list-my-reports.use-case';
 import { ListReviewableReportsUseCase } from '../../../src/modules/reports/application/use-cases/list-reviewable-reports.use-case';
 import { ReviewReportUseCase } from '../../../src/modules/reports/application/use-cases/review-report.use-case';
+import { UploadReportEvidenceUseCase } from '../../../src/modules/reports/application/use-cases/upload-report-evidence.use-case';
 import { ReportsController } from '../../../src/modules/reports/presentation/controllers/reports.controller';
 import { createAuthenticatedHttpContext } from '../../helpers/create-authenticated-http-context';
 import { createHttpTestApp } from '../../helpers/create-test-app';
@@ -23,10 +25,16 @@ describe('ReportsController HTTP', () => {
   const createReportUseCase = {
     execute: jest.fn(),
   };
+  const uploadReportEvidenceUseCase = {
+    execute: jest.fn(),
+  };
   const listMyReportsUseCase = {
     execute: jest.fn(),
   };
   const listReviewableReportsUseCase = {
+    execute: jest.fn(),
+  };
+  const getReportEvidenceUseCase = {
     execute: jest.fn(),
   };
   const reviewReportUseCase = {
@@ -64,12 +72,20 @@ describe('ReportsController HTTP', () => {
           useValue: createReportUseCase,
         },
         {
+          provide: UploadReportEvidenceUseCase,
+          useValue: uploadReportEvidenceUseCase,
+        },
+        {
           provide: ListMyReportsUseCase,
           useValue: listMyReportsUseCase,
         },
         {
           provide: ListReviewableReportsUseCase,
           useValue: listReviewableReportsUseCase,
+        },
+        {
+          provide: GetReportEvidenceUseCase,
+          useValue: getReportEvidenceUseCase,
         },
         {
           provide: ReviewReportUseCase,
@@ -130,6 +146,34 @@ describe('ReportsController HTTP', () => {
     });
   });
 
+  it('uploads report evidence through HTTP using the authenticated user id', async () => {
+    uploadReportEvidenceUseCase.execute.mockResolvedValue({
+      message: 'La evidencia del reporte se cargo correctamente.',
+      fileKey: 'membership-admin/evidence-1.png',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/reports/me/evidence')
+      .set('Authorization', 'Bearer test-token')
+      .attach('file', Buffer.from('image-content'), {
+        filename: 'evidencia.png',
+        contentType: 'image/png',
+      })
+      .expect(201);
+
+    expect(response.body).toEqual({
+      message: 'La evidencia del reporte se cargo correctamente.',
+      fileKey: 'membership-admin/evidence-1.png',
+    });
+    expect(uploadReportEvidenceUseCase.execute).toHaveBeenCalledWith(
+      'admin-1',
+      expect.objectContaining({
+        originalname: 'evidencia.png',
+        mimetype: 'image/png',
+      }),
+    );
+  });
+
   it('lists reports for the authenticated user', async () => {
     listMyReportsUseCase.execute.mockResolvedValue({
       items: [],
@@ -166,6 +210,28 @@ describe('ReportsController HTTP', () => {
       status: ReportStatus.Pending,
       limit: 25,
     });
+  });
+
+  it('downloads report evidence through HTTP for authorized admins', async () => {
+    getReportEvidenceUseCase.execute.mockResolvedValue({
+      fileName: 'evidencia-reporte.pdf',
+      mimeType: 'application/pdf',
+      content: Buffer.from('pdf-content'),
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/reports/8fe59d21-01aa-4764-b9f5-fa05a13997e4/evidence')
+      .set('Authorization', 'Bearer test-token')
+      .expect(200);
+
+    expect(getReportEvidenceUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'admin-1',
+      }),
+      '8fe59d21-01aa-4764-b9f5-fa05a13997e4',
+    );
+    expect(response.header['content-type']).toContain('application/pdf');
+    expect(response.header['content-disposition']).toContain('evidencia-reporte.pdf');
   });
 
   it('reviews a report through HTTP using the authenticated admin', async () => {

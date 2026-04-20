@@ -2,7 +2,6 @@ import { TripRequestStatus, TripRouteMode, TripStatus } from '@saferidepro/share
 
 import { Button } from '../../../components/ui/button';
 import { DisclosurePanel } from '../../../components/ui/disclosure-panel';
-import { InputField } from '../../../components/ui/input-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
@@ -10,6 +9,7 @@ import type { TripFilters, TripRecord } from '../types/trip';
 import { TripFiltersPanel } from './trip-filters-panel';
 import { TripOverviewCard } from './trip-overview-card';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
+import { TripRequestDetourPlanner } from './trip-request-detour-planner';
 import { EMPTY_REQUEST_DRAFT, type TripRequestDraft } from './trips-workspace.types';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
 
@@ -195,62 +195,16 @@ export function TripsDiscoverWorkspace({
                     >
                       <div className="trip-request-composer-grid">
                         {trip.routeMode === TripRouteMode.PlannedDetour ? (
-                          <div className="trip-request-detour-panel">
-                            <div className="trip-request-detour-head">
-                              <strong>Puntos personalizados</strong>
-                              <span>Recogida y destino</span>
-                            </div>
-                            <div className="form-grid form-grid-4 compact-grid">
-                              <InputField
-                                label="Lat. recogida"
-                                onChange={(event) =>
-                                  onRequestDraftChange(
-                                    trip.id,
-                                    'requestedPickupLatitude',
-                                    event.target.value,
-                                  )}
-                                step="any"
-                                type="number"
-                                value={draft.requestedPickupLatitude}
-                              />
-                              <InputField
-                                label="Long. recogida"
-                                onChange={(event) =>
-                                  onRequestDraftChange(
-                                    trip.id,
-                                    'requestedPickupLongitude',
-                                    event.target.value,
-                                  )}
-                                step="any"
-                                type="number"
-                                value={draft.requestedPickupLongitude}
-                              />
-                              <InputField
-                                label="Lat. destino"
-                                onChange={(event) =>
-                                  onRequestDraftChange(
-                                    trip.id,
-                                    'requestedDropoffLatitude',
-                                    event.target.value,
-                                  )}
-                                step="any"
-                                type="number"
-                                value={draft.requestedDropoffLatitude}
-                              />
-                              <InputField
-                                label="Long. destino"
-                                onChange={(event) =>
-                                  onRequestDraftChange(
-                                    trip.id,
-                                    'requestedDropoffLongitude',
-                                    event.target.value,
-                                  )}
-                                step="any"
-                                type="number"
-                                value={draft.requestedDropoffLongitude}
-                              />
-                            </div>
-                          </div>
+                          <TripRequestDetourPlanner
+                            disabled={
+                              isPassengerOperationBlocked
+                              || isMutatingRequestId === trip.id
+                              || hasActiveRequest
+                            }
+                            draft={draft}
+                            onChange={(field, value) =>
+                              onRequestDraftChange(trip.id, field, value)}
+                          />
                         ) : null}
 
                         <TextareaField

@@ -10,9 +10,19 @@ import {
 } from '../lib/geoapify';
 import type { PlaceSelection } from '../types/place-selection';
 
+type TripRouteMapSelectionMode = 'pickup' | 'dropoff';
+
 type TripRouteMapProps = {
   origin: PlaceSelection | null;
   destination: PlaceSelection | null;
+  pickup?: PlaceSelection | null;
+  dropoff?: PlaceSelection | null;
+  selectionMode?: TripRouteMapSelectionMode | null;
+  onMapSelect?: (selection: {
+    latitude: number;
+    longitude: number;
+    target: TripRouteMapSelectionMode;
+  }) => void;
 };
 
 type MapBundle = {
@@ -21,7 +31,14 @@ type MapBundle = {
   overlayGroup: Leaflet.FeatureGroup;
 };
 
-export function TripRouteMap({ origin, destination }: TripRouteMapProps) {
+export function TripRouteMap({
+  origin,
+  destination,
+  pickup = null,
+  dropoff = null,
+  selectionMode = null,
+  onMapSelect,
+}: TripRouteMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const bundleRef = useRef<MapBundle | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -67,7 +84,7 @@ export function TripRouteMap({ origin, destination }: TripRouteMapProps) {
           overlayGroup,
         };
 
-        syncMapBundle(bundleRef.current, origin, destination);
+        syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff);
         setErrorMessage(null);
       } catch (error) {
         if (!isMounted) {
@@ -98,8 +115,40 @@ export function TripRouteMap({ origin, destination }: TripRouteMapProps) {
       return;
     }
 
-    syncMapBundle(bundle, origin, destination);
-  }, [destination, origin]);
+    syncMapBundle(bundle, origin, destination, pickup, dropoff);
+  }, [destination, dropoff, origin, pickup]);
+
+  useEffect(() => {
+    const bundle = bundleRef.current;
+
+    if (!bundle) {
+      return;
+    }
+
+    const mapElement = mapRef.current;
+
+    if (mapElement) {
+      mapElement.style.cursor = selectionMode ? 'crosshair' : '';
+    }
+
+    if (!selectionMode || !onMapSelect) {
+      return;
+    }
+
+    const handleMapClick = (event: Leaflet.LeafletMouseEvent) => {
+      onMapSelect({
+        latitude: event.latlng.lat,
+        longitude: event.latlng.lng,
+        target: selectionMode,
+      });
+    };
+
+    bundle.map.on('click', handleMapClick);
+
+    return () => {
+      bundle.map.off('click', handleMapClick);
+    };
+  }, [onMapSelect, selectionMode]);
 
   return (
     <>
@@ -113,6 +162,8 @@ function syncMapBundle(
   bundle: MapBundle,
   origin: PlaceSelection | null,
   destination: PlaceSelection | null,
+  pickup: PlaceSelection | null,
+  dropoff: PlaceSelection | null,
 ) {
   const { leaflet, map, overlayGroup } = bundle;
 
@@ -136,6 +187,26 @@ function syncMapBundle(
     leaflet
       .marker(position, {
         icon: buildMarkerIcon(leaflet, 'D', 'trip-map-marker-destination'),
+      })
+      .addTo(overlayGroup);
+  }
+
+  if (pickup) {
+    const position: [number, number] = [pickup.latitude, pickup.longitude];
+    points.push(position);
+    leaflet
+      .marker(position, {
+        icon: buildMarkerIcon(leaflet, 'R', 'trip-map-marker-pickup'),
+      })
+      .addTo(overlayGroup);
+  }
+
+  if (dropoff) {
+    const position: [number, number] = [dropoff.latitude, dropoff.longitude];
+    points.push(position);
+    leaflet
+      .marker(position, {
+        icon: buildMarkerIcon(leaflet, 'B', 'trip-map-marker-dropoff'),
       })
       .addTo(overlayGroup);
   }

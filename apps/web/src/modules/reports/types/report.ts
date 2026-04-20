@@ -39,3 +39,8 @@ export type ReviewReportInput = {
   status: ReportStatus;
   reviewNote?: string;
 };
+
+export type ReportEvidenceUploadResponse = {
+  message: string;
+  fileKey: string;
+};
