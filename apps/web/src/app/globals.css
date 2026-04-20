@@ -3630,6 +3630,11 @@ main {
   background: linear-gradient(160deg, #cc5f94, #91345d);
 }
 
+.trip-map-marker-live {
+  background: radial-gradient(circle at 30% 30%, #9ffcf3, #0f766e 58%, #0a2f31);
+  transform: scale(1.08);
+}
+
 .trip-live-panel-span {
   grid-column: 1 / -1;
 }

@@ -5,6 +5,7 @@ import {
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
+  TripLiveTrackingStatus,
   TripRouteMode,
   TripStatus,
   VehicleType,
@@ -27,6 +28,9 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     createTrip: jest.fn(),
     findTripById: jest.fn(),
     hasAcceptedTripRequest: jest.fn(),
+    findAcceptedPassengerMembershipIds: jest.fn(
+      async (_tripId: string): Promise<string[]> => [],
+    ),
     findLatestReusableTripByDriverMembershipId: jest.fn(),
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
@@ -34,6 +38,10 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     autoCancelTripForDriverAbsence: jest.fn(),
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
+    getTripLiveTrackingByTripId: jest.fn(),
+    activateTripLiveTracking: jest.fn(),
+    recordTripLiveTrackingPosition: jest.fn(),
+    endTripLiveTracking: jest.fn(),
   };
 }
 
@@ -256,6 +264,19 @@ describe('Trip status transition use cases', () => {
       }),
     );
     repository.startTripAndClosePendingRequests.mockResolvedValue(buildTrip(TripStatus.InProgress));
+    repository.activateTripLiveTracking.mockResolvedValue({
+      tripId: 'trip-1',
+      status: TripLiveTrackingStatus.Active,
+      startedAt: new Date(),
+      endedAt: null,
+      lastSignalAt: null,
+      currentLatitude: null,
+      currentLongitude: null,
+      currentAccuracyMeters: null,
+      currentHeadingDegrees: null,
+      currentSpeedKph: null,
+      history: [],
+    });
 
     const response = await useCase.execute('user-1', 'trip-1');
 
@@ -406,6 +427,19 @@ describe('Trip status transition use cases', () => {
     });
     repository.findTripById.mockResolvedValue(buildTrip(TripStatus.InProgress));
     repository.updateTripStatus.mockResolvedValue(buildTrip(TripStatus.Completed));
+    repository.endTripLiveTracking.mockResolvedValue({
+      tripId: 'trip-1',
+      status: TripLiveTrackingStatus.Ended,
+      startedAt: new Date(),
+      endedAt: new Date(),
+      lastSignalAt: null,
+      currentLatitude: null,
+      currentLongitude: null,
+      currentAccuracyMeters: null,
+      currentHeadingDegrees: null,
+      currentSpeedKph: null,
+      history: [],
+    });
 
     const response = await useCase.execute('user-1', 'trip-1');
 

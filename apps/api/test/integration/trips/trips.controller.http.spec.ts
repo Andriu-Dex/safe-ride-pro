@@ -18,9 +18,11 @@ import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-
 import { CreateTripUseCase } from '../../../src/modules/trips/application/use-cases/create-trip.use-case';
 import { GetTripByIdUseCase } from '../../../src/modules/trips/application/use-cases/get-trip-by-id.use-case';
 import { GetLatestTripRouteTemplateUseCase } from '../../../src/modules/trips/application/use-cases/get-latest-trip-route-template.use-case';
+import { GetTripLiveTrackingUseCase } from '../../../src/modules/trips/application/use-cases/get-trip-live-tracking.use-case';
 import { ListTripsUseCase } from '../../../src/modules/trips/application/use-cases/list-trips.use-case';
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../../src/modules/trips/application/use-cases/start-trip.use-case';
+import { UpdateTripLiveTrackingUseCase } from '../../../src/modules/trips/application/use-cases/update-trip-live-tracking.use-case';
 import { TripsController } from '../../../src/modules/trips/presentation/controllers/trips.controller';
 import { createAuthenticatedHttpContext } from '../../helpers/create-authenticated-http-context';
 import { createHttpTestApp } from '../../helpers/create-test-app';
@@ -39,6 +41,9 @@ describe('TripsController HTTP', () => {
   const getLatestTripRouteTemplateUseCase = {
     execute: jest.fn(),
   };
+  const getTripLiveTrackingUseCase = {
+    execute: jest.fn(),
+  };
   const publishTripUseCase = {
     execute: jest.fn(),
   };
@@ -49,6 +54,9 @@ describe('TripsController HTTP', () => {
     execute: jest.fn(),
   };
   const cancelTripUseCase = {
+    execute: jest.fn(),
+  };
+  const updateTripLiveTrackingUseCase = {
     execute: jest.fn(),
   };
 
@@ -94,6 +102,10 @@ describe('TripsController HTTP', () => {
           useValue: getLatestTripRouteTemplateUseCase,
         },
         {
+          provide: GetTripLiveTrackingUseCase,
+          useValue: getTripLiveTrackingUseCase,
+        },
+        {
           provide: PublishTripUseCase,
           useValue: publishTripUseCase,
         },
@@ -108,6 +120,10 @@ describe('TripsController HTTP', () => {
         {
           provide: CancelTripUseCase,
           useValue: cancelTripUseCase,
+        },
+        {
+          provide: UpdateTripLiveTrackingUseCase,
+          useValue: updateTripLiveTrackingUseCase,
         },
         ...authenticatedHttpContext.guardProviders,
       ],

@@ -49,6 +49,7 @@ export class TripLifecycleMaintenanceService {
     });
 
     await this.operationalSanctionsService.synchronizeAutomaticSanctions(trip.driverMembershipId);
+    const tracking = await this.tripsRepository.endTripLiveTracking(trip.id);
 
     this.realtimeEventsService.publishTripChanged({
       actorUserId: SYSTEM_REALTIME_ACTOR,
@@ -56,6 +57,26 @@ export class TripLifecycleMaintenanceService {
       reason: 'cancelled',
       tripId: trip.id,
     });
+
+    if (tracking) {
+      this.realtimeEventsService.publishTripLiveTrackingUpdated({
+        actorUserId: SYSTEM_REALTIME_ACTOR,
+        institutionId: trip.institutionId,
+        tripId: trip.id,
+        driverMembershipId: trip.driverMembershipId,
+        recipientMembershipIds: [
+          trip.driverMembershipId,
+          ...(await this.tripsRepository.findAcceptedPassengerMembershipIds(trip.id)),
+        ],
+        trackingStatus: tracking.status,
+        lastSignalAt: tracking.lastSignalAt,
+        currentLatitude: tracking.currentLatitude,
+        currentLongitude: tracking.currentLongitude,
+        currentAccuracyMeters: tracking.currentAccuracyMeters,
+        currentHeadingDegrees: tracking.currentHeadingDegrees,
+        currentSpeedKph: tracking.currentSpeedKph,
+      });
+    }
 
     return updatedTrip;
   }

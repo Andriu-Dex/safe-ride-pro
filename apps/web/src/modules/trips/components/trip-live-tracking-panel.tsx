@@ -1,11 +1,15 @@
 'use client';
 
-import { TripStatus } from '@saferidepro/shared-types';
+import {
+  TripLiveTrackingSignalStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 
 import { StatusPill } from '../../../components/ui/status-pill';
 import { ApiError } from '../../../lib/api-client';
-import { getTripById } from '../lib/trip-api';
+import { type DriverTripLiveTrackingState } from '../hooks/use-driver-trip-live-tracking';
+import { getTripById, getTripLiveTracking } from '../lib/trip-api';
 import {
   getCancellationTimingLabel,
   getCancellationTimingTone,
@@ -14,7 +18,7 @@ import {
   getTripStatusTone,
 } from '../lib/trip-labels';
 import type { PlaceSelection } from '../types/place-selection';
-import type { TripDetailRecord } from '../types/trip';
+import type { TripDetailRecord, TripLiveTrackingRecord } from '../types/trip';
 import { TripRouteMap } from './trip-route-map';
 
 export type TripTrackingCandidate = {
@@ -38,6 +42,8 @@ type TripLiveTrackingPanelProps = {
   accessToken?: string;
   realtimeStatusLabel: string;
   realtimeStatusTone: 'neutral' | 'success' | 'warning' | 'danger';
+  trackingVersionByTripId?: Record<string, number>;
+  driverCaptureState?: DriverTripLiveTrackingState | null;
 };
 
 type TripTrackingStep = {
@@ -55,11 +61,14 @@ export function TripLiveTrackingPanel({
   accessToken,
   realtimeStatusLabel,
   realtimeStatusTone,
+  trackingVersionByTripId = {},
+  driverCaptureState = null,
 }: TripLiveTrackingPanelProps) {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(
     candidates[0]?.id ?? null,
   );
   const [tripDetail, setTripDetail] = useState<TripDetailRecord | null>(null);
+  const [liveTracking, setLiveTracking] = useState<TripLiveTrackingRecord | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -82,32 +91,43 @@ export function TripLiveTrackingPanel({
     () => candidates.find((candidate) => candidate.id === selectedCandidateId) ?? null,
     [candidates, selectedCandidateId],
   );
+  const selectedTrackingVersion = selectedCandidate
+    ? trackingVersionByTripId[selectedCandidate.tripId] ?? 0
+    : 0;
 
   useEffect(() => {
     if (!accessToken || !selectedCandidate) {
       setTripDetail(null);
+      setLiveTracking(null);
       setErrorMessage(null);
       return;
     }
 
     let isMounted = true;
 
-    const loadTripDetail = async () => {
+    const loadTripTracking = async () => {
       setIsLoadingDetail(true);
       setErrorMessage(null);
 
       try {
-        const detail = await getTripById(accessToken, selectedCandidate.tripId);
+        const [detail, tracking] = await Promise.all([
+          getTripById(accessToken, selectedCandidate.tripId),
+          getTripLiveTracking(accessToken, selectedCandidate.tripId),
+        ]);
 
-        if (isMounted) {
-          setTripDetail(detail);
+        if (!isMounted) {
+          return;
         }
+
+        setTripDetail(detail);
+        setLiveTracking(tracking);
       } catch (error) {
         if (!isMounted) {
           return;
         }
 
         setTripDetail(null);
+        setLiveTracking(null);
         setErrorMessage(
           error instanceof ApiError
             ? error.message
@@ -120,18 +140,12 @@ export function TripLiveTrackingPanel({
       }
     };
 
-    void loadTripDetail();
+    void loadTripTracking();
 
     return () => {
       isMounted = false;
     };
-  }, [
-    accessToken,
-    selectedCandidate?.tripId,
-    selectedCandidate?.status,
-    selectedCandidate?.departureAt,
-    selectedCandidate?.estimatedArrivalAt,
-  ]);
+  }, [accessToken, selectedCandidate?.tripId, selectedTrackingVersion]);
 
   if (!candidates.length) {
     return (
@@ -157,15 +171,25 @@ export function TripLiveTrackingPanel({
   }
 
   const routeMapOrigin = buildPlaceSelection(
-    tripDetail?.originLabel ?? selectedCandidate?.title ?? 'Origen',
+    tripDetail?.originLabel ?? selectedCandidate.title ?? 'Origen',
     tripDetail?.originLatitude ?? null,
     tripDetail?.originLongitude ?? null,
   );
   const routeMapDestination = buildPlaceSelection(
-    tripDetail?.destinationLabel ?? selectedCandidate?.title ?? 'Destino',
+    tripDetail?.destinationLabel ?? selectedCandidate.title ?? 'Destino',
     tripDetail?.destinationLatitude ?? null,
     tripDetail?.destinationLongitude ?? null,
   );
+  const livePosition = buildPlaceSelection(
+    'Ubicacion actual',
+    liveTracking?.currentLatitude ?? null,
+    liveTracking?.currentLongitude ?? null,
+  );
+  const liveHistory = (liveTracking?.history ?? [])
+    .map((point, index) =>
+      buildPlaceSelection(`Punto ${index + 1}`, point.latitude, point.longitude),
+    )
+    .filter((point): point is PlaceSelection => point !== null);
   const plannedDuration = formatPlannedDuration(
     selectedCandidate.departureAt,
     selectedCandidate.estimatedArrivalAt,
@@ -173,6 +197,15 @@ export function TripLiveTrackingPanel({
   const routePrecisionVisible = Boolean(routeMapOrigin && routeMapDestination);
   const trackingProgress = getTrackingProgress(selectedCandidate.status);
   const trackingSteps = buildTrackingSteps(selectedCandidate.status);
+  const liveSignalLabel = getTrackingSignalLabel(liveTracking?.signalStatus ?? null);
+  const liveSignalTone = getTrackingSignalTone(liveTracking?.signalStatus ?? null);
+  const lastSignalValue = formatLastSignal(
+    liveTracking?.lastSignalAt ?? null,
+    liveTracking?.lastSignalAgeInSeconds ?? null,
+  );
+  const speedValue = formatSpeed(liveTracking?.currentSpeedKph ?? null);
+  const accuracyValue = formatAccuracy(liveTracking?.currentAccuracyMeters ?? null);
+  const headingValue = formatHeading(liveTracking?.currentHeadingDegrees ?? null);
 
   return (
     <article className="trip-live-panel">
@@ -188,10 +221,10 @@ export function TripLiveTrackingPanel({
             tone={getTripStatusTone(selectedCandidate.status)}
           />
           <StatusPill label={realtimeStatusLabel} tone={realtimeStatusTone} />
-          <StatusPill
-            label={routePrecisionVisible ? 'Ruta precisa disponible' : 'Ruta precisa reservada'}
-            tone={routePrecisionVisible ? 'success' : 'neutral'}
-          />
+          <StatusPill label={liveSignalLabel} tone={liveSignalTone} />
+          {driverCaptureState && selectedCandidate.status === TripStatus.InProgress ? (
+            <StatusPill label={driverCaptureState.label} tone={driverCaptureState.tone} />
+          ) : null}
         </div>
       </div>
 
@@ -234,7 +267,11 @@ export function TripLiveTrackingPanel({
         <div className="trip-live-map-card">
           <div className="trip-live-map-head">
             <div>
-              <strong>Ruta planificada</strong>
+              <strong>
+                {selectedCandidate.status === TripStatus.InProgress
+                  ? 'Ruta y posicion actual'
+                  : 'Ruta planificada'}
+              </strong>
             </div>
             {tripDetail?.cancellationTiming ? (
               <StatusPill
@@ -254,7 +291,12 @@ export function TripLiveTrackingPanel({
               <p className="panel-text">{errorMessage}</p>
             </div>
           ) : routePrecisionVisible ? (
-            <TripRouteMap destination={routeMapDestination} origin={routeMapOrigin} />
+            <TripRouteMap
+              destination={routeMapDestination}
+              history={liveHistory}
+              livePosition={livePosition}
+              origin={routeMapOrigin}
+            />
           ) : (
             <div className="trip-live-map-placeholder">
               <strong>Ruta precisa no disponible.</strong>
@@ -272,22 +314,26 @@ export function TripLiveTrackingPanel({
               label="Llegada estimada"
               value={formatDateTime(selectedCandidate.estimatedArrivalAt)}
             />
-            <TrackingStatCard
-              label="Duracion prevista"
-              value={plannedDuration}
-            />
+            <TrackingStatCard label="Duracion prevista" value={plannedDuration} />
             <TrackingStatCard
               label="Ocupacion"
               value={`${selectedCandidate.seatCount - selectedCandidate.availableSeats}/${selectedCandidate.seatCount}`}
             />
             <TrackingStatCard
+              label="Ultima senal"
+              value={lastSignalValue}
+            />
+            <TrackingStatCard
+              label="Precision"
+              value={accuracyValue}
+            />
+            <TrackingStatCard label="Velocidad" value={speedValue} />
+            <TrackingStatCard label="Rumbo" value={headingValue} />
+            <TrackingStatCard
               label="Modalidad"
               value={tripDetail ? getTripRouteModeLabel(tripDetail.routeMode) : 'Cargando'}
             />
-            <TrackingStatCard
-              label="Estado compartido"
-              value={getTripStatusLabel(selectedCandidate.status)}
-            />
+            <TrackingStatCard label="Estado compartido" value={getTripStatusLabel(selectedCandidate.status)} />
           </div>
 
           <div className="trip-live-timeline">
@@ -299,10 +345,7 @@ export function TripLiveTrackingPanel({
               {trackingSteps.map((step) => (
                 <div
                   key={step.id}
-                  className={[
-                    'trip-live-step',
-                    `trip-live-step-${step.tone}`,
-                  ].join(' ')}
+                  className={['trip-live-step', `trip-live-step-${step.tone}`].join(' ')}
                 >
                   <div className="trip-live-step-dot" aria-hidden="true" />
                   <div>
@@ -312,6 +355,13 @@ export function TripLiveTrackingPanel({
               ))}
             </div>
           </div>
+
+          {driverCaptureState?.detail && selectedCandidate.status === TripStatus.InProgress ? (
+            <div className="trip-live-note-card">
+              <strong>GPS del conductor</strong>
+              <p>{driverCaptureState.detail}</p>
+            </div>
+          ) : null}
 
           {tripDetail?.notes ? (
             <div className="trip-live-note-card">
@@ -401,6 +451,40 @@ function getTrackingProgress(status: TripStatus): number {
   }
 }
 
+function getTrackingSignalLabel(signalStatus: TripLiveTrackingSignalStatus | null): string {
+  switch (signalStatus) {
+    case TripLiveTrackingSignalStatus.Live:
+      return 'GPS en vivo';
+    case TripLiveTrackingSignalStatus.Delayed:
+      return 'GPS demorado';
+    case TripLiveTrackingSignalStatus.Offline:
+      return 'GPS sin senal';
+    case TripLiveTrackingSignalStatus.Closed:
+      return 'Tracking cerrado';
+    case TripLiveTrackingSignalStatus.Pending:
+    default:
+      return 'GPS pendiente';
+  }
+}
+
+function getTrackingSignalTone(
+  signalStatus: TripLiveTrackingSignalStatus | null,
+): 'neutral' | 'success' | 'warning' | 'danger' {
+  switch (signalStatus) {
+    case TripLiveTrackingSignalStatus.Live:
+      return 'success';
+    case TripLiveTrackingSignalStatus.Delayed:
+      return 'warning';
+    case TripLiveTrackingSignalStatus.Offline:
+      return 'danger';
+    case TripLiveTrackingSignalStatus.Closed:
+      return 'neutral';
+    case TripLiveTrackingSignalStatus.Pending:
+    default:
+      return 'neutral';
+  }
+}
+
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC', {
     day: '2-digit',
@@ -427,4 +511,53 @@ function formatPlannedDuration(departureAt: string, estimatedArrivalAt: string):
   const minutes = durationInMinutes % 60;
 
   return minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`;
+}
+
+function formatLastSignal(value: string | null, ageInSeconds: number | null): string {
+  if (!value) {
+    return 'Pendiente';
+  }
+
+  const timeLabel = new Date(value).toLocaleTimeString('es-EC', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  if (ageInSeconds === null) {
+    return timeLabel;
+  }
+
+  if (ageInSeconds < 60) {
+    return `${timeLabel} · ${ageInSeconds}s`;
+  }
+
+  const ageInMinutes = Math.round(ageInSeconds / 60);
+
+  return `${timeLabel} · ${ageInMinutes} min`;
+}
+
+function formatSpeed(value: number | null): string {
+  if (value === null) {
+    return 'Sin dato';
+  }
+
+  return `${value.toFixed(1)} km/h`;
+}
+
+function formatAccuracy(value: number | null): string {
+  if (value === null) {
+    return 'Sin dato';
+  }
+
+  return `${Math.round(value)} m`;
+}
+
+function formatHeading(value: number | null): string {
+  if (value === null) {
+    return 'Sin dato';
+  }
+
+  return `${Math.round(value)}°`;
 }

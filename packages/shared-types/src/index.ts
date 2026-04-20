@@ -195,11 +195,22 @@ export {
 } from './trip-search';
 
 export {
+  getTripLiveTrackingSignalAgeInSeconds,
+  getTripLiveTrackingSignalStatus,
+  TRIP_LIVE_TRACKING_DELAYED_AFTER_SECONDS,
+  TRIP_LIVE_TRACKING_OFFLINE_AFTER_SECONDS,
+  TripLiveTrackingSignalStatus,
+  TripLiveTrackingStatus,
+} from './trip-live-tracking';
+
+export {
   REALTIME_CONNECTED_EVENT,
+  REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT,
   REALTIME_TRIP_CHANGED_EVENT,
   REALTIME_TRIP_REQUEST_CHANGED_EVENT,
   type RealtimeConnectedEvent,
   type RealtimeEvent,
+  type RealtimeTripLiveTrackingUpdatedEvent,
   type RealtimeTripChangedEvent,
   type RealtimeTripChangeReason,
   type RealtimeTripRequestChangedEvent,

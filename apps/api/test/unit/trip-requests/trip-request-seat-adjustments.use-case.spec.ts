@@ -58,6 +58,7 @@ function buildTripRequest(
     tripDestinationLabel: 'Centro',
     tripDepartureAt: new Date('2030-01-01T10:00:00.000Z'),
     tripEstimatedArrivalAt: new Date('2030-01-01T10:30:00.000Z'),
+    tripCancelledAt: null,
     tripSeatCount: 4,
     tripAvailableSeats: 2,
     requestedPickupLatitude: null,

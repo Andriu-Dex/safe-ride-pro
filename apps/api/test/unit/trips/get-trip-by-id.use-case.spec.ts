@@ -20,6 +20,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     createTrip: jest.fn(),
     findTripById: jest.fn(),
     hasAcceptedTripRequest: jest.fn(),
+    findAcceptedPassengerMembershipIds: jest.fn(),
     findLatestReusableTripByDriverMembershipId: jest.fn(),
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
@@ -27,6 +28,10 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     autoCancelTripForDriverAbsence: jest.fn(),
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
+    getTripLiveTrackingByTripId: jest.fn(),
+    activateTripLiveTracking: jest.fn(),
+    recordTripLiveTrackingPosition: jest.fn(),
+    endTripLiveTracking: jest.fn(),
   };
 }
 

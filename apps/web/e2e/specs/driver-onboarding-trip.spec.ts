@@ -92,8 +92,8 @@ test('un conductor puede enviar solicitud, registrar vehiculo y publicar un viaj
   await page.getByRole('textbox', { name: 'Llegada estimada', exact: true }).fill(createLocalDateTimeInput(2, 3));
   await page.getByRole('spinbutton', { name: 'Cupos', exact: true }).fill('2');
   await page.getByRole('spinbutton', { name: 'Precio base', exact: true }).fill('2.50');
-  await page.getByPlaceholder('Indicaciones adicionales del viaje').fill(`Viaje de prueba ${suffix}`);
-  await page.getByRole('button', { name: 'Crear viaje', exact: true }).click();
+  await page.getByLabel('Notas').fill(`Viaje de prueba ${suffix}`);
+  await page.getByRole('button', { name: 'Guardar viaje', exact: true }).click();
   await expect(page.getByText('Viaje creado en borrador correctamente.').first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Volver a viajes', exact: true }).click();

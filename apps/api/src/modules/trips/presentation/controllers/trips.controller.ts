@@ -18,11 +18,14 @@ import { CompleteTripUseCase } from '../../application/use-cases/complete-trip.u
 import { CreateTripUseCase } from '../../application/use-cases/create-trip.use-case';
 import { GetTripByIdUseCase } from '../../application/use-cases/get-trip-by-id.use-case';
 import { GetLatestTripRouteTemplateUseCase } from '../../application/use-cases/get-latest-trip-route-template.use-case';
+import { GetTripLiveTrackingUseCase } from '../../application/use-cases/get-trip-live-tracking.use-case';
 import { ListTripsUseCase } from '../../application/use-cases/list-trips.use-case';
 import { PublishTripUseCase } from '../../application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../application/use-cases/start-trip.use-case';
+import { UpdateTripLiveTrackingUseCase } from '../../application/use-cases/update-trip-live-tracking.use-case';
 import { CreateTripRequestDto } from '../dto/create-trip.request.dto';
 import { ListTripsQueryDto } from '../dto/list-trips.query.dto';
+import { UpdateTripLiveTrackingRequestDto } from '../dto/update-trip-live-tracking.request.dto';
 
 @Controller('trips')
 @UseGuards(JwtAuthGuard)
@@ -32,10 +35,12 @@ export class TripsController {
     private readonly listTripsUseCase: ListTripsUseCase,
     private readonly getTripByIdUseCase: GetTripByIdUseCase,
     private readonly getLatestTripRouteTemplateUseCase: GetLatestTripRouteTemplateUseCase,
+    private readonly getTripLiveTrackingUseCase: GetTripLiveTrackingUseCase,
     private readonly publishTripUseCase: PublishTripUseCase,
     private readonly startTripUseCase: StartTripUseCase,
     private readonly completeTripUseCase: CompleteTripUseCase,
     private readonly cancelTripUseCase: CancelTripUseCase,
+    private readonly updateTripLiveTrackingUseCase: UpdateTripLiveTrackingUseCase,
   ) {}
 
   @Post()
@@ -95,6 +100,14 @@ export class TripsController {
     return this.getTripByIdUseCase.execute(currentUser.id, tripId);
   }
 
+  @Get(':tripId/live-tracking')
+  getTripLiveTracking(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+  ) {
+    return this.getTripLiveTrackingUseCase.execute(currentUser.id, tripId);
+  }
+
   @Patch(':tripId/publish')
   publishTrip(
     @CurrentUser() currentUser: CurrentUserContext,
@@ -125,5 +138,23 @@ export class TripsController {
     @Param('tripId', new ParseUUIDPipe()) tripId: string,
   ) {
     return this.cancelTripUseCase.execute(currentUser.id, tripId);
+  }
+
+  @Post(':tripId/live-tracking/positions')
+  updateTripLiveTracking(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Body() body: UpdateTripLiveTrackingRequestDto,
+  ) {
+    return this.updateTripLiveTrackingUseCase.execute({
+      userId: currentUser.id,
+      tripId,
+      capturedAt: body.capturedAt,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      accuracyMeters: body.accuracyMeters,
+      headingDegrees: body.headingDegrees,
+      speedKph: body.speedKph,
+    });
   }
 }

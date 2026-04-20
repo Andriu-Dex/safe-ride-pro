@@ -52,6 +52,7 @@ import {
   publishTrip,
   startTrip,
 } from '../../../modules/trips/lib/trip-api';
+import { useDriverTripLiveTracking } from '../../../modules/trips/hooks/use-driver-trip-live-tracking';
 import {
   canStartTripNow,
   getTripAvailabilityFilterLabel,
@@ -236,6 +237,7 @@ export default function TripsPage() {
   const [requestErrorMessage, setRequestErrorMessage] = useState<string | null>(null);
   const [requestSuccessMessage, setRequestSuccessMessage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [trackingVersionByTripId, setTrackingVersionByTripId] = useState<Record<string, number>>({});
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeRefreshPendingRef = useRef(false);
   const realtimeRefreshRunningRef = useRef(false);
@@ -310,6 +312,7 @@ export default function TripsPage() {
       setAvailableTrips([]);
       setIncomingRequests([]);
       setMyRequests([]);
+      setTrackingVersionByTripId({});
       setIsLoading(false);
       return;
     }
@@ -405,6 +408,13 @@ export default function TripsPage() {
     onEvent: (event) => {
       if (event.type === 'trip.changed' || event.type === 'trip-request.changed') {
         scheduleRealtimeRefresh();
+      }
+
+      if (event.type === 'trip-live-tracking.updated') {
+        setTrackingVersionByTripId((currentState) => ({
+          ...currentState,
+          [event.tripId]: (currentState[event.tripId] ?? 0) + 1,
+        }));
       }
     },
   });
@@ -784,6 +794,18 @@ export default function TripsPage() {
   ];
   const readinessReadyCount = readinessItems.filter((item) => item.tone === 'success').length;
   const readinessCompletion = Math.round((readinessReadyCount / readinessItems.length) * 100);
+  const activeDriverTrip =
+    [...myTrips]
+      .filter((trip) => trip.status === TripStatus.InProgress)
+      .sort(
+        (left, right) =>
+          new Date(left.departureAt).getTime() - new Date(right.departureAt).getTime(),
+      )[0] ?? null;
+  const driverCaptureState = useDriverTripLiveTracking({
+    accessToken: authSession?.accessToken,
+    tripId: activeDriverTrip?.id ?? null,
+    enabled: Boolean(authSession && activeDriverTrip),
+  });
 
   if (isLoading) {
     return (
@@ -910,6 +932,7 @@ export default function TripsPage() {
                 accessToken={authSession?.accessToken}
                 blocksDriver={trustRestrictions.blocksDriver}
                 canCreateTrips={canCreateTrips}
+                driverCaptureState={driverCaptureState}
                 incomingRequests={incomingRequests}
                 isMutatingTripId={isMutatingTripId}
                 isRefreshingData={isRefreshingData}
@@ -920,6 +943,7 @@ export default function TripsPage() {
                 onTripAction={(tripId, action) => void handleTripAction(tripId, action)}
                 realtimeStatusLabel={realtimeStatusLabel}
                 realtimeStatusTone={realtimeStatusTone}
+                trackingVersionByTripId={trackingVersionByTripId}
               />
             ) : null}
 
@@ -944,6 +968,7 @@ export default function TripsPage() {
                 onNoShowNoteChange={handleNoShowNoteChange}
                 realtimeStatusLabel={realtimeStatusLabel}
                 realtimeStatusTone={realtimeStatusTone}
+                trackingVersionByTripId={trackingVersionByTripId}
               />
             ) : null}
 

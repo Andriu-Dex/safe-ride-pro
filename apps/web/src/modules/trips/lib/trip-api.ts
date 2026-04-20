@@ -3,7 +3,9 @@ import type {
   TripDetailRecord,
   LatestTripRouteTemplate,
   TripFilters,
+  TripLiveTrackingRecord,
   TripRecord,
+  UpdateTripLiveTrackingInput,
 } from '../types/trip';
 import { apiRequest } from '../../../lib/api-client';
 
@@ -74,6 +76,15 @@ export async function getTripById(
   });
 }
 
+export async function getTripLiveTracking(
+  accessToken: string,
+  tripId: string,
+): Promise<TripLiveTrackingRecord> {
+  return apiRequest<TripLiveTrackingRecord>(`/trips/${tripId}/live-tracking`, {
+    accessToken,
+  });
+}
+
 export async function publishTrip(accessToken: string, tripId: string): Promise<TripMutationResponse> {
   return apiRequest<TripMutationResponse>(`/trips/${tripId}/publish`, {
     method: 'PATCH',
@@ -99,5 +110,17 @@ export async function cancelTrip(accessToken: string, tripId: string): Promise<T
   return apiRequest<TripMutationResponse>(`/trips/${tripId}/cancel`, {
     method: 'PATCH',
     accessToken,
+  });
+}
+
+export async function updateTripLiveTracking(
+  accessToken: string,
+  tripId: string,
+  input: UpdateTripLiveTrackingInput,
+): Promise<TripLiveTrackingRecord> {
+  return apiRequest<TripLiveTrackingRecord>(`/trips/${tripId}/live-tracking/positions`, {
+    method: 'POST',
+    accessToken,
+    body: input,
   });
 }

@@ -7,6 +7,7 @@ RUN corepack enable
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json apps/api/package.json
@@ -20,8 +21,6 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN pnpm --dir apps/web install --frozen-lockfile
-
 RUN pnpm exec tsc --project packages/shared-types/tsconfig.json
 RUN pnpm --dir apps/web build
 
@@ -30,6 +29,8 @@ FROM node:24-alpine AS runner
 WORKDIR /app
 
 RUN corepack enable
+
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
 
 COPY --from=builder --chown=node:node /app /app
 

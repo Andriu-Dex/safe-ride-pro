@@ -64,6 +64,12 @@ enum TripStatus {
   CANCELLED
 }
 
+enum TripLiveTrackingStatus {
+  READY
+  ACTIVE
+  ENDED
+}
+
 enum TripRouteMode {
   DIRECT_ROUTE
   PLANNED_DETOUR
@@ -414,6 +420,7 @@ model Trip {
   driverMembership         UserInstitutionMembership @relation(fields: [driverMembershipId], references: [id], onDelete: Cascade)
   vehicle                  Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   tripRequests             TripRequest[]
+  liveTracking             TripLiveTracking?
   ratings                  Rating[]
   reports                  Report[]
 
@@ -421,6 +428,43 @@ model Trip {
   @@index([driverMembershipId, departureAt, estimatedArrivalAt])
   @@index([vehicleId, departureAt])
   @@map("trips")
+}
+
+model TripLiveTracking {
+  id                   String                 @id @default(uuid())
+  tripId               String                 @unique
+  status               TripLiveTrackingStatus @default(READY)
+  startedAt            DateTime?
+  endedAt              DateTime?
+  lastSignalAt         DateTime?
+  currentLatitude      Float?                 @db.DoublePrecision
+  currentLongitude     Float?                 @db.DoublePrecision
+  currentAccuracyMeters Float?                @db.DoublePrecision
+  currentHeadingDegrees Float?                @db.DoublePrecision
+  currentSpeedKph      Float?                 @db.DoublePrecision
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  trip                 Trip                   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  points               TripLiveTrackingPoint[]
+
+  @@index([status, lastSignalAt])
+  @@map("trip_live_trackings")
+}
+
+model TripLiveTrackingPoint {
+  id               String           @id @default(uuid())
+  trackingId       String
+  capturedAt       DateTime
+  latitude         Float            @db.DoublePrecision
+  longitude        Float            @db.DoublePrecision
+  accuracyMeters   Float?           @db.DoublePrecision
+  headingDegrees   Float?           @db.DoublePrecision
+  speedKph         Float?           @db.DoublePrecision
+  createdAt        DateTime         @default(now())
+  tracking         TripLiveTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
+
+  @@index([trackingId, capturedAt])
+  @@map("trip_live_tracking_points")
 }
 model TripRequest {
   id                       String                    @id @default(uuid())

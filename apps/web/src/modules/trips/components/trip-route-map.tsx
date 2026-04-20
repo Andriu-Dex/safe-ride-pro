@@ -17,6 +17,8 @@ type TripRouteMapProps = {
   destination: PlaceSelection | null;
   pickup?: PlaceSelection | null;
   dropoff?: PlaceSelection | null;
+  livePosition?: PlaceSelection | null;
+  history?: PlaceSelection[];
   selectionMode?: TripRouteMapSelectionMode | null;
   onMapSelect?: (selection: {
     latitude: number;
@@ -36,6 +38,8 @@ export function TripRouteMap({
   destination,
   pickup = null,
   dropoff = null,
+  livePosition = null,
+  history = [],
   selectionMode = null,
   onMapSelect,
 }: TripRouteMapProps) {
@@ -84,7 +88,7 @@ export function TripRouteMap({
           overlayGroup,
         };
 
-        syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff);
+        syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff, livePosition, history);
         setErrorMessage(null);
       } catch (error) {
         if (!isMounted) {
@@ -115,8 +119,8 @@ export function TripRouteMap({
       return;
     }
 
-    syncMapBundle(bundle, origin, destination, pickup, dropoff);
-  }, [destination, dropoff, origin, pickup]);
+    syncMapBundle(bundle, origin, destination, pickup, dropoff, livePosition, history);
+  }, [destination, dropoff, history, livePosition, origin, pickup]);
 
   useEffect(() => {
     const bundle = bundleRef.current;
@@ -164,6 +168,8 @@ function syncMapBundle(
   destination: PlaceSelection | null,
   pickup: PlaceSelection | null,
   dropoff: PlaceSelection | null,
+  livePosition: PlaceSelection | null,
+  history: PlaceSelection[],
 ) {
   const { leaflet, map, overlayGroup } = bundle;
 
@@ -217,6 +223,30 @@ function syncMapBundle(
         color: '#0f766e',
         opacity: 0.9,
         weight: 4,
+      })
+      .addTo(overlayGroup);
+  }
+
+  if (history.length > 1) {
+    leaflet
+      .polyline(
+        history.map((point) => [point.latitude, point.longitude] as [number, number]),
+        {
+          color: '#14b8a6',
+          opacity: 0.72,
+          weight: 5,
+          dashArray: '10 8',
+        },
+      )
+      .addTo(overlayGroup);
+  }
+
+  if (livePosition) {
+    const position: [number, number] = [livePosition.latitude, livePosition.longitude];
+    points.push(position);
+    leaflet
+      .marker(position, {
+        icon: buildMarkerIcon(leaflet, 'V', 'trip-map-marker-live'),
       })
       .addTo(overlayGroup);
   }

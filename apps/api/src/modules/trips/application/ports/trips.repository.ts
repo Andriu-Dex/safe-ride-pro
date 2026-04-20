@@ -5,6 +5,7 @@ import {
   LuggagePolicy,
   MembershipStatus,
   TripAvailabilityFilter,
+  TripLiveTrackingStatus,
   TripRouteMode,
   TripStatus,
   VehicleType,
@@ -103,12 +104,46 @@ export type TripFilters = {
   availability?: TripAvailabilityFilter;
 };
 
+export type TripLiveTrackingPointRecord = {
+  capturedAt: Date;
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number | null;
+  headingDegrees: number | null;
+  speedKph: number | null;
+};
+
+export type TripLiveTrackingRecord = {
+  tripId: string;
+  status: TripLiveTrackingStatus;
+  startedAt: Date | null;
+  endedAt: Date | null;
+  lastSignalAt: Date | null;
+  currentLatitude: number | null;
+  currentLongitude: number | null;
+  currentAccuracyMeters: number | null;
+  currentHeadingDegrees: number | null;
+  currentSpeedKph: number | null;
+  history: TripLiveTrackingPointRecord[];
+};
+
+export type RecordTripLiveTrackingPositionInput = {
+  tripId: string;
+  capturedAt: Date;
+  latitude: number;
+  longitude: number;
+  accuracyMeters?: number;
+  headingDegrees?: number;
+  speedKph?: number;
+};
+
 export interface TripsRepository {
   findDefaultMembershipByUserId(userId: string): Promise<TripMembershipRecord | null>;
   findVehicleByIdForMembership(membershipId: string, vehicleId: string): Promise<TripVehicleRecord | null>;
   createTrip(input: CreateTripInput): Promise<TripRecord>;
   findTripById(tripId: string): Promise<TripRecord | null>;
   hasAcceptedTripRequest(tripId: string, passengerMembershipId: string): Promise<boolean>;
+  findAcceptedPassengerMembershipIds(tripId: string): Promise<string[]>;
   findLatestReusableTripByDriverMembershipId(
     driverMembershipId: string,
   ): Promise<TripRecord | null>;
@@ -123,4 +158,13 @@ export interface TripsRepository {
   autoCancelTripForDriverAbsence(tripId: string): Promise<TripRecord | null>;
   cancelTripAndActiveRequests(tripId: string): Promise<TripRecord>;
   startTripAndClosePendingRequests(tripId: string, autoReviewNote: string): Promise<TripRecord>;
+  getTripLiveTrackingByTripId(
+    tripId: string,
+    historyLimit?: number,
+  ): Promise<TripLiveTrackingRecord | null>;
+  activateTripLiveTracking(tripId: string): Promise<TripLiveTrackingRecord>;
+  recordTripLiveTrackingPosition(
+    input: RecordTripLiveTrackingPositionInput,
+  ): Promise<TripLiveTrackingRecord>;
+  endTripLiveTracking(tripId: string): Promise<TripLiveTrackingRecord | null>;
 }

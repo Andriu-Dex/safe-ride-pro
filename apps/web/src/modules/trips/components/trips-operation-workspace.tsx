@@ -33,6 +33,9 @@ import {
   TripLiveTrackingPanel,
   type TripTrackingCandidate,
 } from './trip-live-tracking-panel';
+import {
+  type DriverTripLiveTrackingState,
+} from '../hooks/use-driver-trip-live-tracking';
 import { TripOverviewCard } from './trip-overview-card';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
 
@@ -50,6 +53,8 @@ type TripsOperationWorkspaceProps = {
   accessToken?: string;
   realtimeStatusLabel: string;
   realtimeStatusTone: 'neutral' | 'success' | 'warning' | 'danger';
+  trackingVersionByTripId?: Record<string, number>;
+  driverCaptureState?: DriverTripLiveTrackingState | null;
 };
 
 export function TripsOperationWorkspace({
@@ -66,6 +71,8 @@ export function TripsOperationWorkspace({
   accessToken,
   realtimeStatusLabel,
   realtimeStatusTone,
+  trackingVersionByTripId = {},
+  driverCaptureState = null,
 }: TripsOperationWorkspaceProps) {
   const trackingCandidates = buildDriverTrackingCandidates(myTrips);
   const closureItems = buildDriverClosureItems(myTrips, incomingRequests);
@@ -80,6 +87,8 @@ export function TripsOperationWorkspace({
         emptyTitle="Aun no tienes un trayecto para seguimiento activo"
         realtimeStatusLabel={realtimeStatusLabel}
         realtimeStatusTone={realtimeStatusTone}
+        trackingVersionByTripId={trackingVersionByTripId}
+        driverCaptureState={driverCaptureState}
         title="Seguimiento operativo"
       />
 

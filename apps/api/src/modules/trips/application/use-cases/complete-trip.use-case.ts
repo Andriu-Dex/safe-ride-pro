@@ -41,6 +41,11 @@ export class CompleteTripUseCase {
     }
 
     const updatedTrip = await this.tripsRepository.updateTripStatus(trip.id, TripStatus.Completed);
+    const tracking = await this.tripsRepository.endTripLiveTracking(trip.id);
+    const recipientMembershipIds = [
+      membership.id,
+      ...(await this.tripsRepository.findAcceptedPassengerMembershipIds(trip.id)),
+    ];
 
     await this.auditService.record({
       institutionId: trip.institutionId,
@@ -59,6 +64,23 @@ export class CompleteTripUseCase {
       reason: 'completed',
       tripId: trip.id,
     });
+
+    if (tracking) {
+      this.realtimeEventsService.publishTripLiveTrackingUpdated({
+        actorUserId: userId,
+        institutionId: trip.institutionId,
+        tripId: trip.id,
+        driverMembershipId: membership.id,
+        recipientMembershipIds,
+        trackingStatus: tracking.status,
+        lastSignalAt: tracking.lastSignalAt,
+        currentLatitude: tracking.currentLatitude,
+        currentLongitude: tracking.currentLongitude,
+        currentAccuracyMeters: tracking.currentAccuracyMeters,
+        currentHeadingDegrees: tracking.currentHeadingDegrees,
+        currentSpeedKph: tracking.currentSpeedKph,
+      });
+    }
 
     return {
       message: 'Viaje finalizado correctamente.',

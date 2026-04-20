@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import {
+  getTripLiveTrackingSignalStatus,
   type RealtimeConnectedEvent,
   REALTIME_CONNECTED_EVENT,
+  REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT,
   REALTIME_TRIP_CHANGED_EVENT,
   REALTIME_TRIP_REQUEST_CHANGED_EVENT,
   type RealtimeEvent,
   type RealtimeTripChangeReason,
+  type RealtimeTripLiveTrackingUpdatedEvent,
   type RealtimeTripRequestChangeReason,
+  type TripLiveTrackingStatus,
 } from '@saferidepro/shared-types';
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -148,6 +152,44 @@ export class RealtimeEventsService {
     });
   }
 
+  publishTripLiveTrackingUpdated(input: {
+    actorUserId: string;
+    institutionId: string;
+    tripId: string;
+    driverMembershipId: string;
+    recipientMembershipIds: string[];
+    trackingStatus: TripLiveTrackingStatus;
+    lastSignalAt: Date | null;
+    currentLatitude: number | null;
+    currentLongitude: number | null;
+    currentAccuracyMeters: number | null;
+    currentHeadingDegrees: number | null;
+    currentSpeedKph: number | null;
+  }): void {
+    const lastSignalAt = input.lastSignalAt?.toISOString() ?? null;
+
+    this.publish({
+      type: REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT,
+      actorUserId: input.actorUserId,
+      driverMembershipId: input.driverMembershipId,
+      institutionId: input.institutionId,
+      occurredAt: new Date().toISOString(),
+      recipientMembershipIds: Array.from(new Set(input.recipientMembershipIds)),
+      tripId: input.tripId,
+      trackingStatus: input.trackingStatus,
+      signalStatus: getTripLiveTrackingSignalStatus({
+        status: input.trackingStatus,
+        lastSignalAt,
+      }),
+      lastSignalAt,
+      currentLatitude: input.currentLatitude,
+      currentLongitude: input.currentLongitude,
+      currentAccuracyMeters: input.currentAccuracyMeters,
+      currentHeadingDegrees: input.currentHeadingDegrees,
+      currentSpeedKph: input.currentSpeedKph,
+    });
+  }
+
   private publish(event: RealtimeEvent): void {
     for (const connection of this.connections.values()) {
       if (!this.shouldReceiveEvent(connection, event)) {
@@ -175,6 +217,12 @@ export class RealtimeEventsService {
         connection.membershipIds.includes(event.driverMembershipId) ||
         connection.membershipIds.includes(event.passengerMembershipId) ||
         connection.institutionIds.includes(event.institutionId)
+      );
+    }
+
+    if (event.type === REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT) {
+      return event.recipientMembershipIds.some((membershipId) =>
+        connection.membershipIds.includes(membershipId),
       );
     }
 

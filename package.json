@@ -10,12 +10,25 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "format": "turbo run format",
+    "qa:test:api:web": "corepack pnpm --filter api exec jest --config ./jest.config.js --runInBand test/integration/reports/reports.controller.http.spec.ts test/unit/reports/upload-report-evidence.use-case.spec.ts",
+    "qa:verify:web": "corepack pnpm --filter api build && corepack pnpm --filter web typecheck && corepack pnpm --filter web build && corepack pnpm --filter web test:e2e:smoke",
+    "qa:release:web": "corepack pnpm qa:test:api:web && corepack pnpm qa:verify:web",
     "qa:up": "docker compose --env-file .env.qa -f docker-compose.qa.yml up -d",
     "qa:up:build": "docker compose --env-file .env.qa -f docker-compose.qa.yml up --build -d",
     "qa:down": "docker compose --env-file .env.qa -f docker-compose.qa.yml down",
     "qa:reset": "docker compose --env-file .env.qa -f docker-compose.qa.yml down -v",
     "qa:logs": "docker compose --env-file .env.qa -f docker-compose.qa.yml logs -f",
     "qa:ps": "docker compose --env-file .env.qa -f docker-compose.qa.yml ps"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp"
+    ]
   },
   "devDependencies": {
     "prisma": "^6.6.0",

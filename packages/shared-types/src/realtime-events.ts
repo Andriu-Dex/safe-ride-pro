@@ -1,6 +1,13 @@
+import type {
+  TripLiveTrackingSignalStatus,
+  TripLiveTrackingStatus,
+} from './trip-live-tracking';
+
 export const REALTIME_CONNECTED_EVENT = 'connected' as const;
 export const REALTIME_TRIP_CHANGED_EVENT = 'trip.changed' as const;
 export const REALTIME_TRIP_REQUEST_CHANGED_EVENT = 'trip-request.changed' as const;
+export const REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT =
+  'trip-live-tracking.updated' as const;
 
 export type RealtimeTripChangeReason =
   | 'created'
@@ -45,7 +52,26 @@ export type RealtimeTripRequestChangedEvent = {
   occurredAt: string;
 };
 
+export type RealtimeTripLiveTrackingUpdatedEvent = {
+  type: typeof REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT;
+  institutionId: string;
+  tripId: string;
+  driverMembershipId: string;
+  recipientMembershipIds: string[];
+  actorUserId: string;
+  occurredAt: string;
+  trackingStatus: TripLiveTrackingStatus;
+  signalStatus: TripLiveTrackingSignalStatus;
+  lastSignalAt: string | null;
+  currentLatitude: number | null;
+  currentLongitude: number | null;
+  currentAccuracyMeters: number | null;
+  currentHeadingDegrees: number | null;
+  currentSpeedKph: number | null;
+};
+
 export type RealtimeEvent =
   | RealtimeConnectedEvent
   | RealtimeTripChangedEvent
-  | RealtimeTripRequestChangedEvent;
+  | RealtimeTripRequestChangedEvent
+  | RealtimeTripLiveTrackingUpdatedEvent;

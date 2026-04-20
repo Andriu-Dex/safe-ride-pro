@@ -52,6 +52,7 @@ type TripsRequestsWorkspaceProps = {
   accessToken?: string;
   realtimeStatusLabel: string;
   realtimeStatusTone: 'neutral' | 'success' | 'warning' | 'danger';
+  trackingVersionByTripId?: Record<string, number>;
 };
 
 export function TripsRequestsWorkspace({
@@ -73,6 +74,7 @@ export function TripsRequestsWorkspace({
   accessToken,
   realtimeStatusLabel,
   realtimeStatusTone,
+  trackingVersionByTripId = {},
 }: TripsRequestsWorkspaceProps) {
   const passengerTrackingCandidates = buildPassengerTrackingCandidates(myRequests);
   const closureItems = buildPassengerClosureItems(myRequests);
@@ -117,11 +119,12 @@ export function TripsRequestsWorkspace({
         <TripLiveTrackingPanel
           accessToken={accessToken}
           candidates={passengerTrackingCandidates}
-          emptyTitle="Todavia no tienes un viaje confirmado para seguir"
-          realtimeStatusLabel={realtimeStatusLabel}
-          realtimeStatusTone={realtimeStatusTone}
-          title="Seguimiento de mis trayectos"
-        />
+        emptyTitle="Todavia no tienes un viaje confirmado para seguir"
+        realtimeStatusLabel={realtimeStatusLabel}
+        realtimeStatusTone={realtimeStatusTone}
+        trackingVersionByTripId={trackingVersionByTripId}
+        title="Seguimiento de mis trayectos"
+      />
       </div>
 
       <div className="trip-live-panel-span">

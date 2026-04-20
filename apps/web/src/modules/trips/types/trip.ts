@@ -1,5 +1,7 @@
 import {
   CancellationTiming,
+  TripLiveTrackingSignalStatus,
+  TripLiveTrackingStatus,
   TripAvailabilityFilter,
   TripRouteMode,
   VehicleType,
@@ -37,6 +39,40 @@ export type TripDetailRecord = TripRecord & {
   originLongitude: number | null;
   destinationLatitude: number | null;
   destinationLongitude: number | null;
+};
+
+export type TripLiveTrackingPointRecord = {
+  capturedAt: string;
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number | null;
+  headingDegrees: number | null;
+  speedKph: number | null;
+};
+
+export type TripLiveTrackingRecord = {
+  tripId: string;
+  status: TripLiveTrackingStatus;
+  signalStatus: TripLiveTrackingSignalStatus;
+  startedAt: string | null;
+  endedAt: string | null;
+  lastSignalAt: string | null;
+  lastSignalAgeInSeconds: number | null;
+  currentLatitude: number | null;
+  currentLongitude: number | null;
+  currentAccuracyMeters: number | null;
+  currentHeadingDegrees: number | null;
+  currentSpeedKph: number | null;
+  history: TripLiveTrackingPointRecord[];
+};
+
+export type UpdateTripLiveTrackingInput = {
+  capturedAt: string;
+  latitude: number;
+  longitude: number;
+  accuracyMeters?: number;
+  headingDegrees?: number;
+  speedKph?: number;
 };
 
 export type TripFilters = {

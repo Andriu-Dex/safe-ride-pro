@@ -63,12 +63,34 @@ export class CancelTripUseCase {
       await this.operationalSanctionsService.synchronizeAutomaticSanctions(membership.id);
     }
 
+    const tracking = await this.tripsRepository.endTripLiveTracking(trip.id);
+
     this.realtimeEventsService.publishTripChanged({
       actorUserId: userId,
       institutionId: trip.institutionId,
       reason: 'cancelled',
       tripId: trip.id,
     });
+
+    if (tracking) {
+      this.realtimeEventsService.publishTripLiveTrackingUpdated({
+        actorUserId: userId,
+        institutionId: trip.institutionId,
+        tripId: trip.id,
+        driverMembershipId: membership.id,
+        recipientMembershipIds: [
+          membership.id,
+          ...(await this.tripsRepository.findAcceptedPassengerMembershipIds(trip.id)),
+        ],
+        trackingStatus: tracking.status,
+        lastSignalAt: tracking.lastSignalAt,
+        currentLatitude: tracking.currentLatitude,
+        currentLongitude: tracking.currentLongitude,
+        currentAccuracyMeters: tracking.currentAccuracyMeters,
+        currentHeadingDegrees: tracking.currentHeadingDegrees,
+        currentSpeedKph: tracking.currentSpeedKph,
+      });
+    }
 
     return {
       message: 'Viaje cancelado correctamente.',

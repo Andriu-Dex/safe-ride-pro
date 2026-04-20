@@ -10,6 +10,7 @@ import {
   LuggagePolicy,
   MembershipStatus,
   TripAvailabilityFilter,
+  TripLiveTrackingStatus,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -19,7 +20,9 @@ import {
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import {
   CreateTripInput,
+  RecordTripLiveTrackingPositionInput,
   TripFilters,
+  TripLiveTrackingRecord,
   TripMembershipRecord,
   TripRecord,
   TripsRepository,
@@ -127,6 +130,11 @@ export class PrismaTripsRepository implements TripsRepository {
         basePriceReference: input.basePriceReference,
         detourSurchargeReference: input.detourSurchargeReference,
         notes: input.notes,
+        liveTracking: {
+          create: {
+            status: TripLiveTrackingStatus.Ready,
+          },
+        },
       },
       include: this.tripInclude(),
     });
@@ -159,6 +167,20 @@ export class PrismaTripsRepository implements TripsRepository {
     });
 
     return Boolean(acceptedTripRequest);
+  }
+
+  async findAcceptedPassengerMembershipIds(tripId: string): Promise<string[]> {
+    const acceptedRequests = await this.prisma.tripRequest.findMany({
+      where: {
+        tripId,
+        status: TripRequestStatus.Accepted,
+      },
+      select: {
+        passengerMembershipId: true,
+      },
+    });
+
+    return acceptedRequests.map((request) => request.passengerMembershipId);
   }
 
   async findLatestReusableTripByDriverMembershipId(
@@ -299,6 +321,19 @@ export class PrismaTripsRepository implements TripsRepository {
         },
       });
 
+      await transaction.tripLiveTracking.upsert({
+        where: { tripId },
+        create: {
+          tripId,
+          status: TripLiveTrackingStatus.Ended,
+          endedAt: cancellationDate,
+        },
+        update: {
+          status: TripLiveTrackingStatus.Ended,
+          endedAt: cancellationDate,
+        },
+      });
+
       return transaction.trip.findUnique({
         where: { id: tripId },
         include: this.tripInclude(),
@@ -322,6 +357,19 @@ export class PrismaTripsRepository implements TripsRepository {
         data: {
           status: TripRequestStatus.Cancelled,
           cancelledAt: cancellationDate,
+        },
+      });
+
+      await transaction.tripLiveTracking.upsert({
+        where: { tripId },
+        create: {
+          tripId,
+          status: TripLiveTrackingStatus.Ended,
+          endedAt: cancellationDate,
+        },
+        update: {
+          status: TripLiveTrackingStatus.Ended,
+          endedAt: cancellationDate,
         },
       });
 
@@ -365,6 +413,163 @@ export class PrismaTripsRepository implements TripsRepository {
     });
 
     return this.mapTrip(trip);
+  }
+
+  async getTripLiveTrackingByTripId(
+    tripId: string,
+    historyLimit = 40,
+  ): Promise<TripLiveTrackingRecord | null> {
+    const tracking = await this.prisma.tripLiveTracking.findUnique({
+      where: { tripId },
+      include: {
+        points: {
+          orderBy: {
+            capturedAt: 'desc',
+          },
+          take: historyLimit,
+        },
+      },
+    });
+
+    if (!tracking) {
+      return null;
+    }
+
+    return this.mapTripLiveTracking(tracking);
+  }
+
+  async activateTripLiveTracking(tripId: string): Promise<TripLiveTrackingRecord> {
+    const existingTracking = await this.prisma.tripLiveTracking.findUnique({
+      where: { tripId },
+      select: {
+        startedAt: true,
+      },
+    });
+
+    const tracking = await this.prisma.tripLiveTracking.upsert({
+      where: { tripId },
+      create: {
+        tripId,
+        status: TripLiveTrackingStatus.Active,
+        startedAt: new Date(),
+      },
+      update: {
+        status: TripLiveTrackingStatus.Active,
+        startedAt: {
+          set: existingTracking?.startedAt ?? new Date(),
+        },
+        endedAt: null,
+      },
+      include: {
+        points: {
+          orderBy: {
+            capturedAt: 'desc',
+          },
+          take: 40,
+        },
+      },
+    });
+
+    return this.mapTripLiveTracking(tracking);
+  }
+
+  async recordTripLiveTrackingPosition(
+    input: RecordTripLiveTrackingPositionInput,
+  ): Promise<TripLiveTrackingRecord> {
+    const tracking = await this.prisma.$transaction(async (transaction) => {
+      const currentTracking = await transaction.tripLiveTracking.findUnique({
+        where: { tripId: input.tripId },
+        select: {
+          id: true,
+          startedAt: true,
+        },
+      });
+
+      const existingTracking = await transaction.tripLiveTracking.upsert({
+        where: { tripId: input.tripId },
+        create: {
+          tripId: input.tripId,
+          status: TripLiveTrackingStatus.Active,
+          startedAt: input.capturedAt,
+          lastSignalAt: input.capturedAt,
+          currentLatitude: input.latitude,
+          currentLongitude: input.longitude,
+          currentAccuracyMeters: input.accuracyMeters ?? null,
+          currentHeadingDegrees: input.headingDegrees ?? null,
+          currentSpeedKph: input.speedKph ?? null,
+        },
+        update: {
+          status: TripLiveTrackingStatus.Active,
+          startedAt: {
+            set: currentTracking?.startedAt ?? input.capturedAt,
+          },
+          endedAt: null,
+          lastSignalAt: input.capturedAt,
+          currentLatitude: input.latitude,
+          currentLongitude: input.longitude,
+          currentAccuracyMeters: input.accuracyMeters ?? null,
+          currentHeadingDegrees: input.headingDegrees ?? null,
+          currentSpeedKph: input.speedKph ?? null,
+        },
+      });
+
+      await transaction.tripLiveTrackingPoint.create({
+        data: {
+          trackingId: currentTracking?.id ?? existingTracking.id,
+          capturedAt: input.capturedAt,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          accuracyMeters: input.accuracyMeters ?? null,
+          headingDegrees: input.headingDegrees ?? null,
+          speedKph: input.speedKph ?? null,
+        },
+      });
+
+      return transaction.tripLiveTracking.findUniqueOrThrow({
+        where: { tripId: input.tripId },
+        include: {
+          points: {
+            orderBy: {
+              capturedAt: 'desc',
+            },
+            take: 40,
+          },
+        },
+      });
+    });
+
+    return this.mapTripLiveTracking(tracking);
+  }
+
+  async endTripLiveTracking(tripId: string): Promise<TripLiveTrackingRecord | null> {
+    const existingTracking = await this.prisma.tripLiveTracking.findUnique({
+      where: { tripId },
+      select: {
+        tripId: true,
+      },
+    });
+
+    if (!existingTracking) {
+      return null;
+    }
+
+    const tracking = await this.prisma.tripLiveTracking.update({
+      where: { tripId },
+      data: {
+        status: TripLiveTrackingStatus.Ended,
+        endedAt: new Date(),
+      },
+      include: {
+        points: {
+          orderBy: {
+            capturedAt: 'desc',
+          },
+          take: 40,
+        },
+      },
+    });
+
+    return this.mapTripLiveTracking(tracking);
   }
 
   private tripInclude() {
@@ -467,5 +672,49 @@ export class PrismaTripsRepository implements TripsRepository {
     const modelName = vehicle.model?.name ?? vehicle.customModelName ?? '';
 
     return `${brandName} ${modelName}`.trim();
+  }
+
+  private mapTripLiveTracking(tracking: {
+    tripId: string;
+    status: string;
+    startedAt: Date | null;
+    endedAt: Date | null;
+    lastSignalAt: Date | null;
+    currentLatitude: number | null;
+    currentLongitude: number | null;
+    currentAccuracyMeters: number | null;
+    currentHeadingDegrees: number | null;
+    currentSpeedKph: number | null;
+    points: Array<{
+      capturedAt: Date;
+      latitude: number;
+      longitude: number;
+      accuracyMeters: number | null;
+      headingDegrees: number | null;
+      speedKph: number | null;
+    }>;
+  }): TripLiveTrackingRecord {
+    return {
+      tripId: tracking.tripId,
+      status: tracking.status as TripLiveTrackingStatus,
+      startedAt: tracking.startedAt,
+      endedAt: tracking.endedAt,
+      lastSignalAt: tracking.lastSignalAt,
+      currentLatitude: tracking.currentLatitude,
+      currentLongitude: tracking.currentLongitude,
+      currentAccuracyMeters: tracking.currentAccuracyMeters,
+      currentHeadingDegrees: tracking.currentHeadingDegrees,
+      currentSpeedKph: tracking.currentSpeedKph,
+      history: [...tracking.points]
+        .reverse()
+        .map((point) => ({
+          capturedAt: point.capturedAt,
+          latitude: point.latitude,
+          longitude: point.longitude,
+          accuracyMeters: point.accuracyMeters,
+          headingDegrees: point.headingDegrees,
+          speedKph: point.speedKph,
+        })),
+    };
   }
 }
