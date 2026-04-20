@@ -6,7 +6,6 @@ import {
 } from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
-import { DisclosurePanel } from '../../../components/ui/disclosure-panel';
 import { StatusPill } from '../../../components/ui/status-pill';
 import {
   canStartTripNow,
@@ -18,14 +17,12 @@ import {
   getTripStatusTone,
 } from '../lib/trip-labels';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
-import type { LatestTripRouteTemplate, TripRecord } from '../types/trip';
-import type { VehicleRecord } from '../../vehicles/types/vehicle';
+import type { TripRecord } from '../types/trip';
 import {
   getTripClosureIncidentLabel,
   getTripClosureIncidentTone,
   getTripClosureWindowCopy,
 } from '../lib/trip-closure';
-import { TripCreationForm } from './trip-creation-form';
 import {
   TripClosureActionCenter,
   type TripClosureActionItem,
@@ -38,7 +35,6 @@ import {
 } from './trip-live-tracking-panel';
 import { TripOverviewCard } from './trip-overview-card';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
-import type { TripFormValues } from './trips-workspace.types';
 
 type TripsOperationWorkspaceProps = {
   myTrips: TripRecord[];
@@ -46,20 +42,11 @@ type TripsOperationWorkspaceProps = {
   blocksDriver: boolean;
   isMutatingTripId: string | null;
   onTripAction: (tripId: string, action: 'publish' | 'start' | 'complete' | 'cancel') => void;
-  isCreateTripPanelOpen: boolean;
-  onCreateTripPanelOpenChange: (nextOpen: boolean) => void;
-  isLoadingLatestRoute: boolean;
-  latestRouteTemplate: LatestTripRouteTemplate | null;
   canCreateTrips: boolean;
-  isCreatingTrip: boolean;
-  tripForm: TripFormValues;
-  activeVehicles: VehicleRecord[];
   incomingRequests: TripRequestRecord[];
-  onTripFormChange: (field: keyof TripFormValues, value: string) => void;
-  onCreateTrip: (event: React.FormEvent<HTMLFormElement>) => void;
-  onUseLatestRoute: () => void;
   isRefreshingData?: boolean;
-  onOpenCreateTrip: () => void;
+  onNavigateToCreateTrip: () => void;
+  onOpenRequests: () => void;
   accessToken?: string;
   realtimeStatusLabel: string;
   realtimeStatusTone: 'neutral' | 'success' | 'warning' | 'danger';
@@ -71,20 +58,11 @@ export function TripsOperationWorkspace({
   blocksDriver,
   isMutatingTripId,
   onTripAction,
-  isCreateTripPanelOpen,
-  onCreateTripPanelOpenChange,
-  isLoadingLatestRoute,
-  latestRouteTemplate,
   canCreateTrips,
-  isCreatingTrip,
-  tripForm,
-  activeVehicles,
   incomingRequests,
-  onTripFormChange,
-  onCreateTrip,
-  onUseLatestRoute,
   isRefreshingData = false,
-  onOpenCreateTrip,
+  onNavigateToCreateTrip,
+  onOpenRequests,
   accessToken,
   realtimeStatusLabel,
   realtimeStatusTone,
@@ -99,8 +77,6 @@ export function TripsOperationWorkspace({
       <TripLiveTrackingPanel
         accessToken={accessToken}
         candidates={trackingCandidates}
-        description="Seguimiento moderno del viaje para conductor: ruta planificada, estado operativo y hitos del trayecto en una sola vista."
-        emptyDescription="Cuando tengas un viaje publicado, lleno o en curso, aqui aparecerá su seguimiento operativo con mapa y contexto en tiempo real."
         emptyTitle="Aun no tienes un trayecto para seguimiento activo"
         realtimeStatusLabel={realtimeStatusLabel}
         realtimeStatusTone={realtimeStatusTone}
@@ -113,12 +89,11 @@ export function TripsOperationWorkspace({
         isMutatingTripId={isMutatingTripId}
         licenseStatus={licenseStatus}
         myTrips={myTrips}
+        onOpenRequests={onOpenRequests}
         onTripAction={onTripAction}
       />
 
       <TripClosureActionCenter
-        description="Los trayectos ya completados o con cierre operativo anomalo aparecen aqui con su ventana de reputacion activa para que no se te pase el seguimiento final."
-        emptyDescription="Cuando completes un trayecto con pasajeros confirmados, aqui veras el recordatorio de cierre para calificar o escalar incidentes dentro del plazo."
         emptyTitle="No tienes cierres pendientes como conductor"
         items={closureItems}
         title="Cierre post-viaje del conductor"
@@ -126,8 +101,17 @@ export function TripsOperationWorkspace({
 
       <article className="panel panel-stack trips-stream-panel">
         <div className="section-heading">
-          <h2 className="panel-title">Mis viajes</h2>
-          <p className="section-heading-meta">{myTrips.length} resultados</p>
+          <div>
+            <h2 className="panel-title">Mis viajes</h2>
+            <p className="section-heading-meta">{myTrips.length} resultados</p>
+          </div>
+          <Button
+            disabled={!canCreateTrips}
+            onClick={onNavigateToCreateTrip}
+            variant="secondary"
+          >
+            Nuevo viaje
+          </Button>
         </div>
         {myTrips.length ? (
           <div className="list-stack">
@@ -157,7 +141,7 @@ export function TripsOperationWorkspace({
                         || trip.status === TripStatus.Published
                         || trip.status === TripStatus.Full) ? (
                         <p className="panel-text">
-                          No puedes publicar ni iniciar este viaje mientras tu licencia siga vencida.
+                          Licencia vencida.
                         </p>
                       ) : null}
                       {(trip.status === TripStatus.Published || trip.status === TripStatus.Full)
@@ -166,7 +150,7 @@ export function TripsOperationWorkspace({
                       ) : null}
                       {completionOverdueMessage ? (
                         <p className="panel-text">
-                          {completionOverdueMessage} Revisalo cuanto antes para evitar inconsistencias operativas.
+                          {completionOverdueMessage}
                         </p>
                       ) : null}
                     </>
@@ -229,45 +213,13 @@ export function TripsOperationWorkspace({
           </div>
         ) : (
           <TripsEditorialEmptyState
-            actionLabel="Crear mi primer viaje"
-            description="Cuando registres tu primer viaje, aqui veras su progreso y podras gestionarlo en tiempo real."
+            actionLabel={canCreateTrips ? 'Crear mi primer viaje' : undefined}
             eyebrow="Operacion"
-            onAction={onOpenCreateTrip}
+            onAction={canCreateTrips ? onNavigateToCreateTrip : undefined}
             title="Tu panel de conduccion aun esta vacio"
           />
         )}
       </article>
-
-      <DisclosurePanel
-        className="trip-create-disclosure"
-        defaultOpen={false}
-        onOpenChange={onCreateTripPanelOpenChange}
-        open={isCreateTripPanelOpen}
-        description="Registra viajes nuevos cuando tengas vehiculo activo y estado aprobado."
-        meta={
-          isLoadingLatestRoute
-            ? 'Cargando referencia'
-            : latestRouteTemplate
-              ? 'Incluye ultima ruta'
-              : canCreateTrips
-                ? 'Nuevo borrador'
-                : 'Bloqueado'
-        }
-        title="Crear viaje"
-      >
-        <TripCreationForm
-          disabled={!canCreateTrips}
-          errorMessage={null}
-          isSubmitting={isCreatingTrip}
-          latestRouteTemplate={latestRouteTemplate}
-          onChange={onTripFormChange}
-          onSubmit={onCreateTrip}
-          onUseLatestRoute={onUseLatestRoute}
-          successMessage={null}
-          values={tripForm}
-          vehicles={activeVehicles}
-        />
-      </DisclosurePanel>
     </section>
   );
 }
@@ -293,7 +245,7 @@ function buildDriverTrackingCandidates(myTrips: TripRecord[]): TripTrackingCandi
       id: trip.id,
       tripId: trip.id,
       title: `${trip.originLabel} -> ${trip.destinationLabel}`,
-      subtitle: `Conduces este trayecto con ${trip.vehicleDisplayName}`,
+      subtitle: `${trip.vehicleDisplayName}`,
       status: trip.status,
       departureAt: trip.departureAt,
       estimatedArrivalAt: trip.estimatedArrivalAt,
@@ -340,8 +292,8 @@ function buildDriverClosureItems(
       return {
         id: trip.id,
         title: `${trip.originLabel} -> ${trip.destinationLabel}`,
-        subtitle: `Como conductor • ${acceptedPassengers.length} participante${acceptedPassengers.length === 1 ? '' : 's'} confirmado${acceptedPassengers.length === 1 ? '' : 's'}`,
-        summary: `Este cierre sigue activo. Puedes ${actionParts.join(' y ')} desde Confianza antes de que expire la ventana operativa.`,
+        subtitle: `Conductor | ${acceptedPassengers.length} participante${acceptedPassengers.length === 1 ? '' : 's'} confirmado${acceptedPassengers.length === 1 ? '' : 's'}`,
+        summary: actionParts.join(' y '),
         windowLabel: getTripClosureWindowCopy(summary),
         tripStatusLabel: getTripStatusLabel(trip.status),
         tripStatusTone: getTripStatusTone(trip.status),
@@ -369,3 +321,5 @@ function getTrackingPriority(status: TripStatus): number {
       return 3;
   }
 }
+
+

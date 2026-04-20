@@ -76,17 +76,47 @@ export function TripsRequestsWorkspace({
 }: TripsRequestsWorkspaceProps) {
   const passengerTrackingCandidates = buildPassengerTrackingCandidates(myRequests);
   const closureItems = buildPassengerClosureItems(myRequests);
+  const pendingIncomingCount = incomingRequests.filter(
+    (request) => request.status === TripRequestStatus.Pending,
+  ).length;
+  const noShowEligibleCount = incomingRequests.filter((request) =>
+    canMarkRequestAsNoShow(request),
+  ).length;
+  const activePassengerRequestsCount = myRequests.filter(
+    (request) =>
+      request.status === TripRequestStatus.Pending
+      || request.status === TripRequestStatus.Accepted,
+  ).length;
 
   return (
     <section className="trips-workspace-grid">
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="requests" /> : null}
 
+      <article className="panel panel-stack trip-requests-summary-panel">
+        <div className="trip-requests-summary-grid">
+          <RequestsSummaryCard
+            label="Recibidas"
+            value={`${incomingRequests.length}`}
+          />
+          <RequestsSummaryCard
+            label="Pendientes"
+            value={`${pendingIncomingCount}`}
+          />
+          <RequestsSummaryCard
+            label="Mias activas"
+            value={`${activePassengerRequestsCount}`}
+          />
+          <RequestsSummaryCard
+            label="No-show"
+            value={`${noShowEligibleCount}`}
+          />
+        </div>
+      </article>
+
       <div className="trip-live-panel-span">
         <TripLiveTrackingPanel
           accessToken={accessToken}
           candidates={passengerTrackingCandidates}
-          description="Seguimiento del trayecto para pasajero confirmado: ves la ruta prevista, el estado actual y los hitos del viaje sin depender todavia de GPS continuo."
-          emptyDescription="Cuando una de tus solicitudes sea aceptada y el viaje quede proximo o en curso, aqui veras su panel de seguimiento."
           emptyTitle="Todavia no tienes un viaje confirmado para seguir"
           realtimeStatusLabel={realtimeStatusLabel}
           realtimeStatusTone={realtimeStatusTone}
@@ -104,8 +134,6 @@ export function TripsRequestsWorkspace({
       </div>
 
       <TripClosureActionCenter
-        description="Los viajes que ya pasaron a cierre operativo aparecen aqui con su plazo vigente para que el pasajero no pierda la oportunidad de calificar o reportar."
-        emptyDescription="Cuando uno de tus trayectos confirmados llegue a cierre, esta vista te recordara hasta cuando puedes cerrar la interaccion."
         emptyTitle="No tienes cierres pendientes como pasajero"
         items={closureItems}
         title="Cierre post-viaje del pasajero"
@@ -119,7 +147,7 @@ export function TripsRequestsWorkspace({
         {incomingRequests.length ? (
           <div className="list-stack">
             {incomingRequests.map((request) => (
-              <div key={request.id} className="list-card">
+              <div key={request.id} className="list-card trip-request-card trip-request-card-incoming">
                 <div className="list-card-header">
                   <strong>{request.passengerFullName}</strong>
                   <StatusPill
@@ -127,25 +155,32 @@ export function TripsRequestsWorkspace({
                     tone={getTripRequestStatusTone(request.status)}
                   />
                 </div>
-                <p className="panel-text">
-                  Viaje: {request.tripOriginLabel} -&gt; {request.tripDestinationLabel}
-                </p>
-                <p className="panel-text">Salida: {formatDateTime(request.tripDepartureAt)}</p>
+
+                <div className="trip-request-route-line">
+                  <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
+                </div>
+
+                <div className="trip-request-meta-grid">
+                  <RequestMetaItem label="Salida" value={formatDateTime(request.tripDepartureAt)} />
+                  <RequestMetaItem label="Viaje" value={getTripStatusLabel(request.tripStatus)} />
+                  <RequestMetaItem label="Solicitud" value={getTripRequestStatusLabel(request.status)} />
+                  <RequestMetaItem label="Pasajero" value={request.passengerFullName} />
+                </div>
+
                 {request.requestMessage ? (
-                  <p className="panel-text">Mensaje: {request.requestMessage}</p>
+                  <div className="trip-request-note">
+                    <strong>Mensaje</strong>
+                    <p>{request.requestMessage}</p>
+                  </div>
                 ) : null}
                 {request.status === TripRequestStatus.Pending
                 && request.tripStatus === TripStatus.Full ? (
-                  <p className="panel-text">
-                    El viaje ya completo sus cupos. Puedes rechazar esta solicitud o esperar un cupo libre.
-                  </p>
+                  <p className="panel-text">Viaje sin cupos.</p>
                 ) : null}
                 {request.status === TripRequestStatus.Pending
                 && request.tripStatus !== TripStatus.Published
                 && request.tripStatus !== TripStatus.Full ? (
-                  <p className="panel-text">
-                    Esta solicitud quedo desactualizada porque el viaje cambio de estado.
-                  </p>
+                  <p className="panel-text">Solicitud desactualizada.</p>
                 ) : null}
                 {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
                   <div className="button-row">
@@ -173,7 +208,7 @@ export function TripsRequestsWorkspace({
                     value={noShowNotes[request.id] ?? defaultNoShowNote}
                   />
                 ) : null}
-                <div className="button-row">
+                <div className="button-row trip-request-action-row">
                   {canAcceptIncomingRequest(request) ? (
                     <Button
                       disabled={isMutatingRequestId === request.id}
@@ -206,7 +241,6 @@ export function TripsRequestsWorkspace({
           </div>
         ) : (
           <TripsEditorialEmptyState
-            description="Aun no tienes pasajeros solicitando tus rutas. Publica mas viajes para aumentar visibilidad."
             eyebrow="Solicitudes recibidas"
             title="Nada por aprobar por ahora"
           />
@@ -221,7 +255,7 @@ export function TripsRequestsWorkspace({
         {myRequests.length ? (
           <div className="list-stack">
             {myRequests.map((request) => (
-              <div key={request.id} className="list-card">
+              <div key={request.id} className="list-card trip-request-card trip-request-card-own">
                 <div className="list-card-header">
                   <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
                   <StatusPill
@@ -229,10 +263,19 @@ export function TripsRequestsWorkspace({
                     tone={getTripRequestStatusTone(request.status)}
                   />
                 </div>
-                <p className="panel-text">Conductor: {request.driverFullName}</p>
-                <p className="panel-text">Salida: {formatDateTime(request.tripDepartureAt)}</p>
+
+                <div className="trip-request-meta-grid">
+                  <RequestMetaItem label="Conductor" value={request.driverFullName} />
+                  <RequestMetaItem label="Salida" value={formatDateTime(request.tripDepartureAt)} />
+                  <RequestMetaItem label="Viaje" value={getTripStatusLabel(request.tripStatus)} />
+                  <RequestMetaItem label="Solicitud" value={getTripRequestStatusLabel(request.status)} />
+                </div>
+
                 {request.reviewNote ? (
-                  <p className="panel-text">Revision: {request.reviewNote}</p>
+                  <div className="trip-request-note trip-request-note-muted">
+                    <strong>Revision</strong>
+                    <p>{request.reviewNote}</p>
+                  </div>
                 ) : null}
                 {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
                   <div className="button-row">
@@ -252,12 +295,10 @@ export function TripsRequestsWorkspace({
                 {(request.status === TripRequestStatus.Pending
                   || request.status === TripRequestStatus.Accepted)
                 && !canCancelOwnRequest(request) ? (
-                  <p className="panel-text">
-                    Esta solicitud ya no puede cancelarse porque el viaje cambio de estado.
-                  </p>
+                  <p className="panel-text">Ya no se puede cancelar.</p>
                 ) : null}
                 {canCancelOwnRequest(request) ? (
-                  <div className="button-row">
+                  <div className="button-row trip-request-action-row">
                     <Button
                       disabled={isMutatingRequestId === request.id}
                       onClick={() => onCancelMyRequest(request.id)}
@@ -273,7 +314,6 @@ export function TripsRequestsWorkspace({
         ) : (
           <TripsEditorialEmptyState
             actionLabel="Explorar viajes"
-            description="Explora rutas publicadas por otros conductores y envia solicitudes segun tus horarios."
             eyebrow="Mis solicitudes"
             onAction={onExploreTrips}
             title="Aun no has solicitado un viaje"
@@ -281,6 +321,36 @@ export function TripsRequestsWorkspace({
         )}
       </article>
     </section>
+  );
+}
+
+function RequestsSummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="trip-request-summary-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function RequestMetaItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="trip-request-meta-item">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
@@ -315,8 +385,8 @@ function buildPassengerClosureItems(myRequests: TripRequestRecord[]): TripClosur
       return {
         id: request.id,
         title: `${request.tripOriginLabel} -> ${request.tripDestinationLabel}`,
-        subtitle: `Como pasajero • Conductor asignado: ${request.driverFullName}`,
-        summary: `Este trayecto sigue dentro de la ventana de cierre. Puedes ${actionParts.join(' y ')} antes de que venza el plazo.`,
+        subtitle: `Pasajero | ${request.driverFullName}`,
+        summary: actionParts.join(' y '),
         windowLabel: getTripClosureWindowCopy(summary),
         tripStatusLabel: getTripStatusLabel(request.tripStatus),
         tripStatusTone: getTripStatusTone(request.tripStatus),
@@ -380,3 +450,4 @@ function getTrackingPriority(status: TripStatus): number {
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
 }
+

@@ -2,7 +2,7 @@ import { Button } from '../../../components/ui/button';
 
 type TripsEditorialEmptyStateProps = {
   title: string;
-  description: string;
+  description?: string;
   eyebrow?: string;
   actionLabel?: string;
   onAction?: () => void;
@@ -25,7 +25,7 @@ export function TripsEditorialEmptyState({
       <div className="journey-empty-copy">
         {eyebrow ? <p className="section-label">{eyebrow}</p> : null}
         <h3 className="panel-title">{title}</h3>
-        <p className="panel-text">{description}</p>
+        {description ? <p className="panel-text">{description}</p> : null}
       </div>
       {actionLabel && onAction ? (
         <div className="journey-empty-actions">

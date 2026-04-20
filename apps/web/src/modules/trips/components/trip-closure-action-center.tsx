@@ -16,9 +16,9 @@ export type TripClosureActionItem = {
 
 type TripClosureActionCenterProps = {
   title: string;
-  description: string;
+  description?: string;
   emptyTitle: string;
-  emptyDescription: string;
+  emptyDescription?: string;
   items: TripClosureActionItem[];
 };
 
@@ -33,9 +33,9 @@ export function TripClosureActionCenter({
     <article className="trip-closure-center">
       <div className="trip-closure-header">
         <div>
-          <p className="section-label">Trip Closure Hardening</p>
+          <p className="section-label">Cierre</p>
           <h2 className="panel-title">{title}</h2>
-          <p className="panel-text">{description}</p>
+          {description ? <p className="panel-text">{description}</p> : null}
         </div>
       </div>
 
@@ -56,7 +56,6 @@ export function TripClosureActionCenter({
                 </div>
               </div>
 
-              <p className="panel-text">{item.summary}</p>
               {item.windowLabel ? (
                 <p className="trip-closure-window">{item.windowLabel}</p>
               ) : null}
@@ -72,7 +71,7 @@ export function TripClosureActionCenter({
       ) : (
         <div className="trip-closure-empty">
           <strong>{emptyTitle}</strong>
-          <p className="panel-text">{emptyDescription}</p>
+          {emptyDescription ? <p className="panel-text">{emptyDescription}</p> : null}
         </div>
       )}
     </article>

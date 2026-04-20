@@ -31,9 +31,9 @@ export type TripTrackingCandidate = {
 
 type TripLiveTrackingPanelProps = {
   title: string;
-  description: string;
+  description?: string;
   emptyTitle: string;
-  emptyDescription: string;
+  emptyDescription?: string;
   candidates: TripTrackingCandidate[];
   accessToken?: string;
   realtimeStatusLabel: string;
@@ -43,7 +43,6 @@ type TripLiveTrackingPanelProps = {
 type TripTrackingStep = {
   id: string;
   title: string;
-  description: string;
   tone: 'neutral' | 'success' | 'warning';
 };
 
@@ -138,9 +137,9 @@ export function TripLiveTrackingPanel({
     return (
       <article className="trip-live-panel trip-live-panel-empty">
         <div className="trip-live-empty-copy">
-          <p className="section-label">Tracking v1</p>
+          <p className="section-label">Tracking</p>
           <h2 className="panel-title">{emptyTitle}</h2>
-          <p className="panel-text">{emptyDescription}</p>
+          {emptyDescription ? <p className="panel-text">{emptyDescription}</p> : null}
         </div>
       </article>
     );
@@ -150,11 +149,8 @@ export function TripLiveTrackingPanel({
     return (
       <article className="trip-live-panel trip-live-panel-empty">
         <div className="trip-live-empty-copy">
-          <p className="section-label">Tracking v1</p>
+          <p className="section-label">Tracking</p>
           <h2 className="panel-title">Preparando seguimiento</h2>
-          <p className="panel-text">
-            Estamos resolviendo el trayecto principal para mostrar su mapa y estado operativo.
-          </p>
         </div>
       </article>
     );
@@ -175,7 +171,6 @@ export function TripLiveTrackingPanel({
     selectedCandidate.estimatedArrivalAt,
   );
   const routePrecisionVisible = Boolean(routeMapOrigin && routeMapDestination);
-  const trackingNarrative = getTrackingNarrative(selectedCandidate.status);
   const trackingProgress = getTrackingProgress(selectedCandidate.status);
   const trackingSteps = buildTrackingSteps(selectedCandidate.status);
 
@@ -183,9 +178,9 @@ export function TripLiveTrackingPanel({
     <article className="trip-live-panel">
       <div className="trip-live-hero">
         <div className="trip-live-hero-copy">
-          <p className="section-label">Tracking v1</p>
+          <p className="section-label">Tracking</p>
           <h2 className="trip-live-title">{title}</h2>
-          <p className="panel-text">{description}</p>
+          {description ? <p className="panel-text">{description}</p> : null}
         </div>
         <div className="trip-live-hero-actions">
           <StatusPill
@@ -232,7 +227,6 @@ export function TripLiveTrackingPanel({
           <div className="trip-live-progress-bar" aria-hidden="true">
             <span style={{ width: `${trackingProgress}%` }} />
           </div>
-          <small>{trackingNarrative}</small>
         </div>
       </div>
 
@@ -241,9 +235,6 @@ export function TripLiveTrackingPanel({
           <div className="trip-live-map-head">
             <div>
               <strong>Ruta planificada</strong>
-              <p className="panel-text">
-                Vista basada en la ruta prevista y cambios de estado del viaje. Todavia no incluye GPS continuo.
-              </p>
             </div>
             {tripDetail?.cancellationTiming ? (
               <StatusPill
@@ -256,9 +247,6 @@ export function TripLiveTrackingPanel({
           {isLoadingDetail ? (
             <div className="trip-live-map-placeholder">
               <strong>Sincronizando detalle...</strong>
-              <p className="panel-text">
-                Estamos cargando la ruta planificada y el contexto operativo del viaje.
-              </p>
             </div>
           ) : errorMessage ? (
             <div className="trip-live-map-placeholder trip-live-map-placeholder-warning">
@@ -270,9 +258,6 @@ export function TripLiveTrackingPanel({
           ) : (
             <div className="trip-live-map-placeholder">
               <strong>Ruta precisa no disponible.</strong>
-              <p className="panel-text">
-                El mapa detallado solo se comparte con participantes confirmados del trayecto.
-              </p>
             </div>
           )}
         </div>
@@ -322,7 +307,6 @@ export function TripLiveTrackingPanel({
                   <div className="trip-live-step-dot" aria-hidden="true" />
                   <div>
                     <strong>{step.title}</strong>
-                    <p>{step.description}</p>
                   </div>
                 </div>
               ))}
@@ -372,19 +356,11 @@ function buildTrackingSteps(status: TripStatus): TripTrackingStep[] {
     {
       id: 'publication',
       title: 'Publicacion y confirmaciones',
-      description:
-        status === TripStatus.Draft
-          ? 'El viaje aun esta en borrador y todavia no entra a coordinacion.'
-          : 'La ruta ya se encuentra visible para coordinacion y gestion de cupos.',
       tone: status === TripStatus.Draft ? 'warning' : 'success',
     },
     {
       id: 'departure',
       title: 'Preparacion de salida',
-      description:
-        status === TripStatus.Published || status === TripStatus.Full
-          ? 'El trayecto esta listo para iniciar y mantiene su plan de ruta actual.'
-          : 'La salida ya fue resuelta o reemplazada por un cierre distinto.',
       tone:
         status === TripStatus.Published || status === TripStatus.Full
           ? 'warning'
@@ -393,46 +369,17 @@ function buildTrackingSteps(status: TripStatus): TripTrackingStep[] {
     {
       id: 'in-progress',
       title: 'Seguimiento del trayecto',
-      description:
-        status === TripStatus.InProgress
-          ? 'Se comparte el estado del viaje en curso con base en la ruta planificada.'
-          : 'Todavia no existe un trayecto activo en ejecucion o ya concluyo.',
       tone: status === TripStatus.InProgress ? 'warning' : 'neutral',
     },
     {
       id: 'closure',
       title: 'Cierre operativo',
-      description:
-        status === TripStatus.Completed
-          ? 'El viaje se cerro correctamente y queda listo para confianza y evaluaciones.'
-          : status === TripStatus.Cancelled
-            ? 'El viaje se cerro por cancelacion y conserva la ruta planificada como referencia.'
-            : 'El cierre todavia depende del estado final que marque el conductor o el sistema.',
       tone:
         status === TripStatus.Completed || status === TripStatus.Cancelled
           ? 'success'
           : 'neutral',
     },
   ];
-}
-
-function getTrackingNarrative(status: TripStatus): string {
-  switch (status) {
-    case TripStatus.Draft:
-      return 'Borrador interno sin seguimiento compartido.';
-    case TripStatus.Published:
-      return 'Publicado con cupos disponibles.';
-    case TripStatus.Full:
-      return 'Listo para salir con todos los cupos ocupados.';
-    case TripStatus.InProgress:
-      return 'Trayecto en curso con seguimiento de estado.';
-    case TripStatus.Completed:
-      return 'Trayecto cerrado correctamente.';
-    case TripStatus.Cancelled:
-      return 'Trayecto cancelado con referencia historica de la ruta.';
-    default:
-      return 'Seguimiento operativo disponible.';
-  }
 }
 
 function getTrackingProgress(status: TripStatus): number {

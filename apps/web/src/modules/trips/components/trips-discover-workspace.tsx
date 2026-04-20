@@ -57,7 +57,6 @@ export function TripsDiscoverWorkspace({
 
       <DisclosurePanel
         defaultOpen={activeFiltersCount > 0}
-        description="Filtra rapido por ruta, fecha y cupos para acotar resultados."
         meta={activeFiltersCount > 0 ? `${activeFiltersCount} activos` : 'Opcional'}
         title="Ajustar busqueda"
       >
@@ -85,9 +84,7 @@ export function TripsDiscoverWorkspace({
               </span>
             ))}
           </div>
-        ) : (
-          <p className="panel-text">Sin filtros activos. Estas viendo todo el universo disponible.</p>
-        )}
+        ) : null}
       </article>
 
       <article className="panel panel-stack trips-stream-panel">
@@ -113,9 +110,7 @@ export function TripsDiscoverWorkspace({
                   emphasis
                   helperContent={
                     trip.status === TripStatus.Full ? (
-                      <p className="panel-text">
-                        Este viaje ya completo sus cupos. Si se libera uno, podras solicitarlo al actualizar la vista.
-                      </p>
+                      <p className="panel-text">Sin cupos.</p>
                     ) : null
                   }
                   showDriver
@@ -192,7 +187,6 @@ export function TripsDiscoverWorkspace({
           </div>
         ) : (
           <TripsEditorialEmptyState
-            description="No encontramos rutas que coincidan con tu busqueda. Ajusta filtros o amplia rango de fecha y horarios."
             eyebrow="Explorar"
             title="No hay viajes que encajen con estos filtros"
           />

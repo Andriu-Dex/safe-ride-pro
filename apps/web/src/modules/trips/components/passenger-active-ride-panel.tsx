@@ -29,11 +29,8 @@ export function PassengerActiveRidePanel({
     return (
       <article className="ride-companion-panel ride-companion-panel-empty">
         <div className="ride-companion-copy">
-          <p className="section-label">Execution UX</p>
+          <p className="section-label">Ejecucion</p>
           <h2 className="panel-title">Vista del pasajero confirmado</h2>
-          <p className="panel-text">
-            Cuando una solicitud quede aceptada, aqui tendras una lectura clara del trayecto, su estado y la siguiente accion esperada.
-          </p>
         </div>
       </article>
     );
@@ -45,16 +42,14 @@ export function PassengerActiveRidePanel({
     activeRide.tripEstimatedArrivalAt,
   );
   const rideGuidance = getPassengerGuidance(activeRide.tripStatus);
+  const rideSteps = buildPassengerRideSteps(activeRide.tripStatus);
 
   return (
     <article className="ride-companion-panel">
       <div className="ride-companion-header">
         <div className="ride-companion-copy">
-          <p className="section-label">Execution UX</p>
+          <p className="section-label">Ejecucion</p>
           <h2 className="ride-companion-title">Mi trayecto activo</h2>
-          <p className="panel-text">
-            Un resumen enfocado para el pasajero confirmado: conductor asignado, estado del viaje y decision inmediata mas importante.
-          </p>
         </div>
         <div className="ride-companion-badges">
           <StatusPill
@@ -68,11 +63,35 @@ export function PassengerActiveRidePanel({
         </div>
       </div>
 
+      <div className="trip-command-phase-strip" aria-label="Fases del trayecto del pasajero">
+        {rideSteps.map((step) => (
+          <div
+            key={step.id}
+            className={[
+              'trip-command-phase-pill',
+              step.isCurrent ? 'trip-command-phase-pill-current' : null,
+              step.isComplete ? 'trip-command-phase-pill-complete' : null,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <span>{step.index}</span>
+            <strong>{step.label}</strong>
+          </div>
+        ))}
+      </div>
+
       <div className="ride-companion-grid">
         <div className="ride-companion-main">
           <div className="ride-companion-hero">
             <strong>{activeRide.tripOriginLabel} -&gt; {activeRide.tripDestinationLabel}</strong>
-            <p>Conductor asignado: {activeRide.driverFullName}</p>
+            <p>{activeRide.driverFullName}</p>
+          </div>
+
+          <div className="trip-command-chip-row">
+            <span className="trip-command-chip">Salida {formatDateTime(activeRide.tripDepartureAt)}</span>
+            <span className="trip-command-chip">Llegada {formatDateTime(activeRide.tripEstimatedArrivalAt)}</span>
+            <span className="trip-command-chip">{getTripRequestStatusLabel(activeRide.status)}</span>
           </div>
 
           <div className="ride-companion-stat-grid">
@@ -121,15 +140,15 @@ export function PassengerActiveRidePanel({
         <div className="ride-companion-side">
           <div className="ride-companion-checklist">
             <div className="ride-companion-section-heading">
-              <strong>Lectura rapida</strong>
+              <strong>Estado rapido</strong>
               <span>Pasajero</span>
             </div>
-            <ul>
-              <li>Tu cupo sigue confirmado en este trayecto.</li>
-              <li>El mapa de seguimiento usa la ruta planificada actual.</li>
-              <li>Los cambios de estado se reflejan en tiempo real.</li>
-              <li>La cancelacion manual solo aparece mientras aun sea valida.</li>
-            </ul>
+            <div className="ride-companion-summary-grid">
+              <RideSummaryTile label="Conductor" value={activeRide.driverFullName} />
+              <RideSummaryTile label="Estado" value={getTripStatusLabel(activeRide.tripStatus)} />
+              <RideSummaryTile label="Solicitud" value={getTripRequestStatusLabel(activeRide.status)} />
+              <RideSummaryTile label="Cancelacion" value={canCancel ? 'Disponible' : 'Bloqueada'} />
+            </div>
           </div>
 
           {canCancel ? (
@@ -152,6 +171,21 @@ export function PassengerActiveRidePanel({
 function RideStatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="ride-companion-stat-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function RideSummaryTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="trip-command-summary-tile">
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -190,6 +224,38 @@ function getRidePriority(status: TripStatus): number {
       return 2;
     default:
       return 3;
+  }
+}
+
+function buildPassengerRideSteps(status: TripStatus): Array<{
+  id: string;
+  index: string;
+  label: string;
+  isCurrent: boolean;
+  isComplete: boolean;
+}> {
+  const currentIndex = getPassengerRideStepIndex(status);
+
+  return [
+    { id: 'accepted', index: '01', label: 'Confirmado', isCurrent: currentIndex === 0, isComplete: currentIndex > 0 },
+    { id: 'ready', index: '02', label: 'Salida', isCurrent: currentIndex === 1, isComplete: currentIndex > 1 },
+    { id: 'in-progress', index: '03', label: 'En curso', isCurrent: currentIndex === 2, isComplete: currentIndex > 2 },
+    { id: 'closed', index: '04', label: 'Cierre', isCurrent: currentIndex === 3, isComplete: currentIndex > 3 },
+  ];
+}
+
+function getPassengerRideStepIndex(status: TripStatus): number {
+  switch (status) {
+    case TripStatus.Published:
+    case TripStatus.Full:
+      return 1;
+    case TripStatus.InProgress:
+      return 2;
+    case TripStatus.Completed:
+    case TripStatus.Cancelled:
+      return 3;
+    default:
+      return 0;
   }
 }
 

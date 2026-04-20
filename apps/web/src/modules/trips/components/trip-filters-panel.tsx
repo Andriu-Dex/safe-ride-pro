@@ -35,9 +35,6 @@ export function TripFiltersPanel({
       <div className="panel-header-row">
         <div>
           <h2 className="panel-title">Filtros de viajes</h2>
-          <p className="panel-text">
-            Refina tus viajes y los viajes disponibles por origen, destino, fecha, horario, modalidad y cupos.
-          </p>
         </div>
       </div>
 

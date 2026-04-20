@@ -47,7 +47,6 @@ export function TripsControlSidebar({
       <div className="journey-sidebar-section">
         <p className="section-label">Workspace</p>
         <h2 className="panel-title">Navegacion</h2>
-        <p className="panel-text">Cada flujo vive en un panel dedicado para evitar ruido visual.</p>
       </div>
 
       <nav aria-label="Secciones de viajes" className="journey-workspace-nav">
@@ -66,7 +65,6 @@ export function TripsControlSidebar({
           >
             <span>{workspace.label}</span>
             <small>{workspace.metric}</small>
-            <p>{workspace.description}</p>
           </button>
         ))}
       </nav>

@@ -18,6 +18,7 @@ type TripExecutionCommandCenterProps = {
   isMutatingTripId: string | null;
   licenseStatus: DriverLicenseStatus;
   blocksDriver: boolean;
+  onOpenRequests: () => void;
   onTripAction: (tripId: string, action: 'publish' | 'start' | 'complete' | 'cancel') => void;
 };
 
@@ -27,6 +28,7 @@ export function TripExecutionCommandCenter({
   isMutatingTripId,
   licenseStatus,
   blocksDriver,
+  onOpenRequests,
   onTripAction,
 }: TripExecutionCommandCenterProps) {
   const primaryTrip = selectPrimaryExecutionTrip(myTrips);
@@ -35,11 +37,8 @@ export function TripExecutionCommandCenter({
     return (
       <article className="trip-command-center trip-command-center-empty">
         <div className="trip-command-center-copy">
-          <p className="section-label">Execution UX</p>
+          <p className="section-label">Ejecucion</p>
           <h2 className="panel-title">Centro de mando del conductor</h2>
-          <p className="panel-text">
-            Cuando tengas un viaje publicado, lleno o en curso, aqui veras el mando principal para operarlo con menos friccion.
-          </p>
         </div>
       </article>
     );
@@ -62,6 +61,7 @@ export function TripExecutionCommandCenter({
     primaryTrip.estimatedArrivalAt,
   );
   const guidance = getDriverGuidance(primaryTrip, acceptedPassengers.length, pendingRequests.length);
+  const executionSteps = buildExecutionSteps(primaryTrip.status);
   const canPublish =
     primaryTrip.status === TripStatus.Draft
     && licenseStatus !== DriverLicenseStatus.Expired
@@ -81,11 +81,8 @@ export function TripExecutionCommandCenter({
     <article className="trip-command-center">
       <div className="trip-command-center-header">
         <div className="trip-command-center-copy">
-          <p className="section-label">Execution UX</p>
+          <p className="section-label">Ejecucion</p>
           <h2 className="trip-command-center-title">Centro de mando del conductor</h2>
-          <p className="panel-text">
-            Todo lo importante del trayecto principal en una sola superficie: estado, pasajeros confirmados y siguiente accion sugerida.
-          </p>
         </div>
         <div className="trip-command-center-badges">
           <StatusPill
@@ -97,6 +94,24 @@ export function TripExecutionCommandCenter({
         </div>
       </div>
 
+      <div className="trip-command-phase-strip" aria-label="Fases del viaje">
+        {executionSteps.map((step) => (
+          <div
+            key={step.id}
+            className={[
+              'trip-command-phase-pill',
+              step.isCurrent ? 'trip-command-phase-pill-current' : null,
+              step.isComplete ? 'trip-command-phase-pill-complete' : null,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <span>{step.index}</span>
+            <strong>{step.label}</strong>
+          </div>
+        ))}
+      </div>
+
       <div className="trip-command-center-grid">
         <div className="trip-command-center-main">
           <div className="trip-command-center-hero">
@@ -105,7 +120,7 @@ export function TripExecutionCommandCenter({
                 {primaryTrip.originLabel} -&gt; {primaryTrip.destinationLabel}
               </strong>
               <p className="trip-command-center-subtitle">
-                {primaryTrip.vehicleDisplayName} · {primaryTrip.vehiclePlate}
+                {primaryTrip.vehicleDisplayName} | {primaryTrip.vehiclePlate}
               </p>
             </div>
             <div className="trip-command-center-progress">
@@ -113,6 +128,14 @@ export function TripExecutionCommandCenter({
               <strong>{guidance.title}</strong>
               <p>{guidance.description}</p>
             </div>
+          </div>
+
+          <div className="trip-command-chip-row">
+            <span className="trip-command-chip">Salida {formatDateTime(primaryTrip.departureAt)}</span>
+            <span className="trip-command-chip">Llegada {formatDateTime(primaryTrip.estimatedArrivalAt)}</span>
+            <span className="trip-command-chip">
+              Ocupacion {primaryTrip.seatCount - primaryTrip.availableSeats}/{primaryTrip.seatCount}
+            </span>
           </div>
 
           <div className="trip-command-kpi-grid">
@@ -137,14 +160,14 @@ export function TripExecutionCommandCenter({
           {startAvailabilityMessage ? (
             <div className="trip-command-alert">
               <strong>Ventana de inicio</strong>
-              <p>{startAvailabilityMessage}</p>
+              <p title={startAvailabilityMessage}>{startAvailabilityMessage}</p>
             </div>
           ) : null}
 
           {overdueMessage ? (
             <div className="trip-command-alert trip-command-alert-warning">
               <strong>Revision de cierre</strong>
-              <p>{overdueMessage}</p>
+              <p title={overdueMessage}>{overdueMessage}</p>
             </div>
           ) : null}
 
@@ -184,6 +207,11 @@ export function TripExecutionCommandCenter({
                 Cancelar trayecto
               </Button>
             ) : null}
+            {pendingRequests.length > 0 ? (
+              <Button onClick={onOpenRequests} type="button" variant="ghost">
+                Revisar solicitudes
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -204,31 +232,31 @@ export function TripExecutionCommandCenter({
                         tone={request.tripStatus === TripStatus.InProgress ? 'warning' : 'success'}
                       />
                     </div>
-                    {request.requestMessage ? <p>{request.requestMessage}</p> : null}
+                    {request.requestMessage ? (
+                      <p title={request.requestMessage}>{request.requestMessage}</p>
+                    ) : null}
                     <small>
-                      Solicitud aceptada el {formatDateTime(request.reviewedAt ?? request.createdAt)}
+                      Aceptada el {formatDateTime(request.reviewedAt ?? request.createdAt)}
                     </small>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="panel-text">
-                Aun no tienes pasajeros confirmados para este trayecto.
-              </p>
+              <p className="panel-text">Sin pasajeros confirmados.</p>
             )}
           </div>
 
           <div className="trip-command-manifest trip-command-manifest-muted">
             <div className="trip-command-section-heading">
               <strong>Lectura operacional</strong>
-              <span>Resumen</span>
+              <span>Rapido</span>
             </div>
-            <ul className="trip-command-checklist">
-              <li>Estado actual: {getTripStatusLabel(primaryTrip.status)}</li>
-              <li>Solicitudes pendientes: {pendingRequests.length}</li>
-              <li>Confirmaciones activas: {acceptedPassengers.length}</li>
-              <li>Vehiculo asignado: {primaryTrip.vehicleDisplayName}</li>
-            </ul>
+            <div className="trip-command-summary-grid">
+              <ExecutionSummaryTile label="Estado" value={getTripStatusLabel(primaryTrip.status)} />
+              <ExecutionSummaryTile label="Pendientes" value={`${pendingRequests.length}`} />
+              <ExecutionSummaryTile label="Confirmados" value={`${acceptedPassengers.length}`} />
+              <ExecutionSummaryTile label="Vehiculo" value={primaryTrip.vehiclePlate} />
+            </div>
           </div>
         </div>
       </div>
@@ -239,6 +267,21 @@ export function TripExecutionCommandCenter({
 function ExecutionStatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="trip-command-stat-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function ExecutionSummaryTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="trip-command-summary-tile">
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -282,6 +325,40 @@ function getTripPriority(status: TripStatus): number {
   }
 }
 
+function buildExecutionSteps(status: TripStatus): Array<{
+  id: string;
+  index: string;
+  label: string;
+  isCurrent: boolean;
+  isComplete: boolean;
+}> {
+  const currentIndex = getExecutionStepIndex(status);
+
+  return [
+    { id: 'draft', index: '01', label: 'Borrador', isCurrent: currentIndex === 0, isComplete: currentIndex > 0 },
+    { id: 'published', index: '02', label: 'Publicado', isCurrent: currentIndex === 1, isComplete: currentIndex > 1 },
+    { id: 'in-progress', index: '03', label: 'En curso', isCurrent: currentIndex === 2, isComplete: currentIndex > 2 },
+    { id: 'closure', index: '04', label: 'Cierre', isCurrent: currentIndex === 3, isComplete: currentIndex > 3 },
+  ];
+}
+
+function getExecutionStepIndex(status: TripStatus): number {
+  switch (status) {
+    case TripStatus.Draft:
+      return 0;
+    case TripStatus.Published:
+    case TripStatus.Full:
+      return 1;
+    case TripStatus.InProgress:
+      return 2;
+    case TripStatus.Completed:
+    case TripStatus.Cancelled:
+      return 3;
+    default:
+      return 0;
+  }
+}
+
 function getDriverGuidance(
   trip: TripRecord,
   acceptedPassengersCount: number,
@@ -291,32 +368,32 @@ function getDriverGuidance(
     case TripStatus.Draft:
       return {
         title: 'Publicar el viaje',
-        description: 'Tu ruta ya esta configurada. Publicala para empezar a recibir solicitudes.',
+        description: 'Tu ruta ya esta configurada.',
       };
     case TripStatus.Published:
       return {
         title: acceptedPassengersCount > 0 ? 'Preparar salida' : 'Esperar confirmaciones',
         description:
           acceptedPassengersCount > 0
-            ? 'Ya tienes pasajeros confirmados. Revisa la hora de salida y deja listo el inicio.'
+            ? 'Ya tienes pasajeros confirmados.'
             : pendingRequestsCount > 0
-              ? 'Tienes solicitudes pendientes por revisar antes de la salida.'
-              : 'Aun puedes seguir recibiendo solicitudes para completar el trayecto.',
+              ? 'Tienes solicitudes pendientes.'
+              : 'El viaje sigue recibiendo solicitudes.',
       };
     case TripStatus.Full:
       return {
         title: 'Trayecto listo para arrancar',
-        description: 'El viaje ya no tiene cupos libres. Enfocate en iniciar a tiempo y coordinar la salida.',
+        description: 'Ya no quedan cupos libres.',
       };
     case TripStatus.InProgress:
       return {
-        title: 'Acompanhar y cerrar correctamente',
-        description: 'Mantén el trayecto en seguimiento y finalizalo solo cuando realmente haya concluido.',
+        title: 'Monitorear y finalizar',
+        description: 'Finaliza solo cuando el trayecto termine.',
       };
     default:
       return {
         title: 'Sin accion inmediata',
-        description: 'Este trayecto ya no requiere una operacion activa.',
+        description: 'Sin accion pendiente.',
       };
   }
 }

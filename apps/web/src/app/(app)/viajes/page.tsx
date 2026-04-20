@@ -8,11 +8,11 @@ import {
   OperationalSanctionType,
   selectOperationalMembership,
   TripRequestStatus,
-  TripRouteMode,
   TripStatus,
   VehicleType,
 } from '@saferidepro/shared-types';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiError } from '../../../lib/api-client';
@@ -47,8 +47,6 @@ import type { TripRequestRecord } from '../../../modules/trip-requests/types/tri
 import {
   cancelTrip,
   completeTrip,
-  createTrip,
-  getLatestTripRouteTemplate,
   listAvailableTrips,
   listMyTrips,
   publishTrip,
@@ -60,7 +58,6 @@ import {
   getTripRouteModeLabel,
 } from '../../../modules/trips/lib/trip-labels';
 import type {
-  LatestTripRouteTemplate,
   TripFilters,
   TripRecord,
 } from '../../../modules/trips/types/trip';
@@ -85,8 +82,6 @@ import {
 import { TripsWorkspaceSkeleton } from '../../../modules/trips/components/trips-workspace-skeleton';
 import {
   EMPTY_REQUEST_DRAFT,
-  EMPTY_TRIP_FORM,
-  type TripFormValues,
   type TripRequestDraft,
 } from '../../../modules/trips/components/trips-workspace.types';
 
@@ -124,10 +119,6 @@ const EMPTY_TRIP_FILTERS: TripFilters = {
 };
 
 const DEFAULT_NO_SHOW_NOTE = 'El pasajero no se presento al punto acordado.';
-
-function toIsoString(localDateTime: string): string {
-  return new Date(localDateTime).toISOString();
-}
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
@@ -221,29 +212,25 @@ function canCreateRequestForTrip(trip: TripRecord, hasActiveRequest: boolean): b
 }
 
 export default function TripsPage() {
+  const router = useRouter();
   const { authSession, isHydrated, refreshSession } = useAuth();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [vehicleOverview, setVehicleOverview] = useState<VehicleOverview | null>(null);
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
   const [myTrips, setMyTrips] = useState<TripRecord[]>([]);
   const [availableTrips, setAvailableTrips] = useState<TripRecord[]>([]);
-  const [latestRouteTemplate, setLatestRouteTemplate] = useState<LatestTripRouteTemplate | null>(null);
   const [incomingRequests, setIncomingRequests] = useState<TripRequestRecord[]>([]);
   const [myRequests, setMyRequests] = useState<TripRequestRecord[]>([]);
-  const [tripForm, setTripForm] = useState(EMPTY_TRIP_FORM);
   const [tripFilters, setTripFilters] = useState<TripFilters>(EMPTY_TRIP_FILTERS);
   const [filterFormValues, setFilterFormValues] = useState<TripFilters>(EMPTY_TRIP_FILTERS);
   const [requestDrafts, setRequestDrafts] = useState<Record<string, TripRequestDraft>>({});
   const [noShowNotes, setNoShowNotes] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
-  const [isCreatingTrip, setIsCreatingTrip] = useState(false);
-  const [isLoadingLatestRoute, setIsLoadingLatestRoute] = useState(false);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isMutatingTripId, setIsMutatingTripId] = useState<string | null>(null);
   const [isMutatingRequestId, setIsMutatingRequestId] = useState<string | null>(null);
   const [activeWorkspace, setActiveWorkspace] = useState<TripsWorkspaceSection>('operation');
-  const [isCreateTripPanelOpen, setIsCreateTripPanelOpen] = useState(false);
   const [tripErrorMessage, setTripErrorMessage] = useState<string | null>(null);
   const [tripSuccessMessage, setTripSuccessMessage] = useState<string | null>(null);
   const [requestErrorMessage, setRequestErrorMessage] = useState<string | null>(null);
@@ -287,19 +274,6 @@ export default function TripsPage() {
     setIncomingRequests(incomingTripRequestsData);
   }, []);
 
-  const loadLatestRouteTemplate = useCallback(async (accessToken: string) => {
-    setIsLoadingLatestRoute(true);
-
-    try {
-      const latestRoute = await getLatestTripRouteTemplate(accessToken);
-      setLatestRouteTemplate(latestRoute);
-    } catch {
-      setLatestRouteTemplate(null);
-    } finally {
-      setIsLoadingLatestRoute(false);
-    }
-  }, []);
-
   const refreshTripsData = useCallback(async (showSpinner = false) => {
     if (!authSession) {
       return;
@@ -334,7 +308,6 @@ export default function TripsPage() {
       setTrustSummary(null);
       setMyTrips([]);
       setAvailableTrips([]);
-      setLatestRouteTemplate(null);
       setIncomingRequests([]);
       setMyRequests([]);
       setIsLoading(false);
@@ -383,15 +356,6 @@ export default function TripsPage() {
     refreshSession,
     tripFilters,
   ]);
-
-  useEffect(() => {
-    if (!isHydrated || !authSession || !operationalAccess.hasOperationalMembership) {
-      setLatestRouteTemplate(null);
-      return;
-    }
-
-    void loadLatestRouteTemplate(authSession.accessToken);
-  }, [authSession, isHydrated, loadLatestRouteTemplate, operationalAccess.hasOperationalMembership]);
 
   useAutoRefresh(
     async () => {
@@ -481,52 +445,6 @@ export default function TripsPage() {
     setRequestSuccessMessage(null);
   }, [pushToast, requestSuccessMessage]);
 
-  const handleTripFormChange = (field: keyof TripFormValues, value: string) => {
-    setTripForm((currentForm) => ({
-      ...currentForm,
-      [field]: value,
-      ...(field === 'routeMode' && value === TripRouteMode.DirectRoute
-        ? { detourSurchargeReference: '0' }
-        : {}),
-    }));
-  };
-
-  const handleUseLatestRoute = () => {
-    if (!latestRouteTemplate) {
-      return;
-    }
-
-    const suggestedVehicle = activeVehicles.some(
-      (vehicle) => vehicle.id === latestRouteTemplate.vehicleId,
-    )
-      ? latestRouteTemplate.vehicleId
-      : '';
-
-    setTripForm((currentForm) => ({
-      ...currentForm,
-      vehicleId: suggestedVehicle,
-      routeMode: latestRouteTemplate.routeMode,
-      originLabel: latestRouteTemplate.originLabel,
-      destinationLabel: latestRouteTemplate.destinationLabel,
-      originLatitude: latestRouteTemplate.originLatitude.toFixed(6),
-      originLongitude: latestRouteTemplate.originLongitude.toFixed(6),
-      destinationLatitude: latestRouteTemplate.destinationLatitude.toFixed(6),
-      destinationLongitude: latestRouteTemplate.destinationLongitude.toFixed(6),
-      seatCount: String(latestRouteTemplate.seatCount),
-      basePriceReference: String(latestRouteTemplate.basePriceReference),
-      detourSurchargeReference: String(latestRouteTemplate.detourSurchargeReference ?? 0),
-      notes: latestRouteTemplate.notes ?? '',
-      departureAt: currentForm.departureAt,
-      estimatedArrivalAt: currentForm.estimatedArrivalAt,
-    }));
-    setTripSuccessMessage(
-      suggestedVehicle
-        ? 'Se cargo tu ultima ruta. Ajusta fecha, hora o detalles antes de crear el nuevo viaje.'
-        : 'Se cargo tu ultima ruta, pero necesitas elegir un vehiculo activo antes de crear el viaje.',
-    );
-    setTripErrorMessage(null);
-  };
-
   const handleFilterChange = (field: keyof TripFilters, value: string) => {
     setFilterFormValues((currentFilters) => ({
       ...currentFilters,
@@ -553,54 +471,6 @@ export default function TripsPage() {
 
   const reloadData = async () => {
     await refreshTripsData();
-  };
-
-  const handleCreateTrip = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!authSession) {
-      return;
-    }
-
-    setIsCreatingTrip(true);
-    setTripErrorMessage(null);
-    setTripSuccessMessage(null);
-
-    try {
-      const response = await createTrip(authSession.accessToken, {
-        vehicleId: tripForm.vehicleId,
-        routeMode: tripForm.routeMode,
-        originLabel: tripForm.originLabel,
-        destinationLabel: tripForm.destinationLabel,
-        originLatitude: Number.parseFloat(tripForm.originLatitude),
-        originLongitude: Number.parseFloat(tripForm.originLongitude),
-        destinationLatitude: Number.parseFloat(tripForm.destinationLatitude),
-        destinationLongitude: Number.parseFloat(tripForm.destinationLongitude),
-        departureAt: toIsoString(tripForm.departureAt),
-        estimatedArrivalAt: toIsoString(tripForm.estimatedArrivalAt),
-        seatCount: Number.parseInt(tripForm.seatCount, 10),
-        basePriceReference: Number.parseFloat(tripForm.basePriceReference),
-        detourSurchargeReference:
-          tripForm.routeMode === TripRouteMode.PlannedDetour
-            ? Number.parseFloat(tripForm.detourSurchargeReference || '0')
-            : undefined,
-        notes: tripForm.notes || undefined,
-      });
-
-      await reloadData();
-      await loadLatestRouteTemplate(authSession.accessToken);
-      setTripSuccessMessage(response.message);
-      setTripForm(EMPTY_TRIP_FORM);
-      setIsCreateTripPanelOpen(false);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        await refreshSession().catch(() => undefined);
-      }
-
-      setTripErrorMessage(getApiErrorMessage(error, 'No fue posible crear el viaje.'));
-    } finally {
-      setIsCreatingTrip(false);
-    }
   };
 
   const handleTripAction = async (
@@ -834,11 +704,6 @@ export default function TripsPage() {
       || canRejectIncomingRequest(request)
       || canMarkRequestAsNoShow(request),
   ).length;
-  const pendingMyRequestsCount = myRequests.filter(
-    (request) =>
-      request.status === TripRequestStatus.Pending
-      || request.status === TripRequestStatus.Accepted,
-  ).length;
   const discoverableTripsWithSeatsCount = visibleAvailableTrips.filter(
     (trip) => trip.status === TripStatus.Published && trip.availableSeats > 0,
   ).length;
@@ -942,9 +807,6 @@ export default function TripsPage() {
           <div className="journey-hero-copy">
             <p className="section-label">Centro de movilidad</p>
             <h1 className="journey-hero-title">Viajes</h1>
-            <p className="panel-text">
-              Planifica tu operacion diaria, responde solicitudes y gestiona cupos desde un flujo claro.
-            </p>
           </div>
           <div className="journey-hero-actions">
             <StatusPill label="Operacion bloqueada" tone="warning" />
@@ -968,9 +830,6 @@ export default function TripsPage() {
         <div className="journey-hero-copy">
           <p className="section-label">Centro de movilidad</p>
           <h1 className="journey-hero-title">Viajes</h1>
-          <p className="panel-text">
-            Una vista mas limpia para operar en tres frentes: conducir, responder solicitudes y descubrir cupos.
-          </p>
         </div>
         <div className="journey-hero-actions">
           <Button
@@ -980,46 +839,49 @@ export default function TripsPage() {
           >
             {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
           </Button>
-          <StatusPill label={realtimeStatusLabel} tone={realtimeStatusTone} />
-          <StatusPill
-            label={getDriverStatusLabel(driverStatus)}
-            tone={getDriverStatusTone(driverStatus)}
-          />
-          {trustSummary ? (
-            <StatusPill
-              label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
-              tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
-            />
-          ) : null}
-          {trustSummary ? (
-            <StatusPill
-              label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
-              tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
-            />
-          ) : null}
-          {activeFiltersCount > 0 ? (
-            <span className="topbar-badge">{activeFiltersCount} filtros</span>
-          ) : null}
         </div>
+      </section>
+
+      <section className="journey-hero-status-strip" aria-label="Estado operacional del conductor">
+        <StatusPill label={realtimeStatusLabel} tone={realtimeStatusTone} />
+        <StatusPill
+          label={getDriverStatusLabel(driverStatus)}
+          tone={getDriverStatusTone(driverStatus)}
+        />
+        {trustSummary ? (
+          <StatusPill
+            label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+            tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+          />
+        ) : null}
+        {trustSummary ? (
+          <StatusPill
+            label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
+            tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
+          />
+        ) : null}
+        {activeFiltersCount > 0 ? (
+          <span className="topbar-badge">{activeFiltersCount} filtros</span>
+        ) : null}
       </section>
 
       <section className="journey-kpi-grid">
         <article className="journey-kpi-card journey-kpi-card-operation">
           <span className="journey-kpi-label">Operacion</span>
           <strong className="journey-kpi-value">{activeMyTripsCount}</strong>
-          <p className="journey-kpi-text">de {myTrips.length} viajes en actividad</p>
+          <p className="journey-kpi-text">{myTrips.length} registrados</p>
         </article>
         <article className="journey-kpi-card journey-kpi-card-requests">
           <span className="journey-kpi-label">Solicitudes</span>
           <strong className="journey-kpi-value">{totalRequestsCount}</strong>
           <p className="journey-kpi-text">
-            {actionableIncomingRequestsCount} por atender · {pendingMyRequestsCount} pendientes
+            {actionableIncomingRequestsCount} por atender
           </p>
         </article>
         <article className="journey-kpi-card journey-kpi-card-discover">
           <span className="journey-kpi-label">Explorar</span>
           <strong className="journey-kpi-value">{visibleAvailableTrips.length}</strong>
-          <p className="journey-kpi-text">{discoverableTripsWithSeatsCount} con cupos disponibles</p>
+          <p className="journey-kpi-text">{discoverableTripsWithSeatsCount} con cupos</p>
         </article>
       </section>
 
@@ -1027,10 +889,7 @@ export default function TripsPage() {
         <TripsControlSidebar
           activeWorkspace={activeWorkspace}
           canCreateTrips={canCreateTrips}
-          onCreateTrip={() => {
-            setActiveWorkspace('operation');
-            setIsCreateTripPanelOpen(true);
-          }}
+          onCreateTrip={() => router.push('/viajes/nuevo')}
           onDiscoverTrips={() => setActiveWorkspace('discover')}
           onWorkspaceChange={setActiveWorkspace}
           readinessCompletion={readinessCompletion}
@@ -1049,27 +908,18 @@ export default function TripsPage() {
             {activeWorkspace === 'operation' ? (
               <TripsOperationWorkspace
                 accessToken={authSession?.accessToken}
-                activeVehicles={activeVehicles}
                 blocksDriver={trustRestrictions.blocksDriver}
                 canCreateTrips={canCreateTrips}
                 incomingRequests={incomingRequests}
-                isCreateTripPanelOpen={isCreateTripPanelOpen}
-                isCreatingTrip={isCreatingTrip}
-                isLoadingLatestRoute={isLoadingLatestRoute}
                 isMutatingTripId={isMutatingTripId}
                 isRefreshingData={isRefreshingData}
-                latestRouteTemplate={latestRouteTemplate}
                 licenseStatus={licenseStatus}
                 myTrips={myTrips}
-                onCreateTrip={handleCreateTrip}
-                onCreateTripPanelOpenChange={setIsCreateTripPanelOpen}
-                onOpenCreateTrip={() => setIsCreateTripPanelOpen(true)}
+                onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
+                onOpenRequests={() => setActiveWorkspace('requests')}
                 onTripAction={(tripId, action) => void handleTripAction(tripId, action)}
-                onTripFormChange={handleTripFormChange}
-                onUseLatestRoute={handleUseLatestRoute}
                 realtimeStatusLabel={realtimeStatusLabel}
                 realtimeStatusTone={realtimeStatusTone}
-                tripForm={tripForm}
               />
             ) : null}
 
@@ -1126,3 +976,4 @@ export default function TripsPage() {
     </section>
   );
 }
+
