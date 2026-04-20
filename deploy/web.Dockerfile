@@ -20,6 +20,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
+RUN pnpm --dir apps/web install --frozen-lockfile
+
 RUN pnpm exec tsc --project packages/shared-types/tsconfig.json
 RUN pnpm --dir apps/web build
 

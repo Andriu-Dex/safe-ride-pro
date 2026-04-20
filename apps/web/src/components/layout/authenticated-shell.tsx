@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { useAuth } from '../../modules/auth/hooks/use-auth';
 import { canAccessAudit } from '../../modules/audit/lib/audit-access';
@@ -29,6 +30,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { authSession, signOut } = useAuth();
+  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
   const auditVisible = canAccessAudit(authSession?.user);
 
@@ -43,12 +45,50 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   };
 
   return (
-    <div className="app-shell">
+    <div className={[
+      'app-shell',
+      isSidebarHidden ? 'app-shell-sidebar-hidden' : '',
+    ].filter(Boolean).join(' ')}>
+      <button
+        aria-label={isSidebarHidden ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
+        className={[
+          'sidebar-fab',
+          isSidebarHidden ? 'sidebar-fab-collapsed' : '',
+        ].filter(Boolean).join(' ')}
+        onClick={() => setIsSidebarHidden((currentValue) => !currentValue)}
+        title={isSidebarHidden ? 'Mostrar panel' : 'Ocultar panel'}
+        type="button"
+      >
+        <span aria-hidden="true" className="sidebar-fab-icon">
+          {isSidebarHidden ? '>' : '<'}
+        </span>
+      </button>
+
       <aside className="app-sidebar">
-        <AppLogo
-          avatarUrl={authSession?.user.profilePhotoUrl}
-          initials={userInitials}
-        />
+        <section className="sidebar-user-card">
+          <p className="sidebar-label">Sesion activa</p>
+          <div className="sidebar-user-summary">
+            <div className="sidebar-user-avatar" aria-hidden="true">
+              {authSession?.user.profilePhotoUrl ? (
+                <img
+                  alt=""
+                  className="sidebar-user-avatar-image"
+                  src={authSession.user.profilePhotoUrl}
+                />
+              ) : (
+                <div className="sidebar-user-avatar-fallback">{userInitials}</div>
+              )}
+            </div>
+            <div className="sidebar-user-identity">
+              <strong>{authSession?.user.fullName}</strong>
+              <p>{currentMembership?.institutionName ?? 'Institucion no disponible'}</p>
+              <p>{authSession?.user.email}</p>
+            </div>
+          </div>
+          <Button variant="secondary" onClick={handleSignOut}>
+            Cerrar sesion
+          </Button>
+        </section>
 
         <section className="sidebar-section">
           <p className="sidebar-label">Navegacion</p>
@@ -113,33 +153,18 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
 
         <div className="sidebar-spacer" />
 
-        <section className="sidebar-user-card">
-          <p className="sidebar-label">Sesion activa</p>
-          <div className="sidebar-user-summary">
-            <div className="sidebar-user-avatar" aria-hidden="true">
-              {authSession?.user.profilePhotoUrl ? (
-                <img
-                  alt=""
-                  className="sidebar-user-avatar-image"
-                  src={authSession.user.profilePhotoUrl}
-                />
-              ) : (
-                <div className="sidebar-user-avatar-fallback">{userInitials}</div>
-              )}
-            </div>
-            <div className="sidebar-user-identity">
-              <strong>{authSession?.user.fullName}</strong>
-              <p>{currentMembership?.institutionName ?? 'Institucion no disponible'}</p>
-              <p>{authSession?.user.email}</p>
-            </div>
-          </div>
-          <Button variant="secondary" onClick={handleSignOut}>
-            Cerrar sesion
-          </Button>
+        <section className="sidebar-system-card">
+          <p className="sidebar-label">Sistema</p>
+          <AppLogo
+            avatarUrl={authSession?.user.profilePhotoUrl}
+            initials={userInitials}
+          />
         </section>
       </aside>
 
-      <div className="app-content">{children}</div>
+      <div className="app-content">
+        {children}
+      </div>
     </div>
   );
 }

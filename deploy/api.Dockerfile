@@ -28,6 +28,8 @@ RUN corepack enable
 
 COPY --from=builder --chown=node:node /app /app
 
+RUN mkdir -p /app/storage/private && chown -R node:node /app/storage
+
 ENV NODE_ENV=production
 ENV PRISMA_HIDE_UPDATE_MESSAGE=true
 EXPOSE 3001

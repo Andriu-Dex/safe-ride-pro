@@ -962,6 +962,7 @@ export default function TripsPage() {
                 onApplyFilters={handleApplyFilters}
                 onCreateRequest={(trip) => void handleCreateRequest(trip)}
                 onFilterChange={handleFilterChange}
+                onOpenRequests={() => setActiveWorkspace('requests')}
                 onRequestDraftChange={handleRequestDraftChange}
                 onResetFilters={handleResetFilters}
                 requestDrafts={requestDrafts}

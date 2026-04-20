@@ -3,10 +3,10 @@ import { expect, type Locator, type Page } from '@playwright/test';
 export async function signInThroughUi(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
   await page.getByLabel('Correo').fill(email);
-  await page.getByLabel('Contrasena').fill(password);
+  await page.getByLabel(/Clave de acceso|Contrasena|Contraseña/i).fill(password);
   await page.getByRole('button', { name: 'Iniciar sesion' }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: 'Resumen operativo' })).toBeVisible();
+  await expect(page).toHaveURL(/\/(inicio|dashboard)$/);
+  await expect(page.locator('.app-sidebar')).toBeVisible();
 }
 
 export async function openSidebarSection(page: Page, label: string): Promise<void> {

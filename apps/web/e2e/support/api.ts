@@ -1,3 +1,6 @@
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+
 type LoginResponse = {
   accessToken: string;
   user: {
@@ -58,6 +61,7 @@ type TripMutationResponse = {
 const apiBaseUrl = process.env.E2E_API_BASE_URL ?? 'http://localhost:3001/api';
 const seededAdminEmail = process.env.E2E_ADMIN_EMAIL ?? 'admin@uta.edu.ec';
 const seededAdminPassword = process.env.E2E_ADMIN_PASSWORD ?? 'Admin12345';
+const repoRoot = path.resolve(__dirname, '../../../..');
 
 function createSuffix(): string {
   return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
@@ -116,6 +120,44 @@ function buildIsoDateFromMinutes(minutesFromNow: number): string {
   return new Date(Date.now() + minutesFromNow * 60_000).toISOString();
 }
 
+function finalizeE2EUserStateInQaDatabase(email: string): void {
+  const escapedEmail = email.replace(/'/g, "''");
+  const sql = `UPDATE users SET "emailVerifiedAt" = COALESCE("emailVerifiedAt", NOW()), "accountStatus" = 'ACTIVE', "career" = COALESCE(NULLIF(TRIM("career"), ''), 'Ingenieria QA'), "referenceNeighborhood" = COALESCE(NULLIF(TRIM("referenceNeighborhood"), ''), 'Ficoa'), "termsAcceptedAt" = COALESCE("termsAcceptedAt", NOW()), "privacyAcceptedAt" = COALESCE("privacyAcceptedAt", NOW()), "safetyRulesAcceptedAt" = COALESCE("safetyRulesAcceptedAt", NOW()), "onboardingCompletedAt" = COALESCE("onboardingCompletedAt", NOW()) WHERE email = '${escapedEmail}';`;
+
+  const commandResult = spawnSync(
+    'docker',
+    [
+      'compose',
+      '--env-file',
+      '.env.qa',
+      '-f',
+      'docker-compose.qa.yml',
+      'exec',
+      '-T',
+      'postgres',
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'safe_ride_pro_qa',
+      '-c',
+      sql,
+    ],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      shell: false,
+    },
+  );
+
+  if (commandResult.status !== 0) {
+    throw new Error(
+      commandResult.stderr?.trim()
+      || 'No fue posible completar el estado onboarding/verificacion del usuario E2E.',
+    );
+  }
+}
+
 export async function loginSeedAdmin(): Promise<LoginResponse> {
   return apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',
@@ -151,12 +193,16 @@ export async function registerVerifiedUser(prefix: string): Promise<{
     },
   });
 
-  await apiRequest('/auth/verify-email', {
-    method: 'POST',
-    body: {
-      code: registerResponse.verificationCode,
-    },
-  });
+  if (registerResponse.verificationCode) {
+    await apiRequest('/auth/verify-email', {
+      method: 'POST',
+      body: {
+        code: registerResponse.verificationCode,
+      },
+    });
+  }
+
+  finalizeE2EUserStateInQaDatabase(email);
 
   const loginResponse = await apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',

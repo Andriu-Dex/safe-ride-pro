@@ -43,7 +43,6 @@ export function TripFiltersPanel({
           {isGeoSearchEnabled ? (
             <>
               <PlaceAutocompleteField
-                hint="Escribe al menos 3 caracteres para sugerencias reales dentro de Ecuador."
                 label="Origen"
                 onClear={() => onChange('origin', '')}
                 onSelect={(place) => onChange('origin', place.label)}
@@ -53,7 +52,6 @@ export function TripFiltersPanel({
                 value={values.origin ?? ''}
               />
               <PlaceAutocompleteField
-                hint="Tambien puedes dejar un texto libre si prefieres una busqueda mas amplia."
                 label="Destino"
                 onClear={() => onChange('destination', '')}
                 onSelect={(place) => onChange('destination', place.label)}
