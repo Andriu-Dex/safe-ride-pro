@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   TripRequestExecutionStatus,
   TripRequestStatus,
@@ -6,8 +10,8 @@ import {
   TripStatus,
 } from '@saferidepro/shared-types';
 
-import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
-import { MarkTripRequestNoShowUseCase } from '../../../src/modules/trip-requests/application/use-cases/mark-trip-request-no-show.use-case';
+import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
+import { MarkTripRequestBoardedUseCase } from '../../../src/modules/trip-requests/application/use-cases/mark-trip-request-boarded.use-case';
 import type {
   TripRequestMembershipRecord,
   TripRequestRecord,
@@ -31,15 +35,6 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
     markTripRequestBoarded: jest.fn(),
     markTripRequestDroppedOff: jest.fn(),
   };
-}
-
-function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctionsService> {
-  return {
-    synchronizeAutomaticSanctions: jest.fn(),
-    getRecentSanctionHistory: jest.fn(),
-    assertPassengerOperationsAllowed: jest.fn(),
-    assertDriverOperationsAllowed: jest.fn(),
-  } as unknown as jest.Mocked<OperationalSanctionsService>;
 }
 
 function buildTripRequestRecord(overrides: Partial<TripRequestRecord> = {}): TripRequestRecord {
@@ -82,41 +77,35 @@ function buildTripRequestRecord(overrides: Partial<TripRequestRecord> = {}): Tri
   };
 }
 
-describe('MarkTripRequestNoShowUseCase', () => {
-  it('registers a no-show when the driver owns the request and provides a note', async () => {
+describe('MarkTripRequestBoardedUseCase', () => {
+  it('marks a passenger as boarded when the driver owns the request', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new MarkTripRequestNoShowUseCase(repository, sanctionsService);
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new MarkTripRequestBoardedUseCase(repository, auditService);
 
     repository.findTripRequestById.mockResolvedValue(buildTripRequestRecord());
-    repository.markTripRequestAsNoShow.mockResolvedValue(
+    repository.markTripRequestBoarded.mockResolvedValue(
       buildTripRequestRecord({
-        status: TripRequestStatus.NoShow,
-        executionStatus: TripRequestExecutionStatus.NoShow,
-        reviewNote: 'El pasajero no llego al punto acordado.',
+        executionStatus: TripRequestExecutionStatus.OnBoard,
+        boardedAt: new Date('2030-01-01T10:05:00.000Z'),
       }),
     );
 
-    const response = await useCase.execute(
-      'driver-1',
-      'request-1',
-      'El pasajero no llego al punto acordado.',
-    );
+    const response = await useCase.execute('driver-1', 'request-1');
 
-    expect(response.message).toBe('No-show registrado correctamente.');
-    expect(repository.markTripRequestAsNoShow).toHaveBeenCalledWith(
-      'request-1',
-      'El pasajero no llego al punto acordado.',
-    );
-    expect(sanctionsService.synchronizeAutomaticSanctions).toHaveBeenCalledWith(
-      'membership-passenger',
-    );
+    expect(response.message).toBe('Pasajero marcado como abordado.');
+    expect(repository.markTripRequestBoarded).toHaveBeenCalledWith('request-1');
+    expect(auditService.record).toHaveBeenCalled();
   });
 
-  it('rejects invalid no-show scenarios', async () => {
+  it('rejects invalid boarded transitions', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new MarkTripRequestNoShowUseCase(repository, sanctionsService);
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new MarkTripRequestBoardedUseCase(repository, auditService);
 
     repository.findTripRequestById
       .mockResolvedValueOnce(null)
@@ -125,37 +114,24 @@ describe('MarkTripRequestNoShowUseCase', () => {
       .mockResolvedValueOnce(buildTripRequestRecord({ tripStatus: TripStatus.Published }))
       .mockResolvedValueOnce(
         buildTripRequestRecord({ executionStatus: TripRequestExecutionStatus.OnBoard }),
-      )
-      .mockResolvedValueOnce(buildTripRequestRecord());
+      );
 
-    await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
+    await expect(useCase.execute('driver-1', 'request-1')).rejects.toThrow(
       new NotFoundException('La solicitud de viaje no existe.'),
     );
-
-    await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
-      new ForbiddenException('Solo el conductor del viaje puede registrar un no-show.'),
+    await expect(useCase.execute('driver-1', 'request-1')).rejects.toThrow(
+      new ForbiddenException('Solo el conductor del viaje puede marcar el abordaje.'),
     );
-
-    await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
+    await expect(useCase.execute('driver-1', 'request-1')).rejects.toThrow(
+      new BadRequestException('Solo las solicitudes aceptadas pueden marcarse como abordadas.'),
+    );
+    await expect(useCase.execute('driver-1', 'request-1')).rejects.toThrow(
+      new BadRequestException('Solo puedes marcar abordaje cuando el viaje esta en curso.'),
+    );
+    await expect(useCase.execute('driver-1', 'request-1')).rejects.toThrow(
       new BadRequestException(
-        'Solo las solicitudes aceptadas pueden marcarse como no-show.',
+        'Solo puedes marcar abordaje para pasajeros pendientes de subir.',
       ),
-    );
-
-    await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
-      new BadRequestException(
-        'Solo puedes marcar no-show cuando el viaje ya inicio o finalizo.',
-      ),
-    );
-
-    await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
-      new BadRequestException(
-        'No puedes registrar no-show para un pasajero que ya fue abordado o finalizado.',
-      ),
-    );
-
-    await expect(useCase.execute('driver-1', 'request-1', '   ')).rejects.toThrow(
-      new BadRequestException('Debes indicar una nota para registrar el no-show.'),
     );
   });
 });

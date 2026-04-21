@@ -81,6 +81,12 @@ export enum TripRequestStatus {
   NoShow = 'NO_SHOW',
 }
 
+export {
+  getEffectiveTripRequestExecutionStatus,
+  isTripRequestExecutionResolved,
+  TripRequestExecutionStatus,
+} from './trip-request-execution';
+
 export enum ReportStatus {
   Pending = 'PENDING',
   UnderReview = 'UNDER_REVIEW',

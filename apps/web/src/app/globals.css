@@ -2515,6 +2515,13 @@ main {
   border-color: rgba(15, 118, 110, 0.16);
 }
 
+.trip-request-status-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
 .trip-request-route-line {
   display: grid;
   gap: 0.18rem;
@@ -2527,7 +2534,7 @@ main {
 
 .trip-request-meta-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.7rem;
 }
 
@@ -4138,7 +4145,7 @@ main {
 .trip-command-kpi-grid,
 .ride-companion-stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.75rem;
 }
 
@@ -4287,6 +4294,29 @@ main {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.trip-command-passenger-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.trip-command-passenger-actions {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.3rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(23, 51, 56, 0.08);
+}
+
+.trip-command-closure-card {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(240, 253, 250, 0.78), rgba(255, 255, 255, 0.9));
+  padding: 1rem;
 }
 
 .trip-command-manifest-muted {

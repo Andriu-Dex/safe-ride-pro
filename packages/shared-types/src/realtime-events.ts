@@ -21,7 +21,9 @@ export type RealtimeTripRequestChangeReason =
   | 'accepted'
   | 'rejected'
   | 'cancelled'
-  | 'no_show';
+  | 'no_show'
+  | 'boarded'
+  | 'dropped_off';
 
 export type RealtimeConnectedEvent = {
   type: typeof REALTIME_CONNECTED_EVENT;

@@ -44,12 +44,26 @@ type TripsOperationWorkspaceProps = {
   licenseStatus: DriverLicenseStatus;
   blocksDriver: boolean;
   isMutatingTripId: string | null;
-  onTripAction: (tripId: string, action: 'publish' | 'start' | 'complete' | 'cancel') => void;
+  isMutatingRequestId: string | null;
+  noShowNotes: Record<string, string>;
+  tripClosureNotes: Record<string, string>;
+  onTripAction: (
+    tripId: string,
+    action: 'publish' | 'start' | 'complete' | 'cancel',
+    options?: {
+      closureNote?: string;
+    },
+  ) => void;
   canCreateTrips: boolean;
   incomingRequests: TripRequestRecord[];
   isRefreshingData?: boolean;
   onNavigateToCreateTrip: () => void;
   onOpenRequests: () => void;
+  onNoShowNoteChange: (requestId: string, value: string) => void;
+  onMarkPassengerBoarded: (requestId: string) => void;
+  onMarkPassengerDroppedOff: (requestId: string) => void;
+  onMarkNoShow: (requestId: string) => void;
+  onTripClosureNoteChange: (tripId: string, value: string) => void;
   accessToken?: string;
   realtimeStatusLabel: string;
   realtimeStatusTone: 'neutral' | 'success' | 'warning' | 'danger';
@@ -62,12 +76,20 @@ export function TripsOperationWorkspace({
   licenseStatus,
   blocksDriver,
   isMutatingTripId,
+  isMutatingRequestId,
+  noShowNotes,
+  tripClosureNotes,
   onTripAction,
   canCreateTrips,
   incomingRequests,
   isRefreshingData = false,
   onNavigateToCreateTrip,
   onOpenRequests,
+  onNoShowNoteChange,
+  onMarkPassengerBoarded,
+  onMarkPassengerDroppedOff,
+  onMarkNoShow,
+  onTripClosureNoteChange,
   accessToken,
   realtimeStatusLabel,
   realtimeStatusTone,
@@ -95,11 +117,19 @@ export function TripsOperationWorkspace({
       <TripExecutionCommandCenter
         blocksDriver={blocksDriver}
         incomingRequests={incomingRequests}
+        isMutatingRequestId={isMutatingRequestId}
         isMutatingTripId={isMutatingTripId}
         licenseStatus={licenseStatus}
         myTrips={myTrips}
+        noShowNotes={noShowNotes}
+        onMarkNoShow={onMarkNoShow}
+        onMarkPassengerBoarded={onMarkPassengerBoarded}
+        onMarkPassengerDroppedOff={onMarkPassengerDroppedOff}
+        onNoShowNoteChange={onNoShowNoteChange}
         onOpenRequests={onOpenRequests}
         onTripAction={onTripAction}
+        onTripClosureNoteChange={onTripClosureNoteChange}
+        tripClosureNotes={tripClosureNotes}
       />
 
       <TripClosureActionCenter
@@ -198,7 +228,9 @@ export function TripsOperationWorkspace({
                     {trip.status === TripStatus.InProgress ? (
                       <Button
                         disabled={isMutatingTripId === trip.id}
-                        onClick={() => onTripAction(trip.id, 'complete')}
+                        onClick={() => onTripAction(trip.id, 'complete', {
+                          closureNote: tripClosureNotes[trip.id],
+                        })}
                         variant="secondary"
                       >
                         Finalizar

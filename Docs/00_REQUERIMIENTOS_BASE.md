@@ -1,3 +1,5 @@
+# 00_REQUERIMIENTOS_BASE
+
 ## SafeRidePro: Transporte seguro compartido para estudiantes
 
 En horarios nocturnos y/o de baja afluencia, muchos estudiantes tienen dificultades para movilizarse de forma segura y económica entre su casa y la institución. La falta de coordinación, el desconocimiento de rutas confiables y la ausencia de mecanismos de verificación incrementan el riesgo y el costo del transporte.
@@ -15,23 +17,23 @@ Diseñar y modelar un sistema que permita a estudiantes de una misma institució
 
 Implementar de forma incremental una aplicacion que permita a estudiantes publicar y unirse a viajes compartidos, con controles de seguridad, reputacion y gobernanza institucional.
 
-## Estado actual del producto (abril 2026)
+## Rol de este documento
 
-- El bloque de Identidad y Acceso V2 ya se encuentra implementado en web y API:
-	- registro institucional
-	- verificacion de correo
-	- inicio y cierre de sesion
-	- refresh de sesion
-	- recuperacion y restablecimiento de contrasena
-- La fase actual cambia de MVP base a implementacion funcional completa por modulos.
+Este archivo define la base funcional del producto y el problema que resuelve.
 
-## Siguiente bloque prioritario
+No debe usarse como fuente principal para saber:
 
-La siguiente fase funcional es **Perfil e incorporacion institucional** (RF2), enfocada en:
+- estado actual de implementacion
+- ultimo bloque desarrollado
+- siguiente bloque recomendado
+- readiness de QA o release
 
-- completar perfil base del usuario
-- gestionar contexto institucional activo (membresia)
-- validar reglas de acceso operativo por institucion activa
+Para eso, la referencia vigente debe ser:
+
+- `Docs/10_HANDOFF_ESTADO_ACTUAL_Y_PENDIENTES.md`
+- `Docs/08_RELEASE_READINESS_WEB.md`
+- `Docs/09_CHECKLIST_QA_WEB_RELEASE.md`
+- `Docs/07_ENTORNO_QA_DEPLOY.md`
 
 ## Alcance del sistema
 

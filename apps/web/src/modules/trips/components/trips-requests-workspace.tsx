@@ -10,6 +10,8 @@ import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import {
   getTripRequestCancellationTimingLabel,
+  getTripRequestExecutionStatusLabel,
+  getTripRequestExecutionStatusTone,
   getTripRequestStatusLabel,
   getTripRequestStatusTone,
 } from '../../trip-requests/lib/trip-request-labels';
@@ -153,10 +155,18 @@ export function TripsRequestsWorkspace({
               <div key={request.id} className="list-card trip-request-card trip-request-card-incoming">
                 <div className="list-card-header">
                   <strong>{request.passengerFullName}</strong>
-                  <StatusPill
-                    label={getTripRequestStatusLabel(request.status)}
-                    tone={getTripRequestStatusTone(request.status)}
-                  />
+                  <div className="trip-request-status-group">
+                    <StatusPill
+                      label={getTripRequestStatusLabel(request.status)}
+                      tone={getTripRequestStatusTone(request.status)}
+                    />
+                    {request.status === TripRequestStatus.Accepted || request.status === TripRequestStatus.NoShow ? (
+                      <StatusPill
+                        label={getTripRequestExecutionStatusLabel(request.executionStatus)}
+                        tone={getTripRequestExecutionStatusTone(request.executionStatus)}
+                      />
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="trip-request-route-line">
@@ -167,6 +177,10 @@ export function TripsRequestsWorkspace({
                   <RequestMetaItem label="Salida" value={formatDateTime(request.tripDepartureAt)} />
                   <RequestMetaItem label="Viaje" value={getTripStatusLabel(request.tripStatus)} />
                   <RequestMetaItem label="Solicitud" value={getTripRequestStatusLabel(request.status)} />
+                  <RequestMetaItem
+                    label="Ejecucion"
+                    value={getTripRequestExecutionStatusLabel(request.executionStatus)}
+                  />
                   <RequestMetaItem label="Pasajero" value={request.passengerFullName} />
                 </div>
 
@@ -261,10 +275,18 @@ export function TripsRequestsWorkspace({
               <div key={request.id} className="list-card trip-request-card trip-request-card-own">
                 <div className="list-card-header">
                   <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
-                  <StatusPill
-                    label={getTripRequestStatusLabel(request.status)}
-                    tone={getTripRequestStatusTone(request.status)}
-                  />
+                  <div className="trip-request-status-group">
+                    <StatusPill
+                      label={getTripRequestStatusLabel(request.status)}
+                      tone={getTripRequestStatusTone(request.status)}
+                    />
+                    {request.status === TripRequestStatus.Accepted || request.status === TripRequestStatus.NoShow ? (
+                      <StatusPill
+                        label={getTripRequestExecutionStatusLabel(request.executionStatus)}
+                        tone={getTripRequestExecutionStatusTone(request.executionStatus)}
+                      />
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="trip-request-meta-grid">
@@ -272,6 +294,10 @@ export function TripsRequestsWorkspace({
                   <RequestMetaItem label="Salida" value={formatDateTime(request.tripDepartureAt)} />
                   <RequestMetaItem label="Viaje" value={getTripStatusLabel(request.tripStatus)} />
                   <RequestMetaItem label="Solicitud" value={getTripRequestStatusLabel(request.status)} />
+                  <RequestMetaItem
+                    label="Ejecucion"
+                    value={getTripRequestExecutionStatusLabel(request.executionStatus)}
+                  />
                 </div>
 
                 {request.reviewNote ? (

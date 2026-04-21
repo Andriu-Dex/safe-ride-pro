@@ -60,6 +60,28 @@ export async function cancelTripRequest(accessToken: string, requestId: string):
   });
 }
 
+export async function markTripRequestBoarded(
+  accessToken: string,
+  requestId: string,
+): Promise<TripRequestMutationResponse> {
+  return apiRequest<TripRequestMutationResponse>(`/trip-requests/${requestId}/boarded`, {
+    method: 'PATCH',
+    accessToken,
+    body: {},
+  });
+}
+
+export async function markTripRequestDroppedOff(
+  accessToken: string,
+  requestId: string,
+): Promise<TripRequestMutationResponse> {
+  return apiRequest<TripRequestMutationResponse>(`/trip-requests/${requestId}/dropped-off`, {
+    method: 'PATCH',
+    accessToken,
+    body: {},
+  });
+}
+
 export async function markTripRequestAsNoShow(
   accessToken: string,
   requestId: string,

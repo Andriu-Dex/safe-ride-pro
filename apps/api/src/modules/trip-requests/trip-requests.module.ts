@@ -8,6 +8,8 @@ import { CancelTripRequestUseCase } from './application/use-cases/cancel-trip-re
 import { CreateTripRequestUseCase } from './application/use-cases/create-trip-request.use-case';
 import { ListDriverTripRequestsUseCase } from './application/use-cases/list-driver-trip-requests.use-case';
 import { ListMyTripRequestsUseCase } from './application/use-cases/list-my-trip-requests.use-case';
+import { MarkTripRequestBoardedUseCase } from './application/use-cases/mark-trip-request-boarded.use-case';
+import { MarkTripRequestDroppedOffUseCase } from './application/use-cases/mark-trip-request-dropped-off.use-case';
 import { MarkTripRequestNoShowUseCase } from './application/use-cases/mark-trip-request-no-show.use-case';
 import { RejectTripRequestUseCase } from './application/use-cases/reject-trip-request.use-case';
 import { PrismaTripRequestsRepository } from './infrastructure/repositories/prisma-trip-requests.repository';
@@ -27,6 +29,8 @@ import { TripRequestsController } from './presentation/controllers/trip-requests
     AcceptTripRequestUseCase,
     RejectTripRequestUseCase,
     CancelTripRequestUseCase,
+    MarkTripRequestBoardedUseCase,
+    MarkTripRequestDroppedOffUseCase,
     MarkTripRequestNoShowUseCase,
   ],
 })

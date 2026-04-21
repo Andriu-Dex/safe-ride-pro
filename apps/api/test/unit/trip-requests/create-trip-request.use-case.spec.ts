@@ -22,6 +22,8 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
     rejectTripRequest: jest.fn(),
     cancelTripRequest: jest.fn(),
     markTripRequestAsNoShow: jest.fn(),
+    markTripRequestBoarded: jest.fn(),
+    markTripRequestDroppedOff: jest.fn(),
   };
 }
 

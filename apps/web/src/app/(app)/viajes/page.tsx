@@ -7,6 +7,7 @@ import {
   isOperationalMembership,
   OperationalSanctionType,
   selectOperationalMembership,
+  TripRequestExecutionStatus,
   TripRequestStatus,
   TripStatus,
   VehicleType,
@@ -35,6 +36,8 @@ import {
   createTripRequest,
   listIncomingTripRequests,
   listMyTripRequests,
+  markTripRequestBoarded,
+  markTripRequestDroppedOff,
   markTripRequestAsNoShow,
   rejectTripRequest,
 } from '../../../modules/trip-requests/lib/trip-request-api';
@@ -46,7 +49,7 @@ import {
 import type { TripRequestRecord } from '../../../modules/trip-requests/types/trip-request';
 import {
   cancelTrip,
-  completeTrip,
+  completeTripWithClosure,
   listAvailableTrips,
   listMyTrips,
   publishTrip,
@@ -200,6 +203,8 @@ function canCancelOwnRequest(request: TripRequestRecord): boolean {
 function canMarkRequestAsNoShow(request: TripRequestRecord): boolean {
   return (
     request.status === TripRequestStatus.Accepted &&
+    (request.executionStatus === null
+      || request.executionStatus === TripRequestExecutionStatus.AcceptedPendingBoarding) &&
     (request.tripStatus === TripStatus.InProgress || request.tripStatus === TripStatus.Completed)
   );
 }
@@ -226,6 +231,7 @@ export default function TripsPage() {
   const [filterFormValues, setFilterFormValues] = useState<TripFilters>(EMPTY_TRIP_FILTERS);
   const [requestDrafts, setRequestDrafts] = useState<Record<string, TripRequestDraft>>({});
   const [noShowNotes, setNoShowNotes] = useState<Record<string, string>>({});
+  const [tripClosureNotes, setTripClosureNotes] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
@@ -486,6 +492,9 @@ export default function TripsPage() {
   const handleTripAction = async (
     tripId: string,
     action: 'publish' | 'start' | 'complete' | 'cancel',
+    options?: {
+      closureNote?: string;
+    },
   ) => {
     if (!authSession) {
       return;
@@ -496,14 +505,15 @@ export default function TripsPage() {
     setTripSuccessMessage(null);
 
     try {
-      const actionMap = {
-        publish: publishTrip,
-        start: startTrip,
-        complete: completeTrip,
-        cancel: cancelTrip,
-      } as const;
+      const response =
+        action === 'complete'
+          ? await completeTripWithClosure(authSession.accessToken, tripId, options?.closureNote)
+          : action === 'publish'
+            ? await publishTrip(authSession.accessToken, tripId)
+            : action === 'start'
+              ? await startTrip(authSession.accessToken, tripId)
+              : await cancelTrip(authSession.accessToken, tripId);
 
-      const response = await actionMap[action](authSession.accessToken, tripId);
       await reloadData();
       setTripSuccessMessage(response.message);
     } catch (error) {
@@ -616,6 +626,13 @@ export default function TripsPage() {
     }));
   };
 
+  const handleTripClosureNoteChange = (tripId: string, value: string) => {
+    setTripClosureNotes((currentNotes) => ({
+      ...currentNotes,
+      [tripId]: value,
+    }));
+  };
+
   const handleMarkNoShow = async (requestId: string) => {
     if (!authSession) {
       return;
@@ -647,6 +664,60 @@ export default function TripsPage() {
 
       setRequestErrorMessage(
         getApiErrorMessage(error, 'No fue posible registrar el no-show.'),
+      );
+      await refreshTripsData();
+    } finally {
+      setIsMutatingRequestId(null);
+    }
+  };
+
+  const handleMarkPassengerBoarded = async (requestId: string) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsMutatingRequestId(requestId);
+    setRequestErrorMessage(null);
+    setRequestSuccessMessage(null);
+
+    try {
+      const response = await markTripRequestBoarded(authSession.accessToken, requestId);
+      await reloadData();
+      setRequestSuccessMessage(response.message);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setRequestErrorMessage(
+        getApiErrorMessage(error, 'No fue posible marcar el abordaje del pasajero.'),
+      );
+      await refreshTripsData();
+    } finally {
+      setIsMutatingRequestId(null);
+    }
+  };
+
+  const handleMarkPassengerDroppedOff = async (requestId: string) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsMutatingRequestId(requestId);
+    setRequestErrorMessage(null);
+    setRequestSuccessMessage(null);
+
+    try {
+      const response = await markTripRequestDroppedOff(authSession.accessToken, requestId);
+      await reloadData();
+      setRequestSuccessMessage(response.message);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setRequestErrorMessage(
+        getApiErrorMessage(error, 'No fue posible marcar la finalizacion del pasajero.'),
       );
       await refreshTripsData();
     } finally {
@@ -934,15 +1005,24 @@ export default function TripsPage() {
                 canCreateTrips={canCreateTrips}
                 driverCaptureState={driverCaptureState}
                 incomingRequests={incomingRequests}
+                isMutatingRequestId={isMutatingRequestId}
                 isMutatingTripId={isMutatingTripId}
                 isRefreshingData={isRefreshingData}
                 licenseStatus={licenseStatus}
                 myTrips={myTrips}
                 onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
+                onNoShowNoteChange={handleNoShowNoteChange}
                 onOpenRequests={() => setActiveWorkspace('requests')}
-                onTripAction={(tripId, action) => void handleTripAction(tripId, action)}
+                onMarkPassengerBoarded={(requestId) => void handleMarkPassengerBoarded(requestId)}
+                onMarkPassengerDroppedOff={(requestId) =>
+                  void handleMarkPassengerDroppedOff(requestId)}
+                onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
+                onTripAction={(tripId, action, options) => void handleTripAction(tripId, action, options)}
+                onTripClosureNoteChange={handleTripClosureNoteChange}
+                noShowNotes={noShowNotes}
                 realtimeStatusLabel={realtimeStatusLabel}
                 realtimeStatusTone={realtimeStatusTone}
+                tripClosureNotes={tripClosureNotes}
                 trackingVersionByTripId={trackingVersionByTripId}
               />
             ) : null}

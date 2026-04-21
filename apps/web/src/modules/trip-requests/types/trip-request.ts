@@ -1,5 +1,6 @@
 import {
   CancellationTiming,
+  TripRequestExecutionStatus,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -17,6 +18,7 @@ export type TripRequestRecord = {
   passengerUserId: string;
   passengerFullName: string;
   status: TripRequestStatus;
+  executionStatus: TripRequestExecutionStatus | null;
   tripStatus: TripStatus;
   tripRouteMode: TripRouteMode;
   tripOriginLabel: string;
@@ -32,6 +34,9 @@ export type TripRequestRecord = {
   requestedDropoffLongitude: number | null;
   requestMessage: string | null;
   reviewNote: string | null;
+  executionStatusUpdatedAt: string | null;
+  boardedAt: string | null;
+  droppedOffAt: string | null;
   createdAt: string;
   reviewedAt: string | null;
   cancelledAt: string | null;

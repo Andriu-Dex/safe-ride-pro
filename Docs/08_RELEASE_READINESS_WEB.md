@@ -1,10 +1,12 @@
-# 08_PREPARACION_SIGUIENTE_BLOQUE
+# 08_RELEASE_READINESS_WEB
 
 ## Objetivo
 
-Dejar cerrada la etapa actual y definir un punto de entrada limpio para el siguiente bloque de trabajo del producto web.
+Definir con claridad el siguiente bloque de trabajo despues del estado actual del producto, considerando que ya existe un traspaso mas completo en:
 
-Este documento no reemplaza los requerimientos funcionales ni el protocolo general. Sirve como traspaso operativo entre la etapa ya implementada y la siguiente fase.
+- `Docs/10_HANDOFF_ESTADO_ACTUAL_Y_PENDIENTES.md`
+
+Este documento queda como guia corta de continuidad.
 
 ---
 
@@ -28,12 +30,17 @@ Al cierre de esta etapa, SafeRidePro ya cuenta con estos bloques funcionales imp
   - previsualizacion y descarga de evidencia
   - contexto cruzado entre reportes, sanciones y apelaciones
   - resumen de efecto operativo actual por caso
+- ejecucion operativa del viaje v1 con:
+  - abordaje
+  - finalizacion por pasajero
+  - no-show endurecido
+  - cierre excepcional con nota
 
 ---
 
 ## 2. Criterio para el siguiente bloque
 
-En este punto, lo mas sano ya no es abrir otra feature grande sin validacion transversal.
+En este punto, lo mas sano ya no es abrir una feature grande nueva sin cerrar antes la validacion transversal del producto web.
 
 El siguiente bloque recomendado es:
 
@@ -68,6 +75,11 @@ Validar de punta a punta:
 - creacion de viaje
 - exploracion y solicitud de viaje
 - operacion activa del viaje
+- ejecucion operativa por pasajero:
+  - abordaje
+  - finalizacion
+  - no-show
+  - cierre excepcional
 - cierre post-viaje
 - confianza
 - auditoria
@@ -93,6 +105,10 @@ Revisar especialmente:
 - previsualizacion/descarga de documentos y evidencias
 - saltos entre workspaces administrativos
 - reglas de elegibilidad para reportes y calificaciones
+- coherencia entre:
+  - `Trip.status`
+  - `TripRequest.status`
+  - `TripRequest.executionStatus`
 
 ### 3.4 QA de entorno
 
@@ -139,16 +155,18 @@ Si este bloque se ejecuta bien, deberiamos quedar con:
 - menos riesgo de regresion
 - base mas estable para decidir el siguiente gran frente tecnico
 
-En ese punto, las dos opciones mas sanas para continuar serian:
+En ese punto, las opciones mas sanas para continuar serian:
 
-1. **Tracking GPS fino / tiempo real v2**
-2. **Mobile**
+1. endurecimiento final post-viaje
+2. tracking GPS fino / tiempo real v2
+3. mobile
 
 La recomendacion profesional es:
 
 1. cerrar QA transversal web
-2. decidir si primero se endurece tracking v2
-3. luego abrir mobile sobre APIs ya estabilizadas
+2. cerrar los hallazgos del flujo operativo del viaje
+3. decidir si primero se endurece post-viaje o tracking v2
+4. luego abrir mobile sobre APIs ya estabilizadas
 
 ---
 
@@ -170,6 +188,7 @@ Estado actual:
 
 - la aplicacion ya tiene cubiertos los flujos web principales
 - la revision administrativa ya quedo bien integrada
+- la ejecucion operativa del viaje ya existe como capa funcional propia
 
 Siguiente bloque recomendado:
 
@@ -179,4 +198,3 @@ Decision sugerida:
 
 - no abrir otra feature mayor todavia
 - primero cerrar consistencia, UX final y validacion transversal
-

@@ -103,6 +103,21 @@ export async function completeTrip(accessToken: string, tripId: string): Promise
   return apiRequest<TripMutationResponse>(`/trips/${tripId}/complete`, {
     method: 'PATCH',
     accessToken,
+    body: {},
+  });
+}
+
+export async function completeTripWithClosure(
+  accessToken: string,
+  tripId: string,
+  closureNote?: string,
+): Promise<TripMutationResponse> {
+  return apiRequest<TripMutationResponse>(`/trips/${tripId}/complete`, {
+    method: 'PATCH',
+    accessToken,
+    body: {
+      closureNote,
+    },
   });
 }
 

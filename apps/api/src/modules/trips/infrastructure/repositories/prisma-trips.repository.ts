@@ -7,9 +7,11 @@ import {
   getDaysUntilDriverLicenseExpiration,
   getDriverLicenseStatus,
   getEffectiveDriverVerificationStatus,
+  getEffectiveTripRequestExecutionStatus,
   LuggagePolicy,
   MembershipStatus,
   TripAvailabilityFilter,
+  TripRequestExecutionStatus,
   TripLiveTrackingStatus,
   TripRequestStatus,
   TripRouteMode,
@@ -21,6 +23,7 @@ import { PrismaService } from '../../../../shared/infrastructure/database/prisma
 import {
   CreateTripInput,
   RecordTripLiveTrackingPositionInput,
+  TripExecutionPassengerRecord,
   TripFilters,
   TripLiveTrackingRecord,
   TripMembershipRecord,
@@ -149,6 +152,38 @@ export class PrismaTripsRepository implements TripsRepository {
     });
 
     return trip ? this.mapTrip(trip) : null;
+  }
+
+  async listTripExecutionPassengers(tripId: string): Promise<TripExecutionPassengerRecord[]> {
+    const tripRequests = await this.prisma.tripRequest.findMany({
+      where: {
+        tripId,
+        status: {
+          in: [TripRequestStatus.Accepted, TripRequestStatus.NoShow],
+        },
+      },
+      include: {
+        passengerMembership: {
+          include: {
+            user: true,
+          },
+        },
+      },
+      orderBy: [{ reviewedAt: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    return tripRequests.map((tripRequest) => ({
+      requestId: tripRequest.id,
+      passengerMembershipId: tripRequest.passengerMembershipId,
+      passengerFullName: tripRequest.passengerMembership.user.fullName,
+      status: tripRequest.status as TripRequestStatus,
+      executionStatus: getEffectiveTripRequestExecutionStatus({
+        requestStatus: tripRequest.status,
+        executionStatus: tripRequest.executionStatus as TripRequestExecutionStatus | null,
+      }),
+      boardedAt: tripRequest.boardedAt,
+      droppedOffAt: tripRequest.droppedOffAt,
+    }));
   }
 
   async hasAcceptedTripRequest(

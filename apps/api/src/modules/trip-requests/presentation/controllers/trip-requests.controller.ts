@@ -17,6 +17,8 @@ import { CancelTripRequestUseCase } from '../../application/use-cases/cancel-tri
 import { CreateTripRequestUseCase } from '../../application/use-cases/create-trip-request.use-case';
 import { ListDriverTripRequestsUseCase } from '../../application/use-cases/list-driver-trip-requests.use-case';
 import { ListMyTripRequestsUseCase } from '../../application/use-cases/list-my-trip-requests.use-case';
+import { MarkTripRequestBoardedUseCase } from '../../application/use-cases/mark-trip-request-boarded.use-case';
+import { MarkTripRequestDroppedOffUseCase } from '../../application/use-cases/mark-trip-request-dropped-off.use-case';
 import { MarkTripRequestNoShowUseCase } from '../../application/use-cases/mark-trip-request-no-show.use-case';
 import { RejectTripRequestUseCase } from '../../application/use-cases/reject-trip-request.use-case';
 import { CreateTripRequestRequestDto } from '../dto/create-trip-request.request.dto';
@@ -32,6 +34,8 @@ export class TripRequestsController {
     private readonly acceptTripRequestUseCase: AcceptTripRequestUseCase,
     private readonly rejectTripRequestUseCase: RejectTripRequestUseCase,
     private readonly cancelTripRequestUseCase: CancelTripRequestUseCase,
+    private readonly markTripRequestBoardedUseCase: MarkTripRequestBoardedUseCase,
+    private readonly markTripRequestDroppedOffUseCase: MarkTripRequestDroppedOffUseCase,
     private readonly markTripRequestNoShowUseCase: MarkTripRequestNoShowUseCase,
   ) {}
 
@@ -85,6 +89,22 @@ export class TripRequestsController {
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
   ) {
     return this.cancelTripRequestUseCase.execute(currentUser.id, requestId);
+  }
+
+  @Patch(':requestId/boarded')
+  markTripRequestBoarded(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+  ) {
+    return this.markTripRequestBoardedUseCase.execute(currentUser.id, requestId);
+  }
+
+  @Patch(':requestId/dropped-off')
+  markTripRequestDroppedOff(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+  ) {
+    return this.markTripRequestDroppedOffUseCase.execute(currentUser.id, requestId);
   }
 
   @Patch(':requestId/no-show')

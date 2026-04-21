@@ -5,6 +5,7 @@ import {
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
+  TripRequestStatus,
   TripLiveTrackingStatus,
   TripRouteMode,
   TripStatus,
@@ -27,6 +28,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     findVehicleByIdForMembership: jest.fn(),
     createTrip: jest.fn(),
     findTripById: jest.fn(),
+    listTripExecutionPassengers: jest.fn(),
     hasAcceptedTripRequest: jest.fn(),
     findAcceptedPassengerMembershipIds: jest.fn(
       async (_tripId: string): Promise<string[]> => [],
@@ -426,6 +428,7 @@ describe('Trip status transition use cases', () => {
       driverVerificationStatus: DriverVerificationStatus.Approved,
     });
     repository.findTripById.mockResolvedValue(buildTrip(TripStatus.InProgress));
+    repository.listTripExecutionPassengers.mockResolvedValue([]);
     repository.updateTripStatus.mockResolvedValue(buildTrip(TripStatus.Completed));
     repository.endTripLiveTracking.mockResolvedValue({
       tripId: 'trip-1',
@@ -453,8 +456,47 @@ describe('Trip status transition use cases', () => {
       entityId: 'trip-1',
       metadata: {
         status: TripStatus.Completed,
+        unresolvedPassengerCount: 0,
+        forcedClosure: false,
+        closureNote: null,
       },
     });
+  });
+
+  it('requires a closure note when accepted passengers remain unresolved', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new CompleteTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.InProgress));
+    repository.listTripExecutionPassengers.mockResolvedValue([
+      {
+        requestId: 'request-1',
+        passengerMembershipId: 'membership-passenger',
+        passengerFullName: 'Pasajero Uno',
+        status: TripRequestStatus.Accepted,
+        executionStatus: null,
+        boardedAt: null,
+        droppedOffAt: null,
+      },
+    ]);
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      new BadRequestException(
+        'Antes de finalizar el viaje debes cerrar a todos los pasajeros o registrar una nota de cierre excepcional.',
+      ),
+    );
+
+    expect(repository.updateTripStatus).not.toHaveBeenCalled();
   });
 
   it('cancels a trip and cascades active trip requests', async () => {

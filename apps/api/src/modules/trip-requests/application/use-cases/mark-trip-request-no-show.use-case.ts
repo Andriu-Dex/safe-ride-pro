@@ -6,7 +6,11 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
+import {
+  TripRequestExecutionStatus,
+  TripRequestStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
@@ -55,6 +59,15 @@ export class MarkTripRequestNoShowUseCase {
 
     if (!normalizedReviewNote) {
       throw new BadRequestException('Debes indicar una nota para registrar el no-show.');
+    }
+
+    if (
+      tripRequest.executionStatus === TripRequestExecutionStatus.OnBoard ||
+      tripRequest.executionStatus === TripRequestExecutionStatus.DroppedOff
+    ) {
+      throw new BadRequestException(
+        'No puedes registrar no-show para un pasajero que ya fue abordado o finalizado.',
+      );
     }
 
     const updatedTripRequest = await this.tripRequestsRepository.markTripRequestAsNoShow(

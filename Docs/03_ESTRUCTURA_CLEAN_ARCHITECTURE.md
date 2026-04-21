@@ -79,10 +79,10 @@ Elementos recomendados:
 - configuracion de base de datos
 - implementacion de cache
 
-Ejemplos para U-Ride:
+Ejemplos para SafeRidePro:
 
 - `PrismaTripRepository`
-- `ResendEmailService`
+- `SmtpEmailService`
 - `GeoapifyPlaceSearchService`
 - `S3FileStorageService`
 
@@ -345,7 +345,7 @@ Ejemplo: crear un viaje
 ### Va en Infrastructure
 
 - Prisma
-- Resend
+- SMTP / proveedor de correo configurado
 - Geoapify / Leaflet
 - Redis
 - S3
@@ -400,7 +400,7 @@ La idea es que `trips`, `auth` y `reports` tambien tengan separacion por feature
 
 ---
 
-## 13. Decision recomendada para U-Ride
+## 13. Decision recomendada para SafeRidePro
 
 Para este proyecto, la mejor opcion es:
 

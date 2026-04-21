@@ -1,7 +1,7 @@
 # SafeRidePro - Stack tecnologico
 
-> Documento de referencia con las herramientas y tecnologias propuestas para el proyecto.
-> Ultima revision: 2026-03-26
+> Documento de referencia con las herramientas y tecnologias vigentes para el proyecto.
+> Ultima revision: 2026-04-21
 
 ---
 
@@ -99,7 +99,7 @@
 
 | Area | Herramienta | Version aprox. | Estado |
 |---|---|---|---|
-| Correo transaccional | Resend | latest | Actual |
+| Correo transaccional | SMTP | segun proveedor configurado | Actual |
 | Push notifications | Firebase Cloud Messaging | v1 | Futuro cercano |
 
 ---
@@ -147,3 +147,5 @@
 - El stack contempla web como base actual y mobile como siguiente etapa.
 - El uso de coordenadas exactas queda considerado dentro del stack.
 - El calculo de precio por desvio se resuelve en logica de negocio; no requiere pasarela de pagos por ahora.
+- El correo institucional real se resuelve con `SMTP`; `Resend` ya no es la decision vigente.
+- El tracking actual en produccion funcional es `Tracking v1` basado en ruta planificada + estado operativo compartido.

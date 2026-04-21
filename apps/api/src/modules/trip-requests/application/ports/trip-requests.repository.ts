@@ -1,5 +1,6 @@
 import {
   CancellationTiming,
+  TripRequestExecutionStatus,
   MembershipStatus,
   TripRequestStatus,
   TripRouteMode,
@@ -46,6 +47,7 @@ export type TripRequestRecord = {
   passengerUserId: string;
   passengerFullName: string;
   status: TripRequestStatus;
+  executionStatus: TripRequestExecutionStatus | null;
   tripStatus: TripStatus;
   tripRouteMode: TripRouteMode;
   tripOriginLabel: string;
@@ -61,6 +63,9 @@ export type TripRequestRecord = {
   requestedDropoffLongitude: number | null;
   requestMessage: string | null;
   reviewNote: string | null;
+  executionStatusUpdatedAt: Date | null;
+  boardedAt: Date | null;
+  droppedOffAt: Date | null;
   createdAt: Date;
   reviewedAt: Date | null;
   cancelledAt: Date | null;
@@ -96,4 +101,6 @@ export interface TripRequestsRepository {
   rejectTripRequest(requestId: string, reviewNote?: string): Promise<TripRequestRecord | null>;
   cancelTripRequest(requestId: string): Promise<TripRequestRecord | null>;
   markTripRequestAsNoShow(requestId: string, reviewNote: string): Promise<TripRequestRecord | null>;
+  markTripRequestBoarded(requestId: string): Promise<TripRequestRecord | null>;
+  markTripRequestDroppedOff(requestId: string): Promise<TripRequestRecord | null>;
 }

@@ -122,8 +122,14 @@ corepack pnpm --filter web test:e2e:smoke
 - cancelacion
 - cierre de pendientes al iniciar viaje
 - inicio del viaje
+- marcar pasajero como abordado
+- marcar pasajero como finalizado
+- registrar no-show antes del abordaje
+- bloqueo de no-show si el pasajero ya esta a bordo
+- cierre excepcional del viaje con nota cuando existan pasajeros aceptados sin resolver
 - finalizacion del viaje
 - tracking v1 visible para participantes correctos
+- estado operativo visible para conductor y pasajero
 
 ## 2.7 Confianza
 
@@ -163,6 +169,9 @@ corepack pnpm --filter web test:e2e:smoke
 - apelacion rechazada
 - viaje cancelado tarde por conductor
 - viaje con no-show
+- viaje finalizado con pasajeros aun no resueltos
+- intento de cierre sin nota excepcional
+- pasajero abordado y luego finalizado
 - licencia vencida
 - institucion inactiva
 
@@ -180,10 +189,12 @@ Ejecutar en este orden:
 6. conductor publica viaje
 7. pasajero solicita cupo
 8. conductor acepta
-9. conductor inicia y finaliza viaje
-10. pasajero califica y reporta con evidencia
-11. admin revisa reporte
-12. admin consulta sanciones/apelaciones relacionadas
+9. conductor inicia viaje
+10. conductor marca abordaje
+11. conductor marca finalizacion del pasajero y cierra viaje
+12. pasajero califica y reporta con evidencia
+13. admin revisa reporte
+14. admin consulta sanciones/apelaciones relacionadas
 
 ---
 
@@ -203,6 +214,7 @@ El bloque `Release Readiness Web + QA transversal` puede darse por cerrado cuand
 
 Usar esta seccion para registrar pendientes cortos durante la pasada final:
 
+- pendiente:
 - pendiente:
 - pendiente:
 - pendiente:

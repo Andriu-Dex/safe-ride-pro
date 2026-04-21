@@ -14,6 +14,8 @@ export enum AuditAction {
   TripCreated = 'TRIP_CREATED',
   TripPublished = 'TRIP_PUBLISHED',
   TripStarted = 'TRIP_STARTED',
+  TripPassengerBoarded = 'TRIP_PASSENGER_BOARDED',
+  TripPassengerDroppedOff = 'TRIP_PASSENGER_DROPPED_OFF',
   TripCompleted = 'TRIP_COMPLETED',
   TripCancelled = 'TRIP_CANCELLED',
   ReportCreated = 'REPORT_CREATED',

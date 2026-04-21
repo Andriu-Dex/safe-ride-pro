@@ -17,6 +17,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     findVehicleByIdForMembership: jest.fn(),
     createTrip: jest.fn(),
     findTripById: jest.fn(),
+    listTripExecutionPassengers: jest.fn(),
     hasAcceptedTripRequest: jest.fn(),
     findAcceptedPassengerMembershipIds: jest.fn(),
     findLatestReusableTripByDriverMembershipId: jest.fn(),

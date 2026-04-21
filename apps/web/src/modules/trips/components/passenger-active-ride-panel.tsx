@@ -1,8 +1,14 @@
-import { TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
+import {
+  TripRequestExecutionStatus,
+  TripRequestStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
 import {
+  getTripRequestExecutionStatusLabel,
+  getTripRequestExecutionStatusTone,
   getTripRequestStatusLabel,
   getTripRequestStatusTone,
 } from '../../trip-requests/lib/trip-request-labels';
@@ -46,8 +52,12 @@ export function PassengerActiveRidePanel({
     activeRide.tripEstimatedArrivalAt,
   );
   const rideGuidance = getPassengerGuidance(activeRide.tripStatus);
-  const rideSteps = buildPassengerRideSteps(activeRide.tripStatus);
-  const passengerChecklist = buildPassengerChecklist(activeRide.tripStatus, canCancel);
+  const rideSteps = buildPassengerRideSteps(activeRide.tripStatus, activeRide.executionStatus);
+  const passengerChecklist = buildPassengerChecklist(
+    activeRide.tripStatus,
+    activeRide.executionStatus,
+    canCancel,
+  );
   const pickupCoordinates = formatCoordinatePair(
     activeRide.requestedPickupLatitude,
     activeRide.requestedPickupLongitude,
@@ -72,6 +82,10 @@ export function PassengerActiveRidePanel({
           <StatusPill
             label={getTripRequestStatusLabel(activeRide.status)}
             tone={getTripRequestStatusTone(activeRide.status)}
+          />
+          <StatusPill
+            label={getTripRequestExecutionStatusLabel(activeRide.executionStatus)}
+            tone={getTripRequestExecutionStatusTone(activeRide.executionStatus)}
           />
         </div>
       </div>
@@ -142,6 +156,10 @@ export function PassengerActiveRidePanel({
               label="Cancelacion"
               value={canCancel ? 'Disponible' : 'No disponible'}
             />
+            <RideStatCard
+              label="Ejecucion"
+              value={getTripRequestExecutionStatusLabel(activeRide.executionStatus)}
+            />
           </div>
 
           {pickupCoordinates || dropoffCoordinates ? (
@@ -189,6 +207,10 @@ export function PassengerActiveRidePanel({
               <RideSummaryTile label="Conductor" value={activeRide.driverFullName} />
               <RideSummaryTile label="Estado" value={getTripStatusLabel(activeRide.tripStatus)} />
               <RideSummaryTile label="Solicitud" value={getTripRequestStatusLabel(activeRide.status)} />
+              <RideSummaryTile
+                label="Ejecucion"
+                value={getTripRequestExecutionStatusLabel(activeRide.executionStatus)}
+              />
               <RideSummaryTile
                 label="Ruta"
                 value={getTripRouteModeLabel(activeRide.tripRouteMode)}
@@ -313,14 +335,17 @@ function getRidePriority(status: TripStatus): number {
   }
 }
 
-function buildPassengerRideSteps(status: TripStatus): Array<{
+function buildPassengerRideSteps(
+  status: TripStatus,
+  executionStatus: TripRequestExecutionStatus | null,
+): Array<{
   id: string;
   index: string;
   label: string;
   isCurrent: boolean;
   isComplete: boolean;
 }> {
-  const currentIndex = getPassengerRideStepIndex(status);
+  const currentIndex = getPassengerRideStepIndex(status, executionStatus);
 
   return [
     {
@@ -354,13 +379,20 @@ function buildPassengerRideSteps(status: TripStatus): Array<{
   ];
 }
 
-function getPassengerRideStepIndex(status: TripStatus): number {
+function getPassengerRideStepIndex(
+  status: TripStatus,
+  executionStatus: TripRequestExecutionStatus | null,
+): number {
   switch (status) {
     case TripStatus.Published:
     case TripStatus.Full:
       return 1;
     case TripStatus.InProgress:
-      return 2;
+      if (executionStatus === TripRequestExecutionStatus.DroppedOff) {
+        return 3;
+      }
+
+      return executionStatus === TripRequestExecutionStatus.OnBoard ? 2 : 1;
     case TripStatus.Completed:
     case TripStatus.Cancelled:
       return 3;
@@ -409,6 +441,7 @@ function getPassengerGuidance(status: TripStatus): {
 
 function buildPassengerChecklist(
   status: TripStatus,
+  executionStatus: TripRequestExecutionStatus | null,
   canCancel: boolean,
 ): Array<{
   label: string;
@@ -466,10 +499,30 @@ function buildPassengerChecklist(
     case TripStatus.InProgress:
       return [
         {
-          label: 'Trayecto activo',
-          description: 'El conductor marco el viaje como iniciado.',
-          badge: 'Activo',
-          tone: 'warning',
+          label:
+            executionStatus === TripRequestExecutionStatus.OnBoard
+              ? 'Ya estas a bordo'
+              : executionStatus === TripRequestExecutionStatus.DroppedOff
+                ? 'Traslado completado'
+                : 'Viaje iniciado',
+          description:
+            executionStatus === TripRequestExecutionStatus.OnBoard
+              ? 'El conductor ya te marco dentro del vehiculo.'
+              : executionStatus === TripRequestExecutionStatus.DroppedOff
+                ? 'Tu cierre operativo ya fue registrado.'
+                : 'El conductor ya inicio el trayecto y falta registrar tu abordaje.',
+          badge:
+            executionStatus === TripRequestExecutionStatus.DroppedOff
+              ? 'Finalizado'
+              : executionStatus === TripRequestExecutionStatus.OnBoard
+                ? 'A bordo'
+                : 'Activo',
+          tone:
+            executionStatus === TripRequestExecutionStatus.DroppedOff
+              ? 'success'
+              : executionStatus === TripRequestExecutionStatus.OnBoard
+                ? 'success'
+                : 'warning',
         },
         {
           label: 'Seguimiento habilitado',

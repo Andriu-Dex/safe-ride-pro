@@ -1,5 +1,10 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
-import { MembershipStatus, TripStatus } from '@saferidepro/shared-types';
+import {
+  isTripRequestExecutionResolved,
+  MembershipStatus,
+  TripRequestStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
@@ -11,6 +16,8 @@ import {
 
 @Injectable()
 export class CompleteTripUseCase {
+  private static readonly FORCE_CLOSURE_NOTE_MIN_LENGTH = 12;
+
   constructor(
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
@@ -19,7 +26,7 @@ export class CompleteTripUseCase {
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
-  async execute(userId: string, tripId: string) {
+  async execute(userId: string, tripId: string, closureNote?: string) {
     const membership = await this.tripsRepository.findDefaultMembershipByUserId(userId);
 
     if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
@@ -40,6 +47,24 @@ export class CompleteTripUseCase {
       throw new BadRequestException('Solo los viajes en curso pueden finalizarse.');
     }
 
+    const participants = await this.tripsRepository.listTripExecutionPassengers(trip.id);
+    const unresolvedParticipants = participants.filter(
+      (participant) =>
+        participant.status === TripRequestStatus.Accepted &&
+        !isTripRequestExecutionResolved(participant.executionStatus),
+    );
+    const normalizedClosureNote = closureNote?.trim() || null;
+
+    if (
+      unresolvedParticipants.length > 0 &&
+      (!normalizedClosureNote ||
+        normalizedClosureNote.length < CompleteTripUseCase.FORCE_CLOSURE_NOTE_MIN_LENGTH)
+    ) {
+      throw new BadRequestException(
+        'Antes de finalizar el viaje debes cerrar a todos los pasajeros o registrar una nota de cierre excepcional.',
+      );
+    }
+
     const updatedTrip = await this.tripsRepository.updateTripStatus(trip.id, TripStatus.Completed);
     const tracking = await this.tripsRepository.endTripLiveTracking(trip.id);
     const recipientMembershipIds = [
@@ -55,6 +80,9 @@ export class CompleteTripUseCase {
       entityId: trip.id,
       metadata: {
         status: updatedTrip.status,
+        unresolvedPassengerCount: unresolvedParticipants.length,
+        forcedClosure: unresolvedParticipants.length > 0,
+        closureNote: normalizedClosureNote,
       },
     });
 
@@ -83,7 +111,10 @@ export class CompleteTripUseCase {
     }
 
     return {
-      message: 'Viaje finalizado correctamente.',
+      message:
+        unresolvedParticipants.length > 0
+          ? 'Viaje finalizado con cierre operativo excepcional.'
+          : 'Viaje finalizado correctamente.',
       trip: updatedTrip,
     };
   }

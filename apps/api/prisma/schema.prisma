@@ -83,6 +83,14 @@ enum TripRequestStatus {
   NO_SHOW
 }
 
+enum TripRequestExecutionStatus {
+  ACCEPTED_PENDING_BOARDING
+  ON_BOARD
+  DROPPED_OFF
+  NO_SHOW
+  CANCELLED_BEFORE_BOARDING
+}
+
 enum ReportStatus {
   PENDING
   UNDER_REVIEW
@@ -137,6 +145,8 @@ enum AuditAction {
   TRIP_CREATED
   TRIP_PUBLISHED
   TRIP_STARTED
+  TRIP_PASSENGER_BOARDED
+  TRIP_PASSENGER_DROPPED_OFF
   TRIP_COMPLETED
   TRIP_CANCELLED
   REPORT_CREATED
@@ -471,12 +481,16 @@ model TripRequest {
   tripId                   String
   passengerMembershipId    String
   status                   TripRequestStatus         @default(PENDING)
+  executionStatus          TripRequestExecutionStatus?
   requestedPickupLatitude  Float?                    @db.DoublePrecision
   requestedPickupLongitude Float?                    @db.DoublePrecision
   requestedDropoffLatitude Float?                    @db.DoublePrecision
   requestedDropoffLongitude Float?                   @db.DoublePrecision
   requestMessage           String?
   reviewNote               String?
+  executionStatusUpdatedAt DateTime?
+  boardedAt                DateTime?
+  droppedOffAt             DateTime?
   createdAt                DateTime                  @default(now())
   reviewedAt               DateTime?
   cancelledAt              DateTime?
@@ -484,6 +498,7 @@ model TripRequest {
   passengerMembership      UserInstitutionMembership @relation(fields: [passengerMembershipId], references: [id], onDelete: Cascade)
 
   @@index([tripId, status, createdAt])
+  @@index([tripId, executionStatus, createdAt])
   @@index([passengerMembershipId, status, createdAt])
   @@index([tripId, passengerMembershipId])
   @@map("trip_requests")

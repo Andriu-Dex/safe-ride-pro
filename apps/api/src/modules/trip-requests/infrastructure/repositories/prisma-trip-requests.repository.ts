@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
   CancellationTiming,
+  getEffectiveTripRequestExecutionStatus,
   getCancellationTiming,
   MembershipStatus,
+  TripRequestExecutionStatus,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -191,7 +193,11 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
           },
           data: {
             status: TripRequestStatus.Accepted,
+            executionStatus: TripRequestExecutionStatus.AcceptedPendingBoarding,
             reviewNote: reviewNote ?? null,
+            executionStatusUpdatedAt: new Date(),
+            boardedAt: null,
+            droppedOffAt: null,
             reviewedAt: new Date(),
             cancelledAt: null,
           },
@@ -318,6 +324,12 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
           },
           data: {
             status: TripRequestStatus.Cancelled,
+            executionStatus:
+              currentTripRequest.status === TripRequestStatus.Accepted
+                ? TripRequestExecutionStatus.CancelledBeforeBoarding
+                : null,
+            executionStatusUpdatedAt:
+              currentTripRequest.status === TripRequestStatus.Accepted ? new Date() : null,
             cancelledAt: new Date(),
           },
         });
@@ -356,12 +368,115 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
           where: {
             id: requestId,
             status: TripRequestStatus.Accepted,
+            OR: [
+              {
+                executionStatus: null,
+              },
+              {
+                executionStatus: TripRequestExecutionStatus.AcceptedPendingBoarding,
+              },
+            ],
           },
           data: {
             status: TripRequestStatus.NoShow,
+            executionStatus: TripRequestExecutionStatus.NoShow,
             reviewNote,
+            executionStatusUpdatedAt: new Date(),
             reviewedAt: new Date(),
             cancelledAt: null,
+          },
+        });
+
+        if (requestUpdateResult.count !== 1) {
+          throw new Error(TRIP_REQUEST_CONFLICT);
+        }
+
+        const updatedTripRequest = await transaction.tripRequest.findUnique({
+          where: { id: requestId },
+          include: this.tripRequestInclude(),
+        });
+
+        if (!updatedTripRequest) {
+          throw new Error(TRIP_REQUEST_CONFLICT);
+        }
+
+        return this.mapTripRequest(updatedTripRequest);
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === TRIP_REQUEST_CONFLICT) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
+  async markTripRequestBoarded(requestId: string): Promise<TripRequestRecord | null> {
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const requestUpdateResult = await transaction.tripRequest.updateMany({
+          where: {
+            id: requestId,
+            status: TripRequestStatus.Accepted,
+            OR: [
+              {
+                executionStatus: null,
+              },
+              {
+                executionStatus: TripRequestExecutionStatus.AcceptedPendingBoarding,
+              },
+            ],
+            trip: {
+              status: TripStatus.InProgress,
+            },
+          },
+          data: {
+            executionStatus: TripRequestExecutionStatus.OnBoard,
+            executionStatusUpdatedAt: new Date(),
+            boardedAt: new Date(),
+          },
+        });
+
+        if (requestUpdateResult.count !== 1) {
+          throw new Error(TRIP_REQUEST_CONFLICT);
+        }
+
+        const updatedTripRequest = await transaction.tripRequest.findUnique({
+          where: { id: requestId },
+          include: this.tripRequestInclude(),
+        });
+
+        if (!updatedTripRequest) {
+          throw new Error(TRIP_REQUEST_CONFLICT);
+        }
+
+        return this.mapTripRequest(updatedTripRequest);
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === TRIP_REQUEST_CONFLICT) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
+  async markTripRequestDroppedOff(requestId: string): Promise<TripRequestRecord | null> {
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const requestUpdateResult = await transaction.tripRequest.updateMany({
+          where: {
+            id: requestId,
+            status: TripRequestStatus.Accepted,
+            executionStatus: TripRequestExecutionStatus.OnBoard,
+            trip: {
+              status: TripStatus.InProgress,
+            },
+          },
+          data: {
+            executionStatus: TripRequestExecutionStatus.DroppedOff,
+            executionStatusUpdatedAt: new Date(),
+            droppedOffAt: new Date(),
           },
         });
 
@@ -462,12 +577,16 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
     tripId: string;
     passengerMembershipId: string;
     status: string;
+    executionStatus: string | null;
     requestedPickupLatitude: number | null;
     requestedPickupLongitude: number | null;
     requestedDropoffLatitude: number | null;
     requestedDropoffLongitude: number | null;
     requestMessage: string | null;
     reviewNote: string | null;
+    executionStatusUpdatedAt: Date | null;
+    boardedAt: Date | null;
+    droppedOffAt: Date | null;
     createdAt: Date;
     reviewedAt: Date | null;
     cancelledAt: Date | null;
@@ -506,6 +625,10 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       passengerUserId: tripRequest.passengerMembership.userId,
       passengerFullName: tripRequest.passengerMembership.user.fullName,
       status: tripRequest.status as TripRequestStatus,
+      executionStatus: getEffectiveTripRequestExecutionStatus({
+        requestStatus: tripRequest.status,
+        executionStatus: tripRequest.executionStatus as TripRequestExecutionStatus | null,
+      }),
       tripStatus: tripRequest.trip.status as TripStatus,
       tripRouteMode: tripRequest.trip.routeMode as TripRouteMode,
       tripOriginLabel: tripRequest.trip.originLabel,
@@ -521,6 +644,9 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       requestedDropoffLongitude: tripRequest.requestedDropoffLongitude,
       requestMessage: tripRequest.requestMessage,
       reviewNote: tripRequest.reviewNote,
+      executionStatusUpdatedAt: tripRequest.executionStatusUpdatedAt,
+      boardedAt: tripRequest.boardedAt,
+      droppedOffAt: tripRequest.droppedOffAt,
       createdAt: tripRequest.createdAt,
       reviewedAt: tripRequest.reviewedAt,
       cancelledAt: tripRequest.cancelledAt,

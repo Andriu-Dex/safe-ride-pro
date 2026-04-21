@@ -15,6 +15,8 @@ import { CancelTripRequestUseCase } from '../../../src/modules/trip-requests/app
 import { CreateTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/create-trip-request.use-case';
 import { ListDriverTripRequestsUseCase } from '../../../src/modules/trip-requests/application/use-cases/list-driver-trip-requests.use-case';
 import { ListMyTripRequestsUseCase } from '../../../src/modules/trip-requests/application/use-cases/list-my-trip-requests.use-case';
+import { MarkTripRequestBoardedUseCase } from '../../../src/modules/trip-requests/application/use-cases/mark-trip-request-boarded.use-case';
+import { MarkTripRequestDroppedOffUseCase } from '../../../src/modules/trip-requests/application/use-cases/mark-trip-request-dropped-off.use-case';
 import { MarkTripRequestNoShowUseCase } from '../../../src/modules/trip-requests/application/use-cases/mark-trip-request-no-show.use-case';
 import { RejectTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/reject-trip-request.use-case';
 import { TripRequestsController } from '../../../src/modules/trip-requests/presentation/controllers/trip-requests.controller';
@@ -39,6 +41,12 @@ describe('TripRequestsController HTTP', () => {
     execute: jest.fn(),
   };
   const cancelTripRequestUseCase = {
+    execute: jest.fn(),
+  };
+  const markTripRequestBoardedUseCase = {
+    execute: jest.fn(),
+  };
+  const markTripRequestDroppedOffUseCase = {
     execute: jest.fn(),
   };
   const markTripRequestNoShowUseCase = {
@@ -114,6 +122,14 @@ describe('TripRequestsController HTTP', () => {
         {
           provide: CancelTripRequestUseCase,
           useValue: cancelTripRequestUseCase,
+        },
+        {
+          provide: MarkTripRequestBoardedUseCase,
+          useValue: markTripRequestBoardedUseCase,
+        },
+        {
+          provide: MarkTripRequestDroppedOffUseCase,
+          useValue: markTripRequestDroppedOffUseCase,
         },
         {
           provide: MarkTripRequestNoShowUseCase,
@@ -223,6 +239,50 @@ describe('TripRequestsController HTTP', () => {
       'user-driver',
       '8fe59d21-01aa-4764-b9f5-fa05a13997e4',
       'Te esperamos en la entrada principal',
+    );
+  });
+
+  it('marks a trip request as boarded through HTTP using the authenticated driver', async () => {
+    authenticatedHttpContext.applyAuthenticatedUser(driverUser);
+    markTripRequestBoardedUseCase.execute.mockResolvedValue({
+      message: 'Pasajero marcado como abordado.',
+      tripRequest: {
+        id: 'request-1',
+        status: TripRequestStatus.Accepted,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .patch('/api/trip-requests/8fe59d21-01aa-4764-b9f5-fa05a13997e4/boarded')
+      .set('Authorization', 'Bearer test-token')
+      .send({})
+      .expect(200);
+
+    expect(markTripRequestBoardedUseCase.execute).toHaveBeenCalledWith(
+      'user-driver',
+      '8fe59d21-01aa-4764-b9f5-fa05a13997e4',
+    );
+  });
+
+  it('marks a trip request as dropped off through HTTP using the authenticated driver', async () => {
+    authenticatedHttpContext.applyAuthenticatedUser(driverUser);
+    markTripRequestDroppedOffUseCase.execute.mockResolvedValue({
+      message: 'Pasajero marcado como finalizado.',
+      tripRequest: {
+        id: 'request-1',
+        status: TripRequestStatus.Accepted,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .patch('/api/trip-requests/8fe59d21-01aa-4764-b9f5-fa05a13997e4/dropped-off')
+      .set('Authorization', 'Bearer test-token')
+      .send({})
+      .expect(200);
+
+    expect(markTripRequestDroppedOffUseCase.execute).toHaveBeenCalledWith(
+      'user-driver',
+      '8fe59d21-01aa-4764-b9f5-fa05a13997e4',
     );
   });
 });

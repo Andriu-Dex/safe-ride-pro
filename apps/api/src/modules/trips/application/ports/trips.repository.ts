@@ -2,6 +2,8 @@ import {
   CancellationTiming,
   DriverLicenseStatus,
   DriverVerificationStatus,
+  TripRequestExecutionStatus,
+  TripRequestStatus,
   LuggagePolicy,
   MembershipStatus,
   TripAvailabilityFilter,
@@ -104,6 +106,16 @@ export type TripFilters = {
   availability?: TripAvailabilityFilter;
 };
 
+export type TripExecutionPassengerRecord = {
+  requestId: string;
+  passengerMembershipId: string;
+  passengerFullName: string;
+  status: TripRequestStatus;
+  executionStatus: TripRequestExecutionStatus | null;
+  boardedAt: Date | null;
+  droppedOffAt: Date | null;
+};
+
 export type TripLiveTrackingPointRecord = {
   capturedAt: Date;
   latitude: number;
@@ -142,6 +154,7 @@ export interface TripsRepository {
   findVehicleByIdForMembership(membershipId: string, vehicleId: string): Promise<TripVehicleRecord | null>;
   createTrip(input: CreateTripInput): Promise<TripRecord>;
   findTripById(tripId: string): Promise<TripRecord | null>;
+  listTripExecutionPassengers(tripId: string): Promise<TripExecutionPassengerRecord[]>;
   hasAcceptedTripRequest(tripId: string, passengerMembershipId: string): Promise<boolean>;
   findAcceptedPassengerMembershipIds(tripId: string): Promise<string[]>;
   findLatestReusableTripByDriverMembershipId(

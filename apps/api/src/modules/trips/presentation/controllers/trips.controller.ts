@@ -23,6 +23,7 @@ import { ListTripsUseCase } from '../../application/use-cases/list-trips.use-cas
 import { PublishTripUseCase } from '../../application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../application/use-cases/start-trip.use-case';
 import { UpdateTripLiveTrackingUseCase } from '../../application/use-cases/update-trip-live-tracking.use-case';
+import { CompleteTripRequestDto } from '../dto/complete-trip.request.dto';
 import { CreateTripRequestDto } from '../dto/create-trip.request.dto';
 import { ListTripsQueryDto } from '../dto/list-trips.query.dto';
 import { UpdateTripLiveTrackingRequestDto } from '../dto/update-trip-live-tracking.request.dto';
@@ -128,8 +129,9 @@ export class TripsController {
   completeTrip(
     @CurrentUser() currentUser: CurrentUserContext,
     @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Body() body: CompleteTripRequestDto,
   ) {
-    return this.completeTripUseCase.execute(currentUser.id, tripId);
+    return this.completeTripUseCase.execute(currentUser.id, tripId, body.closureNote);
   }
 
   @Patch(':tripId/cancel')

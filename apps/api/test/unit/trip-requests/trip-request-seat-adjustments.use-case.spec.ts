@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   CancellationTiming,
+  TripRequestExecutionStatus,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -25,6 +26,8 @@ function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository>
     rejectTripRequest: jest.fn(),
     cancelTripRequest: jest.fn(),
     markTripRequestAsNoShow: jest.fn(),
+    markTripRequestBoarded: jest.fn(),
+    markTripRequestDroppedOff: jest.fn(),
   };
 }
 
@@ -52,6 +55,7 @@ function buildTripRequest(
     passengerUserId: 'user-passenger',
     passengerFullName: 'Pasajero Uno',
     status: TripRequestStatus.Pending,
+    executionStatus: null,
     tripStatus: TripStatus.Published,
     tripRouteMode: TripRouteMode.DirectRoute,
     tripOriginLabel: 'Huachi',
@@ -67,6 +71,9 @@ function buildTripRequest(
     requestedDropoffLongitude: null,
     requestMessage: null,
     reviewNote: null,
+    executionStatusUpdatedAt: null,
+    boardedAt: null,
+    droppedOffAt: null,
     createdAt: new Date('2030-01-01T09:00:00.000Z'),
     reviewedAt: null,
     cancelledAt: null,
@@ -84,6 +91,7 @@ describe('Trip request seat adjustment use cases', () => {
     repository.acceptTripRequest.mockResolvedValue(
       buildTripRequest({
         status: TripRequestStatus.Accepted,
+        executionStatus: TripRequestExecutionStatus.AcceptedPendingBoarding,
         tripAvailableSeats: 1,
         reviewNote: 'Aprobado',
       }),
@@ -192,12 +200,14 @@ describe('Trip request seat adjustment use cases', () => {
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
         status: TripRequestStatus.Accepted,
+        executionStatus: TripRequestExecutionStatus.AcceptedPendingBoarding,
         tripAvailableSeats: 1,
       }),
     );
     repository.cancelTripRequest.mockResolvedValue(
       buildTripRequest({
         status: TripRequestStatus.Cancelled,
+        executionStatus: TripRequestExecutionStatus.CancelledBeforeBoarding,
         tripAvailableSeats: 2,
         cancelledAt: new Date('2030-01-01T09:30:00.000Z'),
       }),
@@ -243,12 +253,14 @@ describe('Trip request seat adjustment use cases', () => {
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
         status: TripRequestStatus.Accepted,
+        executionStatus: TripRequestExecutionStatus.AcceptedPendingBoarding,
         tripAvailableSeats: 1,
       }),
     );
     repository.cancelTripRequest.mockResolvedValue(
       buildTripRequest({
         status: TripRequestStatus.Cancelled,
+        executionStatus: TripRequestExecutionStatus.CancelledBeforeBoarding,
         tripAvailableSeats: 2,
         cancelledAt: new Date('2030-01-01T09:50:00.000Z'),
         cancellationTiming: CancellationTiming.Late,

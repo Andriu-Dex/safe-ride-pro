@@ -1,7 +1,20 @@
-import { DriverLicenseStatus, TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
+import {
+  DriverLicenseStatus,
+  isTripRequestExecutionResolved,
+  TripRequestExecutionStatus,
+  TripRequestStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
+import { TextareaField } from '../../../components/ui/textarea-field';
+import {
+  getTripRequestStatusLabel,
+  getTripRequestStatusTone,
+  getTripRequestExecutionStatusLabel,
+  getTripRequestExecutionStatusTone,
+} from '../../trip-requests/lib/trip-request-labels';
 import {
   canStartTripNow,
   getTripCompletionOverdueMessage,
@@ -16,20 +29,42 @@ type TripExecutionCommandCenterProps = {
   myTrips: TripRecord[];
   incomingRequests: TripRequestRecord[];
   isMutatingTripId: string | null;
+  isMutatingRequestId: string | null;
   licenseStatus: DriverLicenseStatus;
   blocksDriver: boolean;
+  noShowNotes: Record<string, string>;
   onOpenRequests: () => void;
-  onTripAction: (tripId: string, action: 'publish' | 'start' | 'complete' | 'cancel') => void;
+  onNoShowNoteChange: (requestId: string, value: string) => void;
+  onMarkPassengerBoarded: (requestId: string) => void;
+  onMarkPassengerDroppedOff: (requestId: string) => void;
+  onMarkNoShow: (requestId: string) => void;
+  onTripAction: (
+    tripId: string,
+    action: 'publish' | 'start' | 'complete' | 'cancel',
+    options?: {
+      closureNote?: string;
+    },
+  ) => void;
+  onTripClosureNoteChange: (tripId: string, value: string) => void;
+  tripClosureNotes: Record<string, string>;
 };
 
 export function TripExecutionCommandCenter({
   myTrips,
   incomingRequests,
   isMutatingTripId,
+  isMutatingRequestId,
   licenseStatus,
   blocksDriver,
+  noShowNotes,
   onOpenRequests,
+  onNoShowNoteChange,
+  onMarkPassengerBoarded,
+  onMarkPassengerDroppedOff,
+  onMarkNoShow,
   onTripAction,
+  onTripClosureNoteChange,
+  tripClosureNotes,
 }: TripExecutionCommandCenterProps) {
   const primaryTrip = selectPrimaryExecutionTrip(myTrips);
 
@@ -52,6 +87,19 @@ export function TripExecutionCommandCenter({
     (request) =>
       request.tripId === primaryTrip.id && request.status === TripRequestStatus.Pending,
   );
+  const pendingBoardingPassengers = acceptedPassengers.filter((request) =>
+    request.executionStatus === null
+    || request.executionStatus === TripRequestExecutionStatus.AcceptedPendingBoarding,
+  );
+  const onBoardPassengers = acceptedPassengers.filter(
+    (request) => request.executionStatus === TripRequestExecutionStatus.OnBoard,
+  );
+  const completedPassengers = acceptedPassengers.filter(
+    (request) => request.executionStatus === TripRequestExecutionStatus.DroppedOff,
+  );
+  const unresolvedPassengers = acceptedPassengers.filter(
+    (request) => !isTripRequestExecutionResolved(request.executionStatus),
+  );
   const startAvailabilityMessage = getTripStartAvailabilityMessage(
     primaryTrip.departureAt,
     primaryTrip.estimatedArrivalAt,
@@ -60,7 +108,13 @@ export function TripExecutionCommandCenter({
     primaryTrip.status,
     primaryTrip.estimatedArrivalAt,
   );
-  const guidance = getDriverGuidance(primaryTrip, acceptedPassengers.length, pendingRequests.length);
+  const guidance = getDriverGuidance(
+    primaryTrip,
+    acceptedPassengers.length,
+    pendingRequests.length,
+    pendingBoardingPassengers.length,
+    onBoardPassengers.length,
+  );
   const executionSteps = buildExecutionSteps(primaryTrip.status);
   const canPublish =
     primaryTrip.status === TripStatus.Draft
@@ -136,6 +190,8 @@ export function TripExecutionCommandCenter({
             <span className="trip-command-chip">
               Ocupacion {primaryTrip.seatCount - primaryTrip.availableSeats}/{primaryTrip.seatCount}
             </span>
+            <span className="trip-command-chip">Pendientes {pendingBoardingPassengers.length}</span>
+            <span className="trip-command-chip">A bordo {onBoardPassengers.length}</span>
           </div>
 
           <div className="trip-command-kpi-grid">
@@ -155,6 +211,14 @@ export function TripExecutionCommandCenter({
               label="Cupos libres"
               value={`${primaryTrip.availableSeats}`}
             />
+            <ExecutionStatCard
+              label="Pendientes"
+              value={`${pendingBoardingPassengers.length}`}
+            />
+            <ExecutionStatCard
+              label="Finalizados"
+              value={`${completedPassengers.length}`}
+            />
           </div>
 
           {startAvailabilityMessage ? (
@@ -168,6 +232,38 @@ export function TripExecutionCommandCenter({
             <div className="trip-command-alert trip-command-alert-warning">
               <strong>Revision de cierre</strong>
               <p title={overdueMessage}>{overdueMessage}</p>
+            </div>
+          ) : null}
+
+          {canComplete && unresolvedPassengers.length > 0 ? (
+            <div className="trip-command-alert trip-command-alert-warning">
+              <strong>Cierre excepcional</strong>
+              <p>
+                Aun hay {unresolvedPassengers.length} pasajero{unresolvedPassengers.length === 1 ? '' : 's'} sin cierre operativo.
+              </p>
+            </div>
+          ) : null}
+
+          {canComplete ? (
+            <div className="trip-command-closure-card">
+              <div className="trip-command-section-heading">
+                <strong>Cierre del viaje</strong>
+                <span>
+                  {unresolvedPassengers.length > 0 ? 'Excepcional' : 'Normal'}
+                </span>
+              </div>
+              <TextareaField
+                hint={
+                  unresolvedPassengers.length > 0
+                    ? 'Obligatoria si finalizas con pasajeros pendientes de cerrar.'
+                    : 'Opcional.'
+                }
+                label="Nota de cierre"
+                onChange={(event) => onTripClosureNoteChange(primaryTrip.id, event.target.value)}
+                placeholder="Describe una incidencia o razon operativa si cierras con pendientes."
+                rows={3}
+                value={tripClosureNotes[primaryTrip.id] ?? ''}
+              />
             </div>
           ) : null}
 
@@ -192,7 +288,9 @@ export function TripExecutionCommandCenter({
             {canComplete ? (
               <Button
                 disabled={isMutatingTripId === primaryTrip.id}
-                onClick={() => onTripAction(primaryTrip.id, 'complete')}
+                onClick={() => onTripAction(primaryTrip.id, 'complete', {
+                  closureNote: tripClosureNotes[primaryTrip.id],
+                })}
                 variant="secondary"
               >
                 Finalizar trayecto
@@ -228,16 +326,67 @@ export function TripExecutionCommandCenter({
                     <div className="trip-command-passenger-head">
                       <strong>{request.passengerFullName}</strong>
                       <StatusPill
-                        label={request.tripStatus === TripStatus.InProgress ? 'A bordo esperado' : 'Confirmado'}
-                        tone={request.tripStatus === TripStatus.InProgress ? 'warning' : 'success'}
+                        label={getTripRequestExecutionStatusLabel(request.executionStatus)}
+                        tone={getTripRequestExecutionStatusTone(request.executionStatus)}
+                      />
+                    </div>
+                    <div className="trip-command-passenger-meta">
+                      <StatusPill
+                        label={getTripRequestStatusLabel(request.status)}
+                        tone={getTripRequestStatusTone(request.status)}
                       />
                     </div>
                     {request.requestMessage ? (
                       <p title={request.requestMessage}>{request.requestMessage}</p>
                     ) : null}
+                    {request.boardedAt ? (
+                      <small>Abordo: {formatDateTime(request.boardedAt)}</small>
+                    ) : null}
+                    {request.droppedOffAt ? (
+                      <small>Finalizo: {formatDateTime(request.droppedOffAt)}</small>
+                    ) : null}
                     <small>
                       Aceptada el {formatDateTime(request.reviewedAt ?? request.createdAt)}
                     </small>
+                    {primaryTrip.status === TripStatus.InProgress ? (
+                      <div className="trip-command-passenger-actions">
+                        {(request.executionStatus === null
+                          || request.executionStatus === TripRequestExecutionStatus.AcceptedPendingBoarding) ? (
+                            <>
+                              <Button
+                                disabled={isMutatingRequestId === request.id}
+                                onClick={() => onMarkPassengerBoarded(request.id)}
+                                variant="secondary"
+                              >
+                                Marcar abordo
+                              </Button>
+                              <TextareaField
+                                label="Nota no-show"
+                                onChange={(event) => onNoShowNoteChange(request.id, event.target.value)}
+                                placeholder="Describe brevemente la ausencia."
+                                rows={2}
+                                value={noShowNotes[request.id] ?? ''}
+                              />
+                              <Button
+                                disabled={isMutatingRequestId === request.id}
+                                onClick={() => onMarkNoShow(request.id)}
+                                variant="ghost"
+                              >
+                                Registrar no-show
+                              </Button>
+                            </>
+                          ) : null}
+                        {request.executionStatus === TripRequestExecutionStatus.OnBoard ? (
+                          <Button
+                            disabled={isMutatingRequestId === request.id}
+                            onClick={() => onMarkPassengerDroppedOff(request.id)}
+                            variant="secondary"
+                          >
+                            Marcar finalizado
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -255,6 +404,7 @@ export function TripExecutionCommandCenter({
               <ExecutionSummaryTile label="Estado" value={getTripStatusLabel(primaryTrip.status)} />
               <ExecutionSummaryTile label="Pendientes" value={`${pendingRequests.length}`} />
               <ExecutionSummaryTile label="Confirmados" value={`${acceptedPassengers.length}`} />
+              <ExecutionSummaryTile label="A bordo" value={`${onBoardPassengers.length}`} />
               <ExecutionSummaryTile label="Vehiculo" value={primaryTrip.vehiclePlate} />
             </div>
           </div>
@@ -363,6 +513,8 @@ function getDriverGuidance(
   trip: TripRecord,
   acceptedPassengersCount: number,
   pendingRequestsCount: number,
+  pendingBoardingCount: number,
+  onBoardCount: number,
 ): { title: string; description: string } {
   switch (trip.status) {
     case TripStatus.Draft:
@@ -387,8 +539,18 @@ function getDriverGuidance(
       };
     case TripStatus.InProgress:
       return {
-        title: 'Monitorear y finalizar',
-        description: 'Finaliza solo cuando el trayecto termine.',
+        title:
+          pendingBoardingCount > 0
+            ? 'Registrar abordajes'
+            : onBoardCount > 0
+              ? 'Cerrar pasajeros en destino'
+              : 'Cerrar trayecto',
+        description:
+          pendingBoardingCount > 0
+            ? 'Marca quienes ya subieron o registra no-show.'
+            : onBoardCount > 0
+              ? 'Finaliza a cada pasajero cuando llegue a destino.'
+              : 'El viaje ya puede pasar al cierre.',
       };
     default:
       return {
