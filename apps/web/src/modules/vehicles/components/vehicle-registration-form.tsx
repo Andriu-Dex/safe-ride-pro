@@ -307,11 +307,7 @@ export function VehicleRegistrationForm({
           <h2 className="panel-title">
             {isEditing ? 'Editar vehiculo' : 'Registrar vehiculo'}
           </h2>
-          <p className="panel-text">
-            {isEditing
-              ? 'Actualiza los datos del vehiculo seleccionado. Los cambios se aplicaran a nuevos viajes futuros.'
-              : 'Puedes seleccionar marca y modelo del catalogo o ingresar datos manuales cuando aun no existan en el sistema.'}
-          </p>
+          <p className="panel-text">{isEditing ? 'Actualiza y guarda.' : 'Completa y registra.'}</p>
         </div>
         {isEditing ? (
           <Button onClick={onCancelEdit} variant="secondary">

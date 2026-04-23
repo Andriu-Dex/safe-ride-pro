@@ -1,0 +1,25 @@
+# Archivos generados por LaTeX
+*.aux
+*.log
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.out
+*.nav
+*.snm
+*.vrb
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.dvi
+*.ps
+*.bcf
+*.run.xml
+*.idx
+*.ind
+*.ilg
+*.ent
+*.gz
+*.pdf

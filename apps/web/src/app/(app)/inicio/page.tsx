@@ -225,8 +225,7 @@ export default function HomePage() {
         <aside className="home-status-card">
           <div className="home-status-head">
             <div>
-              <p className="section-label">Estado actual</p>
-              <h2 className="section-title">Cuenta en tiempo real</h2>
+              <h2 className="section-title">Estado actual</h2>
             </div>
             <StatusPill
               label={currentMembership ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus) : 'Sin membresia'}

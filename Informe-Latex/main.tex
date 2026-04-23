@@ -1,0 +1,1248 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[letterpaper,top=2.5cm,bottom=3cm,left=2.5cm,right=2.5cm]{geometry}
+\usepackage{lmodern}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{caption}
+\usepackage[table]{xcolor}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black,
+    pdftitle={Especificacion de Requisitos de Software - SafeRidePro},
+    pdfauthor={Aguilar Erick, Llerena Gabriel, Navarro Maybelline, Paredes Steven}
+}
+
+\setlength{\headheight}{56pt}
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+\renewcommand{\arraystretch}{1.25}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{%
+    \begin{minipage}[c]{2.4cm}
+        \centering
+        \includegraphics[width=1.8cm]{Imagenes/UTA.jpeg}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{8.8cm}
+        \centering
+        \small \textbf{UNIVERSIDAD T\'ECNICA DE AMBATO}\\
+        \scriptsize \textbf{FACULTAD DE INGENIER\'IA EN SISTEMAS, ELECTR\'ONICA E INDUSTRIAL}\\
+        \scriptsize \textbf{CARRERA DE SOFTWARE}\\
+        \scriptsize Gesti\'on de Pruebas e Implantaci\'on de Software
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{2.4cm}
+        \centering
+        \includegraphics[width=1.7cm]{Imagenes/fisei.png}
+    \end{minipage}
+}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{Especificaci\'on de Requisitos de Software}
+\author{SafeRidePro}
+\date{Abril de 2026}
+
+\begin{document}
+\onehalfspacing
+\pagenumbering{gobble}
+
+\begin{titlepage}
+    \centering
+    \vspace*{-3.5cm}
+
+    % \includegraphics[width=2.2cm]{Imagenes/UTA.jpeg}\hspace{1.8cm}
+    % \includegraphics[width=2cm]{Imagenes/fisei.png}
+
+    \vspace{1.2cm}
+
+    {\Large \textbf{UNIVERSIDAD T\'ECNICA DE AMBATO}\par}
+    \vspace{0.2cm}
+    {\normalsize Facultad de Ingenier\'ia en Sistemas, Electr\'onica e Industrial\par}
+    {\normalsize Carrera de Software\par}
+
+    \vspace{1.5cm}
+
+    {\LARGE \textbf{Especificaci\'on de Requisitos de Software}\par}
+    \vspace{0.4cm}
+    {\Large Basada en lineamientos del est\'andar IEEE 830\par}
+
+    \vspace{1.0cm}
+
+    {\Large \textbf{Proyecto: SafeRidePro}\par}
+    \vspace{0.3cm}
+    {\normalsize Plataforma web para coordinaci\'on segura de viajes compartidos entre estudiantes\par}
+
+    \vfill
+
+    \begin{tabular}{P{5cm}P{8cm}}
+        \textbf{Asignatura:} & Gesti\'on de Pruebas e Implantaci\'on de Software \\
+        \textbf{Docente:} & Ing.\ Leonardo Torres \\
+        \textbf{Versi\'on del documento:} & 1.0 \\
+        \textbf{Fecha:} & 22 de abril de 2026 \\
+    \end{tabular}
+
+    \vspace{1.2cm}
+
+    \textbf{Elaborado por:}
+
+    \vspace{0.3cm}
+
+    Aguilar Erick\\
+    Llerena Gabriel\\
+    Navarro Maybelline\\
+    Paredes Steven
+
+    \vfill
+\end{titlepage}
+
+\clearpage
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+
+\section*{Ficha del documento}
+\addcontentsline{toc}{section}{Ficha del documento}
+
+\begin{longtable}{|P{3.2cm}|P{11.2cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Detalle} \\
+\hline
+Nombre del documento & Especificaci\'on de Requisitos de Software de SafeRidePro \\
+\hline
+Tipo de documento & ERS / SRS basada en IEEE 830 \\
+\hline
+Versi\'on & 1.0 \\
+\hline
+Estado & Entrega acad\'emica de requisitos funcionales y no funcionales \\
+\hline
+Proyecto & SafeRidePro \\
+\hline
+Fecha & 22 de abril de 2026 \\
+\hline
+Autores & Aguilar Erick, Llerena Gabriel, Navarro Maybelline, Paredes Steven \\
+\hline
+Objetivo de esta entrega & Documentar formalmente los requisitos funcionales y no funcionales que servir\'an como base para el posterior dise\~no, ejecuci\'on y trazabilidad de pruebas. \\
+\hline
+\end{longtable}
+
+\newpage
+\pagenumbering{arabic}
+
+\section{Introducci\'on}
+
+Este documento presenta la Especificaci\'on de Requisitos de Software (ERS) del sistema \textbf{SafeRidePro}, una plataforma web orientada a coordinar viajes compartidos seguros entre estudiantes de una misma instituci\'on educativa. El sistema incorpora verificaci\'on institucional, publicaci\'on y solicitud de viajes, seguimiento operativo, mecanismos de confianza comunitaria y capacidades de auditor\'ia administrativa.
+
+La estructura del documento sigue la organizaci\'on sugerida por el est\'andar \textit{IEEE Std 830-1998} para especificaciones de requisitos, adaptada al alcance acad\'emico del proyecto y al estado real del producto. El documento se concentra en dejar claramente establecidos los requisitos funcionales y no funcionales del sistema, de modo que puedan servir como fuente formal para el an\'alisis de requisitos, el dise\~no de casos de prueba y la verificaci\'on posterior del software.
+
+\subsection{Prop\'osito}
+
+Definir de manera clara, completa y verificable los requisitos funcionales y no funcionales de SafeRidePro, proporcionando una base documental confiable para:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item el desarrollo y mantenimiento del sistema,
+    \item el dise\~no de casos de prueba funcionales, de integraci\'on y de sistema,
+    \item la trazabilidad entre necesidades del producto y actividades de validaci\'on,
+    \item la evaluaci\'on acad\'emica y la preparaci\'on de entregables posteriores.
+\end{itemize}
+
+\subsection{Alcance}
+
+La presente especificaci\'on cubre el producto web SafeRidePro en su fase funcional actual. Incluye requisitos relacionados con:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item acceso e identidad institucional,
+    \item perfil e incorporaci\'on institucional,
+    \item onboarding de conductor y revisi\'on administrativa,
+    \item gesti\'on de veh\'iculos,
+    \item creaci\'on, b\'usqueda, solicitud y operaci\'on de viajes,
+    \item tracking operativo v1,
+    \item ejecuci\'on operativa del viaje por pasajero,
+    \item confianza comunitaria, reportes, sanciones y apelaciones,
+    \item auditor\'ia administrativa.
+\end{itemize}
+
+Quedan fuera del alcance de esta entrega:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item pagos integrados,
+    \item aplicaci\'on m\'ovil nativa,
+    \item tracking GPS fino tipo ridesharing comercial,
+    \item notificaciones avanzadas,
+    \item pruebas de carga y seguridad avanzada como entregable principal.
+\end{itemize}
+
+\subsection{Personal involucrado}
+
+\begin{longtable}{|P{3.2cm}|P{3.2cm}|P{3.3cm}|P{4.7cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Nombre} & \textbf{Rol} & \textbf{Perfil} & \textbf{Responsabilidad principal} \\
+\hline
+Aguilar Erick & Integrante del equipo & Estudiante de Software & Levantamiento, redacci\'on y consolidaci\'on documental. \\
+\hline
+Llerena Gabriel & Integrante del equipo & Estudiante de Software & Apoyo en an\'alisis de requisitos y revisi\'on de consistencia. \\
+\hline
+Navarro Maybelline & Integrante del equipo & Estudiante de Software & Apoyo en definici\'on de alcance y criterios de verificaci\'on. \\
+\hline
+Paredes Steven & Integrante del equipo & Estudiante de Software & Apoyo en estructuraci\'on y validaci\'on del documento. \\
+\hline
+Ing.\ Leonardo Torres & Docente revisor & Docente de la asignatura & Revisi\'on acad\'emica y validaci\'on del entregable. \\
+\hline
+\end{longtable}
+
+\subsection{Definiciones, acr\'onimos y abreviaturas}
+
+\begin{longtable}{|P{3.2cm}|P{11.2cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{T\'ermino} & \textbf{Definici\'on} \\
+\hline
+ERS / SRS & Especificaci\'on de Requisitos de Software. \\
+\hline
+MVP & Producto m\'inimo viable. \\
+\hline
+OTP & C\'odigo de verificaci\'on de un solo uso enviado al usuario. \\
+\hline
+Tracking v1 & Seguimiento del viaje basado en ruta planificada y estado operativo compartido, sin GPS fino continuo. \\
+\hline
+No-show & Estado asignado a un pasajero aceptado que no se presenta al viaje. \\
+\hline
+Membres\'ia activa & Relaci\'on operativa vigente entre el usuario y una instituci\'on. \\
+\hline
+Cierre excepcional & Finalizaci\'on del viaje con nota obligatoria cuando existen pasajeros aceptados sin cierre operativo resuelto. \\
+\hline
+QA & Aseguramiento de calidad del software. \\
+\hline
+\end{longtable}
+
+\subsection{Referencias}
+
+Las referencias utilizadas para construir esta especificaci\'on son:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item documentaci\'on funcional y operativa del proyecto SafeRidePro,
+    \item gu\'ias de formato proporcionadas por el docente,
+    \item est\'andar IEEE 830 para especificaci\'on de requisitos,
+    \item documentaci\'on t\'ecnica interna del proyecto sobre arquitectura, pol\'iticas y estado actual.
+\end{itemize}
+
+\subsection{Resumen}
+
+El resto del documento se organiza en dos grandes bloques. El primero presenta una descripci\'on general del producto, sus actores, restricciones y dependencias. El segundo define de manera detallada los requisitos espec\'ificos del sistema, separando los requisitos funcionales de los no funcionales.
+
+\section{Descripci\'on general}
+
+\subsection{Perspectiva del producto}
+
+SafeRidePro es una aplicaci\'on web modular que permite coordinar viajes compartidos entre estudiantes verificados de una misma instituci\'on. El sistema no es un servicio de transporte comercial tradicional, sino una plataforma restringida a usuarios con dominio institucional autorizado.
+
+La plataforma se apoya en una arquitectura web compuesta por frontend, API backend y base de datos relacional. Adem\'as, incorpora un modelo multiinstitucional con identidad global del usuario y contexto operativo por membres\'ia activa.
+
+\subsection{Funcionalidad del producto}
+
+La funcionalidad principal del sistema puede resumirse en la siguiente tabla:
+
+\begin{longtable}{|P{2.2cm}|P{4.5cm}|P{7.7cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{C\'odigo} & \textbf{Funcionalidad} & \textbf{Descripci\'on resumida} \\
+\hline
+F-01 & Acceso institucional & Registro, verificaci\'on, autenticaci\'on y recuperaci\'on de cuenta. \\
+\hline
+F-02 & Perfil e incorporaci\'on & Gesti\'on de perfil base y contexto institucional del usuario. \\
+\hline
+F-03 & Habilitaci\'on de conductor & Solicitud, carga documental y revisi\'on administrativa de conductores. \\
+\hline
+F-04 & Veh\'iculos & Registro y administraci\'on de veh\'iculos asociados al conductor. \\
+\hline
+F-05 & Viajes & Creaci\'on, publicaci\'on, consulta y gesti\'on de viajes. \\
+\hline
+F-06 & Solicitudes & Solicitud, aceptaci\'on, rechazo y cancelaci\'on de cupos. \\
+\hline
+F-07 & Ejecuci\'on operativa & Inicio del viaje y control operativo de pasajeros durante el trayecto. \\
+\hline
+F-08 & Confianza & Calificaciones, reportes, sanciones y apelaciones. \\
+\hline
+F-09 & Auditor\'ia administrativa & Revisi\'on administrativa de conductores, reportes, sanciones y apelaciones. \\
+\hline
+\end{longtable}
+
+\subsection{Caracter\'isticas de los usuarios}
+
+Los tipos principales de usuario del sistema son:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item \textbf{Pasajero:} estudiante verificado que busca viajes, solicita cupos, participa en trayectos y emite calificaciones o reportes.
+    \item \textbf{Conductor:} estudiante verificado y aprobado administrativamente para publicar y operar viajes.
+    \item \textbf{Administrador institucional:} usuario con privilegios para revisar conductores, reportes, sanciones y apelaciones dentro de su instituci\'on.
+    \item \textbf{Superadministrador:} actor global encargado de administraci\'on superior, cat\'alogos e instituciones.
+\end{itemize}
+
+\subsection{Restricciones}
+
+Las principales restricciones del sistema son:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item los usuarios deben pertenecer a dominios institucionales autorizados,
+    \item los viajes solo son visibles dentro de la misma instituci\'on en esta fase,
+    \item los pagos no forman parte del alcance funcional actual,
+    \item el tracking en tiempo real avanzado no est\'a implementado en esta fase,
+    \item la operaci\'on del viaje debe respetar la coherencia entre estado global del viaje, estado de solicitud y estado operativo del pasajero.
+\end{itemize}
+
+\subsection{Suposiciones y dependencias}
+
+Se asume que:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item el usuario dispone de acceso web y conexi\'on a internet,
+    \item el dominio institucional del correo est\'a previamente registrado en el sistema,
+    \item los servicios de correo y almacenamiento de evidencias se encuentran operativos,
+    \item el entorno de ejecuci\'on backend, web y base de datos est\'a disponible para la operaci\'on del sistema,
+    \item la gesti\'on administrativa de conductores y reportes se realiza por usuarios autorizados.
+\end{itemize}
+
+\section{Requisitos espec\'ificos}
+
+\subsection{Requisitos comunes de interfaces}
+
+\subsubsection{Interfaces de usuario}
+
+El sistema debe proporcionar una interfaz web moderna, clara, responsive y consistente, con navegaci\'on por m\'odulos y jerarqu\'ia visual adecuada. Las pantallas principales incluyen autenticaci\'on, perfil, conductor, veh\'iculos, viajes, confianza y auditor\'ia.
+
+\subsubsection{Interfaces de hardware}
+
+No aplica hardware especializado para esta fase. El sistema requiere un equipo cliente con navegador web moderno y conectividad a internet.
+
+\subsubsection{Interfaces de software}
+
+El producto interact\'ua principalmente con:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item frontend web en Next.js,
+    \item API backend en NestJS,
+    \item base de datos PostgreSQL,
+    \item ORM Prisma,
+    \item proveedor SMTP para verificaci\'on y recuperaci\'on de cuenta,
+    \item servicios geogr\'aficos basados en Leaflet y Geoapify.
+\end{itemize}
+
+\subsubsection{Interfaces de comunicaci\'on}
+
+La comunicaci\'on entre cliente y servidor se realiza mediante servicios HTTP REST autenticados. El sistema tambi\'en emite actualizaciones operativas en tiempo real para el seguimiento del viaje en su versi\'on actual.
+
+\subsection{Requisitos funcionales}
+
+En esta secci\'on se detallan los requisitos funcionales del sistema. Cada requisito se formula de manera verificable y orientada a su posterior validaci\'on mediante casos de prueba.
+
+\begin{longtable}{|P{1.8cm}|P{3.8cm}|P{7.2cm}|P{2.2cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{ID} & \textbf{Nombre} & \textbf{Descripci\'on} & \textbf{Prioridad} \\
+\hline
+\endfirsthead
+\hline
+\rowcolor{gray!15}
+\textbf{ID} & \textbf{Nombre} & \textbf{Descripci\'on} & \textbf{Prioridad} \\
+\hline
+\endhead
+RF-001 & Registro institucional & El sistema debe permitir registrar usuarios utilizando un correo perteneciente a un dominio institucional autorizado. & Alta \\
+\hline
+RF-002 & Verificaci\'on de correo & El sistema debe verificar la identidad del usuario mediante un c\'odigo de verificaci\'on enviado al correo institucional. & Alta \\
+\hline
+RF-003 & Inicio de sesi\'on y recuperaci\'on & El sistema debe permitir iniciar sesi\'on, cerrar sesi\'on, refrescar sesi\'on y recuperar la contrase\~na. & Alta \\
+\hline
+RF-004 & Gesti\'on de perfil & El usuario debe poder consultar y actualizar su informaci\'on b\'asica de perfil, incluyendo nombre, carrera, tel\'efono opcional, foto y zona de referencia. & Alta \\
+\hline
+RF-005 & Contexto institucional & El sistema debe resolver y exponer el contexto institucional operativo del usuario seg\'un su membres\'ia activa. & Alta \\
+\hline
+RF-006 & Solicitud de conductor & El usuario debe poder solicitar habilitaci\'on como conductor cargando la documentaci\'on requerida. & Alta \\
+\hline
+RF-007 & Revisi\'on de conductor & Un administrador institucional debe poder aprobar o rechazar una solicitud de conductor con trazabilidad de la decisi\'on. & Alta \\
+\hline
+RF-008 & Registro de veh\'iculo & Un conductor aprobado debe poder registrar veh\'iculos, incluyendo datos del veh\'iculo y documento de matr\'icula. & Alta \\
+\hline
+RF-009 & Gesti\'on de estado del veh\'iculo & El conductor debe poder activar o desactivar veh\'iculos registrados seg\'un su disponibilidad operativa. & Media \\
+\hline
+RF-010 & Publicaci\'on de viaje & El conductor debe poder crear y publicar viajes indicando origen, destino, fecha, hora, cupos, veh\'iculo y reglas del viaje. & Alta \\
+\hline
+RF-011 & Exploraci\'on de viajes & El pasajero debe poder buscar y filtrar viajes disponibles de su instituci\'on. & Alta \\
+\hline
+RF-012 & Solicitud de cupo & El pasajero debe poder solicitar un cupo en un viaje publicado y registrar un mensaje asociado a la solicitud. & Alta \\
+\hline
+RF-013 & Gesti\'on de solicitudes & El conductor debe poder aceptar o rechazar solicitudes. El pasajero debe poder cancelar su solicitud cuando el flujo lo permita. & Alta \\
+\hline
+RF-014 & Inicio de viaje & El conductor debe poder iniciar un viaje dentro de la ventana operativa permitida. Al iniciar el viaje, las solicitudes pendientes deben cerrarse autom\'aticamente. & Alta \\
+\hline
+RF-015 & Abordaje de pasajero & Durante un viaje en curso, el conductor debe poder marcar a un pasajero aceptado como \textit{a bordo}. & Alta \\
+\hline
+RF-016 & Finalizaci\'on operativa de pasajero & Durante un viaje en curso, el conductor debe poder marcar a un pasajero a bordo como \textit{finalizado}. & Alta \\
+\hline
+RF-017 & Registro de no-show & El conductor debe poder marcar a un pasajero aceptado como \textit{no-show} solo si a\'un no ha sido abordado ni finalizado. & Alta \\
+\hline
+RF-018 & Cierre excepcional del viaje & Si existen pasajeros aceptados sin cierre operativo resuelto, el sistema debe exigir una nota de cierre excepcional antes de finalizar el viaje. & Alta \\
+\hline
+RF-019 & Seguimiento operativo v1 & El sistema debe permitir a conductor y pasajeros autorizados visualizar el estado operativo del trayecto y la ruta planificada. & Media \\
+\hline
+RF-020 & Calificaciones post-viaje & Tras un viaje elegible, los participantes deben poder registrar calificaciones dentro de la ventana de cierre permitida. & Alta \\
+\hline
+RF-021 & Reportes con evidencia & Tras un viaje o incidente elegible, los participantes autorizados deben poder emitir reportes adjuntando evidencia cuando corresponda. & Alta \\
+\hline
+RF-022 & Sanciones y apelaciones & El sistema debe permitir aplicar sanciones operativas, visualizar restricciones vigentes y gestionar apelaciones cuando aplique. & Alta \\
+\hline
+RF-023 & Auditor\'ia administrativa & El administrador debe poder revisar conductores, reportes, sanciones y apelaciones, incluyendo evidencia documental y contexto cruzado. & Alta \\
+\hline
+RF-024 & Trazabilidad de eventos & El sistema debe registrar en auditor\'ia las acciones cr\'iticas relacionadas con viajes, ejecuci\'on operativa, sanciones y decisiones administrativas. & Alta \\
+\hline
+\end{longtable}
+
+\subsection{Detalle de requisitos funcionales}
+
+En esta secci\'on se presentan fichas detalladas de los principales requisitos funcionales. Se utiliza un formato cercano a caso de uso para facilitar su comprensi\'on y su posterior transformaci\'on en casos de prueba.
+
+\subsubsection{RFD-01 Registro y verificaci\'on de usuario}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-01 -- Registrar y verificar usuario \\
+\hline
+Actor & Usuario visitante \\
+\hline
+Descripci\'on & Proceso para crear una cuenta utilizando un correo institucional v\'alido y verificar la identidad mediante un c\'odigo enviado al correo. \\
+\hline
+Precondiciones & El dominio del correo debe estar autorizado en el sistema y el usuario no debe tener una cuenta activa con ese correo. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El usuario ingresa a la opci\'on de registro. \\
+\hline
+2 & El sistema solicita correo institucional y datos iniciales. \\
+\hline
+3 & El usuario completa la informaci\'on requerida y confirma el registro. \\
+\hline
+4 & El sistema valida el dominio del correo. \\
+\hline
+5 & El sistema env\'ia un c\'odigo de verificaci\'on al correo institucional. \\
+\hline
+6 & El usuario ingresa el c\'odigo recibido. \\
+\hline
+7 & El sistema valida el c\'odigo y activa la cuenta. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+4.1 & El dominio del correo no est\'a permitido y el sistema rechaza el registro. \\
+\hline
+6.1 & El c\'odigo es incorrecto o ha expirado y el sistema solicita reintentar o reenviar el c\'odigo. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & El usuario queda registrado y con la cuenta verificada, habilitado para ingresar al sistema. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-02 Gesti\'on de perfil del usuario}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-02 -- Gestionar perfil del usuario \\
+\hline
+Actor & Usuario autenticado \\
+\hline
+Descripci\'on & Permite consultar y actualizar la informaci\'on personal b\'asica del usuario dentro de la plataforma. \\
+\hline
+Precondiciones & El usuario debe haber iniciado sesi\'on y contar con una cuenta verificada. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El usuario accede al m\'odulo de perfil. \\
+\hline
+2 & El sistema muestra la informaci\'on actual del usuario. \\
+\hline
+3 & El usuario actualiza uno o varios campos permitidos. \\
+\hline
+4 & El usuario guarda los cambios. \\
+\hline
+5 & El sistema valida y almacena la nueva informaci\'on. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+3.1 & El usuario ingresa datos incompletos o inv\'alidos y el sistema muestra mensajes de validaci\'on. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & La informaci\'on del perfil queda actualizada y visible en el sistema. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-03 Solicitud de habilitaci\'on como conductor}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-03 -- Solicitar habilitaci\'on como conductor \\
+\hline
+Actor & Usuario autenticado \\
+\hline
+Descripci\'on & Permite que un usuario solicite el rol de conductor cargando sus documentos para revisi\'on administrativa. \\
+\hline
+Precondiciones & El usuario debe estar autenticado, verificado y con su perfil operativo disponible. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El usuario ingresa al m\'odulo de conductor. \\
+\hline
+2 & El sistema presenta el formulario de solicitud y los documentos requeridos. \\
+\hline
+3 & El usuario completa los datos solicitados y adjunta los archivos necesarios. \\
+\hline
+4 & El usuario env\'ia la solicitud. \\
+\hline
+5 & El sistema valida la informaci\'on y registra la solicitud en estado pendiente de revisi\'on. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+3.1 & Faltan documentos o datos obligatorios y el sistema no permite enviar la solicitud. \\
+\hline
+5.1 & El archivo no cumple formato o tama\~no permitido y el sistema lo rechaza. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & La solicitud queda registrada y disponible para revisi\'on administrativa. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-04 Registrar veh\'iculo}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-04 -- Registrar veh\'iculo \\
+\hline
+Actor & Conductor aprobado \\
+\hline
+Descripci\'on & Permite registrar un veh\'iculo con sus datos b\'asicos y su documento de matr\'icula. \\
+\hline
+Precondiciones & El usuario debe haber sido aprobado como conductor y contar con acceso operativo al m\'odulo de veh\'iculos. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El conductor abre el m\'odulo de veh\'iculos. \\
+\hline
+2 & El sistema muestra el formulario de registro. \\
+\hline
+3 & El conductor ingresa marca, modelo, placa, capacidad y datos adicionales. \\
+\hline
+4 & El conductor adjunta el documento de matr\'icula. \\
+\hline
+5 & El conductor confirma el registro. \\
+\hline
+6 & El sistema valida y almacena la informaci\'on del veh\'iculo. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+3.1 & Alg\'un dato obligatorio falta o es inv\'alido y el sistema no permite guardar. \\
+\hline
+4.1 & El documento de matr\'icula no es aceptado por formato o carga incorrecta. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & El veh\'iculo queda registrado y disponible para ser usado en viajes. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-05 Crear y publicar viaje}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-05 -- Crear y publicar viaje \\
+\hline
+Actor & Conductor aprobado \\
+\hline
+Descripci\'on & Permite crear un viaje indicando origen, destino, horario, cupos y veh\'iculo, y luego publicarlo para que otros usuarios lo vean. \\
+\hline
+Precondiciones & El conductor debe tener un veh\'iculo operativo y licencia vigente. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El conductor accede a la opci\'on de nuevo viaje. \\
+\hline
+2 & El sistema presenta el formulario del viaje. \\
+\hline
+3 & El conductor ingresa origen, destino, fecha, hora, cupos y notas. \\
+\hline
+4 & El conductor selecciona el veh\'iculo a utilizar. \\
+\hline
+5 & El conductor guarda y publica el viaje. \\
+\hline
+6 & El sistema registra el viaje y lo deja disponible para los pasajeros de la misma instituci\'on. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+3.1 & Existen datos obligatorios faltantes y el sistema no permite continuar. \\
+\hline
+4.1 & El conductor no tiene un veh\'iculo habilitado y el sistema impide publicar el viaje. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & El viaje queda creado y publicado para su exploraci\'on. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-06 Solicitar cupo en un viaje}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-06 -- Solicitar cupo en un viaje \\
+\hline
+Actor & Pasajero autenticado \\
+\hline
+Descripci\'on & Permite que un pasajero encuentre un viaje disponible y env\'ie una solicitud para participar. \\
+\hline
+Precondiciones & El pasajero debe haber iniciado sesi\'on y existir al menos un viaje publicado de su instituci\'on. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El pasajero accede a la secci\'on de explorar viajes. \\
+\hline
+2 & El sistema muestra los viajes disponibles. \\
+\hline
+3 & El pasajero selecciona un viaje y revisa sus datos. \\
+\hline
+4 & El pasajero escribe un mensaje opcional y env\'ia la solicitud. \\
+\hline
+5 & El sistema registra la solicitud y muestra confirmaci\'on. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+2.1 & No existen viajes compatibles y el sistema muestra un estado vac\'io. \\
+\hline
+4.1 & El viaje ya no tiene cupos o cambi\'o de estado y el sistema rechaza la solicitud. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & La solicitud queda registrada para revisi\'on del conductor. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-07 Gestionar solicitudes de viaje}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-07 -- Gestionar solicitudes de viaje \\
+\hline
+Actor & Conductor aprobado \\
+\hline
+Descripci\'on & Permite revisar las solicitudes recibidas para un viaje y decidir si se aceptan o rechazan. \\
+\hline
+Precondiciones & Debe existir al menos una solicitud registrada sobre un viaje del conductor. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El conductor abre la secci\'on de solicitudes. \\
+\hline
+2 & El sistema muestra la lista de solicitudes recibidas. \\
+\hline
+3 & El conductor revisa la informaci\'on del pasajero y de la solicitud. \\
+\hline
+4 & El conductor acepta o rechaza la solicitud. \\
+\hline
+5 & El sistema actualiza el estado de la solicitud y refleja el resultado. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+2.1 & No existen solicitudes para el viaje y el sistema informa que no hay elementos pendientes. \\
+\hline
+4.1 & El viaje ya no admite cambios y el sistema bloquea la acci\'on. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & La solicitud queda actualizada en estado aceptado o rechazado. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-08 Ejecutar operaci\'on del viaje}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-08 -- Ejecutar operaci\'on del viaje \\
+\hline
+Actor & Conductor aprobado \\
+\hline
+Descripci\'on & Permite iniciar un viaje, marcar pasajeros como abordados, finalizados o no presentados y cerrar el trayecto seg\'un las reglas operativas. \\
+\hline
+Precondiciones & El viaje debe estar publicado y contar con solicitudes aceptadas o con condiciones para iniciar. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El conductor ingresa al panel de operaci\'on del viaje. \\
+\hline
+2 & El conductor inicia el viaje dentro de la ventana permitida. \\
+\hline
+3 & El sistema cierra las solicitudes pendientes y deja activas las aceptadas. \\
+\hline
+4 & El conductor marca a cada pasajero aceptado como a bordo, finalizado o no-show seg\'un corresponda. \\
+\hline
+5 & Cuando todos los pasajeros est\'an resueltos, el conductor finaliza el viaje. \\
+\hline
+6 & El sistema registra el cierre y actualiza el estado global del viaje. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+2.1 & El viaje se intenta iniciar fuera de la ventana permitida y el sistema lo bloquea. \\
+\hline
+4.1 & Se intenta marcar no-show a un pasajero ya abordado o finalizado y el sistema rechaza la acci\'on. \\
+\hline
+5.1 & Existen pasajeros aceptados sin resolver y el sistema exige una nota de cierre excepcional. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & El viaje queda cerrado con consistencia operativa normal o con cierre excepcional justificado. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-09 Calificar y reportar despu\'es del viaje}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-09 -- Calificar y reportar despu\'es del viaje \\
+\hline
+Actor & Pasajero o conductor autorizado \\
+\hline
+Descripci\'on & Permite registrar una calificaci\'on o un reporte despu\'es de un viaje elegible, dentro de la ventana de cierre definida. \\
+\hline
+Precondiciones & Debe existir un viaje o incidente elegible y el usuario debe tener permiso para calificar o reportar. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El usuario accede al m\'odulo de confianza. \\
+\hline
+2 & El sistema muestra los trayectos elegibles para cierre. \\
+\hline
+3 & El usuario selecciona calificar o reportar. \\
+\hline
+4 & El usuario completa la informaci\'on requerida y adjunta evidencia si corresponde. \\
+\hline
+5 & El sistema valida la informaci\'on y registra la acci\'on. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+2.1 & El viaje ya no est\'a dentro de la ventana de cierre y el sistema no muestra la acci\'on disponible. \\
+\hline
+4.1 & La evidencia no cumple las restricciones del sistema y el reporte no puede enviarse. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & La calificaci\'on o el reporte quedan registrados para su posterior consulta o revisi\'on. \\
+\hline
+\end{tabularx}
+
+\subsubsection{RFD-10 Revisar auditor\'ia administrativa}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RFD-10 -- Revisar auditor\'ia administrativa \\
+\hline
+Actor & Administrador institucional \\
+\hline
+Descripci\'on & Permite revisar conductores, reportes, sanciones, apelaciones y evidencias desde un m\'odulo administrativo. \\
+\hline
+Precondiciones & El usuario debe tener permisos administrativos activos dentro de su instituci\'on. \\
+\hline
+\end{tabularx}
+
+\textbf{Flujo normal}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+1 & El administrador ingresa al m\'odulo de auditor\'ia. \\
+\hline
+2 & El sistema muestra las bandejas administrativas disponibles. \\
+\hline
+3 & El administrador abre un caso de conductor, reporte, sanci\'on o apelaci\'on. \\
+\hline
+4 & El administrador revisa el detalle, la evidencia y el contexto relacionado. \\
+\hline
+5 & El administrador toma una decisi\'on seg\'un el flujo permitido. \\
+\hline
+6 & El sistema registra la acci\'on en auditor\'ia. \\
+\hline
+\end{longtable}
+
+\textbf{Flujo alternativo}
+
+\begin{longtable}{|P{1.5cm}|P{13cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on} \\
+\hline
+3.1 & El caso no pertenece a la instituci\'on del administrador y el sistema deniega el acceso. \\
+\hline
+5.1 & La acci\'on no es v\'alida para el estado actual del caso y el sistema la bloquea. \\
+\hline
+\end{longtable}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+Poscondiciones & El caso queda actualizado y la decisi\'on administrativa queda registrada. \\
+\hline
+\end{tabularx}
+
+\subsection{Requisitos no funcionales}
+
+Los requisitos no funcionales describen los atributos de calidad y restricciones t\'ecnicas del sistema.
+
+\begin{longtable}{|P{1.9cm}|P{3.9cm}|P{7.1cm}|P{2.1cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{ID} & \textbf{Categor\'ia} & \textbf{Descripci\'on} & \textbf{Prioridad} \\
+\hline
+\endfirsthead
+\hline
+\rowcolor{gray!15}
+\textbf{ID} & \textbf{Categor\'ia} & \textbf{Descripci\'on} & \textbf{Prioridad} \\
+\hline
+\endhead
+RNF-001 & Seguridad & Las contrase\~nas deben almacenarse de forma cifrada y el acceso a recursos debe estar protegido por autenticaci\'on y autorizaci\'on seg\'un rol. & Alta \\
+\hline
+RNF-002 & Integridad de datos & La base de datos debe mantenerse normalizada al menos hasta tercera forma normal, preservando consistencia y escalabilidad. & Alta \\
+\hline
+RNF-003 & Arquitectura & El backend debe seguir una arquitectura modular y mantenible alineada con principios de Clean Architecture. & Alta \\
+\hline
+RNF-004 & Multiinstitucionalidad & El sistema debe aislar l\'ogicamente la informaci\'on por instituci\'on y membres\'ia activa, evitando exposici\'on cruzada indebida de datos. & Alta \\
+\hline
+RNF-005 & Usabilidad & La interfaz debe ser clara, intuitiva, consistente y comprensible para usuarios no t\'ecnicos. & Alta \\
+\hline
+RNF-006 & Responsive design & La aplicaci\'on web debe adaptarse a resoluciones y dispositivos comunes sin perder operatividad esencial. & Media \\
+\hline
+RNF-007 & Disponibilidad operativa & El entorno QA debe ser reproducible mediante contenedores y healthchecks para base de datos, API y web. & Alta \\
+\hline
+RNF-008 & Mantenibilidad & El c\'odigo debe escribirse en ingl\'es, ser modular y evitar sobreingenier\'ia y acoplamientos innecesarios. & Alta \\
+\hline
+RNF-009 & Trazabilidad & Las acciones cr\'iticas del sistema deben quedar registradas con actor, fecha, entidad afectada y contexto suficiente para auditor\'ia. & Alta \\
+\hline
+RNF-010 & Fiabilidad & Las transiciones de estado del viaje, las solicitudes y la ejecuci\'on operativa deben ser consistentes y verificables. & Alta \\
+\hline
+RNF-011 & Rendimiento funcional & Las operaciones habituales de navegaci\'on, consulta y gesti\'on deben responder en tiempos adecuados para uso web interactivo. & Media \\
+\hline
+RNF-012 & Persistencia documental & Los archivos sensibles deben almacenarse de forma privada, con nombres internos no predecibles y acceso restringido. & Alta \\
+\hline
+RNF-013 & Compatibilidad tecnol\'ogica & El sistema debe operar sobre el stack definido por el proyecto: Next.js, NestJS, Prisma y PostgreSQL. & Media \\
+\hline
+RNF-014 & Recuperaci\'on de sesi\'on & La web debe resincronizar la sesi\'on y el contexto operativo cuando corresponda, sin comprometer flujos cr\'iticos como carga de archivos. & Media \\
+\hline
+RNF-015 & Escalabilidad evolutiva & La arquitectura debe permitir incorporar posteriormente tracking avanzado, notificaciones, mobile y pagos sin redise\~nar el n\'ucleo del dominio actual. & Media \\
+\hline
+\end{longtable}
+
+\subsection{Detalle de requisitos no funcionales}
+
+Las siguientes fichas desarrollan los requisitos no funcionales m\'as importantes de forma m\'as clara y verificable.
+
+\subsubsection{RNFD-01 Seguridad de acceso}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-01 -- Seguridad de acceso \\
+\hline
+Categor\'ia & Seguridad \\
+\hline
+Descripci\'on & El sistema debe proteger el acceso mediante autenticaci\'on, autorizaci\'on por rol y almacenamiento seguro de contrase\~nas. \\
+\hline
+Justificaci\'on & Evita accesos no autorizados y protege la identidad de los usuarios. \\
+\hline
+Criterio de verificaci\'on & Comprobar que no se puede acceder a m\'odulos protegidos sin sesi\'on y que los permisos cambian seg\'un el rol. \\
+\hline
+Prioridad & Alta \\
+\hline
+\end{tabularx}
+
+\subsubsection{RNFD-02 Integridad y organizaci\'on de datos}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-02 -- Integridad y organizaci\'on de datos \\
+\hline
+Categor\'ia & Base de datos \\
+\hline
+Descripci\'on & La base de datos debe mantenerse organizada y consistente, con dise\~no normalizado al menos hasta tercera forma normal. \\
+\hline
+Justificaci\'on & Reduce redundancia, errores de datos y problemas de mantenimiento futuro. \\
+\hline
+Criterio de verificaci\'on & Revisar el esquema y confirmar relaciones claras, claves bien definidas y ausencia de duplicaci\'on innecesaria. \\
+\hline
+Prioridad & Alta \\
+\hline
+\end{tabularx}
+
+\subsubsection{RNFD-03 Arquitectura mantenible}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-03 -- Arquitectura mantenible \\
+\hline
+Categor\'ia & Mantenibilidad \\
+\hline
+Descripci\'on & El sistema debe usar una arquitectura modular que facilite cambios, pruebas y evoluci\'on del producto. \\
+\hline
+Justificaci\'on & Permite continuar el desarrollo sin caer en c\'odigo dif\'icil de mantener. \\
+\hline
+Criterio de verificaci\'on & Revisar que el backend y frontend se encuentren separados por m\'odulos y responsabilidades claras. \\
+\hline
+Prioridad & Alta \\
+\hline
+\end{tabularx}
+
+\subsubsection{RNFD-04 Usabilidad y claridad visual}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-04 -- Usabilidad y claridad visual \\
+\hline
+Categor\'ia & Usabilidad \\
+\hline
+Descripci\'on & La interfaz debe ser f\'acil de entender, con mensajes claros, acciones visibles y dise\~no consistente. \\
+\hline
+Justificaci\'on & Los usuarios del sistema no necesariamente tienen conocimientos t\'ecnicos. \\
+\hline
+Criterio de verificaci\'on & Ejecutar pruebas manuales y validar que la navegaci\'on sea simple, clara y sin confusiones importantes. \\
+\hline
+Prioridad & Alta \\
+\hline
+\end{tabularx}
+
+\subsubsection{RNFD-05 Compatibilidad y adaptaci\'on web}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-05 -- Compatibilidad y adaptaci\'on web \\
+\hline
+Categor\'ia & Portabilidad \\
+\hline
+Descripci\'on & La aplicaci\'on debe funcionar correctamente en navegadores modernos y adaptarse a distintos tama\~nos de pantalla. \\
+\hline
+Justificaci\'on & Los usuarios acceder\'an al sistema desde equipos y resoluciones diferentes. \\
+\hline
+Criterio de verificaci\'on & Revisar visualmente las pantallas principales en vistas de escritorio y tama\~nos reducidos. \\
+\hline
+Prioridad & Media \\
+\hline
+\end{tabularx}
+
+\subsubsection{RNFD-06 Disponibilidad del entorno}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-06 -- Disponibilidad del entorno \\
+\hline
+Categor\'ia & Disponibilidad \\
+\hline
+Descripci\'on & El entorno de prueba debe poder levantarse de manera reproducible con web, API y base de datos. \\
+\hline
+Justificaci\'on & Permite probar el sistema con estabilidad y repetir validaciones. \\
+\hline
+Criterio de verificaci\'on & Confirmar que los servicios se levantan mediante Docker Compose y responden con healthchecks correctos. \\
+\hline
+Prioridad & Alta \\
+\hline
+\end{tabularx}
+
+\subsubsection{RNFD-07 Trazabilidad y auditor\'ia}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-07 -- Trazabilidad y auditor\'ia \\
+\hline
+Categor\'ia & Trazabilidad \\
+\hline
+Descripci\'on & Las acciones cr\'iticas del sistema deben quedar registradas con suficiente detalle para seguimiento posterior. \\
+\hline
+Justificaci\'on & Facilita revisi\'on administrativa, an\'alisis de incidentes y control de cambios. \\
+\hline
+Criterio de verificaci\'on & Revisar que eventos importantes como aprobaciones, cierre de viajes y sanciones generen registros de auditor\'ia. \\
+\hline
+Prioridad & Alta \\
+\hline
+\end{tabularx}
+
+\subsubsection{RNFD-08 Fiabilidad de estados}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-08 -- Fiabilidad de estados \\
+\hline
+Categor\'ia & Fiabilidad \\
+\hline
+Descripci\'on & Los estados del viaje, de la solicitud y de la ejecuci\'on operativa deben mantenerse coherentes entre s\'i. \\
+\hline
+Justificaci\'on & Este es uno de los puntos m\'as sensibles del sistema porque afecta la operaci\'on real del trayecto. \\
+\hline
+Criterio de verificaci\'on & Probar escenarios donde cambian los estados y verificar que no aparezcan inconsistencias visibles ni l\'ogicas. \\
+\hline
+Prioridad & Alta \\
+\hline
+\end{tabularx}
+
+\subsubsection{RNFD-09 Escalabilidad evolutiva}
+
+\begin{tabularx}{\textwidth}{|P{3.3cm}|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Nombre & RNFD-09 -- Escalabilidad evolutiva \\
+\hline
+Categor\'ia & Evoluci\'on del sistema \\
+\hline
+Descripci\'on & La arquitectura actual debe permitir agregar funciones futuras como notificaciones, mobile, tracking avanzado o pagos sin rehacer el sistema base. \\
+\hline
+Justificaci\'on & El producto seguir\'a creciendo por etapas y necesita una base estable. \\
+\hline
+Criterio de verificaci\'on & Revisar que el dise\~no del sistema se mantenga modular y que las funciones futuras no dependan de reescribir el dominio actual. \\
+\hline
+Prioridad & Media \\
+\hline
+\end{tabularx}
+
+\subsection{Criterios de verificabilidad}
+
+Para que un requisito de este documento sea considerado correctamente especificado, debe cumplir con estas condiciones:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item ser claro y no ambiguo,
+    \item poder verificarse mediante inspecci\'on, prueba o demostraci\'on,
+    \item estar alineado con el alcance real del proyecto,
+    \item no contradecir otros requisitos del documento.
+\end{itemize}
+
+\section{Conclusiones}
+
+La presente especificaci\'on organiza de forma formal los requisitos funcionales y no funcionales de SafeRidePro siguiendo una estructura inspirada en IEEE 830. El documento deja definido qu\'e debe hacer el sistema, bajo qu\'e restricciones debe operar y qu\'e atributos de calidad deben cumplirse.
+
+Este entregable constituye la base inmediata para las siguientes actividades del curso: an\'alisis de requisitos, dise\~no de casos de prueba, matriz de trazabilidad, preparaci\'on del entorno de pruebas y posterior ejecuci\'on con registro de incidentes y evidencias.
+
+\nocite{ieee830,saferideReqBase,saferideProtocol,saferidePolicies,saferideHandoff}
+\bibliographystyle{IEEEtran}
+\bibliography{bibliografias}
+
+\end{document}
