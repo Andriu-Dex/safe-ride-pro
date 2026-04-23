@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export type ToastTone = 'success' | 'error' | 'info';
 
@@ -42,7 +43,7 @@ export function ToastStack({
     return null;
   }
 
-  return (
+  const content = (
     <div aria-live="polite" className="toast-stack" role="status">
       {toasts.map((toast) => (
         <article
@@ -62,10 +63,12 @@ export function ToastStack({
             onClick={() => onDismiss(toast.id)}
             type="button"
           >
-            ×
+            x
           </button>
         </article>
       ))}
     </div>
   );
+
+  return typeof document === 'undefined' ? content : createPortal(content, document.body);
 }

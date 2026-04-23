@@ -1,5 +1,7 @@
 .registerShell {
   position: relative;
+  display: grid;
+  place-items: center;
   overflow: hidden;
 }
 
@@ -33,6 +35,7 @@
   z-index: 1;
   display: grid;
   width: min(1160px, 100%);
+  margin-inline: auto;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   overflow: hidden;
   border: 1px solid rgba(23, 51, 56, 0.14);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
@@ -27,21 +27,24 @@ export function LoginForm({
   const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [helperMessage, setHelperMessage] = useState<string | null>(
-    showVerifiedMessage
-      ? 'Correo verificado correctamente. Ya puedes iniciar sesión.'
-      : showResetMessage
-        ? 'La clave se actualizó correctamente. Ya puedes iniciar sesión.'
-        : null,
-  );
+  const [toast, setToast] = useState<{ title: string; message: string; type: 'error' | 'success' | 'info' } | null>(() => {
+    if (showVerifiedMessage) return { title: 'Verificación exitosa', message: 'Correo verificado correctamente. Ya puedes iniciar sesión.', type: 'success' };
+    if (showResetMessage) return { title: 'Clave actualizada', message: 'La clave se actualizó correctamente. Ya puedes iniciar sesión.', type: 'success' };
+    return null;
+  });
 
   const isBusy = isSigningIn || isPending;
 
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setErrorMessage(null);
-    setHelperMessage(null);
+    setToast(null);
 
     try {
       await signIn({
@@ -54,11 +57,19 @@ export function LoginForm({
       });
     } catch (error) {
       if (error instanceof ApiError) {
-        setErrorMessage(error.message);
+        setToast({
+          title: 'Error de acceso',
+          message: error.message,
+          type: 'error',
+        });
         return;
       }
 
-      setErrorMessage('No fue posible iniciar sesión. Intenta nuevamente.');
+      setToast({
+        title: 'Error de acceso',
+        message: 'No fue posible iniciar sesión. Intenta nuevamente.',
+        type: 'error',
+      });
     }
   };
 
@@ -92,11 +103,6 @@ export function LoginForm({
           value={password}
         />
 
-        {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-        {helperMessage ? (
-          <div className="form-helper form-helper-strong">{helperMessage}</div>
-        ) : null}
-
         <Button disabled={isBusy} type="submit">
           {isBusy ? 'Ingresando...' : 'Iniciar sesión'}
         </Button>
@@ -116,6 +122,25 @@ export function LoginForm({
           Olvidé mi clave
         </a>
       </div>
+
+      {toast && (
+        <div className="toast-stack">
+          <div className={`toast-card toast-card-${toast.type}`}>
+            <div className="toast-card-copy">
+              <strong>{toast.title}</strong>
+              <p>{toast.message}</p>
+            </div>
+            <button
+              type="button"
+              className="toast-dismiss"
+              onClick={() => setToast(null)}
+              aria-label="Cerrar notificación"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

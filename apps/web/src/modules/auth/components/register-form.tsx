@@ -9,10 +9,12 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
+import { persistToast } from '../../../components/ui/flash-toast';
 import { InputField } from '../../../components/ui/input-field';
 import { PasswordField } from '../../../components/ui/password-field';
 import { SelectField } from '../../../components/ui/select-field';
 import { StatusPill } from '../../../components/ui/status-pill';
+import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
 import { register, ApiError } from '../lib/auth-api';
 import styles from './register-form.module.css';
 
@@ -177,8 +179,7 @@ function getPasswordStrength(password: string): PasswordStrength | null {
 export function RegisterForm() {
   const router = useRouter();
   const [values, setValues] = useState(INITIAL_VALUES);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Record<RegisterFormField, boolean>>({
@@ -246,7 +247,6 @@ export function RegisterForm() {
   ]);
 
   const canSubmit = !isSubmitting;
-  const shouldShowValidationIssues = hasAttemptedSubmit && validationIssues.length > 0;
 
   const emailError = useMemo(() => {
     const normalizedEmail = values.email.trim().toLowerCase();
@@ -262,7 +262,7 @@ export function RegisterForm() {
     const domain = normalizedEmail.split('@')[1];
 
     if (domain && PUBLIC_EMAIL_DOMAINS.has(domain)) {
-      return 'Debes usar un correo institucional, no un proveedor público.';
+      return 'Se requiere un correo institucional autorizado.';
     }
 
     return null;
@@ -377,6 +377,21 @@ export function RegisterForm() {
     }));
   };
 
+  const pushToast = (title: string, description: string, tone: ToastItem['tone'] = 'error') => {
+    setToasts([
+      {
+        id: `register-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title,
+        description,
+        tone,
+      },
+    ]);
+  };
+
+  const dismissToast = (toastId: string) => {
+    setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== toastId));
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setHasAttemptedSubmit(true);
@@ -389,10 +404,14 @@ export function RegisterForm() {
         currentValue,
       ),
     );
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    setToasts([]);
 
     if (validationIssues.length > 0) {
+      pushToast(
+        'Formulario incompleto',
+        'Por favor, revisa los campos marcados en rojo antes de continuar.',
+        'error',
+      );
       return;
     }
 
@@ -408,7 +427,11 @@ export function RegisterForm() {
         documentNumber: values.documentNumber.trim(),
       });
 
-      setSuccessMessage(response.message);
+      persistToast({
+        title: 'Registro exitoso',
+        description: response.message,
+        tone: 'success',
+      });
 
       const query = new URLSearchParams({
         email: response.user.email,
@@ -424,9 +447,9 @@ export function RegisterForm() {
       router.replace(`/verify-email?${query.toString()}`);
     } catch (error) {
       if (error instanceof ApiError) {
-        setErrorMessage(error.message);
+        pushToast('Error de registro', error.message, 'error');
       } else {
-        setErrorMessage('No fue posible crear la cuenta en este momento.');
+        pushToast('Error de registro', 'No fue posible crear la cuenta en este momento.', 'error');
       }
     } finally {
       setIsSubmitting(false);
@@ -434,147 +457,133 @@ export function RegisterForm() {
   };
 
   return (
-    <div className={`${styles.registerFormCard} form-card`}>
-      <div className={`${styles.registerFormHeader} form-header`}>
-        <p className={styles.kicker}>Registro institucional</p>
-        <h2>Completa el formulario</h2>
-        <p>Solo necesitamos los datos esenciales para crear tu cuenta.</p>
-      </div>
+    <>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
+      <div className={`${styles.registerFormCard} form-card`}>
+        <div className={`${styles.registerFormHeader} form-header`}>
+          <p className={styles.kicker}>Registro institucional</p>
+          <h2>Completa el formulario</h2>
+          <p>Solo necesitamos los datos esenciales para crear tu cuenta.</p>
+        </div>
 
-      <form className={`${styles.registerFormStack} form-stack`} noValidate onSubmit={handleSubmit}>
-        <InputField
-          autoComplete="name"
-          error={getVisibleFieldError('fullName')}
-          label="Nombre completo"
-          onBlur={() => markFieldAsTouched('fullName')}
-          onChange={(event) => handleChange('fullName', event.target.value)}
-          placeholder="Nombres y apellidos"
-          required
-          value={values.fullName}
-        />
+        <form className={`${styles.registerFormStack} form-stack`} noValidate onSubmit={handleSubmit}>
+          <InputField
+            autoComplete="name"
+            error={getVisibleFieldError('fullName')}
+            label="Nombre completo"
+            onBlur={() => markFieldAsTouched('fullName')}
+            onChange={(event) => handleChange('fullName', event.target.value)}
+            placeholder="Nombres y apellidos"
+            required
+            value={values.fullName}
+          />
 
-        <InputField
-          autoComplete="email"
-          error={getVisibleFieldError('email')}
-          label="Correo institucional"
-          onBlur={() => markFieldAsTouched('email')}
-          onChange={(event) => handleChange('email', event.target.value)}
-          placeholder="tu-correo@institucion.edu"
-          required
-          type="email"
-          value={values.email}
-        />
+          <InputField
+            autoComplete="email"
+            error={getVisibleFieldError('email')}
+            label="Correo institucional"
+            onBlur={() => markFieldAsTouched('email')}
+            onChange={(event) => handleChange('email', event.target.value)}
+            placeholder="tu-correo@institucion.edu"
+            required
+            type="email"
+            value={values.email}
+          />
 
-        <SelectField
-          error={getVisibleFieldError('documentType')}
-          label="Tipo de documento"
-          onBlur={() => markFieldAsTouched('documentType')}
-          onChange={(event) => handleChange('documentType', event.target.value)}
-          required
-          value={values.documentType}
-        >
-          <option value={DocumentType.NationalId}>Cédula</option>
-          <option value={DocumentType.Passport}>Pasaporte</option>
-        </SelectField>
+          <SelectField
+            error={getVisibleFieldError('documentType')}
+            label="Tipo de documento"
+            onBlur={() => markFieldAsTouched('documentType')}
+            onChange={(event) => handleChange('documentType', event.target.value)}
+            required
+            value={values.documentType}
+          >
+            <option value={DocumentType.NationalId}>Cédula</option>
+            <option value={DocumentType.Passport}>Pasaporte</option>
+          </SelectField>
 
-        <InputField
-          error={getVisibleFieldError('documentNumber')}
-          inputMode={values.documentType === DocumentType.NationalId ? 'numeric' : undefined}
-          label="Número de documento"
-          maxLength={values.documentType === DocumentType.NationalId ? NATIONAL_ID_LENGTH : 20}
-          onBlur={() => markFieldAsTouched('documentNumber')}
-          onChange={(event) => handleChange('documentNumber', event.target.value)}
-          placeholder="0102030405"
-          required
-          value={values.documentNumber}
-        />
+          <InputField
+            error={getVisibleFieldError('documentNumber')}
+            inputMode={values.documentType === DocumentType.NationalId ? 'numeric' : undefined}
+            label="Número de documento"
+            maxLength={values.documentType === DocumentType.NationalId ? NATIONAL_ID_LENGTH : 20}
+            onBlur={() => markFieldAsTouched('documentNumber')}
+            onChange={(event) => handleChange('documentNumber', event.target.value)}
+            placeholder="0102030405"
+            required
+            value={values.documentNumber}
+          />
 
-        <InputField
-          error={getVisibleFieldError('phone')}
-          inputMode="tel"
-          label="Teléfono (opcional)"
-          onBlur={() => markFieldAsTouched('phone')}
-          onChange={(event) => handleChange('phone', event.target.value)}
-          placeholder="0999999999"
-          value={values.phone}
-        />
+          <InputField
+            error={getVisibleFieldError('phone')}
+            inputMode="tel"
+            label="Teléfono (opcional)"
+            onBlur={() => markFieldAsTouched('phone')}
+            onChange={(event) => handleChange('phone', event.target.value)}
+            placeholder="0999999999"
+            value={values.phone}
+          />
 
-        <PasswordField
-          autoComplete="new-password"
-          error={getVisibleFieldError('password')}
-          label="Clave de acceso"
-          hideLabel="Ocultar clave"
-          onBlur={() => markFieldAsTouched('password')}
-          onChange={(event) => handleChange('password', event.target.value)}
-          placeholder="Mínimo 8 caracteres"
-          required
-          showLabel="Mostrar clave"
-          value={values.password}
-        />
+          <PasswordField
+            autoComplete="new-password"
+            error={getVisibleFieldError('password')}
+            label="Clave de acceso"
+            hideLabel="Ocultar clave"
+            onBlur={() => markFieldAsTouched('password')}
+            onChange={(event) => handleChange('password', event.target.value)}
+            placeholder="Mínimo 8 caracteres"
+            required
+            showLabel="Mostrar clave"
+            value={values.password}
+          />
 
-        <PasswordField
-          autoComplete="new-password"
-          error={getVisibleFieldError('confirmPassword')}
-          label="Confirmar clave"
-          hideLabel="Ocultar confirmación de clave"
-          onBlur={() => markFieldAsTouched('confirmPassword')}
-          onChange={(event) => handleChange('confirmPassword', event.target.value)}
-          placeholder="Repite tu clave"
-          required
-          showLabel="Mostrar confirmación de clave"
-          value={values.confirmPassword}
-        />
+          <PasswordField
+            autoComplete="new-password"
+            error={getVisibleFieldError('confirmPassword')}
+            label="Confirmar clave"
+            hideLabel="Ocultar confirmación de clave"
+            onBlur={() => markFieldAsTouched('confirmPassword')}
+            onChange={(event) => handleChange('confirmPassword', event.target.value)}
+            placeholder="Repite tu clave"
+            required
+            showLabel="Mostrar confirmación de clave"
+            value={values.confirmPassword}
+          />
 
-        {passwordStrength ? (
-          <div className={styles.passwordStrengthCard} aria-live="polite">
-            <div className={styles.passwordStrengthHeader}>
-              <strong>Seguridad de la clave</strong>
-              <StatusPill label={passwordStrength.label} tone={passwordStrength.tone} />
+          {passwordStrength ? (
+            <div className={styles.passwordStrengthCard} aria-live="polite">
+              <div className={styles.passwordStrengthHeader}>
+                <strong>Seguridad de la clave</strong>
+                <StatusPill label={passwordStrength.label} tone={passwordStrength.tone} />
+              </div>
+              <div aria-hidden="true" className={styles.passwordStrengthMeter}>
+                <span
+                  className={[
+                    styles.passwordStrengthFill,
+                    passwordStrength.tone === 'danger'
+                      ? styles.passwordStrengthFillDanger
+                      : passwordStrength.tone === 'warning'
+                        ? styles.passwordStrengthFillWarning
+                        : styles.passwordStrengthFillSuccess,
+                  ].join(' ')}
+                  style={{ width: `${passwordStrength.progress}%` }}
+                />
+              </div>
+              <p className={styles.passwordStrengthText}>{passwordStrength.description}</p>
             </div>
-            <div aria-hidden="true" className={styles.passwordStrengthMeter}>
-              <span
-                className={[
-                  styles.passwordStrengthFill,
-                  passwordStrength.tone === 'danger'
-                    ? styles.passwordStrengthFillDanger
-                    : passwordStrength.tone === 'warning'
-                      ? styles.passwordStrengthFillWarning
-                      : styles.passwordStrengthFillSuccess,
-                ].join(' ')}
-                style={{ width: `${passwordStrength.progress}%` }}
-              />
-            </div>
-            <p className={styles.passwordStrengthText}>{passwordStrength.description}</p>
-          </div>
-        ) : null}
+          ) : null}
 
-        {shouldShowValidationIssues ? (
-          <div className={`${styles.validationCard} ${styles.validationCardDanger}`}>
-            <strong>Antes de continuar:</strong>
-            <ul className={styles.validationList}>
-              {validationIssues.map((issue) => (
-                <li key={issue}>{issue}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+          <Button className={styles.registerSubmitButton} disabled={!canSubmit} type="submit">
+            {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
+          </Button>
+        </form>
 
-        {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-        {successMessage ? <div className="form-success">{successMessage}</div> : null}
-
-        <Button className={styles.registerSubmitButton} disabled={!canSubmit} type="submit">
-          {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
-        </Button>
-      </form>
-
-      <div className={`${styles.registerSecondaryAction} mt-1 flex flex-wrap items-center gap-2`}>
-        <a
-          className="auth-inline-link text-sm"
-          href="/login"
-        >
-          Ya tengo una cuenta
-        </a>
+        <div className={`${styles.registerSecondaryAction} mt-1 flex flex-wrap items-center gap-2`}>
+          <a className="auth-inline-link text-sm" href="/login">
+            Ya tengo una cuenta
+          </a>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

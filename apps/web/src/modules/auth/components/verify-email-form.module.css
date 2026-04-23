@@ -1,0 +1,114 @@
+.verifyFormCard {
+  display: grid;
+  gap: 1.15rem;
+  border: 1px solid rgba(22, 47, 58, 0.12);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 251, 251, 0.88));
+  padding: clamp(1rem, 2vw, 1.5rem);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.verifyFormHeader {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.kicker {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.77rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.verifyFormHeader h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 2vw, 1.9rem);
+  color: #16343d;
+}
+
+.verifyFormHeader p {
+  margin: 0;
+  color: #5a737a;
+  line-height: 1.55;
+}
+
+.summaryCard {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgba(14, 165, 233, 0.14);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.82), rgba(240, 253, 250, 0.82));
+  padding: 0.9rem 1rem;
+}
+
+.summaryLabel {
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.summaryCard strong {
+  color: #16343d;
+}
+
+.verifyFormStack {
+  gap: 0.95rem;
+}
+
+.developmentCode {
+  border: 1px dashed rgba(14, 165, 233, 0.24);
+  border-radius: 14px;
+  background: rgba(240, 249, 255, 0.75);
+  padding: 0.82rem 0.92rem;
+  color: #1d4f5a;
+}
+
+.developmentCode strong {
+  color: #0b7285;
+}
+
+.validationCard {
+  border-radius: 14px;
+  border: 1px solid rgba(181, 71, 62, 0.18);
+  background: rgba(181, 71, 62, 0.08);
+  padding: 0.82rem 0.94rem;
+  color: #b5473e;
+}
+
+.validationList {
+  margin: 0.45rem 0 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.submitButton {
+  width: 100%;
+  min-height: 3rem;
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.secondaryAction {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.secondaryAction:global(.button) {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .actionGrid {
+    grid-template-columns: 1fr;
+  }
+}

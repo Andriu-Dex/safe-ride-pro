@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { FlashToastHost } from '../components/ui/flash-toast-host';
 import { AuthProvider } from '../modules/auth/components/auth-provider';
 import './globals.css';
 
@@ -19,7 +20,10 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <FlashToastHost />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

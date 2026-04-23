@@ -199,7 +199,7 @@ describe('RegisterForm', () => {
     await user.tab();
 
     expect(
-      screen.getByText('Debes usar un correo institucional, no un proveedor público.'),
+      screen.getByText('Se requiere un correo institucional autorizado.'),
     ).toBeInTheDocument();
   });
 });

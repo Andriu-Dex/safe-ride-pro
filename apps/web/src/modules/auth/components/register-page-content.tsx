@@ -43,7 +43,9 @@ const REGISTER_TIPS = [
 
 export function RegisterPageContent() {
   return (
-    <main className={`${styles.registerShell} min-h-screen bg-[radial-gradient(circle_at_top,#fdf8ee_0%,#f3ecdf_45%,#eadfcd_100%)] p-4 sm:p-8`}>
+    <main
+      className={`${styles.registerShell} grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top,#fdf8ee_0%,#f3ecdf_45%,#eadfcd_100%)] p-4 sm:p-8`}
+    >
       <section className={styles.registerCard}>
         <aside className={styles.registerShowcase}>
           <div className={`${styles.registerShowcaseCopy} ${styles.entryAnimation}`}>
