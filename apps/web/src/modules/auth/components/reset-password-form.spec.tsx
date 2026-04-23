@@ -21,7 +21,7 @@ describe('ResetPasswordForm', () => {
     render(<ResetPasswordForm />);
 
     const user = userEvent.setup();
-    const passwordInput = screen.getByLabelText('Nueva contrasena');
+    const passwordInput = screen.getByLabelText('Nueva contraseña');
 
     await user.type(passwordInput, 'Password123');
 
@@ -30,8 +30,8 @@ describe('ResetPasswordForm', () => {
       screen.getByText('Buena base. Puedes reforzarla con un simbolo.'),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Mostrar nueva contrasena' }));
+    await user.click(screen.getByRole('button', { name: 'Mostrar nueva contraseña' }));
 
-    expect(screen.getByLabelText('Nueva contrasena')).toHaveAttribute('type', 'text');
+    expect(screen.getByLabelText('Nueva contraseña')).toHaveAttribute('type', 'text');
   });
 });

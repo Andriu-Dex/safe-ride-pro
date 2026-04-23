@@ -84,7 +84,7 @@ export function AppLogo({
       </div>
       <div>
         <p className="brand-title">SafeRidePro</p>
-        <p className="brand-subtitle">Movilidad universitaria segura</p>
+        <p className="brand-subtitle-sidebar">Movilidad universitaria segura</p>
       </div>
     </div>
   );

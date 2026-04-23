@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
 import { ApiError, forgotPassword } from '../lib/auth-api';
+import styles from './forgot-password-form.module.css';
 
 type ForgotPasswordFormProps = {
   initialEmail?: string;
@@ -39,7 +40,7 @@ export function ForgotPasswordForm({ initialEmail = '' }: ForgotPasswordFormProp
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage('No fue posible enviar las instrucciones de recuperacion.');
+        setErrorMessage('No fue posible enviar las instrucciones de recuperación.');
       }
     } finally {
       setIsSubmitting(false);
@@ -47,14 +48,14 @@ export function ForgotPasswordForm({ initialEmail = '' }: ForgotPasswordFormProp
   };
 
   return (
-    <div className="form-card">
-      <div className="form-header">
-        <p className="kicker">Recuperacion</p>
-        <h2>Restablece tu contrasena</h2>
-        <p>Te enviaremos un codigo para crear una nueva contrasena.</p>
+    <div className={`${styles.forgotFormCard} form-card`}>
+      <div className={`${styles.forgotFormHeader} form-header`}>
+        <p className={styles.kicker}>Recuperación</p>
+        <h2>Restablece tu contraseña</h2>
+        <p>Te enviaremos un código para crear una nueva contraseña.</p>
       </div>
 
-      <form className="form-stack" onSubmit={handleSubmit}>
+      <form className={`${styles.forgotFormStack} form-stack`} onSubmit={handleSubmit}>
         <InputField
           autoComplete="email"
           label="Correo institucional"
@@ -67,14 +68,14 @@ export function ForgotPasswordForm({ initialEmail = '' }: ForgotPasswordFormProp
 
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
 
-        <Button disabled={isSubmitting} type="submit">
-          {isSubmitting ? 'Enviando...' : 'Enviar codigo'}
+        <Button className={styles.submitButton} disabled={isSubmitting} type="submit">
+          {isSubmitting ? 'Enviando...' : 'Enviar código'}
         </Button>
       </form>
 
-      <div className="button-row">
-        <a className="button button-secondary" href="/login">
-          Volver al inicio de sesion
+      <div className={styles.secondaryLinks}>
+        <a className={styles.textLink} href="/login">
+          Volver al inicio de sesión
         </a>
       </div>
     </div>

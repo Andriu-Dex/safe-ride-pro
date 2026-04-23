@@ -14,6 +14,7 @@ import { PasswordField } from '../../../components/ui/password-field';
 import { SelectField } from '../../../components/ui/select-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { register, ApiError } from '../lib/auth-api';
+import styles from './register-form.module.css';
 
 type RegisterFormValues = {
   fullName: string;
@@ -151,7 +152,7 @@ function getPasswordStrength(password: string): PasswordStrength | null {
     return {
       label: 'Baja',
       tone: 'danger',
-      description: 'Agrega mayusculas, numeros o mayor longitud.',
+      description: 'Agrega mayúsculas, números o mayor longitud.',
       progress,
     };
   }
@@ -160,7 +161,7 @@ function getPasswordStrength(password: string): PasswordStrength | null {
     return {
       label: 'Media',
       tone: 'warning',
-      description: 'Buena base. Puedes reforzarla con un simbolo.',
+      description: 'Buena base. Puedes reforzarla con un símbolo.',
       progress,
     };
   }
@@ -261,7 +262,7 @@ export function RegisterForm() {
     const domain = normalizedEmail.split('@')[1];
 
     if (domain && PUBLIC_EMAIL_DOMAINS.has(domain)) {
-      return 'Debes usar un correo institucional, no un proveedor publico.';
+      return 'Debes usar un correo institucional, no un proveedor público.';
     }
 
     return null;
@@ -433,14 +434,14 @@ export function RegisterForm() {
   };
 
   return (
-    <div className="form-card register-form-card">
-      <div className="form-header register-form-header">
-        <p className="kicker">Registro institucional</p>
+    <div className={`${styles.registerFormCard} form-card`}>
+      <div className={`${styles.registerFormHeader} form-header`}>
+        <p className={styles.kicker}>Registro institucional</p>
         <h2>Completa el formulario</h2>
         <p>Solo necesitamos los datos esenciales para crear tu cuenta.</p>
       </div>
 
-      <form className="form-stack register-form-stack register-form-vertical" noValidate onSubmit={handleSubmit}>
+      <form className={`${styles.registerFormStack} form-stack`} noValidate onSubmit={handleSubmit}>
         <InputField
           autoComplete="name"
           error={getVisibleFieldError('fullName')}
@@ -472,14 +473,14 @@ export function RegisterForm() {
           required
           value={values.documentType}
         >
-          <option value={DocumentType.NationalId}>Cedula</option>
+          <option value={DocumentType.NationalId}>Cédula</option>
           <option value={DocumentType.Passport}>Pasaporte</option>
         </SelectField>
 
         <InputField
           error={getVisibleFieldError('documentNumber')}
           inputMode={values.documentType === DocumentType.NationalId ? 'numeric' : undefined}
-          label="Numero de documento"
+          label="Número de documento"
           maxLength={values.documentType === DocumentType.NationalId ? NATIONAL_ID_LENGTH : 20}
           onBlur={() => markFieldAsTouched('documentNumber')}
           onChange={(event) => handleChange('documentNumber', event.target.value)}
@@ -491,7 +492,7 @@ export function RegisterForm() {
         <InputField
           error={getVisibleFieldError('phone')}
           inputMode="tel"
-          label="Telefono (opcional)"
+          label="Teléfono (opcional)"
           onBlur={() => markFieldAsTouched('phone')}
           onChange={(event) => handleChange('phone', event.target.value)}
           placeholder="0999999999"
@@ -505,7 +506,7 @@ export function RegisterForm() {
           hideLabel="Ocultar clave"
           onBlur={() => markFieldAsTouched('password')}
           onChange={(event) => handleChange('password', event.target.value)}
-          placeholder="Minimo 8 caracteres"
+          placeholder="Mínimo 8 caracteres"
           required
           showLabel="Mostrar clave"
           value={values.password}
@@ -515,38 +516,42 @@ export function RegisterForm() {
           autoComplete="new-password"
           error={getVisibleFieldError('confirmPassword')}
           label="Confirmar clave"
-          hideLabel="Ocultar confirmacion de clave"
+          hideLabel="Ocultar confirmación de clave"
           onBlur={() => markFieldAsTouched('confirmPassword')}
           onChange={(event) => handleChange('confirmPassword', event.target.value)}
           placeholder="Repite tu clave"
           required
-          showLabel="Mostrar confirmacion de clave"
+          showLabel="Mostrar confirmación de clave"
           value={values.confirmPassword}
         />
 
         {passwordStrength ? (
-          <div className="password-strength-card" aria-live="polite">
-            <div className="password-strength-header">
+          <div className={styles.passwordStrengthCard} aria-live="polite">
+            <div className={styles.passwordStrengthHeader}>
               <strong>Seguridad de la clave</strong>
               <StatusPill label={passwordStrength.label} tone={passwordStrength.tone} />
             </div>
-            <div aria-hidden="true" className="password-strength-meter">
+            <div aria-hidden="true" className={styles.passwordStrengthMeter}>
               <span
                 className={[
-                  'password-strength-fill',
-                  `password-strength-fill-${passwordStrength.tone}`,
+                  styles.passwordStrengthFill,
+                  passwordStrength.tone === 'danger'
+                    ? styles.passwordStrengthFillDanger
+                    : passwordStrength.tone === 'warning'
+                      ? styles.passwordStrengthFillWarning
+                      : styles.passwordStrengthFillSuccess,
                 ].join(' ')}
                 style={{ width: `${passwordStrength.progress}%` }}
               />
             </div>
-            <p className="password-strength-text">{passwordStrength.description}</p>
+            <p className={styles.passwordStrengthText}>{passwordStrength.description}</p>
           </div>
         ) : null}
 
         {shouldShowValidationIssues ? (
-          <div className="validation-card validation-card-danger">
+          <div className={`${styles.validationCard} ${styles.validationCardDanger}`}>
             <strong>Antes de continuar:</strong>
-            <ul className="validation-list">
+            <ul className={styles.validationList}>
               {validationIssues.map((issue) => (
                 <li key={issue}>{issue}</li>
               ))}
@@ -557,13 +562,16 @@ export function RegisterForm() {
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
-        <Button className="register-submit-button" disabled={!canSubmit} type="submit">
+        <Button className={styles.registerSubmitButton} disabled={!canSubmit} type="submit">
           {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
         </Button>
       </form>
 
-      <div className="button-row register-secondary-action">
-        <a className="button button-secondary" href="/login">
+      <div className={`${styles.registerSecondaryAction} mt-1 flex flex-wrap items-center gap-2`}>
+        <a
+          className="auth-inline-link text-sm"
+          href="/login"
+        >
           Ya tengo una cuenta
         </a>
       </div>

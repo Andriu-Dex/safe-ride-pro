@@ -323,7 +323,6 @@ export function ProfileOnboardingForm() {
                 />
                 <InputField
                   autoComplete="tel"
-                  hint="Opcional: formato 09XXXXXXXX"
                   label="Celular"
                   onChange={(event) =>
                     setFormState((current) => ({

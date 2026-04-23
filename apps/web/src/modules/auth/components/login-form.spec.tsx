@@ -43,7 +43,7 @@ describe('LoginForm', () => {
     );
     await user.clear(screen.getByPlaceholderText('Ingresa tu clave'));
     await user.type(screen.getByPlaceholderText('Ingresa tu clave'), 'Password123!');
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
 
     await waitFor(() => {
       expect(signInMock).toHaveBeenCalledWith({
@@ -67,7 +67,7 @@ describe('LoginForm', () => {
       'nuevo-admin@uta.edu.ec',
     );
     await user.type(screen.getByPlaceholderText('Ingresa tu clave'), 'Password123!');
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
 
     expect(await screen.findByText('Credenciales invalidas.')).toBeInTheDocument();
   });

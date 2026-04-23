@@ -30,9 +30,9 @@ export function LoginForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [helperMessage, setHelperMessage] = useState<string | null>(
     showVerifiedMessage
-      ? 'Correo verificado correctamente. Ya puedes iniciar sesion.'
+      ? 'Correo verificado correctamente. Ya puedes iniciar sesión.'
       : showResetMessage
-        ? 'La clave se actualizo correctamente. Ya puedes iniciar sesion.'
+        ? 'La clave se actualizó correctamente. Ya puedes iniciar sesión.'
         : null,
   );
 
@@ -58,7 +58,7 @@ export function LoginForm({
         return;
       }
 
-      setErrorMessage('No fue posible iniciar sesion. Intenta nuevamente.');
+      setErrorMessage('No fue posible iniciar sesión. Intenta nuevamente.');
     }
   };
 
@@ -66,7 +66,7 @@ export function LoginForm({
     <div className="form-card">
       <div className="form-header">
         <p className="kicker">Acceso institucional</p>
-        <h2>Inicia sesion</h2>
+        <h2>Inicia sesión</h2>
         <p>Usa tu cuenta institucional para acceder a SafeRidePro.</p>
       </div>
 
@@ -98,16 +98,22 @@ export function LoginForm({
         ) : null}
 
         <Button disabled={isBusy} type="submit">
-          {isBusy ? 'Ingresando...' : 'Iniciar sesion'}
+          {isBusy ? 'Ingresando...' : 'Iniciar sesión'}
         </Button>
       </form>
 
-      <div className="button-row auth-secondary-actions">
-        <a className="button button-secondary" href="/register">
-          Registrarse 
+      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <a
+          className="auth-inline-link text-sm"
+          href="/register"
+        >
+          Registrarse
         </a>
-        <a className="button button-secondary" href="/forgot-password">
-          Olvide mi clave
+        <a
+          className="auth-inline-link text-sm"
+          href="/forgot-password"
+        >
+          Olvidé mi clave
         </a>
       </div>
     </div>

@@ -45,7 +45,7 @@ describe('RegisterForm', () => {
 
     await user.type(screen.getByPlaceholderText('Nombres y apellidos'), 'Nuevo Usuario');
     await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo@uta.edu.ec');
-    await user.type(screen.getByPlaceholderText('Minimo 8 caracteres'), 'Password123');
+    await user.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'Password123');
     await user.type(screen.getByPlaceholderText('Repite tu clave'), 'Password123');
     await user.type(screen.getByPlaceholderText('0102030405'), '1710034065');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
@@ -83,7 +83,7 @@ describe('RegisterForm', () => {
 
     await user.type(screen.getByPlaceholderText('Nombres y apellidos'), 'Nuevo Usuario');
     await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo@uta.edu.ec');
-    await user.type(screen.getByPlaceholderText('Minimo 8 caracteres'), 'Password123');
+    await user.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'Password123');
     await user.type(screen.getByPlaceholderText('Repite tu clave'), 'Password123');
     await user.type(screen.getByPlaceholderText('0102030405'), '1710034065');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
@@ -100,7 +100,7 @@ describe('RegisterForm', () => {
 
     await user.type(screen.getByPlaceholderText('Nombres y apellidos'), 'Nuevo Usuario');
     await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo@uta.edu.ec');
-    await user.type(screen.getByPlaceholderText('Minimo 8 caracteres'), 'Password123');
+    await user.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'Password123');
     await user.type(screen.getByPlaceholderText('Repite tu clave'), 'Password999');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
@@ -117,7 +117,7 @@ describe('RegisterForm', () => {
 
     await user.type(screen.getByPlaceholderText('Nombres y apellidos'), 'Nuevo Usuario');
     await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo@uta.edu.ec');
-    await user.type(screen.getByPlaceholderText('Minimo 8 caracteres'), 'Password123');
+    await user.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'Password123');
     await user.type(screen.getByPlaceholderText('Repite tu clave'), 'Password123');
     await user.type(screen.getByPlaceholderText('0102030405'), '1710034065');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
@@ -132,7 +132,7 @@ describe('RegisterForm', () => {
 
     await user.type(screen.getByPlaceholderText('Nombres y apellidos'), 'Nuevo Usuario');
     await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo@uta.edu.ec');
-    await user.type(screen.getByPlaceholderText('Minimo 8 caracteres'), 'Password123');
+    await user.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'Password123');
     await user.type(screen.getByPlaceholderText('Repite tu clave'), 'Password123');
     await user.type(screen.getByPlaceholderText('0102030405'), '0102030405');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
@@ -148,7 +148,7 @@ describe('RegisterForm', () => {
 
     await user.type(screen.getByPlaceholderText('Nombres y apellidos'), 'Nuevo Usuario');
     await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo@uta.edu.ec');
-    await user.type(screen.getByPlaceholderText('Minimo 8 caracteres'), 'Password123');
+    await user.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'Password123');
     await user.type(screen.getByPlaceholderText('Repite tu clave'), 'Password123');
     await user.type(screen.getByPlaceholderText('0102030405'), '1710034065');
     await user.type(screen.getByPlaceholderText('0999999999'), '0812345678');
@@ -168,7 +168,7 @@ describe('RegisterForm', () => {
     await user.type(passwordInput, 'Password123');
 
     expect(screen.getByText('Media')).toBeInTheDocument();
-    expect(screen.getByText('Buena base. Puedes reforzarla con un simbolo.')).toBeInTheDocument();
+    expect(screen.getByText('Buena base. Puedes reforzarla con un símbolo.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Mostrar clave' }));
 
@@ -199,7 +199,7 @@ describe('RegisterForm', () => {
     await user.tab();
 
     expect(
-      screen.getByText('Debes usar un correo institucional, no un proveedor publico.'),
+      screen.getByText('Debes usar un correo institucional, no un proveedor público.'),
     ).toBeInTheDocument();
   });
 });

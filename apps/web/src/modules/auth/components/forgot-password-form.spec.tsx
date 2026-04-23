@@ -39,7 +39,7 @@ describe('ForgotPasswordForm', () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText('Correo institucional'), 'usuario@uta.edu.ec');
-    await user.click(screen.getByRole('button', { name: 'Enviar codigo' }));
+    await user.click(screen.getByRole('button', { name: 'Enviar código' }));
 
     await waitFor(() => {
       expect(forgotPassword).toHaveBeenCalledWith('usuario@uta.edu.ec');
@@ -61,7 +61,7 @@ describe('ForgotPasswordForm', () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText('Correo institucional'), 'usuario@uta.edu.ec');
-    await user.click(screen.getByRole('button', { name: 'Enviar codigo' }));
+    await user.click(screen.getByRole('button', { name: 'Enviar código' }));
 
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith(
@@ -80,7 +80,7 @@ describe('ForgotPasswordForm', () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText('Correo institucional'), 'usuario@uta.edu.ec');
-    await user.click(screen.getByRole('button', { name: 'Enviar codigo' }));
+    await user.click(screen.getByRole('button', { name: 'Enviar código' }));
 
     expect(
       await screen.findByText('No fue posible enviar el codigo de recuperacion.'),

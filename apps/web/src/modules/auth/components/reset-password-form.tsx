@@ -7,7 +7,9 @@ import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
 import { PasswordField } from '../../../components/ui/password-field';
 import { StatusPill } from '../../../components/ui/status-pill';
+import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
 import { ApiError, resetPassword } from '../lib/auth-api';
+import styles from './reset-password-form.module.css';
 
 type ResetPasswordFormProps = {
   initialCode?: string;
@@ -53,7 +55,7 @@ function getPasswordStrength(password: string): PasswordStrength | null {
     return {
       label: 'Baja',
       tone: 'danger',
-      description: 'Agrega mayusculas, numeros o mayor longitud.',
+      description: 'Agrega mayúsculas, números o mayor longitud.',
       progress,
     };
   }
@@ -62,7 +64,7 @@ function getPasswordStrength(password: string): PasswordStrength | null {
     return {
       label: 'Media',
       tone: 'warning',
-      description: 'Buena base. Puedes reforzarla con un simbolo.',
+      description: 'Buena base. Puedes reforzarla con un símbolo.',
       progress,
     };
   }
@@ -101,6 +103,7 @@ export function ResetPasswordForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
@@ -108,28 +111,48 @@ export function ResetPasswordForm({
     const issues: string[] = [];
 
     if (!code.trim()) {
-      issues.push('Debes indicar el codigo de recuperacion.');
+      issues.push('Debes indicar el código de recuperación.');
     }
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      issues.push('La contrasena debe tener al menos 8 caracteres.');
+      issues.push('La contraseña debe tener al menos 8 caracteres.');
     }
 
     if (password !== confirmPassword) {
-      issues.push('La confirmacion de contrasena no coincide.');
+      issues.push('La confirmación de contraseña no coincide.');
     }
 
     return issues;
   }, [code, password, confirmPassword]);
 
-  const canSubmit = !isSubmitting && validationIssues.length === 0;
+  const canSubmit = !isSubmitting;
+
+  const pushToast = (title: string, description: string, tone: ToastItem['tone'] = 'error') => {
+    setToasts((currentToasts) => [
+      ...currentToasts,
+      {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title,
+        description,
+        tone,
+      },
+    ]);
+  };
+
+  const dismissToast = (toastId: string) => {
+    setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== toastId));
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+    setToasts([]);
 
-    if (!canSubmit) {
+    if (validationIssues.length > 0) {
+      validationIssues.forEach((issue) => {
+        pushToast('Revisa los datos del formulario', issue, 'error');
+      });
       return;
     }
 
@@ -138,6 +161,7 @@ export function ResetPasswordForm({
     try {
       const response = await resetPassword(code.trim(), password);
       setSuccessMessage(response.message);
+      pushToast('Contraseña actualizada', response.message, 'success');
 
       window.setTimeout(() => {
         router.replace(
@@ -150,7 +174,7 @@ export function ResetPasswordForm({
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage('No fue posible actualizar la contrasena.');
+        setErrorMessage('No fue posible actualizar la contraseña.');
       }
     } finally {
       setIsSubmitting(false);
@@ -158,93 +182,90 @@ export function ResetPasswordForm({
   };
 
   return (
-    <div className="form-card">
-      <div className="form-header">
-        <p className="kicker">Nueva contrasena</p>
+    <>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
+
+      <div className={`${styles.resetFormCard} form-card`}>
+        <div className={`${styles.resetFormHeader} form-header`}>
+        <p className={styles.kicker}>Nueva contraseña</p>
         <h2>Define tu nueva clave</h2>
-        <p>Ingresa el codigo recibido y elige una nueva contrasena segura.</p>
-      </div>
+        <p>Ingresa el código recibido y elige una nueva contraseña segura.</p>
+        </div>
 
       {showSentMessage ? (
         <div className="form-helper form-helper-strong">
           {email
-            ? `Te enviamos un codigo a ${maskEmail(email)}. Revisa tu bandeja e ingresalo aqui para continuar.`
-            : 'Te enviamos un codigo de recuperacion. Revisalo e ingresalo aqui para continuar.'}
+            ? `Te enviamos un código a ${maskEmail(email)}. Revisa tu bandeja e ingrésalo aquí para continuar.`
+            : 'Te enviamos un código de recuperación. Revísalo e ingrésalo aquí para continuar.'}
         </div>
       ) : null}
 
-      <form className="form-stack" onSubmit={handleSubmit}>
+      <form className={`${styles.resetFormStack} form-stack`} onSubmit={handleSubmit}>
         <InputField
-          label="Codigo de recuperacion"
+          label="Código de recuperación"
           onChange={(event) => setCode(event.target.value)}
-          placeholder="Ingresa el codigo recibido"
+          placeholder="Ingresa el código recibido"
           required
           value={code}
         />
         <PasswordField
           autoComplete="new-password"
-          label="Nueva contrasena"
-          hideLabel="Ocultar nueva contrasena"
+          label="Nueva contraseña"
+          hideLabel="Ocultar nueva contraseña"
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Minimo 8 caracteres"
+          placeholder="Mínimo 8 caracteres"
           required
-          showLabel="Mostrar nueva contrasena"
+          showLabel="Mostrar nueva contraseña"
           value={password}
         />
         <PasswordField
           autoComplete="new-password"
-          label="Confirmar contrasena"
-          hideLabel="Ocultar confirmacion de contrasena"
+          label="Confirmar contraseña"
+          hideLabel="Ocultar confirmación de contraseña"
           onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder="Repite la nueva contrasena"
+          placeholder="Repite la nueva contraseña"
           required
-          showLabel="Mostrar confirmacion de contrasena"
+          showLabel="Mostrar confirmación de contraseña"
           value={confirmPassword}
         />
 
         {passwordStrength ? (
-          <div className="password-strength-card" aria-live="polite">
-            <div className="password-strength-header">
+          <div className={styles.passwordStrengthCard} aria-live="polite">
+            <div className={styles.passwordStrengthHeader}>
               <strong>Seguridad de la clave</strong>
               <StatusPill label={passwordStrength.label} tone={passwordStrength.tone} />
             </div>
-            <div aria-hidden="true" className="password-strength-meter">
+            <div aria-hidden="true" className={styles.passwordStrengthMeter}>
               <span
                 className={[
-                  'password-strength-fill',
-                  `password-strength-fill-${passwordStrength.tone}`,
+                  styles.passwordStrengthFill,
+                  passwordStrength.tone === 'danger'
+                    ? styles.passwordStrengthFillDanger
+                    : passwordStrength.tone === 'warning'
+                      ? styles.passwordStrengthFillWarning
+                      : styles.passwordStrengthFillSuccess,
                 ].join(' ')}
                 style={{ width: `${passwordStrength.progress}%` }}
               />
             </div>
-            <p className="password-strength-text">{passwordStrength.description}</p>
-          </div>
-        ) : null}
-
-        {validationIssues.length ? (
-          <div className="validation-card validation-card-danger">
-            <strong>Antes de continuar:</strong>
-            <ul className="validation-list">
-              {validationIssues.map((issue) => (
-                <li key={issue}>{issue}</li>
-              ))}
-            </ul>
+            <p className={styles.passwordStrengthText}>{passwordStrength.description}</p>
           </div>
         ) : null}
 
         {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
         {successMessage ? <div className="form-success">{successMessage}</div> : null}
 
-        <Button disabled={!canSubmit} type="submit">
-          {isSubmitting ? 'Actualizando...' : 'Actualizar contrasena'}
+        <Button className={styles.submitButton} disabled={!canSubmit} type="submit">
+          {isSubmitting ? 'Actualizando...' : 'Actualizar contraseña'}
         </Button>
       </form>
 
-      <div className="button-row">
-        <a className="button button-secondary" href="/forgot-password">
-          Solicitar otro codigo
+      <div className={styles.secondaryLinks}>
+        <a className="auth-inline-link" href="/forgot-password">
+          Solicitar otro código
         </a>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

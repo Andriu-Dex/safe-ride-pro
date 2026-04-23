@@ -33,13 +33,27 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!isHydrated || !authSession || (requiresOnboarding && !isProfileRoute)) {
     return (
-      <main className="loading-state">
-        <div className="loading-card">
-          <div aria-hidden="true" className="loading-pulse" />
-          <h1 className="panel-title">Preparando tu panel</h1>
-          <p className="panel-text">
-            Estamos validando tu sesion para mostrarte la informacion de SafeRidePro.
-          </p>
+      <main className="auth-loading-shell">
+        <div className="auth-loading-card">
+          <div aria-hidden="true" className="auth-loading-orbit">
+            <span className="auth-loading-core" />
+            <span className="auth-loading-ring auth-loading-ring-a" />
+            <span className="auth-loading-ring auth-loading-ring-b" />
+            <span className="auth-loading-dot auth-loading-dot-a" />
+            <span className="auth-loading-dot auth-loading-dot-b" />
+          </div>
+
+          <div className="auth-loading-copy">
+            <p className="auth-loading-kicker">Acceso seguro</p>
+            <h1 className="auth-loading-title">Preparando tu panel inteligente</h1>
+            <p className="auth-loading-text">
+              Estamos validando tu sesión para mostrarte la información de SafeRidePro.
+            </p>
+          </div>
+
+          <div aria-hidden="true" className="auth-loading-progress">
+            <span className="auth-loading-progress-bar" />
+          </div>
         </div>
       </main>
     );

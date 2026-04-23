@@ -24,14 +24,14 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.25rem;
   position: relative;
 }
 
 .authHeroLogo {
-  max-width: 160px;
+  max-width: 500px;
   height: auto;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
   border-radius: 20px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
@@ -54,10 +54,10 @@
 }
 
 .featureList {
-  margin-top: 2rem;
+  margin-top: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .featureItem {
