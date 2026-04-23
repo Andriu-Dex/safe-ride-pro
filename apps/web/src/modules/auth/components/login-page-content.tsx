@@ -1,6 +1,7 @@
 'use client';
 
 import { LoginForm } from './login-form';
+import styles from './login-page-content.module.css';
 
 type LoginPageContentProps = {
   nextPath?: string;
@@ -16,32 +17,29 @@ export function LoginPageContent({
   showResetMessage = false,
 }: LoginPageContentProps) {
   return (
-    <main className="login-shell">
-      <section className="login-card">
-        <div className="login-showcase">
+    <main className={`${styles.loginShell} min-h-screen bg-slate-100 p-4 sm:p-8`}>
+      <section className={styles.loginCard}>
+        <div className={styles.loginShowcase}>
           <img
             alt="Logo de SafeRidePro"
-            className="auth-hero-logo"
+            className={styles.authHeroLogo}
             loading="eager"
             src="https://i.imgur.com/7UUGKrJ.png"
           />
           <div>
-            <p className="kicker">Acceso web</p>
-            <h1 className="hero-title">Bienvenido a SafeRidePro.</h1>
+            <p className={styles.kicker}>Acceso web</p>
+            <h1 className={styles.heroTitle}>Bienvenido a SafeRidePro.</h1>
           </div>
-          <p className="hero-text">
-            Inicia sesion con tu cuenta institucional o crea una nueva para comenzar.
-          </p>
 
-          <div className="feature-list">
-            <div className="feature-item">
+          <div className={styles.featureList}>
+            <div className={styles.featureItem}>
               <strong>Acceso institucional seguro</strong>
               <p>Tu cuenta se verifica por correo y se mantiene activa con renovacion controlada de sesion.</p>
             </div>
           </div>
         </div>
 
-        <div className="login-form-panel">
+        <div className={styles.loginFormPanel}>
           <LoginForm
             initialEmail={initialEmail}
             nextPath={nextPath}

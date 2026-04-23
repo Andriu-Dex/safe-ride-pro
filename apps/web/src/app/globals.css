@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   --color-canvas: #f3ecdf;
   --color-canvas-deep: #e9ddca;

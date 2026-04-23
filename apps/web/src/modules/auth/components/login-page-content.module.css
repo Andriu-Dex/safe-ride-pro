@@ -1,0 +1,120 @@
+.loginShell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* min-height, padding y background se controlan con utilidades de Tailwind ahora */
+}
+
+.loginCard {
+  display: flex;
+  background-color: var(--color-surface, #ffffff);
+  border-radius: 24px;
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+  max-width: 1100px;
+  width: 100%;
+  border: 1px solid var(--color-border);
+}
+
+.loginShowcase {
+  flex: 1.1;
+  background: linear-gradient(160deg, var(--color-primary), var(--color-primary-strong));
+  color: var(--color-text-on-dark);
+  padding: 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2rem;
+  position: relative;
+}
+
+.authHeroLogo {
+  max-width: 160px;
+  height: auto;
+  margin-bottom: 1.5rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.kicker {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.5rem;
+}
+
+.heroTitle {
+  font-size: clamp(2.2rem, 4vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #ffffff;
+  margin: 0;
+}
+
+.featureList {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.featureItem {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 1.25rem;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.featureItem strong {
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.featureItem p {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.loginFormPanel {
+  flex: 0.9;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: var(--color-surface, #ffffff);
+}
+
+/* Ajustes Responsivos */
+@media (max-width: 992px) {
+  .loginCard {
+    flex-direction: column;
+    max-width: 600px;
+  }
+
+  .loginShowcase {
+    padding: 2.5rem;
+    text-align: center;
+    align-items: center;
+  }
+
+  .loginFormPanel {
+    padding: 2.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .loginShowcase {
+    padding: 1.5rem;
+  }
+
+  .loginFormPanel {
+    padding: 1.5rem;
+  }
+}

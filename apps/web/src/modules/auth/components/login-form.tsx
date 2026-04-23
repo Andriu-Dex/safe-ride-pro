@@ -104,7 +104,7 @@ export function LoginForm({
 
       <div className="button-row auth-secondary-actions">
         <a className="button button-secondary" href="/register">
-          Crear cuenta
+          Registrarse 
         </a>
         <a className="button button-secondary" href="/forgot-password">
           Olvide mi clave
