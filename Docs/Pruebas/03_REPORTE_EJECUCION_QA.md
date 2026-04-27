@@ -85,21 +85,41 @@ Registrar la ejecucion de una pasada de QA relevante sobre `SafeRidePro`, incluy
 
 ### Acceso y sesion
 
-- resultado: pendiente
+- resultado: aprobado
 - observaciones:
-  - aun no se inicia la validacion manual guiada de interfaz
+  - login valido probado con exito
+  - redireccion correcta despues de autenticacion
+  - sesion persistente al navegar entre modulos
+  - login invalido bloqueado correctamente
+  - se muestra toast `Error de acceso` con mensaje `Credenciales invalidas.`
+  - registro con dominio valido completado sin errores inesperados
+  - registro con dominio no permitido rechazado con mensaje `Se requiere un correo institucional autorizado.`
+  - verificacion por codigo funcional y reenvio operativo
+  - recuperacion y restablecimiento de contrasena completados correctamente
+  - cierre de sesion funcional y proteccion de rutas verificada
 
 ### Perfil e incorporacion institucional
 
-- resultado: pendiente
+- resultado: aprobado parcial
 - observaciones:
-  - aun no se inicia la validacion manual guiada de interfaz
+  - visualizacion del perfil correcta
+  - edicion de datos del perfil completada correctamente
+  - validaciones de campos funcionando sin romper la interfaz
+  - carga y persistencia de foto de perfil operativas
+  - persistencia de cambios confirmada al navegar y reiniciar sesion
+  - queda pendiente cerrar la comprobacion explicita del contexto institucional activo
 
 ### Conductor
 
-- resultado: pendiente
+- resultado: aprobado
 - observaciones:
-  - aun no se inicia la validacion manual guiada de interfaz
+  - acceso al modulo correcto para usuario no aprobado
+  - envio de solicitud funcional
+  - validaciones de formulario funcionando correctamente
+  - previsualizacion y descarga de documentos operativas
+  - aprobacion administrativa completada correctamente
+  - rechazo administrativo con nota probado correctamente
+  - bloqueo de auto revision administrativa confirmado
 
 ### Vehiculos
 
@@ -161,15 +181,24 @@ Usar una entrada por hallazgo.
 
 ### H-002
 
-- titulo:
-- severidad:
-- modulo:
+- titulo: La pantalla de verificacion permitia salir a login mostrando un exito que aun no ocurria
+- severidad: media
+- modulo: acceso / verificacion de correo
 - descripcion:
+  - desde la pantalla `Revisa tu correo y activa tu acceso.`, el boton `Ir a inicio de sesion` redirigia con un parametro que provocaba el toast `Correo verificado correctamente. Ya puedes iniciar sesion.` aunque el codigo no hubiera sido ingresado
+  - ademas, al usar navegacion con reemplazo se hacia menos natural volver a la pantalla de verificacion
 - pasos para reproducir:
+  1. registrar un usuario nuevo
+  2. llegar a la pantalla de verificacion
+  3. pulsar `Ir a inicio de sesion` sin ingresar el codigo
 - resultado esperado:
+  - el sistema debe llevar al login sin mostrar una verificacion exitosa inexistente
+  - el usuario debe poder volver facilmente a completar la verificacion
 - resultado obtenido:
+  - se mostraba un toast de exito falso y el retorno al flujo de verificacion quedaba poco claro
 - evidencia:
-- estado:
+  - observacion manual reportada durante QA transversal
+- estado: corregido en frontend local
 
 ---
 

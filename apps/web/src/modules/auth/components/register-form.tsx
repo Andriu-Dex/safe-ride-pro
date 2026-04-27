@@ -176,9 +176,16 @@ function getPasswordStrength(password: string): PasswordStrength | null {
   };
 }
 
-export function RegisterForm() {
+type RegisterFormProps = {
+  initialEmail?: string;
+};
+
+export function RegisterForm({ initialEmail = '' }: RegisterFormProps) {
   const router = useRouter();
-  const [values, setValues] = useState(INITIAL_VALUES);
+  const [values, setValues] = useState<RegisterFormValues>({
+    ...INITIAL_VALUES,
+    email: initialEmail,
+  });
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -578,10 +585,28 @@ export function RegisterForm() {
           </Button>
         </form>
 
-        <div className={`${styles.registerSecondaryAction} mt-1 flex flex-wrap items-center gap-2`}>
-          <a className="auth-inline-link text-sm" href="/login">
-            Ya tengo una cuenta
-          </a>
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
+            <button
+              type="button"
+              className="hover:text-slate-800 transition-colors"
+              onClick={() => router.push('/login')}
+            >
+              Ya tengo una cuenta
+            </button>
+            {values.email.trim() ? (
+              <>
+                <span>•</span>
+                <button
+                  type="button"
+                  className="hover:text-slate-800 transition-colors"
+                  onClick={() => router.push(`/verify-email?email=${encodeURIComponent(values.email.trim().toLowerCase())}`)}
+                >
+                  Volver a verificación
+                </button>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
     </>

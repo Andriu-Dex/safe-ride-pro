@@ -81,7 +81,6 @@ export class DriversController {
     return this.submitDriverApplicationUseCase.execute({
       userId: currentUser.id,
       licenseTypeId: body.licenseTypeId,
-      licenseNumber: body.licenseNumber,
       licenseExpiresAt: body.licenseExpiresAt,
       identityDocumentFileKey: body.identityDocumentFileKey,
       licenseDocumentFileKey: body.licenseDocumentFileKey,

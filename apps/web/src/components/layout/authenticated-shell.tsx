@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useAuth } from '../../modules/auth/hooks/use-auth';
 import { canAccessAudit } from '../../modules/audit/lib/audit-access';
@@ -156,7 +156,8 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { authSession, signOut } = useAuth();
-  const [isSidebarHidden, setIsSidebarHidden] = useState(false);
+  const [isDesktopSidebarHidden, setIsDesktopSidebarHidden] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
   const auditVisible = canAccessAudit(authSession?.user);
 
@@ -170,23 +171,75 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     router.replace('/login');
   };
 
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) {
+      document.body.style.removeProperty('overflow');
+      return;
+    }
+
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.removeProperty('overflow');
+    };
+  }, [isMobileSidebarOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <div
       className={[
         styles.shell,
-        isSidebarHidden ? styles.shellSidebarHidden : '',
+        isDesktopSidebarHidden ? styles.shellSidebarHidden : '',
+        isMobileSidebarOpen ? styles.shellMobileSidebarOpen : '',
       ]
         .filter(Boolean)
         .join(' ')}
     >
       <button
-        aria-label={isSidebarHidden ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
-        className={styles.toggleButton}
-        onClick={() => setIsSidebarHidden((currentValue) => !currentValue)}
-        title={isSidebarHidden ? 'Mostrar panel' : 'Ocultar panel'}
+        aria-label={isMobileSidebarOpen ? 'Cerrar menu de navegacion' : 'Abrir menu de navegacion'}
+        aria-expanded={isMobileSidebarOpen}
+        className={styles.mobileMenuButton}
+        onClick={() => setIsMobileSidebarOpen((currentValue) => !currentValue)}
         type="button"
       >
-        {isSidebarHidden ? (
+        <svg aria-hidden="true" className={styles.toggleIcon} viewBox="0 0 24 24">
+          {isMobileSidebarOpen ? (
+            <path d="M6 6 18 18M18 6 6 18" />
+          ) : (
+            <>
+              <path d="M4 7h16" />
+              <path d="M4 12h16" />
+              <path d="M4 17h16" />
+            </>
+          )}
+        </svg>
+      </button>
+
+      <button
+        aria-label={isDesktopSidebarHidden ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
+        className={styles.desktopToggleButton}
+        onClick={() => setIsDesktopSidebarHidden((currentValue) => !currentValue)}
+        title={isDesktopSidebarHidden ? 'Mostrar panel' : 'Ocultar panel'}
+        type="button"
+      >
+        {isDesktopSidebarHidden ? (
           <svg aria-hidden="true" className={styles.toggleIcon} viewBox="0 0 24 24">
             <path d="m9 6 6 6-6 6" />
           </svg>
@@ -196,6 +249,14 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           </svg>
         )}
       </button>
+
+      <button
+        aria-hidden={!isMobileSidebarOpen}
+        className={styles.mobileBackdrop}
+        onClick={() => setIsMobileSidebarOpen(false)}
+        tabIndex={isMobileSidebarOpen ? 0 : -1}
+        type="button"
+      />
 
       <aside className={styles.sidebar}>
         <section className={styles.userCard}>
@@ -262,6 +323,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                         .filter(Boolean)
                         .join(' ')}
                       href={item.href}
+                      onClick={() => setIsMobileSidebarOpen(false)}
                     >
                       <NavIcon name={item.icon} />
                       <div className={styles.navText}>

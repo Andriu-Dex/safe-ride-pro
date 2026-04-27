@@ -5,9 +5,11 @@ import {
   GlobalUserRole,
   InstitutionMembershipRole,
 } from '@saferidepro/shared-types';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
+import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { canAccessAudit } from '../../../modules/audit/lib/audit-access';
@@ -23,11 +25,13 @@ import {
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
 import {
   getAdministrativeRiskStateLabel,
+  getAdministrativeRiskTone,
   getTrustRestrictions,
   getVisibleReputationStateLabel,
   getVisibleReputationTone,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
+import styles from './page.module.css';
 
 function getGlobalRoleLabel(role: GlobalUserRole): string {
   switch (role) {
@@ -63,6 +67,46 @@ function getPreferredDisplayName(fullName?: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
 }
 
+function getOperationalHeadline(
+  hasOperationalMembership: boolean,
+  driverLicenseMessage: string | null,
+  hasRestrictions: boolean,
+) {
+  if (!hasOperationalMembership) {
+    return {
+      title: 'Completa tu contexto operativo',
+      description: 'Completa tu perfil para habilitar tus opciones de movilidad.',
+      actionHref: '/perfil',
+      actionLabel: 'Ir a perfil',
+    };
+  }
+
+  if (driverLicenseMessage) {
+    return {
+      title: 'Revisa tu habilitacion antes de salir',
+      description: driverLicenseMessage,
+      actionHref: '/conductor',
+      actionLabel: 'Revisar conductor',
+    };
+  }
+
+  if (hasRestrictions) {
+    return {
+      title: 'Tu cuenta necesita atencion operativa',
+      description: 'Hay observaciones o restricciones activas. Revísalas antes de ejecutar viajes o aceptar nuevas solicitudes.',
+      actionHref: '/confianza',
+      actionLabel: 'Abrir confianza',
+    };
+  }
+
+  return {
+    title: 'Tu operacion de hoy esta lista',
+    description: 'Continua con viajes, conductor o vehiculos.',
+    actionHref: '/viajes',
+    actionLabel: 'Abrir viajes',
+  };
+}
+
 export default function HomePage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
@@ -72,6 +116,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const loadHome = async (accessToken: string) => {
     if (!operationalAccess.hasOperationalMembership) {
@@ -81,6 +126,22 @@ export default function HomePage() {
 
     const trustSummaryData = await getCurrentUserTrustSummary(accessToken);
     setTrustSummary(trustSummaryData);
+  };
+
+  const pushToast = (title: string, description: string, tone: ToastItem['tone'] = 'info') => {
+    setToasts((currentToasts) => [
+      ...currentToasts,
+      {
+        id: `home-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title,
+        description,
+        tone,
+      },
+    ]);
+  };
+
+  const dismissToast = (toastId: string) => {
+    setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== toastId));
   };
 
   const refreshHome = async (showSpinner = false) => {
@@ -94,6 +155,14 @@ export default function HomePage() {
 
     try {
       await loadHome(authSession.accessToken);
+
+      if (showSpinner) {
+        pushToast(
+          'Inicio actualizado',
+          'Tu informacion fue actualizada.',
+          'success',
+        );
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
@@ -186,202 +255,320 @@ export default function HomePage() {
           ? 'Observacion activa'
           : 'Sin bloqueos';
 
+  const operationalHeadline = getOperationalHeadline(
+    operationalAccess.hasOperationalMembership,
+    driverLicenseMessage,
+    hasRestrictions,
+  );
+
+  const opsMetrics = useMemo(
+    () => [
+      {
+        label: 'Contexto activo',
+        value: currentMembership?.institutionName ?? 'Sin contexto',
+        note: currentMembership
+          ? `${getMembershipRoleLabel(currentMembership.role)} en sesion.`
+          : 'Completa tu perfil para habilitar opciones.',
+      },
+      {
+        label: 'Conductor',
+        value: currentMembership
+          ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
+          : 'Pendiente',
+        note: currentMembership
+          ? 'Estado de habilitacion para ejecutar viajes.'
+          : 'Aun no tienes contexto operativo.',
+      },
+      {
+        label: 'Confianza visible',
+        value: trustSummary
+          ? getVisibleReputationStateLabel(trustSummary.visibleReputationState)
+          : 'Pendiente',
+        note: trustSummary
+          ? `${trustSummary.completedInteractions} interacciones completadas.`
+          : 'Se mostrara cuando exista historial.',
+      },
+      {
+        label: 'Foco de hoy',
+        value: hasRestrictions ? restrictionTitle : 'Operacion estable',
+        note: restrictions.message ?? 'No se detectan restricciones activas por ahora.',
+      },
+    ],
+    [
+      currentMembership,
+      effectiveDriverStatus,
+      hasRestrictions,
+      restrictionTitle,
+      restrictions.message,
+      trustSummary,
+    ],
+  );
+
   return (
-    <section className="home-shell">
-      <section className="home-hero">
-        <div className="home-hero-main">
-          <p className="section-label">Inicio</p>
-          <h1 className="home-title">Hola, {displayName}.</h1>
-          <p className="home-subtitle">Tu operacion de hoy en un vistazo.</p>
+    <>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-          <div className="chip-row">
-            <span className="topbar-badge">SafeRidePro</span>
-            <StatusPill
-              label={operationalAccess.hasOperationalMembership ? 'Cuenta operativa' : 'Cuenta limitada'}
-              tone={operationalAccess.hasOperationalMembership ? 'success' : 'warning'}
-            />
-            <StatusPill
-              label={trustSummary ? getVisibleReputationStateLabel(trustSummary.visibleReputationState) : 'Sin resumen'}
-              tone={trustSummary ? getVisibleReputationTone(trustSummary.visibleReputationState) : 'neutral'}
-            />
-          </div>
+      <section className={styles.homeShell}>
+        <section className={`${styles.hero} ${styles.reveal}`}>
+          <div className={styles.heroTop}>
+            <div className={styles.heroCopy}>
+              <p className={styles.eyebrow}>Inicio operativo</p>
+              <h1 className={styles.heroTitle}>Hola, {displayName}.</h1>
+            </div>
 
-          <div className="home-cta-row">
-            <Link className="home-cta home-cta-primary" href="/viajes">
-              <strong>Ir a viajes</strong>
-              <span>Publicar, solicitar y gestionar.</span>
-            </Link>
-            <Link className="home-cta" href="/dashboard">
-              <strong>Dashboard</strong>
-              <span>Lectura analitica de estado.</span>
-            </Link>
-            <Link className="home-cta" href="/confianza">
-              <strong>Confianza</strong>
-              <span>Reputacion y alertas activas.</span>
-            </Link>
-          </div>
-        </div>
-
-        <aside className="home-status-card">
-          <div className="home-status-head">
-            <div>
-              <h2 className="section-title">Estado actual</h2>
-            </div>
-            <StatusPill
-              label={currentMembership ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus) : 'Sin membresia'}
-              tone={currentMembership
-                ? getDriverStatusTone(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
-                : 'neutral'}
-            />
-          </div>
-
-          <div className="home-status-grid">
-            <div className="home-status-item">
-              <span>Institucion</span>
-              <strong>{currentMembership?.institutionName ?? 'Sin contexto operativo'}</strong>
-            </div>
-            <div className="home-status-item">
-              <span>Perfil</span>
-              <strong>{getGlobalRoleLabel(authSession?.user.globalRole ?? GlobalUserRole.User)}</strong>
-            </div>
-            <div className="home-status-item">
-              <span>Rol institucional</span>
-              <strong>{getMembershipRoleLabel(currentMembership?.role)}</strong>
-            </div>
-            <div className="home-status-item">
-              <span>Riesgo</span>
-              <strong>
-                {trustSummary
-                  ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
-                  : 'Pendiente'}
-              </strong>
+            <div className={styles.heroPills}>
+              <StatusPill
+                label={operationalAccess.hasOperationalMembership ? 'Cuenta operativa' : 'Cuenta limitada'}
+                tone={operationalAccess.hasOperationalMembership ? 'success' : 'warning'}
+              />
+              <StatusPill
+                label={trustSummary ? getVisibleReputationStateLabel(trustSummary.visibleReputationState) : 'Sin resumen'}
+                tone={trustSummary ? getVisibleReputationTone(trustSummary.visibleReputationState) : 'neutral'}
+              />
+              <StatusPill
+                label={isLoading ? 'Sincronizando' : isRefreshing ? 'Actualizando' : 'Listo'}
+                tone={isLoading || isRefreshing ? 'warning' : 'neutral'}
+              />
             </div>
           </div>
 
-          {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-        </aside>
-      </section>
-
-      <section className="home-metric-grid">
-        <article className="home-metric-card">
-          <span className="home-metric-label">Institucion activa</span>
-          <strong className="home-metric-value">
-            {currentMembership?.institutionName ?? 'Sin institucion'}
-          </strong>
-          <p className="home-metric-note">
-            {currentMembership
-              ? `${getMembershipRoleLabel(currentMembership.role)} en contexto operativo.`
-              : 'Necesitas membresia operativa para habilitar modulos.'}
-          </p>
-        </article>
-
-        <article className="home-metric-card">
-          <span className="home-metric-label">Confianza</span>
-          <strong className="home-metric-value">
-            {trustSummary
-              ? getVisibleReputationStateLabel(trustSummary.visibleReputationState)
-              : 'Pendiente'}
-          </strong>
-          <p className="home-metric-note">
-            {trustSummary
-              ? `Riesgo: ${getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}.`
-              : 'Aparecera cuando exista contexto operativo.'}
-          </p>
-        </article>
-
-        <article className="home-metric-card">
-          <span className="home-metric-label">Restricciones</span>
-          <strong className="home-metric-value">
-            {hasRestrictions ? restrictionTitle : 'Sin bloqueos'}
-          </strong>
-          <p className="home-metric-note">
-            {restrictions.message ?? 'No hay restricciones activas por ahora.'}
-          </p>
-        </article>
-      </section>
-
-      <section className="home-main-grid">
-        <article className="home-card home-card-priority">
-          <div className="home-card-head">
-            <div>
-              <p className="section-label">Siguiente movimiento</p>
-              <h2 className="section-title">Que deberias hacer ahora</h2>
-            </div>
-            <StatusPill label="3 pasos" tone="success" />
+          <div className={styles.opsStrip}>
+            {opsMetrics.map((metric) => (
+              <article className={styles.opsCard} key={metric.label}>
+                <span className={styles.opsLabel}>{metric.label}</span>
+                <strong className={styles.opsValue}>{metric.value}</strong>
+                <span className={styles.opsNote}>{metric.note}</span>
+              </article>
+            ))}
           </div>
-
-          <div className="home-step-list">
-            <Link className="home-step" href="/conductor">
-              <strong>1. Valida tu estado de conductor</strong>
-              <span>Revisa licencia, documentos y aprobacion.</span>
-            </Link>
-            <Link className="home-step" href="/vehiculos">
-              <strong>2. Asegura tus vehiculos activos</strong>
-              <span>Confirma unidades listas para operar.</span>
-            </Link>
-            <Link className="home-step" href="/viajes">
-              <strong>3. Ejecuta en viajes</strong>
-              <span>Publica, acepta solicitudes o busca cupos.</span>
-            </Link>
-          </div>
-        </article>
-
-        <article className="home-card">
-          <div className="home-card-head">
-            <div>
-              <p className="section-label">Accesos rapidos</p>
-              <h2 className="section-title">Rutas de uso frecuente</h2>
-            </div>
-            <StatusPill
-              label={isLoading ? 'Sincronizando' : isRefreshing ? 'Actualizando' : 'Listo'}
-              tone={isLoading || isRefreshing ? 'warning' : 'neutral'}
-            />
-          </div>
-
-          <div className="home-link-grid">
-            <Link className="home-link-card" href="/conductor">
-              <strong>Conductor</strong>
-              <span>Solicitud y estado operativo.</span>
-            </Link>
-            <Link className="home-link-card" href="/vehiculos">
-              <strong>Vehiculos</strong>
-              <span>Registro y disponibilidad.</span>
-            </Link>
-            <Link className="home-link-card" href="/viajes">
-              <strong>Viajes</strong>
-              <span>Publicacion y gestion.</span>
-            </Link>
-            <Link className="home-link-card" href="/confianza">
-              <strong>Confianza</strong>
-              <span>Reputacion y sanciones.</span>
-            </Link>
-            {auditVisible ? (
-              <Link className="home-link-card" href="/auditoria">
-                <strong>Auditoria</strong>
-                <span>Trazabilidad y control.</span>
-              </Link>
-            ) : null}
-            <button
-              className="home-link-card home-link-card-action"
-              onClick={() => void refreshHome(true)}
-              type="button"
-            >
-              <strong>{isRefreshing ? 'Actualizando...' : 'Actualizar inicio'}</strong>
-              <span>Sincroniza esta vista con tu estado actual.</span>
-            </button>
-          </div>
-        </article>
-      </section>
-
-      {driverLicenseMessage ? (
-        <section className="home-license-alert">
-          <StatusPill
-            label={getDriverLicenseStatusLabel(currentMembership?.licenseStatus)}
-            tone={getDriverLicenseStatusTone(currentMembership?.licenseStatus)}
-          />
-          <p className="panel-text">{driverLicenseMessage}</p>
         </section>
-      ) : null}
-    </section>
+
+        <section className={styles.mainGrid}>
+          <div className={styles.leftRail}>
+            <article className={`${styles.focusCard} ${styles.reveal}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.eyebrow}>Siguiente movimiento</p>
+                  <h2>Prioridad actual</h2>
+                </div>
+                <StatusPill label="Acceso directo" tone="success" />
+              </div>
+
+              <div className={styles.focusPanel}>
+                <div className={styles.focusPrimary}>
+                  <h3>{operationalHeadline.title}</h3>
+                  <p>{operationalHeadline.description}</p>
+                  <div className={styles.focusActions}>
+                    <Link className="button button-primary" href={operationalHeadline.actionHref}>
+                      {operationalHeadline.actionLabel}
+                    </Link>
+                    <Link className="button button-secondary" href="/dashboard">
+                      Abrir dashboard
+                    </Link>
+                  </div>
+                </div>
+
+                <div className={styles.focusSecondary}>
+                  <article className={styles.signalCard}>
+                    <span>Rol global</span>
+                    <strong>{getGlobalRoleLabel(authSession?.user.globalRole ?? GlobalUserRole.User)}</strong>
+                  </article>
+                  <article className={styles.signalCard}>
+                    <span>Licencia</span>
+                    <strong>{getDriverLicenseStatusLabel(currentMembership?.licenseStatus)}</strong>
+                  </article>
+                  <article className={styles.signalCard}>
+                    <span>Riesgo</span>
+                    <strong>
+                      {trustSummary
+                        ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
+                        : 'Pendiente'}
+                    </strong>
+                  </article>
+                </div>
+              </div>
+            </article>
+
+            <article className={`${styles.statusCard} ${styles.reveal}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.eyebrow}>Estado base</p>
+                  <h2>Lectura rapida de la cuenta</h2>
+                </div>
+                <StatusPill
+                  label={currentMembership
+                    ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
+                    : 'Sin membresia'}
+                  tone={currentMembership
+                    ? getDriverStatusTone(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
+                    : 'neutral'}
+                />
+              </div>
+
+              <div className={styles.statusGrid}>
+                <article className={styles.statusItem}>
+                  <span>Institucion</span>
+                  <strong>{currentMembership?.institutionName ?? 'Sin contexto operativo'}</strong>
+                </article>
+                <article className={styles.statusItem}>
+                  <span>Rol institucional</span>
+                  <strong>{getMembershipRoleLabel(currentMembership?.role)}</strong>
+                </article>
+                <article className={styles.statusItem}>
+                  <span>Correo</span>
+                  <strong>{authSession?.user.email}</strong>
+                </article>
+                <article className={styles.statusItem}>
+                  <span>Licencia</span>
+                  <strong>{getDriverLicenseStatusLabel(currentMembership?.licenseStatus)}</strong>
+                </article>
+              </div>
+
+              {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
+            </article>
+
+            <article className={`${styles.workspaceCard} ${styles.reveal}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.eyebrow}>Ejecucion diaria</p>
+                  <h2>Espacios de trabajo</h2>
+                </div>
+                <StatusPill label="Acciones" tone="neutral" />
+              </div>
+
+              <div className={styles.workspaceGrid}>
+                <Link className={styles.workspaceLink} href="/viajes">
+                  <strong>Viajes</strong>
+                  <span>Publica, explora cupos y gestiona salidas del dia.</span>
+                </Link>
+                <Link className={styles.workspaceLink} href="/conductor">
+                  <strong>Conductor</strong>
+                  <span>Revisa aprobacion, licencia y capacidad de operacion.</span>
+                </Link>
+                <Link className={styles.workspaceLink} href="/vehiculos">
+                  <strong>Vehiculos</strong>
+                  <span>Activa flota, consistencia documental y disponibilidad.</span>
+                </Link>
+                <Link className={styles.workspaceLink} href="/confianza">
+                  <strong>Confianza</strong>
+                  <span>Observa reputacion, sanciones y cierres pendientes.</span>
+                </Link>
+              </div>
+            </article>
+          </div>
+
+          <aside className={styles.rightRail}>
+            <article className={`${styles.timelineCard} ${styles.reveal}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.eyebrow}>Ruta sugerida</p>
+                  <h2>Orden recomendado</h2>
+                </div>
+                <StatusPill label="3 pasos" tone="success" />
+              </div>
+
+              <div className={styles.timelineList}>
+                <article className={styles.timelineItem}>
+                  <span className={styles.timelineIndex}>1</span>
+                  <div className={styles.timelineBody}>
+                    <strong>Valida tu estado</strong>
+                    <p>Revisa tu contexto, licencia y estado actual.</p>
+                  </div>
+                </article>
+                <article className={styles.timelineItem}>
+                  <span className={styles.timelineIndex}>2</span>
+                  <div className={styles.timelineBody}>
+                    <strong>Prepara tu ejecucion</strong>
+                    <p>Verifica conductor y vehiculos antes de continuar.</p>
+                  </div>
+                </article>
+                <article className={styles.timelineItem}>
+                  <span className={styles.timelineIndex}>3</span>
+                  <div className={styles.timelineBody}>
+                    <strong>Entra en operacion</strong>
+                    <p>Gestiona solicitudes y trayectos del dia desde Viajes.</p>
+                  </div>
+                </article>
+              </div>
+            </article>
+
+            <article className={`${styles.trustCard} ${styles.reveal}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.eyebrow}>Confianza y limites</p>
+                  <h2>Condicion operativa</h2>
+                </div>
+                <StatusPill
+                  label={trustSummary
+                    ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
+                    : 'Pendiente'}
+                  tone={trustSummary ? getAdministrativeRiskTone(trustSummary.administrativeRiskState) : 'neutral'}
+                />
+              </div>
+
+              <div className={styles.restrictionsBox}>
+                <div
+                  className={[
+                    styles.restrictionBanner,
+                    hasRestrictions ? styles.restrictionBannerDanger : styles.restrictionBannerNeutral,
+                  ].join(' ')}
+                >
+                  <strong>{hasRestrictions ? restrictionTitle : 'Operacion estable'}</strong>
+                  <span>{restrictions.message ?? 'No hay restricciones activas.'}</span>
+                </div>
+
+                <div className={styles.restrictionMetrics}>
+                  <article className={styles.restrictionMetric}>
+                    <span>Interacciones</span>
+                    <strong>{trustSummary ? trustSummary.completedInteractions : '0'}</strong>
+                  </article>
+                  <article className={styles.restrictionMetric}>
+                    <span>Reportes resueltos</span>
+                    <strong>{trustSummary ? trustSummary.resolvedReportsReceived : '0'}</strong>
+                  </article>
+                  <article className={styles.restrictionMetric}>
+                    <span>Sanciones recientes</span>
+                    <strong>{trustSummary ? trustSummary.recentSanctionCount : '0'}</strong>
+                  </article>
+                  <article className={styles.restrictionMetric}>
+                    <span>Bloqueos activos</span>
+                    <strong>{trustSummary ? trustSummary.recentBlockingSanctionCount : '0'}</strong>
+                  </article>
+                </div>
+              </div>
+            </article>
+
+            <article className={`${styles.quickCard} ${styles.reveal}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.eyebrow}>Soporte rapido</p>
+                  <h2>Acciones auxiliares</h2>
+                </div>
+                <StatusPill label="Utilidades" tone="neutral" />
+              </div>
+
+              <div className={styles.quickActions}>
+                {auditVisible ? (
+                  <Link className="button button-secondary" href="/auditoria">
+                    Abrir auditoria
+                  </Link>
+                ) : null}
+                <Link className="button button-secondary" href="/perfil">
+                  Editar perfil
+                </Link>
+                <Button
+                  className={styles.refreshButton}
+                  disabled={isRefreshing}
+                  onClick={() => void refreshHome(true)}
+                  variant="ghost"
+                >
+                  {isRefreshing ? 'Actualizando inicio...' : 'Actualizar inicio'}
+                </Button>
+              </div>
+            </article>
+          </aside>
+        </section>
+      </section>
+    </>
   );
 }

@@ -12,7 +12,7 @@
   grid-template-columns: var(--sidebar-collapsed-width) minmax(0, 1fr);
 }
 
-.toggleButton {
+.desktopToggleButton {
   position: fixed;
   z-index: 1400;
   top: 1rem;
@@ -31,15 +31,19 @@
   transition: left 0.22s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.toggleButton:hover,
-.toggleButton:focus-visible {
+.desktopToggleButton:hover,
+.desktopToggleButton:focus-visible {
   transform: translateY(-1px);
   box-shadow: 0 16px 28px rgba(23, 51, 56, 0.24);
   outline: none;
 }
 
-.shellSidebarHidden .toggleButton {
+.shellSidebarHidden .desktopToggleButton {
   left: 1rem;
+}
+
+.mobileMenuButton {
+  display: none;
 }
 
 .toggleIcon {
@@ -55,8 +59,8 @@
   top: 0;
   height: 100vh;
   overflow-y: auto;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
   min-width: 0;
   padding: 1.2rem 1rem 1rem;
@@ -83,6 +87,10 @@
   border-radius: 24px;
   pointer-events: none;
   content: '';
+}
+
+.mobileBackdrop {
+  display: none;
 }
 
 .shellSidebarHidden .sidebar {
@@ -221,14 +229,9 @@
   display: grid;
   align-content: start;
   gap: 1rem;
-  min-height: 0;
-  overflow-y: auto;
+  min-height: auto;
+  overflow: visible;
   padding-right: 0.2rem;
-  scrollbar-width: none;
-}
-
-.sidebarMain::-webkit-scrollbar {
-  display: none;
 }
 
 .navList {
@@ -350,7 +353,7 @@
   display: grid;
   gap: 0.55rem;
   border-top: 1px solid rgba(255, 255, 255, 0.09);
-  margin-top: 0.4rem;
+  margin-top: 0.75rem;
   padding-top: 1rem;
 }
 
@@ -366,9 +369,43 @@
     grid-template-columns: 1fr;
   }
 
-  .toggleButton,
-  .shellSidebarHidden .toggleButton {
-    left: 1rem;
+  .desktopToggleButton {
+    display: none;
+  }
+
+  .mobileMenuButton {
+    position: fixed;
+    z-index: 1450;
+    top: 0.9rem;
+    left: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border: 1px solid rgba(23, 51, 56, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #0d5c56;
+    box-shadow: 0 14px 30px rgba(23, 51, 56, 0.18);
+    backdrop-filter: blur(8px);
+  }
+
+  .mobileMenuButton:focus-visible {
+    outline: 2px solid rgba(15, 118, 110, 0.35);
+    outline-offset: 2px;
+  }
+
+  .mobileBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1290;
+    display: block;
+    border: 0;
+    background: rgba(7, 24, 27, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s ease;
   }
 
   .sidebar {
@@ -379,14 +416,31 @@
     bottom: 0;
     width: min(320px, calc(100vw - 2.4rem));
     box-shadow: 0 24px 50px rgba(2, 14, 16, 0.5);
+    transform: translateX(-106%);
+    transition: transform 0.26s ease;
   }
 
   .shellSidebarHidden .sidebar {
     transform: translateX(-106%);
     opacity: 1;
+    pointer-events: none;
+    overflow-y: auto;
+    padding-left: 1.2rem;
+    padding-right: 1rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .content {
-    padding: 1.25rem;
+    padding: 4.25rem 1.25rem 1.25rem;
+  }
+
+  .shellMobileSidebarOpen .sidebar {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .shellMobileSidebarOpen .mobileBackdrop {
+    opacity: 1;
+    pointer-events: auto;
   }
 }

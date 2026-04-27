@@ -105,7 +105,6 @@ describe('Critical MVP flow real DB integration', () => {
       .set('Authorization', `Bearer ${driverToken}`)
       .send({
         licenseTypeId,
-        licenseNumber: `LIC-${uniqueSuffix}`,
         licenseExpiresAt: '2035-01-01T00:00:00.000Z',
         identityDocumentFileKey: 'documents/driver-id.pdf',
         licenseDocumentFileKey: 'documents/driver-license.pdf',

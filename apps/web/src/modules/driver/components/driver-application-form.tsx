@@ -32,7 +32,6 @@ type DriverApplicationFormProps = {
   documentSuccessMessage: string | null;
   values: {
     licenseTypeId: string;
-    licenseNumber: string;
     licenseExpiresAt: string;
     identityDocumentFileKey: string;
     licenseDocumentFileKey: string;
@@ -40,7 +39,6 @@ type DriverApplicationFormProps = {
   onChange: (
     field:
       | 'licenseTypeId'
-      | 'licenseNumber'
       | 'licenseExpiresAt'
       | 'identityDocumentFileKey'
       | 'licenseDocumentFileKey',
@@ -238,17 +236,12 @@ export function DriverApplicationForm({
   today.setHours(0, 0, 0, 0);
 
   const validationIssues: string[] = [];
-  const trimmedLicenseNumber = values.licenseNumber.trim();
   const licenseExpirationDate = values.licenseExpiresAt
     ? new Date(values.licenseExpiresAt)
     : null;
 
   if (!values.licenseTypeId) {
     validationIssues.push('Selecciona un tipo de licencia antes de enviar la solicitud.');
-  }
-
-  if (trimmedLicenseNumber.length < 5) {
-    validationIssues.push('Ingresa un numero de licencia valido y suficientemente completo.');
   }
 
   if (!values.licenseExpiresAt) {
@@ -318,14 +311,6 @@ export function DriverApplicationForm({
             ))}
           </SelectField>
 
-          <InputField
-            disabled={isApproved}
-            label="Numero de licencia"
-            onChange={(event) => onChange('licenseNumber', event.target.value)}
-            placeholder="Ejemplo: X1234567"
-            required
-            value={values.licenseNumber}
-          />
         </div>
 
         <InputField

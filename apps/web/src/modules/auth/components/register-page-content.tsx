@@ -41,7 +41,11 @@ const REGISTER_TIPS = [
   },
 ] as const;
 
-export function RegisterPageContent() {
+type RegisterPageContentProps = {
+  initialEmail?: string;
+};
+
+export function RegisterPageContent({ initialEmail }: RegisterPageContentProps) {
   return (
     <main
       className={`${styles.registerShell} grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top,#fdf8ee_0%,#f3ecdf_45%,#eadfcd_100%)] p-4 sm:p-8`}
@@ -80,7 +84,7 @@ export function RegisterPageContent() {
         </aside>
 
         <div className={styles.registerFormPanel}>
-          <RegisterForm />
+          <RegisterForm initialEmail={initialEmail} />
         </div>
       </section>
     </main>

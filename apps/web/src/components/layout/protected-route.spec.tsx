@@ -34,7 +34,7 @@ describe('ProtectedRoute', () => {
       </ProtectedRoute>,
     );
 
-    expect(screen.getByText('Preparando tu panel')).toBeInTheDocument();
+    expect(screen.getByText('Preparando tu panel inteligente')).toBeInTheDocument();
   });
 
   it('redirects unauthenticated users to login', async () => {

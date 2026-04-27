@@ -1,0 +1,441 @@
+.homeShell {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.reveal {
+  animation: homeRise 0.5s ease both;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(15, 118, 110, 0.18), transparent 34%),
+    linear-gradient(150deg, rgba(247, 251, 251, 0.98), rgba(237, 244, 243, 0.95));
+  padding: clamp(1.2rem, 2.5vw, 2rem);
+  box-shadow: 0 22px 52px rgba(15, 23, 42, 0.08);
+}
+
+.hero::after {
+  position: absolute;
+  inset: auto -2rem -2rem auto;
+  width: 13rem;
+  height: 13rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.48), transparent 68%);
+  content: '';
+  pointer-events: none;
+}
+
+.heroTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 46rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  margin: 0;
+  color: #16343d;
+  font-size: clamp(2rem, 3.8vw, 3.5rem);
+  line-height: 0.98;
+}
+
+.heroLead {
+  margin: 0;
+  color: #597278;
+  max-width: 44rem;
+  line-height: 1.65;
+}
+
+.heroPills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.opsStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.opsCard {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(22, 47, 58, 0.09);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.92rem 1rem;
+}
+
+.opsLabel {
+  color: #617981;
+  font-size: 0.73rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.opsValue {
+  color: #16343d;
+  font-size: 1.18rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.opsNote {
+  color: #698287;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.leftRail,
+.rightRail {
+  display: grid;
+  gap: 1rem;
+}
+
+.focusCard,
+.statusCard,
+.workspaceCard,
+.timelineCard,
+.trustCard,
+.quickCard {
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
+  padding: 1.15rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.cardHeader > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.cardHeader h2 {
+  margin: 0;
+  color: #16343d;
+  font-size: 1.2rem;
+}
+
+.cardText {
+  margin: 0;
+  color: #647b81;
+  line-height: 1.55;
+}
+
+.focusPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: 0.9rem;
+}
+
+.focusPrimary {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.16), transparent 30%),
+    linear-gradient(145deg, rgba(236, 253, 250, 0.9), rgba(244, 250, 250, 0.96));
+  padding: 1rem;
+}
+
+.focusPrimary h3 {
+  margin: 0;
+  color: #16343d;
+  font-size: 1.15rem;
+}
+
+.focusPrimary p {
+  margin: 0;
+  color: #5f787e;
+  line-height: 1.55;
+}
+
+.focusActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.focusSecondary {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.signalCard {
+  display: grid;
+  gap: 0.18rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.88);
+  padding: 0.85rem 0.9rem;
+}
+
+.signalCard span {
+  color: #667f85;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.signalCard strong {
+  color: #16343d;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.statusGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.statusItem {
+  display: grid;
+  gap: 0.16rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.86);
+  padding: 0.88rem 0.92rem;
+}
+
+.statusItem span {
+  color: #647d82;
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.statusItem strong {
+  color: #16343d;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.workspaceLink {
+  display: grid;
+  gap: 0.24rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.86);
+  padding: 0.95rem;
+  color: inherit;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.workspaceLink:hover,
+.workspaceLink:focus-visible {
+  border-color: rgba(15, 118, 110, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+  outline: none;
+}
+
+.workspaceLink strong {
+  color: #16343d;
+}
+
+.workspaceLink span {
+  color: #667f85;
+  line-height: 1.45;
+}
+
+.timelineList {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.timelineIndex {
+  display: inline-grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  color: #0d5c56;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.timelineBody {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.timelineBody strong {
+  color: #16343d;
+}
+
+.timelineBody p {
+  margin: 0;
+  color: #647c82;
+  line-height: 1.5;
+}
+
+.restrictionsBox {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.restrictionBanner {
+  display: grid;
+  gap: 0.2rem;
+  border-radius: 18px;
+  padding: 0.92rem 1rem;
+}
+
+.restrictionBannerDanger {
+  border: 1px solid rgba(181, 71, 62, 0.16);
+  background: rgba(181, 71, 62, 0.08);
+  color: #b5473e;
+}
+
+.restrictionBannerNeutral {
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  background: rgba(247, 251, 251, 0.88);
+  color: #1f4e57;
+}
+
+.restrictionBanner strong {
+  font-size: 0.95rem;
+}
+
+.restrictionMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.restrictionMetric {
+  display: grid;
+  gap: 0.18rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.88);
+  padding: 0.85rem 0.9rem;
+}
+
+.restrictionMetric span {
+  color: #657d83;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.restrictionMetric strong {
+  color: #16343d;
+}
+
+.quickActions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.refreshButton {
+  width: 100%;
+}
+
+@keyframes homeRise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1180px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  .heroTop,
+  .cardHeader {
+    flex-direction: column;
+  }
+
+  .heroPills {
+    justify-content: flex-start;
+  }
+
+  .opsStrip,
+  .statusGrid,
+  .workspaceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focusPanel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .opsStrip,
+  .statusGrid,
+  .workspaceGrid,
+  .restrictionMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .focusActions {
+    display: grid;
+  }
+}

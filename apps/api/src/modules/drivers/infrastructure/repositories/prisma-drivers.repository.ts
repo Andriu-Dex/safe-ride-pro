@@ -79,25 +79,6 @@ export class PrismaDriversRepository implements DriversRepository {
     return driverProfile ? this.mapDriverProfile(driverProfile) : null;
   }
 
-  async findDriverProfileByLicenseNumber(
-    licenseNumber: string,
-  ): Promise<DriverProfileRecord | null> {
-    const driverProfile = await this.prisma.driverProfile.findUnique({
-      where: { licenseNumber },
-      include: {
-        licenseType: true,
-        membership: {
-          include: {
-            institution: true,
-            user: true,
-          },
-        },
-      },
-    });
-
-    return driverProfile ? this.mapDriverProfile(driverProfile) : null;
-  }
-
   async listReviewableDriverApplications(
     filters: ListReviewableDriverApplicationsFilters,
   ): Promise<DriverProfileRecord[]> {
@@ -144,7 +125,6 @@ export class PrismaDriversRepository implements DriversRepository {
         },
         update: {
           licenseTypeId: input.licenseTypeId,
-          licenseNumber: input.licenseNumber,
           licenseExpiresAt: input.licenseExpiresAt,
           identityDocumentFileKey: input.identityDocumentFileKey,
           licenseDocumentFileKey: input.licenseDocumentFileKey,
@@ -156,7 +136,6 @@ export class PrismaDriversRepository implements DriversRepository {
         create: {
           membershipId: input.membershipId,
           licenseTypeId: input.licenseTypeId,
-          licenseNumber: input.licenseNumber,
           licenseExpiresAt: input.licenseExpiresAt,
           identityDocumentFileKey: input.identityDocumentFileKey,
           licenseDocumentFileKey: input.licenseDocumentFileKey,
@@ -251,7 +230,6 @@ export class PrismaDriversRepository implements DriversRepository {
 
   private mapDriverProfile(driverProfile: {
     membershipId: string;
-    licenseNumber: string;
     licenseExpiresAt: Date;
     identityDocumentFileKey: string | null;
     licenseDocumentFileKey: string | null;
@@ -287,7 +265,6 @@ export class PrismaDriversRepository implements DriversRepository {
       driverVerificationStatus:
         driverProfile.membership.driverVerificationStatus as DriverVerificationStatus,
       licenseType: driverProfile.licenseType,
-      licenseNumber: driverProfile.licenseNumber,
       licenseExpiresAt: driverProfile.licenseExpiresAt,
       licenseStatus: getDriverLicenseStatus(driverProfile.licenseExpiresAt),
       licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(driverProfile.licenseExpiresAt),

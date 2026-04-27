@@ -1,0 +1,811 @@
+.profileShell {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.reveal {
+  animation: profileRise 0.5s ease both;
+}
+
+.revealSoft {
+  animation: profileFade 0.55s ease both;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 1.1rem;
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(15, 118, 110, 0.18), transparent 32%),
+    linear-gradient(155deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.94));
+  padding: clamp(1.2rem, 2.4vw, 2rem);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+  transition: box-shadow 0.28s ease, transform 0.28s ease, border-color 0.28s ease;
+}
+
+.heroSaved {
+  border-color: rgba(46, 168, 106, 0.24);
+  box-shadow: 0 24px 60px rgba(46, 168, 106, 0.16);
+  transform: translateY(-1px);
+}
+
+.hero::after {
+  position: absolute;
+  inset: auto -1.2rem -1.8rem auto;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.46), transparent 68%);
+  content: '';
+  pointer-events: none;
+}
+
+.heroTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 48rem;
+}
+
+.kicker {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  margin: 0;
+  color: #16343d;
+  font-size: clamp(2rem, 3.7vw, 3.4rem);
+  line-height: 1;
+}
+
+.heroLead {
+  margin: 0;
+  max-width: 46rem;
+  color: #567176;
+  line-height: 1.65;
+}
+
+.heroStatus {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.statCard {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.9rem 1rem;
+}
+
+.saveBanner {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(46, 168, 106, 0.18);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.92), rgba(240, 253, 250, 0.94));
+  padding: 0.9rem 1rem;
+  color: #1f7a4a;
+  animation: profilePulseIn 0.35s ease both;
+}
+
+.saveBanner strong {
+  font-size: 0.98rem;
+}
+
+.saveBanner span {
+  line-height: 1.45;
+}
+
+.statLabel {
+  color: #5c767d;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.statValue {
+  color: #16343d;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.statNote {
+  color: #6a8388;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(320px, 0.72fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.formPanel,
+.sideStack {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.identityCard,
+.formCard,
+.checklistCard,
+.quickCard {
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
+}
+
+.identityCard {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1.2rem;
+  padding: 1.3rem;
+}
+
+.identityCard::before {
+  position: absolute;
+  inset: auto auto -2.4rem -2rem;
+  width: 10rem;
+  height: 10rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.1), transparent 68%);
+  content: '';
+}
+
+.avatarWrap {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: start;
+  justify-items: stretch;
+  gap: 0.9rem;
+  width: min(100%, 12rem);
+}
+
+.avatarFrame {
+  display: grid;
+  width: clamp(5rem, 10vw, 6.5rem);
+  height: clamp(5rem, 10vw, 6.5rem);
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgba(22, 47, 58, 0.12);
+  border-radius: 24px;
+  background: linear-gradient(155deg, #17a699, #0b5d55);
+  color: white;
+  box-shadow: 0 18px 35px rgba(11, 93, 85, 0.26);
+}
+
+.avatarImage,
+.avatarFallback {
+  width: 100%;
+  height: 100%;
+}
+
+.avatarImage {
+  display: block;
+  object-fit: cover;
+}
+
+.avatarFallback {
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.photoButton {
+  min-width: 0;
+  width: 100%;
+}
+
+.avatarPanel {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.88);
+  padding: 0.85rem 0.95rem;
+}
+
+.avatarPanelTitle {
+  margin: 0;
+  color: #16343d;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.avatarPanelText {
+  color: #647b81;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.identityBody {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.identityActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.identityHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.identityMeta {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.identityMeta h2 {
+  margin: 0;
+  color: #16343d;
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  line-height: 1.1;
+}
+
+.identityMeta p {
+  margin: 0;
+  color: #617981;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.identityHighlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.highlight {
+  display: grid;
+  gap: 0.16rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 16px;
+  background: rgba(247, 251, 251, 0.88);
+  padding: 0.75rem 0.8rem;
+}
+
+.highlight span {
+  color: #6b8389;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.highlight strong {
+  color: #16343d;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.formCard,
+.checklistCard,
+.quickCard {
+  padding: 1.15rem;
+}
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.overviewCard {
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
+  padding: 1.15rem;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.infoTile {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.9rem;
+}
+
+.infoTile span {
+  color: #6b8389;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.infoTile strong {
+  color: #16343d;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.sectionHeaderCompact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.sectionHeader > div,
+.sectionHeaderCompact > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.sectionHeader h3,
+.sectionHeaderCompact h3 {
+  margin: 0;
+  color: #16343d;
+  font-size: 1.2rem;
+}
+
+.sectionText {
+  margin: 0;
+  color: #647b81;
+  line-height: 1.5;
+}
+
+.bulkActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+
+.bulkHint {
+  color: #647b81;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.formSection {
+  display: grid;
+  gap: 0.95rem;
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid rgba(22, 47, 58, 0.08);
+}
+
+.formSection:first-of-type {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.consentGrid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.consentCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.9rem;
+  border: 1px solid rgba(22, 47, 58, 0.09);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.9rem;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.consentCard:hover {
+  border-color: rgba(15, 118, 110, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+}
+
+.consentCheckbox {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.15rem;
+  accent-color: #0f766e;
+}
+
+.consentBody {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.consentBody strong {
+  color: #16343d;
+}
+
+.consentBody p {
+  margin: 0;
+  color: #647b81;
+  line-height: 1.5;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.1rem;
+}
+
+.primaryAction {
+  min-width: 13rem;
+}
+
+.secondaryAction {
+  min-width: 10rem;
+}
+
+.checklistBox {
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.95rem;
+}
+
+.checklistList {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklistItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.checkIcon,
+.checkIconDone {
+  display: inline-grid;
+  width: 1.4rem;
+  height: 1.4rem;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.checkIcon {
+  background: rgba(181, 71, 62, 0.12);
+  color: #b5473e;
+}
+
+.checkIconDone {
+  background: rgba(46, 168, 106, 0.14);
+  color: #1f7a4a;
+}
+
+.checklistItem strong {
+  color: #16343d;
+  line-height: 1.45;
+}
+
+.infoStack {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.infoCard {
+  display: grid;
+  gap: 0.32rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.9rem;
+}
+
+.infoTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.infoCard p {
+  margin: 0;
+  color: #667d83;
+  line-height: 1.5;
+}
+
+.quickGrid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.quickLink {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.95rem;
+  color: inherit;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quickLink:hover,
+.quickLink:focus-visible {
+  border-color: rgba(15, 118, 110, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+  outline: none;
+}
+
+.quickLink strong {
+  color: #16343d;
+}
+
+.quickLink span {
+  color: #647b81;
+  line-height: 1.45;
+}
+
+.avatarModalCard {
+  display: grid;
+  gap: 1rem;
+}
+
+.editModalCard {
+  display: grid;
+  gap: 1rem;
+  max-height: min(92vh, 60rem);
+}
+
+.editForm {
+  overflow-y: auto;
+  max-height: calc(92vh - 8rem);
+  padding-right: 0.2rem;
+}
+
+.avatarModalBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.9fr);
+  gap: 1rem;
+}
+
+.avatarPreviewStage {
+  min-height: 22rem;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 28%),
+    linear-gradient(155deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.94));
+}
+
+.avatarPreviewImage,
+.avatarPreviewFallback {
+  width: 100%;
+  height: 100%;
+}
+
+.avatarPreviewImage {
+  display: block;
+  object-fit: cover;
+}
+
+.avatarPreviewFallback {
+  display: grid;
+  place-items: center;
+  color: white;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  background: linear-gradient(155deg, #17a699, #0b5d55);
+}
+
+.avatarModalSidebar {
+  display: grid;
+  align-content: start;
+  gap: 0.8rem;
+}
+
+.avatarHintCard {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.9);
+  padding: 0.95rem;
+}
+
+.avatarHintCard strong {
+  color: #16343d;
+}
+
+.avatarHintCard p {
+  margin: 0;
+  color: #647b81;
+  line-height: 1.5;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes profileRise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes profileFade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes profilePulseIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 1180px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .statGrid,
+  .identityHighlights,
+  .overviewGrid,
+  .infoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heroTop,
+  .sectionHeader,
+  .sectionHeaderCompact,
+  .identityHeader {
+    flex-direction: column;
+  }
+
+  .heroStatus {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .statGrid,
+  .identityHighlights,
+  .formGrid,
+  .overviewGrid,
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .identityCard {
+    grid-template-columns: 1fr;
+  }
+
+  .avatarWrap {
+    justify-items: flex-start;
+  }
+
+  .formActions {
+    display: grid;
+  }
+
+  .primaryAction,
+  .secondaryAction,
+  .photoButton {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .identityActions {
+    display: grid;
+  }
+
+  .bulkActions {
+    align-items: flex-start;
+  }
+
+  .avatarModalBody {
+    grid-template-columns: 1fr;
+  }
+
+  .avatarPreviewStage {
+    min-height: 16rem;
+  }
+}

@@ -4,10 +4,6 @@ export class SubmitDriverApplicationRequestDto {
   @IsUUID()
   licenseTypeId!: string;
 
-  @IsString()
-  @MaxLength(30)
-  licenseNumber!: string;
-
   @IsDateString()
   licenseExpiresAt!: string;
 

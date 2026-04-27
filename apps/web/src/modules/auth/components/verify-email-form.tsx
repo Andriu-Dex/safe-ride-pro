@@ -35,7 +35,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
   const { establishSession } = useAuth();
   const [code, setCode] = useState(initialCode);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [developmentCode, setDevelopmentCode] = useState<string | null>(initialCode || null);
+  const [developmentCode, setDevelopmentCode] = useState(initialCode || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -193,31 +193,45 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
           </Button>
         </form>
 
-        <div className={styles.actionGrid}>
-          <Button
-            className={styles.secondaryAction}
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <button
+            type="button"
+            className="auth-inline-link text-sm font-medium"
             disabled={isResending || !email}
             onClick={() => void runResend()}
-            variant="secondary"
           >
-            {isResending ? 'Reenviando...' : 'Reenviar codigo'}
-          </Button>
-          <Button
-            className={styles.secondaryAction}
-            onClick={() =>
-              router.replace(
-                email
-                  ? `/login?email=${encodeURIComponent(email)}&verified=1`
-                  : '/login?verified=1',
-              )
-            }
-            variant="secondary"
-          >
-            Ir al acceso
-          </Button>
-          <a className={`button button-secondary ${styles.secondaryAction}`} href="/register">
-            Volver al registro
-          </a>
+            {isResending ? 'Reenviando...' : 'Reenviar codigo de verificacion'}
+          </button>
+
+          <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
+            <button
+              type="button"
+              className="hover:text-slate-800 transition-colors"
+              onClick={() =>
+                router.push(
+                  email
+                    ? `/login?email=${encodeURIComponent(email)}`
+                    : '/login',
+                )
+              }
+            >
+              Ir a inicio de sesion
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              className="hover:text-slate-800 transition-colors"
+              onClick={() =>
+                router.push(
+                  email
+                    ? `/register?email=${encodeURIComponent(email)}`
+                    : '/register',
+                )
+              }
+            >
+              Volver al registro
+            </button>
+          </div>
         </div>
       </div>
     </>

@@ -20,7 +20,6 @@ function createDriversRepositoryMock(): jest.Mocked<DriversRepository> {
     findDefaultMembershipByUserId: jest.fn(),
     findMembershipById: jest.fn(),
     findDriverProfileByMembershipId: jest.fn(),
-    findDriverProfileByLicenseNumber: jest.fn(),
     listReviewableDriverApplications: jest.fn(),
     submitDriverApplication: jest.fn(),
     reviewDriverApplication: jest.fn(),
@@ -60,7 +59,6 @@ function buildDriverProfile(
       code: 'B',
       name: 'Licencia B',
     },
-    licenseNumber: input.licenseNumber,
     licenseExpiresAt: input.licenseExpiresAt,
     identityDocumentFileKey: input.identityDocumentFileKey ?? null,
     licenseDocumentFileKey: input.licenseDocumentFileKey ?? null,
@@ -80,13 +78,10 @@ describe('SubmitDriverApplicationUseCase', () => {
     const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue(buildMembership());
-    repository.findDriverProfileByLicenseNumber.mockResolvedValue(null);
-
     await expect(
       useCase.execute({
         userId: 'user-1',
         licenseTypeId: 'license-type-1',
-        licenseNumber: 'ABC-123',
         licenseExpiresAt: '2030-01-01T10:00:00.000Z',
       }),
     ).rejects.toThrow(
@@ -111,7 +106,6 @@ describe('SubmitDriverApplicationUseCase', () => {
       useCase.execute({
         userId: 'user-1',
         licenseTypeId: 'license-type-1',
-        licenseNumber: 'abc-123',
         licenseExpiresAt: '2020-01-01T10:00:00.000Z',
       }),
     ).rejects.toThrow(
@@ -138,7 +132,6 @@ describe('SubmitDriverApplicationUseCase', () => {
       useCase.execute({
         userId: 'user-1',
         licenseTypeId: 'license-type-1',
-        licenseNumber: 'abc-123',
         licenseExpiresAt: '2030-01-01T10:00:00.000Z',
         identityDocumentFileKey: 'identity-file',
         licenseDocumentFileKey: 'license-file',
@@ -170,7 +163,6 @@ describe('SubmitDriverApplicationUseCase', () => {
       useCase.execute({
         userId: 'user-1',
         licenseTypeId: 'license-type-1',
-        licenseNumber: 'abc-123',
         licenseExpiresAt: '2030-01-01T10:00:00.000Z',
         identityDocumentFileKey: 'identity-file',
         licenseDocumentFileKey: 'license-file',
@@ -184,7 +176,7 @@ describe('SubmitDriverApplicationUseCase', () => {
     expect(repository.submitDriverApplication).not.toHaveBeenCalled();
   });
 
-  it('normalizes the license number, submits the application and records audit', async () => {
+  it('submits the application and records audit', async () => {
     const repository = createDriversRepositoryMock();
     const auditService = {
       record: jest.fn(),
@@ -192,13 +184,11 @@ describe('SubmitDriverApplicationUseCase', () => {
     const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue(buildMembership());
-    repository.findDriverProfileByLicenseNumber.mockResolvedValue(null);
     repository.submitDriverApplication.mockImplementation(async (input) => buildDriverProfile(input));
 
     const response = await useCase.execute({
       userId: 'user-1',
       licenseTypeId: 'license-type-1',
-      licenseNumber: '  abc-123  ',
       licenseExpiresAt: '2030-01-01T10:00:00.000Z',
       identityDocumentFileKey: '  identity-file  ',
       licenseDocumentFileKey: '  license-file  ',
@@ -210,7 +200,6 @@ describe('SubmitDriverApplicationUseCase', () => {
     expect(repository.submitDriverApplication).toHaveBeenCalledWith({
       membershipId: 'membership-1',
       licenseTypeId: 'license-type-1',
-      licenseNumber: 'ABC-123',
       licenseExpiresAt: new Date('2030-01-01T10:00:00.000Z'),
       identityDocumentFileKey: 'identity-file',
       licenseDocumentFileKey: 'license-file',

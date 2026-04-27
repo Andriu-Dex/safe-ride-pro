@@ -1516,7 +1516,7 @@ export default function AuditPage() {
                         Correo: {application.userEmail} | Institucion: {application.institutionName}
                       </p>
                       <p className="panel-text">
-                        Licencia: {application.licenseType.code} - {application.licenseType.name} | Numero: {application.licenseNumber}
+                        Licencia: {application.licenseType.code} - {application.licenseType.name}
                       </p>
                       <p className="panel-text">
                         Expira: {formatDateTime(application.licenseExpiresAt)} | Enviada: {formatDateTime(application.submittedAt)}
@@ -1542,7 +1542,7 @@ export default function AuditPage() {
                         >
                           {isOpeningDriverDocumentKey === identityDocumentDownloadKey
                             ? 'Abriendo...'
-                            : 'Ver identidad'}
+                            : 'Ver cédula'}
                         </Button>
                         <Button
                           disabled={
@@ -1560,7 +1560,7 @@ export default function AuditPage() {
                         >
                           {isDownloadingDriverDocumentKey === identityDocumentDownloadKey
                             ? 'Descargando...'
-                            : 'Descargar identidad'}
+                            : 'Descargar cédula'}
                         </Button>
                         <Button
                           disabled={

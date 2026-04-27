@@ -43,7 +43,7 @@ describe('LoginForm', () => {
     );
     await user.clear(screen.getByPlaceholderText('Ingresa tu clave'));
     await user.type(screen.getByPlaceholderText('Ingresa tu clave'), 'Password123!');
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
 
     await waitFor(() => {
       expect(signInMock).toHaveBeenCalledWith({
@@ -67,7 +67,7 @@ describe('LoginForm', () => {
       'nuevo-admin@uta.edu.ec',
     );
     await user.type(screen.getByPlaceholderText('Ingresa tu clave'), 'Password123!');
-    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
 
     expect(await screen.findByText('Credenciales invalidas.')).toBeInTheDocument();
   });
@@ -85,5 +85,13 @@ describe('LoginForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ocultar clave' }));
     expect(passwordInput).toHaveAttribute('type', 'password');
+  });
+
+  it('shows a link back to verification when the email is available', () => {
+    render(<LoginForm initialEmail="nuevo-admin@uta.edu.ec" />);
+
+    expect(
+      screen.getByRole('link', { name: 'Volver a verificacion' }),
+    ).toHaveAttribute('href', '/verify-email?email=nuevo-admin%40uta.edu.ec');
   });
 });

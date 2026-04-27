@@ -6,14 +6,19 @@ import {
   DriverVerificationStatus,
   InstitutionMembershipRole,
 } from '@saferidepro/shared-types';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { Button } from '../../../components/ui/button';
 import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
+import { InputField } from '../../../components/ui/input-field';
 import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
+import { SelectField } from '../../../components/ui/select-field';
 import { StatusPill } from '../../../components/ui/status-pill';
+import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
+import { downloadBlobFile } from '../../../lib/blob-file';
+import { ApiError } from '../../../lib/api-client';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
-import { DriverApplicationForm } from '../../../modules/driver/components/driver-application-form';
 import {
   downloadDriverApplicationDocument,
   getDriverOverview,
@@ -34,18 +39,27 @@ import type {
   DriverOverview,
   LicenseTypeCatalogItem,
 } from '../../../modules/driver/types/driver';
-import { downloadBlobFile } from '../../../lib/blob-file';
-import { ApiError } from '../../../lib/api-client';
+import { suppressAuthSessionSync } from '../../../modules/auth/lib/auth-sync-guard';
+import styles from './page.module.css';
 
-const EMPTY_FORM = {
+const emptyForm = {
   licenseTypeId: '',
-  licenseNumber: '',
   licenseExpiresAt: '',
   identityDocumentFileKey: '',
   licenseDocumentFileKey: '',
 };
 
-type DocumentPreviewState = {
+const maxDriverDocumentSizeBytes = 8 * 1024 * 1024;
+const allowedDriverDocumentMimeTypes = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+type DriverFormValues = typeof emptyForm;
+
+type PreviewState = {
   documentType: DriverDocumentType;
   fileName: string;
   fileUrl: string;
@@ -76,30 +90,210 @@ function getDocumentTitle(documentType: DriverDocumentType): string {
     : 'Documento de licencia';
 }
 
+function getDocumentLabel(documentType: DriverDocumentType): string {
+  return documentType === 'identity' ? 'Identidad' : 'Licencia';
+}
+
+function getApplicationActionLabel(status: DriverVerificationStatus): string {
+  switch (status) {
+    case DriverVerificationStatus.Rejected:
+    case DriverVerificationStatus.Suspended:
+      return 'Reenviar solicitud';
+    case DriverVerificationStatus.PendingVerification:
+      return 'Actualizar solicitud';
+    default:
+      return 'Enviar solicitud';
+  }
+}
+
+function buildValidationMessage(values: DriverFormValues): string | null {
+  if (!values.licenseTypeId) {
+    return 'Selecciona el tipo de licencia.';
+  }
+
+  if (!values.licenseExpiresAt) {
+    return 'Indica la fecha de expiracion de la licencia.';
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expirationDate = new Date(values.licenseExpiresAt);
+
+  if (expirationDate < today) {
+    return 'La licencia registrada ya esta vencida.';
+  }
+
+  if (!values.identityDocumentFileKey.trim()) {
+    return 'Carga tu documento de identidad.';
+  }
+
+  if (!values.licenseDocumentFileKey.trim()) {
+    return 'Carga tu documento de licencia.';
+  }
+
+  return null;
+}
+
+type DocumentCardProps = {
+  documentType: DriverDocumentType;
+  fileName: string | null;
+  hasFile: boolean;
+  isBusy: boolean;
+  isDownloading: boolean;
+  onFileSelect: (documentType: DriverDocumentType, file: File) => void;
+  onPreview: (documentType: DriverDocumentType) => void;
+  onDownload: (documentType: DriverDocumentType) => void;
+  onValidationError: (message: string) => void;
+};
+
+function DocumentCard({
+  documentType,
+  fileName,
+  hasFile,
+  isBusy,
+  isDownloading,
+  onFileSelect,
+  onPreview,
+  onDownload,
+  onValidationError,
+}: DocumentCardProps) {
+  const inputId = `driver-document-${documentType}`;
+
+  return (
+    <article className={styles.documentCard}>
+      <div className={styles.documentHead}>
+        <div>
+          <p className={styles.documentLabel}>{getDocumentLabel(documentType)}</p>
+          <h3 className={styles.documentTitle}>{getDocumentTitle(documentType)}</h3>
+        </div>
+        <StatusPill
+          label={hasFile ? 'Cargado' : 'Pendiente'}
+          tone={hasFile ? 'success' : 'warning'}
+        />
+      </div>
+
+      <p className={styles.documentFileName}>
+        {fileName ?? 'Sin archivo cargado'}
+      </p>
+
+      <div className={styles.documentActions}>
+        <label
+          className={['button', 'button-secondary', styles.documentTrigger].join(' ')}
+          htmlFor={isBusy ? undefined : inputId}
+          onClick={() => {
+            if (!isBusy) {
+              suppressAuthSessionSync();
+            }
+          }}
+        >
+          {isBusy ? 'Subiendo...' : hasFile ? 'Cambiar archivo' : 'Subir archivo'}
+        </label>
+
+        <input
+          accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp"
+          className={styles.srOnly}
+          disabled={isBusy}
+          id={inputId}
+          onChange={(event) => {
+            const selectedFile = event.target.files?.[0];
+
+            if (!selectedFile) {
+              return;
+            }
+
+            if (!allowedDriverDocumentMimeTypes.has(selectedFile.type)) {
+              onValidationError('El documento debe estar en PDF, JPG, PNG o WEBP.');
+              event.target.value = '';
+              return;
+            }
+
+            if (selectedFile.size > maxDriverDocumentSizeBytes) {
+              onValidationError('El documento no puede superar los 8 MB.');
+              event.target.value = '';
+              return;
+            }
+
+            onFileSelect(documentType, selectedFile);
+            event.target.value = '';
+          }}
+          type="file"
+        />
+
+        <Button
+          disabled={!hasFile || isBusy}
+          onClick={() => onPreview(documentType)}
+          variant="ghost"
+        >
+          Ver
+        </Button>
+        <Button
+          disabled={!hasFile || isDownloading}
+          onClick={() => onDownload(documentType)}
+          variant="ghost"
+        >
+          {isDownloading ? 'Descargando...' : 'Descargar'}
+        </Button>
+      </div>
+    </article>
+  );
+}
+
 export default function DriverPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [driverOverview, setDriverOverview] = useState<DriverOverview | null>(null);
   const [licenseTypes, setLicenseTypes] = useState<LicenseTypeCatalogItem[]>([]);
-  const [formValues, setFormValues] = useState(EMPTY_FORM);
+  const [formValues, setFormValues] = useState<DriverFormValues>(emptyForm);
+  const [identityFileName, setIdentityFileName] = useState<string | null>(null);
+  const [licenseFileName, setLicenseFileName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isUploadingIdentityDocument, setIsUploadingIdentityDocument] = useState(false);
   const [isUploadingLicenseDocument, setIsUploadingLicenseDocument] = useState(false);
   const [isOpeningIdentityPreview, setIsOpeningIdentityPreview] = useState(false);
   const [isOpeningLicensePreview, setIsOpeningLicensePreview] = useState(false);
   const [isDownloadingIdentityDocument, setIsDownloadingIdentityDocument] = useState(false);
   const [isDownloadingLicenseDocument, setIsDownloadingLicenseDocument] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [documentErrorMessage, setDocumentErrorMessage] = useState<string | null>(null);
-  const [documentSuccessMessage, setDocumentSuccessMessage] = useState<string | null>(null);
-  const [identityDocumentFileName, setIdentityDocumentFileName] = useState<string | null>(null);
-  const [licenseDocumentFileName, setLicenseDocumentFileName] = useState<string | null>(null);
-  const [identityDocumentPreviewUrl, setIdentityDocumentPreviewUrl] = useState<string | null>(null);
-  const [licenseDocumentPreviewUrl, setLicenseDocumentPreviewUrl] = useState<string | null>(null);
-  const [previewState, setPreviewState] = useState<DocumentPreviewState | null>(null);
-  const [previewErrorMessage, setPreviewErrorMessage] = useState<string | null>(null);
+  const [previewState, setPreviewState] = useState<PreviewState | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const pushToast = (
+    title: string,
+    description: string,
+    tone: ToastItem['tone'] = 'info',
+  ) => {
+    setToasts((currentToasts) => [
+      ...currentToasts,
+      {
+        id: `driver-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title,
+        description,
+        tone,
+      },
+    ]);
+  };
+
+  const dismissToast = (toastId: string) => {
+    setToasts((currentToasts) =>
+      currentToasts.filter((toast) => toast.id !== toastId),
+    );
+  };
+
+  const syncFormFromOverview = (overview: DriverOverview) => {
+    setFormValues({
+      licenseTypeId: overview.driverProfile?.licenseType.id ?? '',
+      licenseExpiresAt: toDateInputValue(overview.driverProfile?.licenseExpiresAt),
+      identityDocumentFileKey: overview.driverProfile?.identityDocumentFileKey ?? '',
+      licenseDocumentFileKey: overview.driverProfile?.licenseDocumentFileKey ?? '',
+    });
+    setIdentityFileName(
+      extractUploadedFileName(overview.driverProfile?.identityDocumentFileKey),
+    );
+    setLicenseFileName(
+      extractUploadedFileName(overview.driverProfile?.licenseDocumentFileKey),
+    );
+  };
 
   useEffect(() => {
     if (!isHydrated) {
@@ -117,9 +311,6 @@ export default function DriverPage() {
 
     const loadDriverData = async () => {
       setIsLoading(true);
-      setErrorMessage(null);
-      setDocumentErrorMessage(null);
-      setDocumentSuccessMessage(null);
 
       try {
         const [overview, licenseTypeItems] = await Promise.all([
@@ -133,19 +324,7 @@ export default function DriverPage() {
 
         setDriverOverview(overview);
         setLicenseTypes(licenseTypeItems);
-        setFormValues({
-          licenseTypeId: overview.driverProfile?.licenseType.id ?? '',
-          licenseNumber: overview.driverProfile?.licenseNumber ?? '',
-          licenseExpiresAt: toDateInputValue(overview.driverProfile?.licenseExpiresAt),
-          identityDocumentFileKey: overview.driverProfile?.identityDocumentFileKey ?? '',
-          licenseDocumentFileKey: overview.driverProfile?.licenseDocumentFileKey ?? '',
-        });
-        setIdentityDocumentFileName(
-          extractUploadedFileName(overview.driverProfile?.identityDocumentFileKey),
-        );
-        setLicenseDocumentFileName(
-          extractUploadedFileName(overview.driverProfile?.licenseDocumentFileKey),
-        );
+        syncFormFromOverview(overview);
       } catch (error) {
         if (!isMounted) {
           return;
@@ -155,11 +334,13 @@ export default function DriverPage() {
           await refreshSession().catch(() => undefined);
         }
 
-        if (error instanceof ApiError) {
-          setErrorMessage(error.message);
-        } else {
-          setErrorMessage('No fue posible cargar el estado de conductor.');
-        }
+        pushToast(
+          'No se pudo cargar',
+          error instanceof ApiError
+            ? error.message
+            : 'No fue posible cargar el estado de conductor.',
+          'error',
+        );
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -176,26 +357,11 @@ export default function DriverPage() {
 
   useEffect(() => {
     return () => {
-      if (identityDocumentPreviewUrl) {
-        URL.revokeObjectURL(identityDocumentPreviewUrl);
-      }
-
-      if (licenseDocumentPreviewUrl) {
-        URL.revokeObjectURL(licenseDocumentPreviewUrl);
-      }
-
       if (previewState?.fileUrl) {
         URL.revokeObjectURL(previewState.fileUrl);
       }
     };
-  }, [identityDocumentPreviewUrl, licenseDocumentPreviewUrl, previewState]);
-
-  const handleFormChange = (field: keyof typeof EMPTY_FORM, value: string) => {
-    setFormValues((currentValues) => ({
-      ...currentValues,
-      [field]: value,
-    }));
-  };
+  }, [previewState]);
 
   const currentStatus =
     driverOverview?.membership?.effectiveDriverVerificationStatus ??
@@ -215,16 +381,76 @@ export default function DriverPage() {
   const currentMembershipId = driverOverview?.membership?.id ?? null;
   const documentOwnerName =
     driverOverview?.driverProfile?.userFullName ?? authSession?.user.fullName ?? 'usuario';
+  const hasDriverProfile = Boolean(driverOverview?.driverProfile);
+  const canEditApplication = currentStatus !== DriverVerificationStatus.Approved;
+  const validationMessage = buildValidationMessage(formValues);
 
-  const resetPreviewState = () => {
-    setPreviewErrorMessage(null);
-    setPreviewState((currentPreview) => {
-      if (currentPreview?.fileUrl) {
-        URL.revokeObjectURL(currentPreview.fileUrl);
-      }
+  const metrics = useMemo(
+    () => [
+      {
+        label: 'Institucion',
+        value: driverOverview?.membership?.institutionName ?? 'No disponible',
+        note: 'Contexto activo.',
+      },
+      {
+        label: 'Estado',
+        value: getDriverStatusLabel(currentStatus),
+        note: 'Revision actual.',
+      },
+      {
+        label: 'Licencia',
+        value: getDriverLicenseStatusLabel(licenseStatus),
+        note: 'Vigencia registrada.',
+      },
+      {
+        label: 'Documentos',
+        value: driverOverview?.driverProfile?.hasRequiredDocuments ? 'Completos' : 'Pendientes',
+        note: 'Identidad y licencia.',
+      },
+    ],
+    [currentStatus, driverOverview?.driverProfile?.hasRequiredDocuments, driverOverview?.membership?.institutionName, licenseStatus],
+  );
 
-      return null;
-    });
+  const openApplicationModal = () => {
+    if (driverOverview) {
+      syncFormFromOverview(driverOverview);
+    }
+
+    setIsApplicationModalOpen(true);
+  };
+
+  const closeApplicationModal = () => {
+    setIsApplicationModalOpen(false);
+
+    if (driverOverview) {
+      syncFormFromOverview(driverOverview);
+    }
+  };
+
+  const handleFormChange = (field: keyof DriverFormValues, value: string) => {
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      [field]: value,
+    }));
+  };
+
+  const fetchDriverDocumentBlob = async (
+    documentType: DriverDocumentType,
+  ): Promise<{ blob: Blob; fileName: string }> => {
+    if (!authSession || !currentMembershipId) {
+      throw new ApiError('No fue posible identificar la solicitud actual.', 400);
+    }
+
+    const blob = await downloadDriverApplicationDocument(
+      authSession.accessToken,
+      currentMembershipId,
+      documentType,
+    );
+
+    return {
+      blob,
+      fileName: buildDriverDocumentFileName(documentType, documentOwnerName, blob.type),
+    };
   };
 
   const handleUploadDocument = async (
@@ -240,9 +466,6 @@ export default function DriverPage() {
     } else {
       setIsUploadingLicenseDocument(true);
     }
-
-    setDocumentErrorMessage(null);
-    setDocumentSuccessMessage(null);
 
     try {
       const response = await uploadDriverDocument(
@@ -264,55 +487,23 @@ export default function DriverPage() {
       }));
 
       if (documentType === 'identity') {
-        setIdentityDocumentFileName(file.name);
-        if (file.type.startsWith('image/')) {
-          setIdentityDocumentPreviewUrl((currentPreviewUrl) => {
-            if (currentPreviewUrl) {
-              URL.revokeObjectURL(currentPreviewUrl);
-            }
-
-            return URL.createObjectURL(file);
-          });
-        } else {
-          setIdentityDocumentPreviewUrl((currentPreviewUrl) => {
-            if (currentPreviewUrl) {
-              URL.revokeObjectURL(currentPreviewUrl);
-            }
-
-            return null;
-          });
-        }
+        setIdentityFileName(file.name);
       } else {
-        setLicenseDocumentFileName(file.name);
-        if (file.type.startsWith('image/')) {
-          setLicenseDocumentPreviewUrl((currentPreviewUrl) => {
-            if (currentPreviewUrl) {
-              URL.revokeObjectURL(currentPreviewUrl);
-            }
-
-            return URL.createObjectURL(file);
-          });
-        } else {
-          setLicenseDocumentPreviewUrl((currentPreviewUrl) => {
-            if (currentPreviewUrl) {
-              URL.revokeObjectURL(currentPreviewUrl);
-            }
-
-            return null;
-          });
-        }
+        setLicenseFileName(file.name);
       }
 
-      setDocumentSuccessMessage(response.message);
+      pushToast('Documento cargado', response.message, 'success');
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      setDocumentErrorMessage(
+      pushToast(
+        'No se pudo cargar',
         error instanceof ApiError
           ? error.message
-          : 'No fue posible cargar el documento del conductor.',
+          : 'No fue posible cargar el documento.',
+        'error',
       );
     } finally {
       if (documentType === 'identity') {
@@ -323,38 +514,12 @@ export default function DriverPage() {
     }
   };
 
-  const handleDocumentValidationError = (message: string) => {
-    setDocumentSuccessMessage(null);
-    setDocumentErrorMessage(message);
-  };
-
-  const fetchDriverDocumentBlob = async (
-    documentType: DriverDocumentType,
-  ): Promise<{ blob: Blob; fileName: string }> => {
-    if (!authSession || !currentMembershipId) {
-      throw new ApiError('No fue posible identificar la solicitud de conductor actual.', 400);
-    }
-
-    const blob = await downloadDriverApplicationDocument(
-      authSession.accessToken,
-      currentMembershipId,
-      documentType,
-    );
-
-    return {
-      blob,
-      fileName: buildDriverDocumentFileName(documentType, documentOwnerName, blob.type),
-    };
-  };
-
   const handlePreviewDocument = async (documentType: DriverDocumentType) => {
     if (documentType === 'identity') {
       setIsOpeningIdentityPreview(true);
     } else {
       setIsOpeningLicensePreview(true);
     }
-
-    setPreviewErrorMessage(null);
 
     try {
       const { blob, fileName } = await fetchDriverDocumentBlob(documentType);
@@ -374,10 +539,12 @@ export default function DriverPage() {
         };
       });
     } catch (error) {
-      setPreviewErrorMessage(
+      pushToast(
+        'No se pudo abrir',
         error instanceof ApiError
           ? error.message
-          : 'No fue posible abrir la previsualizacion del documento.',
+          : 'No fue posible abrir el documento.',
+        'error',
       );
     } finally {
       if (documentType === 'identity') {
@@ -395,16 +562,16 @@ export default function DriverPage() {
       setIsDownloadingLicenseDocument(true);
     }
 
-    setDocumentErrorMessage(null);
-
     try {
       const { blob, fileName } = await fetchDriverDocumentBlob(documentType);
       downloadBlobFile(blob, fileName);
     } catch (error) {
-      setDocumentErrorMessage(
+      pushToast(
+        'No se pudo descargar',
         error instanceof ApiError
           ? error.message
-          : 'No fue posible descargar el documento del conductor.',
+          : 'No fue posible descargar el documento.',
+        'error',
       );
     } finally {
       if (documentType === 'identity') {
@@ -422,15 +589,16 @@ export default function DriverPage() {
       return;
     }
 
+    if (validationMessage) {
+      pushToast('Revisa tu solicitud', validationMessage, 'info');
+      return;
+    }
+
     setIsSubmitting(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setDocumentErrorMessage(null);
 
     try {
       const response = await submitDriverApplication(authSession.accessToken, {
         licenseTypeId: formValues.licenseTypeId,
-        licenseNumber: formValues.licenseNumber,
         licenseExpiresAt: formValues.licenseExpiresAt,
         identityDocumentFileKey: formValues.identityDocumentFileKey || undefined,
         licenseDocumentFileKey: formValues.licenseDocumentFileKey || undefined,
@@ -438,21 +606,35 @@ export default function DriverPage() {
 
       const overview = await getDriverOverview(authSession.accessToken);
       setDriverOverview(overview);
-      setSuccessMessage(response.message);
+      syncFormFromOverview(overview);
+      setIsApplicationModalOpen(false);
       await refreshSession();
+      pushToast('Solicitud enviada', response.message, 'success');
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      if (error instanceof ApiError) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('No fue posible enviar la solicitud de conductor.');
-      }
+      pushToast(
+        'No se pudo enviar',
+        error instanceof ApiError
+          ? error.message
+          : 'No fue posible enviar la solicitud de conductor.',
+        'error',
+      );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetPreviewState = () => {
+    setPreviewState((currentPreview) => {
+      if (currentPreview?.fileUrl) {
+        URL.revokeObjectURL(currentPreview.fileUrl);
+      }
+
+      return null;
+    });
   };
 
   if (
@@ -462,232 +644,429 @@ export default function DriverPage() {
     operationalAccess.message
   ) {
     return (
-      <section className="driver-shell">
-        <section className="driver-command">
-          <div className="driver-command-copy">
-            <p className="section-label">Conductor</p>
-            <h1 className="driver-command-title">Habilitacion operativa</h1>
-            <p className="driver-command-subtitle">
-              Gestiona tu habilitacion como conductor institucional antes de registrar
-              vehiculos y publicar viajes.
-            </p>
-          </div>
-          <div className="driver-command-actions">
-            <StatusPill label="Operacion bloqueada" tone="warning" />
-          </div>
-        </section>
+      <>
+        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+        <section className={styles.lockedShell}>
+          <article className={styles.lockedCard}>
+            <div className={styles.lockedHeader}>
+              <div>
+                <p className={styles.kicker}>Conductor</p>
+                <h1 className={styles.lockedTitle}>Operacion no disponible</h1>
+              </div>
+              <StatusPill label="Bloqueado" tone="warning" />
+            </div>
 
-        <section className="empty-state">
-          <OperationalAccessCard
-            message={operationalAccess.message}
-            title={operationalAccess.title}
-          />
+            <OperationalAccessCard
+              message={operationalAccess.message}
+              title={operationalAccess.title}
+            />
+          </article>
         </section>
-      </section>
+      </>
     );
   }
 
   if (!isLoading && isAdministrativeMembership) {
     return (
-      <section className="driver-shell">
-        <section className="driver-command">
-          <div className="driver-command-copy">
-            <p className="section-label">Conductor</p>
-            <h1 className="driver-command-title">Habilitacion no disponible</h1>
-            <p className="driver-command-subtitle">
-              La habilitacion como conductor esta reservada para membresias operativas
-              no administrativas.
+      <>
+        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+        <section className={styles.lockedShell}>
+          <article className={styles.lockedCard}>
+            <div className={styles.lockedHeader}>
+              <div>
+                <p className={styles.kicker}>Conductor</p>
+                <h1 className={styles.lockedTitle}>No disponible para esta membresia</h1>
+              </div>
+              <StatusPill label="Administrativa" tone="warning" />
+            </div>
+            <p className={styles.lockedText}>
+              Usa una membresia operativa para gestionar tu solicitud de conductor.
             </p>
-          </div>
-          <div className="driver-command-actions">
-            <StatusPill label="No disponible" tone="warning" />
-          </div>
+          </article>
         </section>
-
-        <section className="empty-state">
-          <div className="empty-state-card">
-            <h2 className="panel-title">Membresia administrativa detectada</h2>
-            <p className="empty-state-text">
-              Una membresia con rol administrativo institucional no debe operar como
-              conductor para evitar conflictos de revision y permisos. Si necesitas
-              usar este flujo, accede con una membresia de estudiante activa.
-            </p>
-          </div>
-        </section>
-      </section>
+      </>
     );
   }
 
+  const reviewNotes = driverOverview?.driverProfile?.reviewNotes;
+  const submittedAt = driverOverview?.driverProfile?.submittedAt;
+
   return (
     <>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
+
       {isLoading ? (
-        <section className="loading-state compact-loading-state">
-          <div className="loading-card">
-            <div aria-hidden="true" className="loading-pulse" />
-            <h2 className="panel-title">Cargando estado de conductor</h2>
-            <p className="panel-text">
-              Estamos consultando tu informacion institucional y tu solicitud actual.
-            </p>
-          </div>
+        <section className={styles.loadingShell}>
+          <article className={styles.loadingCard}>
+            <div aria-hidden="true" className={styles.loadingPulse} />
+            <h2 className={styles.loadingTitle}>Cargando conductor</h2>
+            <p className={styles.loadingText}>Estamos consultando tu estado actual.</p>
+          </article>
         </section>
       ) : (
-        <section className="driver-shell">
-          <section className="driver-command">
-            <div className="driver-command-copy">
-              <p className="section-label">Conductor</p>
-              <h1 className="driver-command-title">Habilitacion operativa</h1>
-              <p className="driver-command-subtitle">
-                Gestiona tu estado de conductor, valida documentos y asegura que tu cuenta
-                este lista para publicar viajes.
-              </p>
-            </div>
-            <div className="driver-command-actions">
-              <StatusPill
-                label={getDriverStatusLabel(currentStatus)}
-                tone={getDriverStatusTone(currentStatus)}
-              />
-              <StatusPill
-                label={getDriverLicenseStatusLabel(licenseStatus)}
-                tone={getDriverLicenseStatusTone(licenseStatus)}
-              />
-            </div>
-          </section>
-
-          <section className="driver-kpi-grid">
-            <article className="driver-kpi-card">
-              <span className="driver-kpi-label">Institucion</span>
-              <strong className="driver-kpi-value">{driverOverview?.membership?.institutionName ?? 'No disponible'}</strong>
-              <p className="driver-kpi-note">Contexto activo de la solicitud.</p>
-            </article>
-            <article className="driver-kpi-card">
-              <span className="driver-kpi-label">Estado del conductor</span>
-              <strong className="driver-kpi-value">{getDriverStatusLabel(currentStatus)}</strong>
-              <p className="driver-kpi-note">Define si puedes registrar vehiculos y operar.</p>
-            </article>
-            <article className="driver-kpi-card">
-              <span className="driver-kpi-label">Licencia</span>
-              <strong className="driver-kpi-value">{getDriverLicenseStatusLabel(licenseStatus)}</strong>
-              <p className="driver-kpi-note">Vigencia legal para conducir en plataforma.</p>
-            </article>
-            <article className="driver-kpi-card">
-              <span className="driver-kpi-label">Documentos</span>
-              <strong className="driver-kpi-value">
-                {driverOverview?.driverProfile?.hasRequiredDocuments ? 'Completos' : 'Pendientes'}
-              </strong>
-              <p className="driver-kpi-note">Identidad y licencia requeridas.</p>
-            </article>
-          </section>
-
-          <div className="driver-alert-stack">
-            {licenseAlertMessage ? <div className="form-helper">{licenseAlertMessage}</div> : null}
-            {driverOverview?.driverProfile && !driverOverview.driverProfile.hasRequiredDocuments ? (
-              <div className="form-helper">
-                Para aprobar la solicitud debes contar con clave del documento de identidad
-                y clave del documento de licencia.
-              </div>
-            ) : null}
-          </div>
-
-          <section className="driver-main-grid">
-            <DriverApplicationForm
-              currentReviewNotes={driverOverview?.driverProfile?.reviewNotes}
-              currentStatus={currentStatus}
-              documentErrorMessage={documentErrorMessage}
-              documentSuccessMessage={documentSuccessMessage}
-              errorMessage={errorMessage}
-              identityDocumentFileName={identityDocumentFileName}
-              identityDocumentPreviewUrl={identityDocumentPreviewUrl}
-              isDownloadingIdentityDocument={isDownloadingIdentityDocument}
-              isDownloadingLicenseDocument={isDownloadingLicenseDocument}
-              isOpeningIdentityPreview={isOpeningIdentityPreview}
-              isOpeningLicensePreview={isOpeningLicensePreview}
-              isSubmitting={isSubmitting}
-              isUploadingIdentityDocument={isUploadingIdentityDocument}
-              isUploadingLicenseDocument={isUploadingLicenseDocument}
-              licenseDocumentFileName={licenseDocumentFileName}
-              licenseDocumentPreviewUrl={licenseDocumentPreviewUrl}
-              licenseTypes={licenseTypes}
-              onChange={handleFormChange}
-              onDocumentValidationError={handleDocumentValidationError}
-              onDownloadDocument={handleDownloadDocument}
-              onPreviewDocument={handlePreviewDocument}
-              onSubmit={handleSubmit}
-              onUploadDocument={handleUploadDocument}
-              successMessage={successMessage}
-              values={formValues}
-            />
-
-            <article className="driver-summary-card">
-              <div className="driver-summary-head">
-                <h2 className="panel-title">Resumen de solicitud</h2>
-                {driverOverview?.driverProfile ? (
-                  <StatusPill
-                    label={getDriverLicenseStatusLabel(driverOverview.driverProfile.licenseStatus)}
-                    tone={getDriverLicenseStatusTone(driverOverview.driverProfile.licenseStatus)}
-                  />
-                ) : null}
-              </div>
-
-              {driverOverview?.driverProfile ? (
-                <dl className="detail-list">
-                  <div>
-                    <dt>Tipo de licencia</dt>
-                    <dd>{driverOverview.driverProfile.licenseType.name}</dd>
-                  </div>
-                  <div>
-                    <dt>Numero de licencia</dt>
-                    <dd>{driverOverview.driverProfile.licenseNumber}</dd>
-                  </div>
-                  <div>
-                    <dt>Expira el</dt>
-                    <dd>
-                      {new Date(driverOverview.driverProfile.licenseExpiresAt).toLocaleDateString('es-EC')}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Enviada el</dt>
-                    <dd>
-                      {new Date(driverOverview.driverProfile.submittedAt).toLocaleString('es-EC')}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Documento de identidad</dt>
-                    <dd>{driverOverview.driverProfile.identityDocumentFileKey ? 'Registrado' : 'Pendiente'}</dd>
-                  </div>
-                  <div>
-                    <dt>Documento de licencia</dt>
-                    <dd>{driverOverview.driverProfile.licenseDocumentFileKey ? 'Registrado' : 'Pendiente'}</dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className="panel-text">
-                  Aun no has enviado una solicitud. Completa el formulario para activar
-                  tu proceso de conductor.
+        <section className={styles.driverShell}>
+          <section className={`${styles.hero} ${styles.reveal}`}>
+            <div className={styles.heroTop}>
+              <div className={styles.heroCopy}>
+                <p className={styles.kicker}>Conductor</p>
+                <h1 className={styles.heroTitle}>Tu estado operativo</h1>
+                <p className={styles.heroLead}>
+                  Revisa tu habilitacion y gestiona tu solicitud cuando lo necesites.
                 </p>
-              )}
-
-              <div className="driver-quick-grid">
-                <Link className="driver-quick-link" href="/vehiculos">
-                  <strong>Vehiculos</strong>
-                  <span>Configura tu flota para operar.</span>
-                </Link>
-                <Link className="driver-quick-link" href="/viajes">
-                  <strong>Viajes</strong>
-                  <span>Publica y gestiona trayectos.</span>
-                </Link>
               </div>
-            </article>
+
+              <div className={styles.heroPills}>
+                <StatusPill
+                  label={getDriverStatusLabel(currentStatus)}
+                  tone={getDriverStatusTone(currentStatus)}
+                />
+                <StatusPill
+                  label={getDriverLicenseStatusLabel(licenseStatus)}
+                  tone={getDriverLicenseStatusTone(licenseStatus)}
+                />
+              </div>
+            </div>
+
+            <div className={styles.heroActions}>
+              {canEditApplication ? (
+                <Button onClick={openApplicationModal} variant="primary">
+                  {hasDriverProfile
+                    ? getApplicationActionLabel(currentStatus)
+                    : 'Crear solicitud'}
+                </Button>
+              ) : null}
+              <Link className="button button-secondary" href="/vehiculos">
+                Ir a vehiculos
+              </Link>
+              <Link className="button button-ghost" href="/viajes">
+                Ir a viajes
+              </Link>
+            </div>
+
+            <div className={styles.metricGrid}>
+              {metrics.map((metric) => (
+                <article className={styles.metricCard} key={metric.label}>
+                  <span className={styles.metricLabel}>{metric.label}</span>
+                  <strong className={styles.metricValue}>{metric.value}</strong>
+                  <span className={styles.metricNote}>{metric.note}</span>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className={styles.mainGrid}>
+            <div className={styles.contentColumn}>
+              <article className={`${styles.summaryCard} ${styles.reveal}`}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Solicitud</p>
+                    <h2>Resumen actual</h2>
+                  </div>
+                  <StatusPill
+                    label={getDriverStatusLabel(currentStatus)}
+                    tone={getDriverStatusTone(currentStatus)}
+                  />
+                </div>
+
+                {hasDriverProfile ? (
+                  <div className={styles.summaryGrid}>
+                    <article className={styles.infoTile}>
+                      <span>Tipo de licencia</span>
+                      <strong>{driverOverview?.driverProfile?.licenseType.name}</strong>
+                    </article>
+                    <article className={styles.infoTile}>
+                      <span>Expira</span>
+                      <strong>
+                        {driverOverview?.driverProfile?.licenseExpiresAt
+                          ? new Date(
+                              driverOverview.driverProfile.licenseExpiresAt,
+                            ).toLocaleDateString('es-EC')
+                          : 'No disponible'}
+                      </strong>
+                    </article>
+                    <article className={styles.infoTile}>
+                      <span>Enviada</span>
+                      <strong>
+                        {submittedAt
+                          ? new Date(submittedAt).toLocaleString('es-EC')
+                          : 'No disponible'}
+                      </strong>
+                    </article>
+                  </div>
+                ) : (
+                  <div className={styles.emptyPanel}>
+                    <strong>Aun no has enviado tu solicitud.</strong>
+                    <span>Cuando la completes, aqui veras su estado.</span>
+                  </div>
+                )}
+              </article>
+
+              <article className={`${styles.documentsCard} ${styles.revealSoft}`}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Documentos</p>
+                    <h2>Archivos registrados</h2>
+                  </div>
+                  <StatusPill
+                    label={driverOverview?.driverProfile?.hasRequiredDocuments ? 'Completos' : 'Pendientes'}
+                    tone={driverOverview?.driverProfile?.hasRequiredDocuments ? 'success' : 'warning'}
+                  />
+                </div>
+
+                <div className={styles.documentList}>
+                  <article className={styles.documentRow}>
+                    <div>
+                      <span className={styles.documentRowLabel}>Documento de identidad</span>
+                      <strong>{identityFileName ?? 'Sin archivo registrado'}</strong>
+                    </div>
+                    <div className={styles.documentRowActions}>
+                      <Button
+                        disabled={!formValues.identityDocumentFileKey || isOpeningIdentityPreview}
+                        onClick={() => void handlePreviewDocument('identity')}
+                        variant="secondary"
+                      >
+                        {isOpeningIdentityPreview ? 'Abriendo...' : 'Ver'}
+                      </Button>
+                      <Button
+                        disabled={!formValues.identityDocumentFileKey || isDownloadingIdentityDocument}
+                        onClick={() => void handleDownloadDocument('identity')}
+                        variant="ghost"
+                      >
+                        {isDownloadingIdentityDocument ? 'Descargando...' : 'Descargar'}
+                      </Button>
+                    </div>
+                  </article>
+
+                  <article className={styles.documentRow}>
+                    <div>
+                      <span className={styles.documentRowLabel}>Documento de licencia</span>
+                      <strong>{licenseFileName ?? 'Sin archivo registrado'}</strong>
+                    </div>
+                    <div className={styles.documentRowActions}>
+                      <Button
+                        disabled={!formValues.licenseDocumentFileKey || isOpeningLicensePreview}
+                        onClick={() => void handlePreviewDocument('license')}
+                        variant="secondary"
+                      >
+                        {isOpeningLicensePreview ? 'Abriendo...' : 'Ver'}
+                      </Button>
+                      <Button
+                        disabled={!formValues.licenseDocumentFileKey || isDownloadingLicenseDocument}
+                        onClick={() => void handleDownloadDocument('license')}
+                        variant="ghost"
+                      >
+                        {isDownloadingLicenseDocument ? 'Descargando...' : 'Descargar'}
+                      </Button>
+                    </div>
+                  </article>
+                </div>
+              </article>
+            </div>
+
+            <aside className={styles.sideColumn}>
+              <article className={`${styles.statusCard} ${styles.reveal}`}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Estado</p>
+                    <h2>Condicion actual</h2>
+                  </div>
+                  <StatusPill
+                    label={licenseAlertMessage ? 'Atencion' : 'Estable'}
+                    tone={licenseAlertMessage ? 'warning' : 'success'}
+                  />
+                </div>
+
+                <div className={styles.noticeStack}>
+                  <div className={styles.noticeCard}>
+                    <strong>{licenseAlertMessage ? 'Licencia' : 'Cuenta lista'}</strong>
+                    <span>
+                      {licenseAlertMessage ?? 'Tu estado actual ya esta registrado en la plataforma.'}
+                    </span>
+                  </div>
+
+                  {reviewNotes ? (
+                    <div className={`${styles.noticeCard} ${styles.noticeCardDanger}`}>
+                      <strong>Observaciones</strong>
+                      <span>{reviewNotes}</span>
+                    </div>
+                  ) : null}
+                </div>
+              </article>
+
+              <article className={`${styles.quickCard} ${styles.revealSoft}`}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Accesos</p>
+                    <h2>Siguiente paso</h2>
+                  </div>
+                  <StatusPill label="Rapido" tone="neutral" />
+                </div>
+
+                <div className={styles.quickGrid}>
+                  <Link className={styles.quickLink} href="/vehiculos">
+                    <strong>Vehiculos</strong>
+                    <span>Registra tu vehiculo cuando tu estado lo permita.</span>
+                  </Link>
+                  <Link className={styles.quickLink} href="/viajes">
+                    <strong>Viajes</strong>
+                    <span>Gestiona rutas y publicaciones desde tu panel.</span>
+                  </Link>
+                </div>
+              </article>
+            </aside>
           </section>
         </section>
       )}
 
+      {isApplicationModalOpen ? (
+        <div
+          aria-labelledby="driver-application-modal-title"
+          aria-modal="true"
+          className="modal-backdrop"
+          onClick={closeApplicationModal}
+          role="dialog"
+        >
+          <div
+            className={`modal-card modal-card-lg ${styles.applicationModalCard}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <p className={styles.kicker}>Solicitud</p>
+                <h2 className="panel-title" id="driver-application-modal-title">
+                  {hasDriverProfile
+                    ? getApplicationActionLabel(currentStatus)
+                    : 'Nueva solicitud de conductor'}
+                </h2>
+                <p className="panel-text">
+                  Completa tus datos y carga los documentos requeridos.
+                </p>
+              </div>
+              <Button
+                disabled={isSubmitting}
+                onClick={closeApplicationModal}
+                variant="secondary"
+              >
+                Cerrar
+              </Button>
+            </div>
+
+            <form className={`form-stack ${styles.applicationForm}`} onSubmit={handleSubmit}>
+              <section className={styles.formSection}>
+                <div className={styles.formSectionHeader}>
+                  <div>
+                    <p className={styles.kicker}>Licencia</p>
+                    <h3>Datos principales</h3>
+                  </div>
+                  <StatusPill
+                    label={getDriverStatusLabel(currentStatus)}
+                    tone={getDriverStatusTone(currentStatus)}
+                  />
+                </div>
+
+                <div className={styles.formGrid}>
+                  <SelectField
+                    label="Tipo de licencia"
+                    onChange={(event) => handleFormChange('licenseTypeId', event.target.value)}
+                    required
+                    value={formValues.licenseTypeId}
+                  >
+                    <option value="">Selecciona una opcion</option>
+                    {licenseTypes.map((licenseType) => (
+                      <option key={licenseType.id} value={licenseType.id}>
+                        {licenseType.code} - {licenseType.name}
+                      </option>
+                    ))}
+                  </SelectField>
+
+                </div>
+
+                <InputField
+                  label="Fecha de expiracion"
+                  onChange={(event) => handleFormChange('licenseExpiresAt', event.target.value)}
+                  required
+                  type="date"
+                  value={formValues.licenseExpiresAt}
+                />
+              </section>
+
+              <section className={styles.formSection}>
+                <div className={styles.formSectionHeader}>
+                  <div>
+                    <p className={styles.kicker}>Documentos</p>
+                    <h3>Archivos requeridos</h3>
+                  </div>
+                  <StatusPill
+                    label={validationMessage ? 'Incompleto' : 'Listo'}
+                    tone={validationMessage ? 'warning' : 'success'}
+                  />
+                </div>
+
+                <div className={styles.modalDocumentGrid}>
+                  <DocumentCard
+                    documentType="identity"
+                    fileName={identityFileName}
+                    hasFile={Boolean(formValues.identityDocumentFileKey)}
+                    isBusy={isUploadingIdentityDocument}
+                    isDownloading={isDownloadingIdentityDocument}
+                    onDownload={handleDownloadDocument}
+                    onFileSelect={handleUploadDocument}
+                    onPreview={handlePreviewDocument}
+                    onValidationError={(message) =>
+                      pushToast('Archivo no valido', message, 'info')
+                    }
+                  />
+                  <DocumentCard
+                    documentType="license"
+                    fileName={licenseFileName}
+                    hasFile={Boolean(formValues.licenseDocumentFileKey)}
+                    isBusy={isUploadingLicenseDocument}
+                    isDownloading={isDownloadingLicenseDocument}
+                    onDownload={handleDownloadDocument}
+                    onFileSelect={handleUploadDocument}
+                    onPreview={handlePreviewDocument}
+                    onValidationError={(message) =>
+                      pushToast('Archivo no valido', message, 'info')
+                    }
+                  />
+                </div>
+              </section>
+
+              {reviewNotes ? (
+                <div className={styles.reviewNoteCard}>
+                  <strong>Observaciones</strong>
+                  <span>{reviewNotes}</span>
+                </div>
+              ) : null}
+
+              <div className={styles.modalActions}>
+                <Button disabled={isSubmitting} type="submit" variant="primary">
+                  {isSubmitting
+                    ? 'Enviando...'
+                    : hasDriverProfile
+                      ? getApplicationActionLabel(currentStatus)
+                      : 'Enviar solicitud'}
+                </Button>
+                <Button
+                  disabled={isSubmitting}
+                  onClick={closeApplicationModal}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
       <FilePreviewModal
         description={
           previewState?.mimeType?.startsWith('image/')
-            ? 'Pasa el puntero sobre la imagen para ampliar los detalles.'
-            : 'Revisa el documento antes de descargarlo o continuar con tu proceso.'
+            ? 'Revisa la imagen antes de continuar.'
+            : 'Revisa el archivo antes de descargarlo.'
         }
-        errorMessage={previewErrorMessage}
         fileName={previewState?.fileName ?? null}
         fileUrl={previewState?.fileUrl ?? null}
         isDownloading={
@@ -698,7 +1077,7 @@ export default function DriverPage() {
               : false
         }
         isLoading={isOpeningIdentityPreview || isOpeningLicensePreview}
-        isOpen={Boolean(previewState) || Boolean(previewErrorMessage)}
+        isOpen={Boolean(previewState)}
         mimeType={previewState?.mimeType ?? null}
         onClose={resetPreviewState}
         onDownload={

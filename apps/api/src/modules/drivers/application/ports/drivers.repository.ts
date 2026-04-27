@@ -41,7 +41,6 @@ export type DriverProfileRecord = {
     code: string;
     name: string;
   };
-  licenseNumber: string;
   licenseExpiresAt: Date;
   licenseStatus?: DriverLicenseStatus;
   licenseExpiresInDays?: number | null;
@@ -63,7 +62,6 @@ export type ListReviewableDriverApplicationsFilters = {
 export type SubmitDriverApplicationInput = {
   membershipId: string;
   licenseTypeId: string;
-  licenseNumber: string;
   licenseExpiresAt: Date;
   identityDocumentFileKey?: string;
   licenseDocumentFileKey?: string;
@@ -80,7 +78,6 @@ export interface DriversRepository {
   findDefaultMembershipByUserId(userId: string): Promise<DriverMembershipRecord | null>;
   findMembershipById(membershipId: string): Promise<DriverMembershipRecord | null>;
   findDriverProfileByMembershipId(membershipId: string): Promise<DriverProfileRecord | null>;
-  findDriverProfileByLicenseNumber(licenseNumber: string): Promise<DriverProfileRecord | null>;
   listReviewableDriverApplications(
     filters: ListReviewableDriverApplicationsFilters,
   ): Promise<DriverProfileRecord[]>;

@@ -34,7 +34,6 @@ export type DriverProfile = {
     code: string;
     name: string;
   };
-  licenseNumber: string;
   licenseExpiresAt: string;
   licenseStatus?: DriverLicenseStatus;
   licenseExpiresInDays?: number | null;
@@ -60,7 +59,6 @@ export type LicenseTypeCatalogItem = {
 
 export type SubmitDriverApplicationInput = {
   licenseTypeId: string;
-  licenseNumber: string;
   licenseExpiresAt: string;
   identityDocumentFileKey?: string;
   licenseDocumentFileKey?: string;

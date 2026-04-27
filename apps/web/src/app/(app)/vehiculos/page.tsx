@@ -7,23 +7,25 @@ import {
   LuggagePolicy,
   VehicleType,
 } from '@saferidepro/shared-types';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
+import { InputField } from '../../../components/ui/input-field';
 import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
+import { SelectField } from '../../../components/ui/select-field';
 import { StatusPill } from '../../../components/ui/status-pill';
-import { ToastStack, type ToastItem } from '../../../components/ui/toast-stack';
+import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
 import { downloadBlobFile, getFileExtensionFromMimeType } from '../../../lib/blob-file';
 import { ApiError } from '../../../lib/api-client';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import { suppressAuthSessionSync } from '../../../modules/auth/lib/auth-sync-guard';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import {
   getDriverLicenseAlertMessage,
   getDriverStatusLabel,
   getDriverStatusTone,
 } from '../../../modules/driver/lib/driver-status';
-import { VehicleRegistrationForm } from '../../../modules/vehicles/components/vehicle-registration-form';
 import {
   canRegisterVehicles,
   getLuggagePolicyLabel,
@@ -45,8 +47,9 @@ import type {
   VehicleOverview,
   VehicleRecord,
 } from '../../../modules/vehicles/types/vehicle';
+import styles from './page.module.css';
 
-const EMPTY_FORM = {
+const emptyForm = {
   vehicleType: VehicleType.Car,
   brandId: '',
   customBrandName: '',
@@ -60,86 +63,28 @@ const EMPTY_FORM = {
   registrationDocumentFileKey: '',
 };
 
-type DocumentPreviewState = {
+const allowedVehicleDocumentMimeTypes = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+const maxVehicleDocumentSizeBytes = 8 * 1024 * 1024;
+
+type VehicleFormValues = typeof emptyForm;
+
+type PreviewState = {
   title: string;
   fileName: string;
   fileUrl: string;
   mimeType: string;
-  preserveUrl: boolean;
   vehicleId?: string | null;
 };
-
-type VehicleActionIconName =
-  | 'register'
-  | 'fleet'
-  | 'preview'
-  | 'download'
-  | 'edit'
-  | 'activate'
-  | 'deactivate';
-
-function VehicleActionIcon({ name }: { name: VehicleActionIconName }) {
-  const iconClassName = ['vehicle-action-icon', `vehicle-action-icon-${name}`].join(' ');
-
-  switch (name) {
-    case 'register':
-      return (
-        <svg aria-hidden="true" className={iconClassName} viewBox="0 0 16 16">
-          <path d="M8 3v10M3 8h10" />
-        </svg>
-      );
-    case 'fleet':
-      return (
-        <svg aria-hidden="true" className={iconClassName} viewBox="0 0 16 16">
-          <rect x="2" y="3" width="12" height="8" rx="2" />
-          <circle cx="5" cy="12" r="1" />
-          <circle cx="11" cy="12" r="1" />
-        </svg>
-      );
-    case 'preview':
-      return (
-        <svg aria-hidden="true" className={iconClassName} viewBox="0 0 16 16">
-          <path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z" />
-          <circle cx="8" cy="8" r="2" />
-        </svg>
-      );
-    case 'download':
-      return (
-        <svg aria-hidden="true" className={iconClassName} viewBox="0 0 16 16">
-          <path d="M8 2v7" />
-          <path d="m5.5 7.5 2.5 2.5 2.5-2.5" />
-          <path d="M3 12.5h10" />
-        </svg>
-      );
-    case 'edit':
-      return (
-        <svg aria-hidden="true" className={iconClassName} viewBox="0 0 16 16">
-          <path d="m3 11 6.8-6.8 2 2L5 13H3v-2Z" />
-          <path d="m9.2 4.2 1.2-1.2a1 1 0 0 1 1.4 0l1.2 1.2a1 1 0 0 1 0 1.4L11.8 6.8" />
-        </svg>
-      );
-    case 'activate':
-      return (
-        <svg aria-hidden="true" className={iconClassName} viewBox="0 0 16 16">
-          <path d="m3.5 8 2.4 2.4 6.6-6.6" />
-        </svg>
-      );
-    case 'deactivate':
-      return (
-        <svg aria-hidden="true" className={iconClassName} viewBox="0 0 16 16">
-          <path d="M4 4 12 12" />
-          <path d="M12 4 4 12" />
-        </svg>
-      );
-    default:
-      return null;
-  }
-}
 
 function getVehicleDisplayName(vehicle: VehicleRecord): string {
   const brandName = vehicle.customBrandName ?? vehicle.brandName ?? 'Marca';
   const modelName = vehicle.customModelName ?? vehicle.modelName ?? 'Modelo';
-
   return `${brandName} ${modelName}`.trim();
 }
 
@@ -160,48 +105,118 @@ function buildVehicleRegistrationDocumentFileName(
   return `matricula-${normalizedPlate}.${getFileExtensionFromMimeType(mimeType)}`;
 }
 
+function buildVehicleValidationMessage(
+  values: VehicleFormValues,
+  isManualBrand: boolean,
+  isManualModel: boolean,
+): string | null {
+  const currentYear = new Date().getFullYear();
+  const yearValue = Number.parseInt(values.year, 10);
+  const seatCountValue = Number.parseInt(values.seatCount, 10);
+  const plateValue = values.plate.trim();
+
+  if (isManualBrand ? !values.customBrandName.trim() : !values.brandId) {
+    return 'Ingresa una marca valida.';
+  }
+
+  if (isManualModel ? !values.customModelName.trim() : !values.modelId) {
+    return 'Ingresa un modelo valido.';
+  }
+
+  if (Number.isNaN(yearValue) || yearValue < 1990 || yearValue > currentYear + 1) {
+    return `El anio debe estar entre 1990 y ${currentYear + 1}.`;
+  }
+
+  if (!values.color.trim()) {
+    return 'Ingresa el color principal del vehiculo.';
+  }
+
+  if (plateValue.length < 6) {
+    return 'Ingresa una placa valida.';
+  }
+
+  if (Number.isNaN(seatCountValue) || seatCountValue < 1) {
+    return 'La capacidad debe ser de al menos 1 cupo.';
+  }
+
+  if (values.vehicleType === VehicleType.Motorcycle && seatCountValue !== 1) {
+    return 'La motocicleta solo puede registrarse con 1 cupo.';
+  }
+
+  if (values.vehicleType === VehicleType.Car && seatCountValue > 4) {
+    return 'El auto no puede exceder 4 cupos.';
+  }
+
+  if (values.vehicleType === VehicleType.PickupTruck && seatCountValue > 5) {
+    return 'La camioneta no puede exceder 5 cupos.';
+  }
+
+  if (!values.registrationDocumentFileKey.trim()) {
+    return 'Carga el documento de matricula.';
+  }
+
+  return null;
+}
+
+function buildVehiclePayload(
+  values: VehicleFormValues,
+  isManualBrand: boolean,
+  isManualModel: boolean,
+) {
+  return {
+    vehicleType: values.vehicleType,
+    brandId: isManualBrand ? undefined : values.brandId || undefined,
+    modelId: isManualModel ? undefined : values.modelId || undefined,
+    customBrandName: isManualBrand ? values.customBrandName.trim() : undefined,
+    customModelName: isManualModel ? values.customModelName.trim() : undefined,
+    year: Number.parseInt(values.year, 10),
+    color: values.color.trim(),
+    plate: values.plate.trim().toUpperCase(),
+    seatCount: Number.parseInt(values.seatCount, 10),
+    luggagePolicy: values.luggagePolicy,
+    registrationDocumentFileKey: values.registrationDocumentFileKey || undefined,
+  };
+}
+
 export default function VehiclesPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [vehicleOverview, setVehicleOverview] = useState<VehicleOverview | null>(null);
   const [brands, setBrands] = useState<VehicleBrandCatalogItem[]>([]);
   const [models, setModels] = useState<VehicleModelCatalogItem[]>([]);
-  const [formValues, setFormValues] = useState(EMPTY_FORM);
+  const [formValues, setFormValues] = useState<VehicleFormValues>(emptyForm);
   const [isManualBrand, setIsManualBrand] = useState(false);
   const [isManualModel, setIsManualModel] = useState(false);
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
   const [isTogglingVehicleId, setIsTogglingVehicleId] = useState<string | null>(null);
-  const [isUploadingRegistrationDocument, setIsUploadingRegistrationDocument] = useState(false);
+  const [isUploadingRegistrationDocument, setIsUploadingRegistrationDocument] =
+    useState(false);
   const [isOpeningRegistrationDocumentPreview, setIsOpeningRegistrationDocumentPreview] =
     useState(false);
   const [isDownloadingRegistrationDocument, setIsDownloadingRegistrationDocument] =
     useState(false);
+  const [previewLoadingVehicleId, setPreviewLoadingVehicleId] = useState<string | null>(
+    null,
+  );
+  const [downloadingVehicleId, setDownloadingVehicleId] = useState<string | null>(null);
+  const [currentFormDocumentBlob, setCurrentFormDocumentBlob] = useState<Blob | null>(null);
   const [currentFormDocumentFileName, setCurrentFormDocumentFileName] = useState<string | null>(
     null,
   );
-  const [currentFormDocumentPreviewUrl, setCurrentFormDocumentPreviewUrl] = useState<
-    string | null
-  >(null);
   const [currentFormDocumentMimeType, setCurrentFormDocumentMimeType] = useState<string | null>(
     null,
   );
-  const [currentFormDocumentBlob, setCurrentFormDocumentBlob] = useState<Blob | null>(null);
-  const [previewState, setPreviewState] = useState<DocumentPreviewState | null>(null);
-  const [previewErrorMessage, setPreviewErrorMessage] = useState<string | null>(null);
-  const [previewLoadingVehicleId, setPreviewLoadingVehicleId] = useState<string | null>(null);
-  const [downloadingVehicleId, setDownloadingVehicleId] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [documentErrorMessage, setDocumentErrorMessage] = useState<string | null>(null);
-  const [documentSuccessMessage, setDocumentSuccessMessage] = useState<string | null>(null);
-  const [workspaceView, setWorkspaceView] = useState<'register' | 'fleet'>('register');
-  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
+  const [previewState, setPreviewState] = useState<PreviewState | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [lastBlockingToastKey, setLastBlockingToastKey] = useState<string | null>(null);
 
-  const pushToast = useCallback((title: string, description: string, tone: ToastItem['tone']) => {
+  const pushToast = (
+    title: string,
+    description: string,
+    tone: ToastItem['tone'] = 'info',
+  ) => {
     setToasts((currentToasts) => [
       ...currentToasts,
       {
@@ -211,74 +226,50 @@ export default function VehiclesPage() {
         tone,
       },
     ]);
-  }, []);
-
-  const dismissToast = useCallback((toastId: string) => {
-    setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== toastId));
-  }, []);
-
-  const editingVehicle = useMemo(
-    () =>
-      vehicleOverview?.vehicles.find((vehicle) => vehicle.id === editingVehicleId) ?? null,
-    [editingVehicleId, vehicleOverview?.vehicles],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (currentFormDocumentPreviewUrl) {
-        URL.revokeObjectURL(currentFormDocumentPreviewUrl);
-      }
-
-      if (previewState?.fileUrl && !previewState.preserveUrl) {
-        URL.revokeObjectURL(previewState.fileUrl);
-      }
-    };
-  }, [currentFormDocumentPreviewUrl, previewState]);
-
-  const loadVehicleOverview = async (accessToken: string) => {
-    const overview = await getVehicleOverview(accessToken);
-    setVehicleOverview(overview);
   };
 
-  const setCurrentFormDocumentState = (
-    blob: Blob | null,
-    fileName: string | null,
-    mimeType: string | null,
-  ) => {
-    setCurrentFormDocumentPreviewUrl((currentPreviewUrl) => {
-      if (currentPreviewUrl) {
-        URL.revokeObjectURL(currentPreviewUrl);
-      }
-
-      return blob ? URL.createObjectURL(blob) : null;
-    });
-    setCurrentFormDocumentBlob(blob);
-    setCurrentFormDocumentFileName(fileName);
-    setCurrentFormDocumentMimeType(mimeType);
+  const dismissToast = (toastId: string) => {
+    setToasts((currentToasts) =>
+      currentToasts.filter((toast) => toast.id !== toastId),
+    );
   };
 
-  const clearCurrentFormDocumentState = () => {
-    setCurrentFormDocumentPreviewUrl((currentPreviewUrl) => {
-      if (currentPreviewUrl) {
-        URL.revokeObjectURL(currentPreviewUrl);
-      }
+  const syncFormFromVehicle = (vehicle: VehicleRecord | null) => {
+    if (!vehicle) {
+      setFormValues(emptyForm);
+      setIsManualBrand(false);
+      setIsManualModel(false);
+      setCurrentFormDocumentBlob(null);
+      setCurrentFormDocumentFileName(null);
+      setCurrentFormDocumentMimeType(null);
+      return;
+    }
 
-      return null;
+    setFormValues({
+      vehicleType: vehicle.vehicleType,
+      brandId: vehicle.brandId ?? '',
+      customBrandName: vehicle.customBrandName ?? '',
+      modelId: vehicle.modelId ?? '',
+      customModelName: vehicle.customModelName ?? '',
+      year: `${vehicle.year}`,
+      color: vehicle.color,
+      plate: vehicle.plate,
+      seatCount: `${vehicle.seatCount}`,
+      luggagePolicy: vehicle.luggagePolicy,
+      registrationDocumentFileKey: vehicle.registrationDocumentFileKey ?? '',
     });
+    setIsManualBrand(!vehicle.brandId);
+    setIsManualModel(!vehicle.modelId);
     setCurrentFormDocumentBlob(null);
-    setCurrentFormDocumentFileName(null);
+    setCurrentFormDocumentFileName(
+      extractUploadedFileName(vehicle.registrationDocumentFileKey),
+    );
     setCurrentFormDocumentMimeType(null);
   };
 
-  const resetPreviewState = () => {
-    setPreviewErrorMessage(null);
-    setPreviewState((currentPreview) => {
-      if (currentPreview?.fileUrl && !currentPreview.preserveUrl) {
-        URL.revokeObjectURL(currentPreview.fileUrl);
-      }
-
-      return null;
-    });
+  const loadVehicleData = async (accessToken: string) => {
+    const overview = await getVehicleOverview(accessToken);
+    setVehicleOverview(overview);
   };
 
   useEffect(() => {
@@ -298,10 +289,9 @@ export default function VehiclesPage() {
 
     const initialize = async () => {
       setIsLoading(true);
-      setErrorMessage(null);
 
       try {
-        await loadVehicleOverview(authSession.accessToken);
+        await loadVehicleData(authSession.accessToken);
       } catch (error) {
         if (!isMounted) {
           return;
@@ -311,10 +301,12 @@ export default function VehiclesPage() {
           await refreshSession().catch(() => undefined);
         }
 
-        setErrorMessage(
+        pushToast(
+          'No se pudo cargar',
           error instanceof ApiError
             ? error.message
-            : 'No fue posible cargar los vehiculos del usuario.',
+            : 'No fue posible cargar tus vehiculos.',
+          'error',
         );
       } finally {
         if (isMounted) {
@@ -340,35 +332,13 @@ export default function VehiclesPage() {
 
     const loadBrands = async () => {
       try {
-        const brandCatalog = await listVehicleBrands(
-          authSession.accessToken,
-          formValues.vehicleType,
-        );
+        const catalog = await listVehicleBrands(authSession.accessToken, formValues.vehicleType);
 
         if (!isMounted) {
           return;
         }
 
-        setBrands(brandCatalog);
-        setFormValues((currentValues) => {
-          if (!currentValues.brandId) {
-            return currentValues;
-          }
-
-          const isBrandAvailable = brandCatalog.some(
-            (brand) => brand.id === currentValues.brandId,
-          );
-
-          if (isBrandAvailable) {
-            return currentValues;
-          }
-
-          return {
-            ...currentValues,
-            brandId: '',
-            modelId: '',
-          };
-        });
+        setBrands(catalog);
       } catch {
         if (isMounted) {
           setBrands([]);
@@ -398,13 +368,13 @@ export default function VehiclesPage() {
 
     const loadModels = async () => {
       try {
-        const vehicleModels = await listVehicleModels(authSession.accessToken, {
+        const catalog = await listVehicleModels(authSession.accessToken, {
           brandId: formValues.brandId,
           vehicleType: formValues.vehicleType,
         });
 
         if (isMounted) {
-          setModels(vehicleModels);
+          setModels(catalog);
         }
       } catch {
         if (isMounted) {
@@ -426,7 +396,104 @@ export default function VehiclesPage() {
     operationalAccess.hasOperationalMembership,
   ]);
 
-  const handleFormChange = (field: keyof typeof EMPTY_FORM, value: string) => {
+  useEffect(() => {
+    return () => {
+      if (previewState?.fileUrl) {
+        URL.revokeObjectURL(previewState.fileUrl);
+      }
+    };
+  }, [previewState]);
+
+  const currentStatus =
+    vehicleOverview?.membership?.effectiveDriverVerificationStatus ??
+    vehicleOverview?.membership?.driverVerificationStatus ??
+    DriverVerificationStatus.NotRequested;
+  const licenseStatus =
+    vehicleOverview?.membership?.licenseStatus ?? DriverLicenseStatus.Missing;
+  const licenseAlertMessage = getDriverLicenseAlertMessage(
+    licenseStatus,
+    vehicleOverview?.membership?.licenseExpiresInDays,
+  );
+  const vehicleManagementEnabled = canRegisterVehicles(currentStatus, licenseStatus);
+  const editingVehicle =
+    vehicleOverview?.vehicles.find((vehicle) => vehicle.id === editingVehicleId) ?? null;
+  const validationMessage = buildVehicleValidationMessage(
+    formValues,
+    isManualBrand,
+    isManualModel,
+  );
+  const totalVehicles = vehicleOverview?.vehicles.length ?? 0;
+  const activeVehicles =
+    vehicleOverview?.vehicles.filter((vehicle) => vehicle.isActive).length ?? 0;
+  const inactiveVehicles = totalVehicles - activeVehicles;
+  const vehiclesWithTrips =
+    vehicleOverview?.vehicles.filter((vehicle) => vehicle.operationalTripCount > 0).length ?? 0;
+
+  const metrics = useMemo(
+    () => [
+      {
+        label: 'Flota',
+        value: `${totalVehicles}`,
+        note: 'Vehiculos registrados.',
+      },
+      {
+        label: 'Activos',
+        value: `${activeVehicles}`,
+        note: 'Disponibles para operar.',
+      },
+      {
+        label: 'En pausa',
+        value: `${inactiveVehicles}`,
+        note: 'No visibles en operacion.',
+      },
+      {
+        label: 'Estado',
+        value: getDriverStatusLabel(currentStatus),
+        note: 'Condicion del conductor.',
+      },
+    ],
+    [activeVehicles, currentStatus, inactiveVehicles, totalVehicles],
+  );
+
+  const openRegistrationModal = () => {
+    if (!vehicleManagementEnabled) {
+      pushToast(
+        'Operacion restringida',
+        licenseStatus === DriverLicenseStatus.Expired
+          ? 'Tu licencia esta vencida. Actualizala antes de gestionar vehiculos.'
+          : 'Necesitas habilitacion de conductor para gestionar vehiculos.',
+        'info',
+      );
+      return;
+    }
+
+    setEditingVehicleId(null);
+    syncFormFromVehicle(null);
+    setIsRegistrationModalOpen(true);
+  };
+
+  const openEditVehicleModal = (vehicle: VehicleRecord) => {
+    if (!vehicleManagementEnabled) {
+      pushToast(
+        'Operacion restringida',
+        'Tu cuenta no puede editar vehiculos en este momento.',
+        'info',
+      );
+      return;
+    }
+
+    setEditingVehicleId(vehicle.id);
+    syncFormFromVehicle(vehicle);
+    setIsRegistrationModalOpen(true);
+  };
+
+  const closeRegistrationModal = () => {
+    setIsRegistrationModalOpen(false);
+    setEditingVehicleId(null);
+    syncFormFromVehicle(null);
+  };
+
+  const handleFormChange = (field: keyof VehicleFormValues, value: string) => {
     setFormValues((currentValues) => ({
       ...currentValues,
       [field]: value,
@@ -442,95 +509,10 @@ export default function VehiclesPage() {
     }));
   };
 
-  const resetFormState = () => {
-    setFormValues(EMPTY_FORM);
-    setIsManualBrand(false);
-    setIsManualModel(false);
-    setEditingVehicleId(null);
-    setModels([]);
-    clearCurrentFormDocumentState();
-  };
-
-  const openRegistrationModal = () => {
-    if (!vehicleManagementEnabled) {
-      pushToast(
-        'Operacion restringida',
-        licenseStatus === DriverLicenseStatus.Expired
-          ? 'Licencia vencida. Actualiza tu solicitud de conductor para volver a operar.'
-          : 'Debes iniciar o aprobar tu proceso de conductor antes de gestionar vehiculos.',
-        'info',
-      );
-      return;
-    }
-
-    resetFormState();
-    setIsRegistrationModalOpen(true);
-  };
-
-  const openEditVehicleModal = (vehicle: VehicleRecord) => {
-    void (async () => {
-      await startEditingVehicle(vehicle);
-      setIsRegistrationModalOpen(true);
-    })();
-  };
-
-  const handleCloseRegistrationModal = () => {
-    setIsRegistrationModalOpen(false);
-    resetFormState();
-  };
-
-  const startEditingVehicle = async (vehicle: VehicleRecord) => {
-    setWorkspaceView('fleet');
-    setEditingVehicleId(vehicle.id);
-    setIsManualBrand(!vehicle.brandId);
-    setIsManualModel(!vehicle.modelId);
-    setSuccessMessage(null);
-    setErrorMessage(null);
-    setDocumentErrorMessage(null);
-    setDocumentSuccessMessage(null);
-    setFormValues({
-      vehicleType: vehicle.vehicleType,
-      brandId: vehicle.brandId ?? '',
-      customBrandName: vehicle.customBrandName ?? '',
-      modelId: vehicle.modelId ?? '',
-      customModelName: vehicle.customModelName ?? '',
-      year: `${vehicle.year}`,
-      color: vehicle.color,
-      plate: vehicle.plate,
-      seatCount: `${vehicle.seatCount}`,
-      luggagePolicy: vehicle.luggagePolicy,
-      registrationDocumentFileKey: vehicle.registrationDocumentFileKey ?? '',
-    });
-    setCurrentFormDocumentFileName(
-      extractUploadedFileName(vehicle.registrationDocumentFileKey),
-    );
-    setCurrentFormDocumentBlob(null);
-    setCurrentFormDocumentMimeType(null);
-    setCurrentFormDocumentPreviewUrl((currentPreviewUrl) => {
-      if (currentPreviewUrl) {
-        URL.revokeObjectURL(currentPreviewUrl);
-      }
-
-      return null;
-    });
-
-    if (vehicle.brandId && authSession) {
-      try {
-        const vehicleModels = await listVehicleModels(authSession.accessToken, {
-          brandId: vehicle.brandId,
-          vehicleType: vehicle.vehicleType,
-        });
-        setModels(vehicleModels);
-      } catch {
-        setModels([]);
-      }
-    } else {
-      setModels([]);
-    }
-  };
-
   const toggleManualBrand = () => {
     setIsManualBrand((currentValue) => !currentValue);
+    setIsManualModel(false);
+    setModels([]);
     setFormValues((currentValues) => ({
       ...currentValues,
       brandId: '',
@@ -538,8 +520,6 @@ export default function VehiclesPage() {
       modelId: '',
       customModelName: '',
     }));
-    setIsManualModel(false);
-    setModels([]);
   };
 
   const toggleManualModel = () => {
@@ -551,47 +531,9 @@ export default function VehiclesPage() {
     }));
   };
 
-  const handleUploadValidationError = (message: string) => {
-    setDocumentSuccessMessage(null);
-    setDocumentErrorMessage(message);
-  };
-
-  const handleUploadRegistrationDocument = async (file: File) => {
-    if (!authSession) {
-      return;
-    }
-
-    setIsUploadingRegistrationDocument(true);
-    setDocumentErrorMessage(null);
-    setDocumentSuccessMessage(null);
-
-    try {
-      const response = await uploadVehicleRegistrationDocument(authSession.accessToken, file);
-
-      setFormValues((currentValues) => ({
-        ...currentValues,
-        registrationDocumentFileKey: response.fileKey,
-      }));
-      setCurrentFormDocumentState(file, file.name, file.type);
-      setDocumentSuccessMessage(response.message);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        await refreshSession().catch(() => undefined);
-      }
-
-      setDocumentErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : 'No fue posible cargar el documento del vehiculo.',
-      );
-    } finally {
-      setIsUploadingRegistrationDocument(false);
-    }
-  };
-
   const fetchVehicleDocumentBlob = async (vehicle: VehicleRecord) => {
     if (!authSession) {
-      throw new ApiError('No fue posible autenticar la descarga del documento.', 401);
+      throw new ApiError('No fue posible autenticar la descarga.', 401);
     }
 
     const blob = await downloadVehicleRegistrationDocument(authSession.accessToken, vehicle.id);
@@ -602,31 +544,67 @@ export default function VehiclesPage() {
     };
   };
 
-  const handlePreviewRegistrationDocument = async () => {
-    if (!formValues.registrationDocumentFileKey.trim()) {
-      setDocumentErrorMessage(
-        'Primero carga o conserva un documento de matricula para previsualizarlo.',
-      );
+  const handleUploadValidationError = (message: string) => {
+    pushToast('Archivo no valido', message, 'info');
+  };
+
+  const handleUploadRegistrationDocument = async (file: File) => {
+    if (!authSession) {
       return;
     }
 
-    setPreviewErrorMessage(null);
+    setIsUploadingRegistrationDocument(true);
 
-    if (currentFormDocumentPreviewUrl && currentFormDocumentFileName && currentFormDocumentMimeType) {
+    try {
+      const response = await uploadVehicleRegistrationDocument(authSession.accessToken, file);
+
+      setFormValues((currentValues) => ({
+        ...currentValues,
+        registrationDocumentFileKey: response.fileKey,
+      }));
+      setCurrentFormDocumentBlob(file);
+      setCurrentFormDocumentFileName(file.name);
+      setCurrentFormDocumentMimeType(file.type);
+      pushToast('Documento cargado', response.message, 'success');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      pushToast(
+        'No se pudo cargar',
+        error instanceof ApiError
+          ? error.message
+          : 'No fue posible cargar la matricula.',
+        'error',
+      );
+    } finally {
+      setIsUploadingRegistrationDocument(false);
+    }
+  };
+
+  const handlePreviewRegistrationDocument = async () => {
+    if (!formValues.registrationDocumentFileKey.trim()) {
+      pushToast('Falta documento', 'Carga una matricula antes de previsualizar.', 'info');
+      return;
+    }
+
+    if (currentFormDocumentBlob && currentFormDocumentFileName && currentFormDocumentMimeType) {
       setPreviewState({
         title: 'Documento de matricula',
         fileName: currentFormDocumentFileName,
-        fileUrl: currentFormDocumentPreviewUrl,
+        fileUrl: URL.createObjectURL(currentFormDocumentBlob),
         mimeType: currentFormDocumentMimeType,
-        preserveUrl: true,
         vehicleId: editingVehicleId,
       });
       return;
     }
 
     if (!editingVehicle) {
-      setDocumentErrorMessage(
-        'Todavia no hay una previsualizacion local disponible. Guarda el vehiculo o vuelve a cargar el archivo.',
+      pushToast(
+        'Sin vista previa',
+        'Guarda el vehiculo o vuelve a cargar el archivo para abrirlo.',
+        'info',
       );
       return;
     }
@@ -635,27 +613,20 @@ export default function VehiclesPage() {
 
     try {
       const { blob, fileName } = await fetchVehicleDocumentBlob(editingVehicle);
-      const objectUrl = URL.createObjectURL(blob);
-
-      setPreviewState((currentPreview) => {
-        if (currentPreview?.fileUrl && !currentPreview.preserveUrl) {
-          URL.revokeObjectURL(currentPreview.fileUrl);
-        }
-
-        return {
-          title: 'Documento de matricula',
-          fileName,
-          fileUrl: objectUrl,
-          mimeType: blob.type,
-          preserveUrl: false,
-          vehicleId: editingVehicle.id,
-        };
+      setPreviewState({
+        title: 'Documento de matricula',
+        fileName,
+        fileUrl: URL.createObjectURL(blob),
+        mimeType: blob.type,
+        vehicleId: editingVehicle.id,
       });
     } catch (error) {
-      setPreviewErrorMessage(
+      pushToast(
+        'No se pudo abrir',
         error instanceof ApiError
           ? error.message
-          : 'No fue posible abrir la previsualizacion del documento del vehiculo.',
+          : 'No fue posible abrir el documento.',
+        'error',
       );
     } finally {
       setIsOpeningRegistrationDocumentPreview(false);
@@ -663,34 +634,28 @@ export default function VehiclesPage() {
   };
 
   const handleDownloadRegistrationDocument = async () => {
-    if (!formValues.registrationDocumentFileKey.trim()) {
-      setDocumentErrorMessage('No hay un documento de matricula disponible para descargar.');
-      return;
-    }
-
     if (currentFormDocumentBlob && currentFormDocumentFileName) {
       downloadBlobFile(currentFormDocumentBlob, currentFormDocumentFileName);
       return;
     }
 
     if (!editingVehicle) {
-      setDocumentErrorMessage(
-        'Guarda el vehiculo antes de descargar el documento o vuelve a cargar el archivo.',
-      );
+      pushToast('Sin documento', 'No hay un documento disponible para descargar.', 'info');
       return;
     }
 
     setIsDownloadingRegistrationDocument(true);
-    setDocumentErrorMessage(null);
 
     try {
       const { blob, fileName } = await fetchVehicleDocumentBlob(editingVehicle);
       downloadBlobFile(blob, fileName);
     } catch (error) {
-      setDocumentErrorMessage(
+      pushToast(
+        'No se pudo descargar',
         error instanceof ApiError
           ? error.message
-          : 'No fue posible descargar el documento del vehiculo.',
+          : 'No fue posible descargar el documento.',
+        'error',
       );
     } finally {
       setIsDownloadingRegistrationDocument(false);
@@ -699,31 +664,29 @@ export default function VehiclesPage() {
 
   const handlePreviewStoredVehicleDocument = async (vehicle: VehicleRecord) => {
     setPreviewLoadingVehicleId(vehicle.id);
-    setPreviewErrorMessage(null);
 
     try {
       const { blob, fileName } = await fetchVehicleDocumentBlob(vehicle);
-      const objectUrl = URL.createObjectURL(blob);
-
       setPreviewState((currentPreview) => {
-        if (currentPreview?.fileUrl && !currentPreview.preserveUrl) {
+        if (currentPreview?.fileUrl) {
           URL.revokeObjectURL(currentPreview.fileUrl);
         }
 
         return {
-          title: `Documento de matricula - ${getVehicleDisplayName(vehicle)}`,
+          title: 'Documento de matricula',
           fileName,
-          fileUrl: objectUrl,
+          fileUrl: URL.createObjectURL(blob),
           mimeType: blob.type,
-          preserveUrl: false,
           vehicleId: vehicle.id,
         };
       });
     } catch (error) {
-      setPreviewErrorMessage(
+      pushToast(
+        'No se pudo abrir',
         error instanceof ApiError
           ? error.message
-          : 'No fue posible abrir la previsualizacion del documento del vehiculo.',
+          : 'No fue posible abrir el documento.',
+        'error',
       );
     } finally {
       setPreviewLoadingVehicleId(null);
@@ -732,81 +695,20 @@ export default function VehiclesPage() {
 
   const handleDownloadStoredVehicleDocument = async (vehicle: VehicleRecord) => {
     setDownloadingVehicleId(vehicle.id);
-    setDocumentErrorMessage(null);
 
     try {
       const { blob, fileName } = await fetchVehicleDocumentBlob(vehicle);
       downloadBlobFile(blob, fileName);
     } catch (error) {
-      setDocumentErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : 'No fue posible descargar el documento del vehiculo.',
-      );
-    } finally {
-      setDownloadingVehicleId(null);
-    }
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!authSession) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      const payload = {
-        vehicleType: formValues.vehicleType,
-        brandId: isManualBrand ? undefined : formValues.brandId || undefined,
-        modelId: isManualModel ? undefined : formValues.modelId || undefined,
-        customBrandName: isManualBrand ? formValues.customBrandName : undefined,
-        customModelName: isManualModel ? formValues.customModelName : undefined,
-        year: Number.parseInt(formValues.year, 10),
-        color: formValues.color,
-        plate: formValues.plate,
-        seatCount: Number.parseInt(formValues.seatCount, 10),
-        luggagePolicy: formValues.luggagePolicy,
-        registrationDocumentFileKey: formValues.registrationDocumentFileKey || undefined,
-      };
-
-      const response = editingVehicleId
-        ? await updateVehicle(authSession.accessToken, editingVehicleId, payload)
-        : await registerVehicle(authSession.accessToken, payload);
-
-      await loadVehicleOverview(authSession.accessToken);
-      setSuccessMessage(response.message);
-      setDocumentSuccessMessage(null);
-      pushToast('Vehiculo actualizado', response.message, 'success');
-      resetFormState();
-      setIsRegistrationModalOpen(false);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        await refreshSession().catch(() => undefined);
-      }
-
-      setErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : editingVehicleId
-            ? 'No fue posible actualizar el vehiculo.'
-            : 'No fue posible registrar el vehiculo.',
-      );
       pushToast(
-        'Operacion no completada',
+        'No se pudo descargar',
         error instanceof ApiError
           ? error.message
-          : editingVehicleId
-            ? 'No fue posible actualizar el vehiculo.'
-            : 'No fue posible registrar el vehiculo.',
+          : 'No fue posible descargar el documento.',
         'error',
       );
     } finally {
-      setIsSubmitting(false);
+      setDownloadingVehicleId(null);
     }
   };
 
@@ -815,9 +717,16 @@ export default function VehiclesPage() {
       return;
     }
 
+    if (vehicle.isActive && vehicle.operationalTripCount > 0) {
+      pushToast(
+        'No disponible',
+        'No puedes desactivar un vehiculo con viajes operativos.',
+        'info',
+      );
+      return;
+    }
+
     setIsTogglingVehicleId(vehicle.id);
-    setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
       const response = await setVehicleActiveStatus(
@@ -826,26 +735,15 @@ export default function VehiclesPage() {
         !vehicle.isActive,
       );
 
-      await loadVehicleOverview(authSession.accessToken);
-      setSuccessMessage(response.message);
+      await loadVehicleData(authSession.accessToken);
       pushToast('Estado actualizado', response.message, 'success');
-
-      if (editingVehicleId === vehicle.id && vehicle.isActive) {
-        resetFormState();
-        setIsRegistrationModalOpen(false);
-      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      setErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : 'No fue posible actualizar el estado del vehiculo.',
-      );
       pushToast(
-        'No se pudo actualizar el estado',
+        'No se pudo actualizar',
         error instanceof ApiError
           ? error.message
           : 'No fue posible actualizar el estado del vehiculo.',
@@ -856,75 +754,63 @@ export default function VehiclesPage() {
     }
   };
 
-  const driverStatus =
-    vehicleOverview?.membership?.effectiveDriverVerificationStatus ??
-    vehicleOverview?.membership?.driverVerificationStatus ??
-    DriverVerificationStatus.NotRequested;
-  const licenseStatus =
-    vehicleOverview?.membership?.licenseStatus ?? DriverLicenseStatus.Missing;
-  const vehicleManagementEnabled = canRegisterVehicles(driverStatus, licenseStatus);
-  const totalVehicles = vehicleOverview?.vehicles.length ?? 0;
-  const activeVehicles =
-    vehicleOverview?.vehicles.filter((vehicle) => vehicle.isActive).length ?? 0;
-  const vehiclesWithOperationalTrips =
-    vehicleOverview?.vehicles.filter((vehicle) => vehicle.operationalTripCount > 0).length ?? 0;
-  const inactiveVehicles = Math.max(totalVehicles - activeVehicles, 0);
-  const vehiclesPendingDocument =
-    vehicleOverview?.vehicles.filter((vehicle) => !vehicle.registrationDocumentFileKey).length ??
-    0;
-  const licenseAlertMessage = getDriverLicenseAlertMessage(
-    licenseStatus,
-    vehicleOverview?.membership?.licenseExpiresInDays,
-  );
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  useEffect(() => {
-    if (isLoading) {
+    if (!authSession) {
       return;
     }
 
-    setWorkspaceView(totalVehicles > 0 ? 'fleet' : 'register');
-  }, [isLoading, totalVehicles]);
-
-  useEffect(() => {
-    if (isLoading) {
+    if (validationMessage) {
+      pushToast('Revisa el formulario', validationMessage, 'info');
       return;
     }
 
-    if (!vehicleManagementEnabled) {
-      const description =
-        licenseStatus === DriverLicenseStatus.Expired
-          ? 'Licencia vencida. Actualiza tu solicitud para gestionar tu flota.'
-          : 'Debes iniciar o aprobar tu proceso de conductor antes de gestionar vehiculos.';
-      const nextKey = `blocked:${description}`;
+    setIsSubmitting(true);
 
-      if (lastBlockingToastKey !== nextKey) {
-        pushToast('Gestion de flota limitada', description, 'info');
-        setLastBlockingToastKey(nextKey);
+    try {
+      const payload = buildVehiclePayload(formValues, isManualBrand, isManualModel);
+
+      if (editingVehicleId) {
+        const response = await updateVehicle(
+          authSession.accessToken,
+          editingVehicleId,
+          payload,
+        );
+        pushToast('Vehiculo actualizado', response.message, 'success');
+      } else {
+        const response = await registerVehicle(authSession.accessToken, payload);
+        pushToast('Vehiculo registrado', response.message, 'success');
       }
 
-      return;
-    }
-
-    if (licenseAlertMessage) {
-      const nextKey = `license:${licenseAlertMessage}`;
-
-      if (lastBlockingToastKey !== nextKey) {
-        pushToast('Atencion con tu licencia', licenseAlertMessage, 'info');
-        setLastBlockingToastKey(nextKey);
+      await loadVehicleData(authSession.accessToken);
+      closeRegistrationModal();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
       }
 
-      return;
+      pushToast(
+        'No se pudo guardar',
+        error instanceof ApiError
+          ? error.message
+          : 'No fue posible guardar el vehiculo.',
+        'error',
+      );
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    setLastBlockingToastKey(null);
-  }, [
-    isLoading,
-    lastBlockingToastKey,
-    licenseAlertMessage,
-    licenseStatus,
-    pushToast,
-    vehicleManagementEnabled,
-  ]);
+  const resetPreviewState = () => {
+    setPreviewState((currentPreview) => {
+      if (currentPreview?.fileUrl) {
+        URL.revokeObjectURL(currentPreview.fileUrl);
+      }
+
+      return null;
+    });
+  };
 
   if (
     !isLoading &&
@@ -933,491 +819,601 @@ export default function VehiclesPage() {
     operationalAccess.message
   ) {
     return (
-      <section className="vehicle-shell">
-        <section className="vehicle-command">
-          <div className="vehicle-command-copy">
-            <span className="section-label">Flota del conductor</span>
-            <h1 className="vehicle-command-title">Gestion de vehiculos</h1>
-            <p className="vehicle-command-subtitle">
-              Registra y gestiona los vehiculos asociados a tu perfil de conductor.
-            </p>
-          </div>
-          <div className="vehicle-command-actions">
-            <StatusPill label="Operacion bloqueada" tone="warning" />
-          </div>
+      <>
+        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+        <section className={styles.lockedShell}>
+          <article className={styles.lockedCard}>
+            <div className={styles.lockedHeader}>
+              <div>
+                <p className={styles.kicker}>Vehiculos</p>
+                <h1 className={styles.lockedTitle}>Operacion no disponible</h1>
+              </div>
+              <StatusPill label="Bloqueado" tone="warning" />
+            </div>
+            <OperationalAccessCard
+              message={operationalAccess.message}
+              title={operationalAccess.title}
+            />
+          </article>
         </section>
-
-        <section className="empty-state">
-          <OperationalAccessCard
-            message={operationalAccess.message}
-            title={operationalAccess.title}
-          />
-        </section>
-      </section>
+      </>
     );
   }
 
   return (
     <>
-      <section className="vehicle-shell">
-        <section className="vehicle-command">
-          <div className="vehicle-command-copy">
-            <span className="section-label">Flota del conductor</span>
-            <h1 className="vehicle-command-title">Gestion de vehiculos</h1>
-            <p className="vehicle-command-subtitle">Controla tu flota en una vista clara y rapida.</p>
-          </div>
-          <div className="vehicle-command-actions">
-            <StatusPill
-              label={getDriverStatusLabel(driverStatus)}
-              tone={getDriverStatusTone(driverStatus)}
-            />
-            <StatusPill label={`${totalVehicles} registrados`} tone="neutral" />
-          </div>
-        </section>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-        {isLoading ? (
-          <section className="loading-state compact-loading-state">
-            <div className="loading-card">
-              <div aria-hidden="true" className="loading-pulse" />
-              <h2 className="panel-title">Cargando vehiculos</h2>
-              <p className="panel-text">
-                Estamos consultando tu membresia de conductor y los vehiculos ya registrados.
-              </p>
+      {isLoading ? (
+        <section className={styles.loadingShell}>
+          <article className={styles.loadingCard}>
+            <div aria-hidden="true" className={styles.loadingPulse} />
+            <h2 className={styles.loadingTitle}>Cargando vehiculos</h2>
+            <p className={styles.loadingText}>Estamos consultando tu flota actual.</p>
+          </article>
+        </section>
+      ) : (
+        <section className={styles.vehicleShell}>
+          <section className={`${styles.hero} ${styles.reveal}`}>
+            <div className={styles.heroTop}>
+              <div className={styles.heroCopy}>
+                <p className={styles.kicker}>Vehiculos</p>
+                <h1 className={styles.heroTitle}>Tu flota operativa</h1>
+                <p className={styles.heroLead}>
+                  Gestiona tus vehiculos, su estado y sus documentos.
+                </p>
+              </div>
+
+              <div className={styles.heroPills}>
+                <StatusPill
+                  label={getDriverStatusLabel(currentStatus)}
+                  tone={getDriverStatusTone(currentStatus)}
+                />
+                <StatusPill
+                  label={vehicleManagementEnabled ? 'Gestion habilitada' : 'Gestion limitada'}
+                  tone={vehicleManagementEnabled ? 'success' : 'warning'}
+                />
+              </div>
+            </div>
+
+            <div className={styles.heroActions}>
+              <Button onClick={openRegistrationModal} variant="primary">
+                Registrar vehiculo
+              </Button>
+              <Link className="button button-secondary" href="/conductor">
+                Ver conductor
+              </Link>
+              <Link className="button button-ghost" href="/viajes">
+                Ir a viajes
+              </Link>
+            </div>
+
+            <div className={styles.metricGrid}>
+              {metrics.map((metric) => (
+                <article className={styles.metricCard} key={metric.label}>
+                  <span className={styles.metricLabel}>{metric.label}</span>
+                  <strong className={styles.metricValue}>{metric.value}</strong>
+                  <span className={styles.metricNote}>{metric.note}</span>
+                </article>
+              ))}
             </div>
           </section>
-        ) : (
-          <>
-            <section className="vehicle-kpi-grid">
-              <article className="vehicle-kpi-card">
-                <span className="vehicle-kpi-label">Registrados</span>
-                <strong className="vehicle-kpi-value">{totalVehicles}</strong>
-                <p className="vehicle-kpi-note">Flota total.</p>
-              </article>
-              <article className="vehicle-kpi-card">
-                <span className="vehicle-kpi-label">Activos</span>
-                <strong className="vehicle-kpi-value">{activeVehicles}</strong>
-                <p className="vehicle-kpi-note">Listos para viaje.</p>
-              </article>
-              <article className="vehicle-kpi-card">
-                <span className="vehicle-kpi-label">En pausa</span>
-                <strong className="vehicle-kpi-value">{inactiveVehicles}</strong>
-                <p className="vehicle-kpi-note">No disponibles.</p>
-              </article>
-              <article className="vehicle-kpi-card">
-                <span className="vehicle-kpi-label">Con viajes operativos</span>
-                <strong className="vehicle-kpi-value">{vehiclesWithOperationalTrips}</strong>
-                <p className="vehicle-kpi-note">
-                  {vehiclesPendingDocument > 0
-                    ? `${vehiclesPendingDocument} con docs pendientes.`
-                    : 'Documentacion al dia.'}
-                </p>
-              </article>
-            </section>
 
-            <section className="vehicle-workspace-switch" aria-label="Vistas de gestion vehicular">
-              <button
-                className={[
-                  'vehicle-view-chip',
-                  workspaceView === 'register' ? 'vehicle-view-chip-active' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => setWorkspaceView('register')}
-                type="button"
-              >
-                <span className="vehicle-view-chip-icon" aria-hidden="true">
-                  <VehicleActionIcon name="register" />
-                </span>
-                <span>Registro</span>
-                <strong>{editingVehicleId ? 'Edicion activa' : 'Nuevo vehiculo'}</strong>
-              </button>
-              <button
-                className={[
-                  'vehicle-view-chip',
-                  workspaceView === 'fleet' ? 'vehicle-view-chip-active' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => setWorkspaceView('fleet')}
-                type="button"
-              >
-                <span className="vehicle-view-chip-icon" aria-hidden="true">
-                  <VehicleActionIcon name="fleet" />
-                </span>
-                <span>Mi flota</span>
-                <strong>{totalVehicles} vehiculo(s)</strong>
-              </button>
-            </section>
-
-            {workspaceView === 'register' ? (
-              <section className="vehicle-main-grid vehicle-main-grid-register">
-                <article className="panel panel-stack vehicle-register-launch-card">
-                  <div className="panel-header-row">
-                    <div>
-                      <h2 className="panel-title">Registro de vehiculo</h2>
-                      <p className="panel-text">Abre el formulario cuando lo necesites.</p>
-                    </div>
-                    <Button onClick={openRegistrationModal} variant="primary">
-                      <VehicleActionIcon name="register" />
-                      Abrir formulario
-                    </Button>
+          <section className={styles.mainGrid}>
+            <div className={styles.contentColumn}>
+              <article className={`${styles.fleetCard} ${styles.reveal}`}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Flota</p>
+                    <h2>Vehiculos registrados</h2>
                   </div>
+                  <StatusPill label={`${totalVehicles} total`} tone="neutral" />
+                </div>
 
-                  <div className="vehicle-register-launch-grid">
-                    <article className="vehicle-register-launch-metric">
-                      <span>Estado</span>
-                      <strong>{vehicleManagementEnabled ? 'Habilitado' : 'Restringido'}</strong>
-                    </article>
-                    <article className="vehicle-register-launch-metric">
-                      <span>Flota</span>
-                      <strong>{totalVehicles} unidad(es)</strong>
-                    </article>
-                    <article className="vehicle-register-launch-metric">
-                      <span>Activos</span>
-                      <strong>{activeVehicles}</strong>
-                    </article>
-                  </div>
-                </article>
+                {vehicleOverview?.vehicles.length ? (
+                  <div className={styles.vehicleList}>
+                    {vehicleOverview.vehicles.map((vehicle) => {
+                      const isBusy = isTogglingVehicleId === vehicle.id;
+                      const hasRegistrationDocument = Boolean(
+                        vehicle.registrationDocumentFileKey,
+                      );
+                      const isLockedByTrips = vehicle.operationalTripCount > 0;
 
-                <aside className="vehicle-side-stack">
-                  <article className="vehicle-focus-card">
-                    <div className="vehicle-guide-head">
-                      <h2 className="panel-title">Acciones rapidas</h2>
-                      <StatusPill
-                        label={vehicleManagementEnabled ? 'Operacion habilitada' : 'Operacion limitada'}
-                        tone={vehicleManagementEnabled ? 'success' : 'warning'}
-                      />
-                    </div>
-
-                    <div className="vehicle-guide-grid">
-                      <Link className="vehicle-guide-link" href="/conductor">
-                        <strong>Estado de conductor</strong>
-                        <span>Revisar habilitacion.</span>
-                      </Link>
-                      <Link className="vehicle-guide-link" href="/viajes">
-                        <strong>Ir a viajes</strong>
-                        <span>Publicar con tu flota activa.</span>
-                      </Link>
-                      <Link className="vehicle-guide-link" href="/perfil">
-                        <strong>Perfil</strong>
-                        <span>Actualizar datos de cuenta.</span>
-                      </Link>
-                    </div>
-                  </article>
-
-                  {vehicleOverview?.vehicles.length ? (
-                    <article className="panel panel-stack">
-                      <div className="panel-header-row">
-                        <h2 className="panel-title">Flota actual</h2>
-                        <Button onClick={() => setWorkspaceView('fleet')} variant="secondary">
-                          Ver flota
-                        </Button>
-                      </div>
-
-                      <div className="list-stack">
-                        {vehicleOverview.vehicles.slice(0, 3).map((vehicle) => (
-                          <div key={vehicle.id} className="list-card list-card-compact">
-                            <div className="list-card-header">
-                              <strong>{getVehicleDisplayName(vehicle)}</strong>
-                              <div className="vehicle-status-row">
-                                <span
-                                  aria-hidden="true"
-                                  className={[
-                                    'vehicle-status-glyph',
-                                    vehicle.isActive
-                                      ? 'vehicle-status-glyph-success'
-                                      : 'vehicle-status-glyph-warning',
-                                  ]
-                                    .filter(Boolean)
-                                    .join(' ')}
-                                >
-                                  <VehicleActionIcon
-                                    name={vehicle.isActive ? 'activate' : 'deactivate'}
-                                  />
-                                </span>
-                                <StatusPill
-                                  label={vehicle.isActive ? 'Activo' : 'Inactivo'}
-                                  tone={vehicle.isActive ? 'success' : 'warning'}
-                                />
-                              </div>
+                      return (
+                        <article className={styles.vehicleCard} key={vehicle.id}>
+                          <div className={styles.vehicleCardTop}>
+                            <div>
+                              <h3 className={styles.vehicleName}>
+                                {getVehicleDisplayName(vehicle)}
+                              </h3>
+                              <p className={styles.vehicleSubline}>
+                                {vehicle.plate} | {vehicle.color} | {vehicle.year}
+                              </p>
                             </div>
-                            <div className="button-row">
-                              <Button onClick={() => openEditVehicleModal(vehicle)} variant="ghost">
-                                <VehicleActionIcon name="edit" />
-                                Editar
-                              </Button>
+
+                            <div className={styles.vehiclePills}>
+                              <StatusPill
+                                label={vehicle.isActive ? 'Activo' : 'Inactivo'}
+                                tone={vehicle.isActive ? 'success' : 'warning'}
+                              />
+                              {isLockedByTrips ? (
+                                <StatusPill label="En viaje" tone="warning" />
+                              ) : null}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </article>
-                  ) : null}
-                </aside>
-              </section>
-            ) : (
-              <section className="vehicle-main-grid vehicle-main-grid-fleet">
-                <article className="panel panel-stack">
-                  <div className="panel-header-row">
-                    <h2 className="panel-title">Mi flota</h2>
-                    <Button onClick={openRegistrationModal} variant="secondary">
-                      <VehicleActionIcon name="register" />
-                      Registrar vehiculo
-                    </Button>
-                  </div>
 
-                  {vehicleOverview?.vehicles.length ? (
-                    <div
-                      className={[
-                        'list-stack',
-                        'vehicle-fleet-list',
-                        totalVehicles >= 6 ? 'vehicle-fleet-list-compact' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                    >
-                      {vehicleOverview.vehicles.map((vehicle) => {
-                        const isBusy = isTogglingVehicleId === vehicle.id;
-                        const isLockedByTrips = vehicle.operationalTripCount > 0;
-                        const isEditingCurrentVehicle = editingVehicleId === vehicle.id;
-                        const hasRegistrationDocument = Boolean(vehicle.registrationDocumentFileKey);
+                          <div className={styles.vehicleDetails}>
+                            <article className={styles.infoTile}>
+                              <span>Tipo</span>
+                              <strong>{getVehicleTypeLabel(vehicle.vehicleType)}</strong>
+                            </article>
+                            <article className={styles.infoTile}>
+                              <span>Cupos</span>
+                              <strong>{vehicle.seatCount}</strong>
+                            </article>
+                            <article className={styles.infoTile}>
+                              <span>Equipaje</span>
+                              <strong>{getLuggagePolicyLabel(vehicle.luggagePolicy)}</strong>
+                            </article>
+                            <article className={styles.infoTile}>
+                              <span>Documento</span>
+                              <strong>{hasRegistrationDocument ? 'Registrado' : 'Pendiente'}</strong>
+                            </article>
+                          </div>
 
-                        return (
-                          <div key={vehicle.id} className="list-card vehicle-fleet-card">
-                            <div className="list-card-header">
-                              <strong>{getVehicleDisplayName(vehicle)}</strong>
-                              <div className="button-row vehicle-status-row">
-                                <span
-                                  aria-hidden="true"
-                                  className={[
-                                    'vehicle-status-glyph',
-                                    vehicle.isActive
-                                      ? 'vehicle-status-glyph-success'
-                                      : 'vehicle-status-glyph-warning',
-                                  ]
-                                    .filter(Boolean)
-                                    .join(' ')}
-                                >
-                                  <VehicleActionIcon
-                                    name={vehicle.isActive ? 'activate' : 'deactivate'}
-                                  />
-                                </span>
-                                <StatusPill
-                                  label={vehicle.isActive ? 'Activo' : 'Inactivo'}
-                                  tone={vehicle.isActive ? 'success' : 'warning'}
-                                />
-                                {isLockedByTrips ? (
-                                  <StatusPill label="En viaje" tone="warning" />
-                                ) : null}
-                              </div>
-                            </div>
-
-                            <div className="analytics-detail-grid vehicle-fleet-detail-grid">
-                              <div className="analytics-detail-card">
-                                <span>Tipo</span>
-                                <strong>{getVehicleTypeLabel(vehicle.vehicleType)}</strong>
-                                <p>{vehicle.seatCount} cupos</p>
-                              </div>
-                              <div className="analytics-detail-card">
-                                <span>Placa</span>
-                                <strong>{vehicle.plate}</strong>
-                                <p>{vehicle.color} | {vehicle.year}</p>
-                              </div>
-                              <div className="analytics-detail-card">
-                                <span>Documento</span>
-                                <strong>{hasRegistrationDocument ? 'OK' : 'Pendiente'}</strong>
-                                <p>{hasRegistrationDocument ? 'Disponible' : 'Requerido'}</p>
-                              </div>
-                            </div>
-
-                            {isLockedByTrips ? (
-                              <div className="form-helper">Bloqueado mientras tenga viajes operativos.</div>
-                            ) : null}
-
-                            <div className="vehicle-fleet-footer">
-                              {hasRegistrationDocument ? (
-                                <div className="button-row vehicle-fleet-actions vehicle-fleet-doc-actions">
-                                  <Button
-                                    className="vehicle-fleet-btn vehicle-fleet-btn-doc-view"
-                                    disabled={previewLoadingVehicleId === vehicle.id}
-                                    onClick={() => void handlePreviewStoredVehicleDocument(vehicle)}
-                                    variant="secondary"
-                                  >
-                                    <VehicleActionIcon name="preview" />
-                                    {previewLoadingVehicleId === vehicle.id
-                                      ? 'Abriendo...'
-                                      : 'Ver documento'}
-                                  </Button>
-                                  <Button
-                                    className="vehicle-fleet-btn vehicle-fleet-btn-doc-download"
-                                    disabled={downloadingVehicleId === vehicle.id}
-                                    onClick={() => void handleDownloadStoredVehicleDocument(vehicle)}
-                                    variant="ghost"
-                                  >
-                                    <VehicleActionIcon name="download" />
-                                    {downloadingVehicleId === vehicle.id
-                                      ? 'Descargando...'
-                                      : 'Descargar'}
-                                  </Button>
-                                </div>
-                              ) : null}
-
-                              <div className="button-row vehicle-fleet-actions vehicle-fleet-main-actions">
+                          <div className={styles.vehicleActions}>
+                            {hasRegistrationDocument ? (
+                              <>
                                 <Button
-                                  className="vehicle-fleet-btn vehicle-fleet-btn-edit"
-                                  disabled={!vehicleManagementEnabled || isLockedByTrips}
-                                  onClick={() => openEditVehicleModal(vehicle)}
-                                  variant="primary"
-                                >
-                                  <VehicleActionIcon name="edit" />
-                                  {isEditingCurrentVehicle ? 'Editando' : 'Editar'}
-                                </Button>
-                                <Button
-                                  className={[
-                                    'vehicle-fleet-btn',
-                                    'vehicle-fleet-btn-toggle',
-                                    vehicle.isActive
-                                      ? 'vehicle-fleet-btn-toggle-deactivate'
-                                      : 'vehicle-fleet-btn-toggle-activate',
-                                  ]
-                                    .filter(Boolean)
-                                    .join(' ')}
-                                  disabled={
-                                    !vehicleManagementEnabled ||
-                                    isBusy ||
-                                    (vehicle.isActive && isLockedByTrips)
-                                  }
-                                  onClick={() => void handleToggleVehicleStatus(vehicle)}
+                                  disabled={previewLoadingVehicleId === vehicle.id}
+                                  onClick={() => void handlePreviewStoredVehicleDocument(vehicle)}
                                   variant="secondary"
                                 >
-                                  <VehicleActionIcon
-                                    name={vehicle.isActive ? 'deactivate' : 'activate'}
-                                  />
-                                  {isBusy
-                                    ? 'Actualizando...'
-                                    : vehicle.isActive
-                                      ? 'Desactivar'
-                                      : 'Activar'}
+                                  {previewLoadingVehicleId === vehicle.id
+                                    ? 'Abriendo...'
+                                    : 'Ver documento'}
                                 </Button>
-                              </div>
-                            </div>
+                                <Button
+                                  disabled={downloadingVehicleId === vehicle.id}
+                                  onClick={() => void handleDownloadStoredVehicleDocument(vehicle)}
+                                  variant="ghost"
+                                >
+                                  {downloadingVehicleId === vehicle.id
+                                    ? 'Descargando...'
+                                    : 'Descargar'}
+                                </Button>
+                              </>
+                            ) : null}
+
+                            <Button
+                              disabled={!vehicleManagementEnabled}
+                              onClick={() => openEditVehicleModal(vehicle)}
+                              variant="primary"
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              disabled={
+                                !vehicleManagementEnabled ||
+                                isBusy ||
+                                (vehicle.isActive && isLockedByTrips)
+                              }
+                              onClick={() => void handleToggleVehicleStatus(vehicle)}
+                              variant="secondary"
+                            >
+                              {isBusy
+                                ? 'Actualizando...'
+                                : vehicle.isActive
+                                  ? 'Desactivar'
+                                  : 'Activar'}
+                            </Button>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="form-helper form-helper-strong vehicle-fleet-empty-state">
-                      Aun no hay vehiculos registrados.
-                    </div>
-                  )}
-                </article>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className={styles.emptyStateCard}>
+                    <strong>Aun no tienes vehiculos registrados.</strong>
+                    <span>Empieza agregando tu primera unidad.</span>
+                  </div>
+                )}
+              </article>
+            </div>
 
-                <aside className="vehicle-side-stack">
-                  <article className="vehicle-focus-card">
-                    <h2 className="panel-title">Resumen rapido</h2>
-                    <dl className="vehicle-metric-list">
-                      <div>
-                        <dt>Activos</dt>
-                        <dd>{activeVehicles}</dd>
-                      </div>
-                      <div>
-                        <dt>En pausa</dt>
-                        <dd>{inactiveVehicles}</dd>
-                      </div>
-                      <div>
-                        <dt>Operativos</dt>
-                        <dd>{vehiclesWithOperationalTrips}</dd>
-                      </div>
-                    </dl>
-                  </article>
+            <aside className={styles.sideColumn}>
+              <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Resumen</p>
+                    <h2>Estado operativo</h2>
+                  </div>
+                  <StatusPill
+                    label={licenseStatus === DriverLicenseStatus.Expired ? 'Atencion' : 'Actual'}
+                    tone={licenseStatus === DriverLicenseStatus.Expired ? 'warning' : 'success'}
+                  />
+                </div>
 
-                  <article className="vehicle-focus-card">
-                    <h2 className="panel-title">Siguiente paso</h2>
-                    <div className="vehicle-guide-grid">
-                      <Link className="vehicle-guide-link" href="/viajes">
-                        <strong>Crear viaje</strong>
-                        <span>Usar un vehiculo activo.</span>
-                      </Link>
-                      <Link className="vehicle-guide-link" href="/conductor">
-                        <strong>Ver estado</strong>
-                        <span>Confirmar habilitacion.</span>
-                      </Link>
-                    </div>
-                  </article>
-                </aside>
-              </section>
-            )}
-          </>
-        )}
-      </section>
+                <div className={styles.noticeStack}>
+                  <div className={styles.noticeCard}>
+                    <strong>Conductor</strong>
+                    <span>{getDriverStatusLabel(currentStatus)}</span>
+                  </div>
+                  <div className={styles.noticeCard}>
+                    <strong>Licencia</strong>
+                    <span>{licenseAlertMessage ?? 'Sin alertas activas.'}</span>
+                  </div>
+                  <div className={styles.noticeCard}>
+                    <strong>Viajes operativos</strong>
+                    <span>{vehiclesWithTrips} vehiculo(s) con movimiento actual.</span>
+                  </div>
+                </div>
+              </article>
+
+              <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Accesos</p>
+                    <h2>Siguiente paso</h2>
+                  </div>
+                  <StatusPill label="Rapido" tone="neutral" />
+                </div>
+
+                <div className={styles.quickGrid}>
+                  <Link className={styles.quickLink} href="/viajes">
+                    <strong>Viajes</strong>
+                    <span>Publica rutas usando un vehiculo activo.</span>
+                  </Link>
+                  <Link className={styles.quickLink} href="/conductor">
+                    <strong>Conductor</strong>
+                    <span>Revisa tu habilitacion y tu licencia.</span>
+                  </Link>
+                  <Link className={styles.quickLink} href="/perfil">
+                    <strong>Perfil</strong>
+                    <span>Actualiza tu informacion principal.</span>
+                  </Link>
+                </div>
+              </article>
+            </aside>
+          </section>
+        </section>
+      )}
 
       {isRegistrationModalOpen ? (
         <div
           aria-labelledby="vehicle-registration-modal-title"
           aria-modal="true"
           className="modal-backdrop"
-          onClick={handleCloseRegistrationModal}
+          onClick={closeRegistrationModal}
           role="dialog"
         >
           <div
-            className="modal-card modal-card-lg vehicle-registration-modal"
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
+            className={`modal-card modal-card-lg ${styles.registrationModalCard}`}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="modal-header">
               <div>
+                <p className={styles.kicker}>Vehiculo</p>
                 <h2 className="panel-title" id="vehicle-registration-modal-title">
                   {editingVehicle ? 'Editar vehiculo' : 'Registrar vehiculo'}
                 </h2>
-                <p className="panel-text">Formulario de gestion vehicular.</p>
+                <p className="panel-text">
+                  Completa los datos y carga la matricula cuando corresponda.
+                </p>
               </div>
-              <Button onClick={handleCloseRegistrationModal} variant="ghost">
+              <Button
+                disabled={isSubmitting}
+                onClick={closeRegistrationModal}
+                variant="secondary"
+              >
                 Cerrar
               </Button>
             </div>
 
-            <VehicleRegistrationForm
-              brands={brands}
-              documentErrorMessage={documentErrorMessage}
-              documentSuccessMessage={documentSuccessMessage}
-              editingVehicleName={editingVehicle ? getVehicleDisplayName(editingVehicle) : null}
-              errorMessage={errorMessage}
-              isDisabled={!vehicleManagementEnabled}
-              isDownloadingRegistrationDocument={isDownloadingRegistrationDocument}
-              isEditing={Boolean(editingVehicle)}
-              isManualBrand={isManualBrand}
-              isManualModel={isManualModel}
-              isOpeningRegistrationDocumentPreview={isOpeningRegistrationDocumentPreview}
-              isSubmitting={isSubmitting}
-              isUploadingRegistrationDocument={isUploadingRegistrationDocument}
-              models={models}
-              onCancelEdit={handleCloseRegistrationModal}
-              onChange={handleFormChange}
-              onDownloadRegistrationDocument={() => void handleDownloadRegistrationDocument()}
-              onPreviewRegistrationDocument={() => void handlePreviewRegistrationDocument()}
-              onSubmit={handleSubmit}
-              onToggleManualBrand={toggleManualBrand}
-              onToggleManualModel={toggleManualModel}
-              onUploadRegistrationDocument={(file) => void handleUploadRegistrationDocument(file)}
-              onUploadValidationError={handleUploadValidationError}
-              registrationDocumentFileName={currentFormDocumentFileName}
-              registrationDocumentPreviewUrl={currentFormDocumentPreviewUrl}
-              successMessage={successMessage}
-              values={formValues}
-            />
+            <form className={`form-stack ${styles.registrationForm}`} onSubmit={handleSubmit}>
+              <section className={styles.formSection}>
+                <div className={styles.formSectionHeader}>
+                  <div>
+                    <p className={styles.kicker}>Datos base</p>
+                    <h3>Informacion del vehiculo</h3>
+                  </div>
+                  <StatusPill
+                    label={editingVehicle ? 'Edicion' : 'Nuevo'}
+                    tone="neutral"
+                  />
+                </div>
+
+                <div className={styles.formGrid}>
+                  <SelectField
+                    label="Tipo de vehiculo"
+                    onChange={(event) =>
+                      handleFormChange('vehicleType', event.target.value as VehicleType)
+                    }
+                    required
+                    value={formValues.vehicleType}
+                  >
+                    <option value={VehicleType.Motorcycle}>
+                      {getVehicleTypeLabel(VehicleType.Motorcycle)}
+                    </option>
+                    <option value={VehicleType.Car}>
+                      {getVehicleTypeLabel(VehicleType.Car)}
+                    </option>
+                    <option value={VehicleType.PickupTruck}>
+                      {getVehicleTypeLabel(VehicleType.PickupTruck)}
+                    </option>
+                  </SelectField>
+
+                  <InputField
+                    label="Anio"
+                    onChange={(event) => handleFormChange('year', event.target.value)}
+                    placeholder="2024"
+                    required
+                    type="number"
+                    value={formValues.year}
+                  />
+                </div>
+
+                <div className={styles.formGrid}>
+                  <div className={styles.fieldPanel}>
+                    <div className={styles.fieldPanelHeader}>
+                      <span className={styles.fieldPanelLabel}>Marca</span>
+                      <button
+                        className={styles.textAction}
+                        onClick={toggleManualBrand}
+                        type="button"
+                      >
+                        {isManualBrand ? 'Usar catalogo' : 'Ingresar manualmente'}
+                      </button>
+                    </div>
+
+                    {isManualBrand ? (
+                      <input
+                        className="input"
+                        onChange={(event) =>
+                          handleFormChange('customBrandName', event.target.value)
+                        }
+                        placeholder="Ej. Kia"
+                        value={formValues.customBrandName}
+                      />
+                    ) : (
+                      <select
+                        className="input"
+                        onChange={(event) => handleFormChange('brandId', event.target.value)}
+                        value={formValues.brandId}
+                      >
+                        <option value="">Selecciona una marca</option>
+                        {brands.map((brand) => (
+                          <option key={brand.id} value={brand.id}>
+                            {brand.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className={styles.fieldPanel}>
+                    <div className={styles.fieldPanelHeader}>
+                      <span className={styles.fieldPanelLabel}>Modelo</span>
+                      <button
+                        className={styles.textAction}
+                        onClick={toggleManualModel}
+                        type="button"
+                      >
+                        {isManualModel ? 'Usar catalogo' : 'Ingresar manualmente'}
+                      </button>
+                    </div>
+
+                    {isManualModel ? (
+                      <input
+                        className="input"
+                        onChange={(event) =>
+                          handleFormChange('customModelName', event.target.value)
+                        }
+                        placeholder="Ej. Rio"
+                        value={formValues.customModelName}
+                      />
+                    ) : (
+                      <select
+                        className="input"
+                        onChange={(event) => handleFormChange('modelId', event.target.value)}
+                        value={formValues.modelId}
+                      >
+                        <option value="">Selecciona un modelo</option>
+                        {models.map((model) => (
+                          <option key={model.id} value={model.id}>
+                            {model.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                <div className={styles.formGrid}>
+                  <InputField
+                    label="Color"
+                    onChange={(event) => handleFormChange('color', event.target.value)}
+                    placeholder="Blanco"
+                    required
+                    value={formValues.color}
+                  />
+                  <InputField
+                    label="Placa"
+                    onChange={(event) => handleFormChange('plate', event.target.value.toUpperCase())}
+                    placeholder="ABC-1234"
+                    required
+                    value={formValues.plate}
+                  />
+                </div>
+
+                <div className={styles.formGrid}>
+                  <InputField
+                    label="Cupos"
+                    onChange={(event) => handleFormChange('seatCount', event.target.value)}
+                    placeholder="4"
+                    required
+                    type="number"
+                    value={formValues.seatCount}
+                  />
+                  <SelectField
+                    label="Equipaje"
+                    onChange={(event) =>
+                      handleFormChange('luggagePolicy', event.target.value as LuggagePolicy)
+                    }
+                    required
+                    value={formValues.luggagePolicy}
+                  >
+                    <option value={LuggagePolicy.NotAllowed}>
+                      {getLuggagePolicyLabel(LuggagePolicy.NotAllowed)}
+                    </option>
+                    <option value={LuggagePolicy.SmallOnly}>
+                      {getLuggagePolicyLabel(LuggagePolicy.SmallOnly)}
+                    </option>
+                    <option value={LuggagePolicy.UpToMedium}>
+                      {getLuggagePolicyLabel(LuggagePolicy.UpToMedium)}
+                    </option>
+                    <option value={LuggagePolicy.LargeAllowed}>
+                      {getLuggagePolicyLabel(LuggagePolicy.LargeAllowed)}
+                    </option>
+                  </SelectField>
+                </div>
+              </section>
+
+              <section className={styles.formSection}>
+                <div className={styles.formSectionHeader}>
+                  <div>
+                    <p className={styles.kicker}>Documento</p>
+                    <h3>Matricula</h3>
+                  </div>
+                  <StatusPill
+                    label={
+                      formValues.registrationDocumentFileKey ? 'Cargado' : 'Pendiente'
+                    }
+                    tone={
+                      formValues.registrationDocumentFileKey ? 'success' : 'warning'
+                    }
+                  />
+                </div>
+
+                <div className={styles.documentCard}>
+                  <div>
+                    <strong>Documento de matricula</strong>
+                    <p className={styles.documentDescription}>
+                      PDF, JPG, PNG o WEBP.
+                    </p>
+                    <span className={styles.documentFileName}>
+                      {currentFormDocumentFileName ?? 'Sin archivo cargado'}
+                    </span>
+                  </div>
+
+                  <div className={styles.documentActions}>
+                    <label
+                      className={['button', 'button-secondary', styles.documentTrigger].join(' ')}
+                      htmlFor={
+                        isUploadingRegistrationDocument
+                          ? undefined
+                          : 'vehicle-registration-document'
+                      }
+                      onClick={() => {
+                        if (!isUploadingRegistrationDocument) {
+                          suppressAuthSessionSync();
+                        }
+                      }}
+                    >
+                      {isUploadingRegistrationDocument
+                        ? 'Subiendo...'
+                        : currentFormDocumentFileName
+                          ? 'Cambiar archivo'
+                          : 'Subir archivo'}
+                    </label>
+
+                    <input
+                      accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp"
+                      className={styles.srOnly}
+                      id="vehicle-registration-document"
+                      onChange={(event) => {
+                        const selectedFile = event.target.files?.[0];
+
+                        if (!selectedFile) {
+                          return;
+                        }
+
+                        if (!allowedVehicleDocumentMimeTypes.has(selectedFile.type)) {
+                          handleUploadValidationError(
+                            'El documento debe estar en PDF, JPG, PNG o WEBP.',
+                          );
+                          event.target.value = '';
+                          return;
+                        }
+
+                        if (selectedFile.size > maxVehicleDocumentSizeBytes) {
+                          handleUploadValidationError(
+                            'El documento no puede superar los 8 MB.',
+                          );
+                          event.target.value = '';
+                          return;
+                        }
+
+                        void handleUploadRegistrationDocument(selectedFile);
+                        event.target.value = '';
+                      }}
+                      type="file"
+                    />
+
+                    <Button
+                      disabled={
+                        !formValues.registrationDocumentFileKey ||
+                        isOpeningRegistrationDocumentPreview
+                      }
+                      onClick={() => void handlePreviewRegistrationDocument()}
+                      type="button"
+                      variant="ghost"
+                    >
+                      {isOpeningRegistrationDocumentPreview ? 'Abriendo...' : 'Ver'}
+                    </Button>
+                    <Button
+                      disabled={
+                        !formValues.registrationDocumentFileKey ||
+                        isDownloadingRegistrationDocument
+                      }
+                      onClick={() => void handleDownloadRegistrationDocument()}
+                      type="button"
+                      variant="ghost"
+                    >
+                      {isDownloadingRegistrationDocument ? 'Descargando...' : 'Descargar'}
+                    </Button>
+                  </div>
+                </div>
+              </section>
+
+              <div className={styles.modalActions}>
+                <Button disabled={isSubmitting} type="submit" variant="primary">
+                  {isSubmitting
+                    ? 'Guardando...'
+                    : editingVehicle
+                      ? 'Guardar cambios'
+                      : 'Registrar vehiculo'}
+                </Button>
+                <Button
+                  disabled={isSubmitting}
+                  onClick={closeRegistrationModal}
+                  type="button"
+                  variant="secondary"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}
 
-      <ToastStack onDismiss={dismissToast} toasts={toasts} />
-
       <FilePreviewModal
         description={
           previewState?.mimeType?.startsWith('image/')
-            ? 'Pasa el puntero sobre la imagen para ampliar los detalles.'
-            : 'Revisa el documento vehicular antes de descargarlo o continuar.'
+            ? 'Revisa la imagen antes de continuar.'
+            : 'Revisa el documento antes de descargarlo.'
         }
-        errorMessage={previewErrorMessage}
         fileName={previewState?.fileName ?? null}
         fileUrl={previewState?.fileUrl ?? null}
         isDownloading={
@@ -1431,7 +1427,7 @@ export default function VehiclesPage() {
             ? previewLoadingVehicleId === previewState.vehicleId
             : false)
         }
-        isOpen={Boolean(previewState) || Boolean(previewErrorMessage)}
+        isOpen={Boolean(previewState)}
         mimeType={previewState?.mimeType ?? null}
         onClose={resetPreviewState}
         onDownload={

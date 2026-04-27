@@ -43,6 +43,17 @@ export class ResetPasswordUseCase {
       throw new BadRequestException('La cuenta asociada ya no existe.');
     }
 
+    const isSamePassword = await this.passwordHasher.compare(
+      input.password,
+      user.passwordHash,
+    );
+
+    if (isSamePassword) {
+      throw new BadRequestException(
+        'La nueva contrasena no puede ser igual a la anterior.',
+      );
+    }
+
     const passwordHash = await this.passwordHasher.hash(input.password);
 
     await this.authUserRepository.updatePassword(user.id, passwordHash);

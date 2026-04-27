@@ -232,7 +232,6 @@ export async function submitDriverApplication(accessToken: string, suffix: strin
     accessToken,
     body: {
       licenseTypeId: licenseTypes[0].id,
-      licenseNumber: `LIC-${suffix}`.toUpperCase(),
       licenseExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       identityDocumentFileKey: `identity-${suffix}`,
       licenseDocumentFileKey: `license-${suffix}`,

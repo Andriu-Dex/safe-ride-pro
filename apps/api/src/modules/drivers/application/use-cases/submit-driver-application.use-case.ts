@@ -15,7 +15,6 @@ import {
 export type SubmitDriverApplicationCommand = {
   userId: string;
   licenseTypeId: string;
-  licenseNumber: string;
   licenseExpiresAt: string;
   identityDocumentFileKey?: string;
   licenseDocumentFileKey?: string;
@@ -65,15 +64,6 @@ export class SubmitDriverApplicationUseCase {
       throw new BadRequestException('La licencia ingresada ya se encuentra vencida.');
     }
 
-    const normalizedLicenseNumber = command.licenseNumber.trim().toUpperCase();
-    const existingProfile = await this.driversRepository.findDriverProfileByLicenseNumber(
-      normalizedLicenseNumber,
-    );
-
-    if (existingProfile && existingProfile.membershipId !== membership.id) {
-      throw new BadRequestException('El numero de licencia ya esta registrado en otra solicitud.');
-    }
-
     const identityDocumentFileKey = command.identityDocumentFileKey?.trim() || undefined;
     const licenseDocumentFileKey = command.licenseDocumentFileKey?.trim() || undefined;
 
@@ -86,7 +76,6 @@ export class SubmitDriverApplicationUseCase {
     const driverProfile = await this.driversRepository.submitDriverApplication({
       membershipId: membership.id,
       licenseTypeId: command.licenseTypeId,
-      licenseNumber: normalizedLicenseNumber,
       licenseExpiresAt,
       identityDocumentFileKey,
       licenseDocumentFileKey,

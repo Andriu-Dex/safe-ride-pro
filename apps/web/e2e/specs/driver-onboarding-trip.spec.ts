@@ -18,7 +18,6 @@ test('un conductor puede enviar solicitud, registrar vehiculo y publicar un viaj
   await expect(page).toHaveURL(/\/conductor$/);
   await waitForSectionHeading(page, 'Habilitacion operativa', 'Cargando estado de conductor');
   await page.getByLabel('Tipo de licencia').selectOption({ index: 1 });
-  await page.getByLabel('Numero de licencia').fill(`DRV-${suffix}`);
   await page.getByLabel('Fecha de expiracion').fill('2030-12-31');
   await page
     .locator('.document-upload-card')

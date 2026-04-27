@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition, useEffect } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
@@ -27,9 +27,27 @@ export function LoginForm({
   const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
-  const [toast, setToast] = useState<{ title: string; message: string; type: 'error' | 'success' | 'info' } | null>(() => {
-    if (showVerifiedMessage) return { title: 'Verificación exitosa', message: 'Correo verificado correctamente. Ya puedes iniciar sesión.', type: 'success' };
-    if (showResetMessage) return { title: 'Clave actualizada', message: 'La clave se actualizó correctamente. Ya puedes iniciar sesión.', type: 'success' };
+  const [toast, setToast] = useState<{
+    title: string;
+    message: string;
+    type: 'error' | 'success' | 'info';
+  } | null>(() => {
+    if (showVerifiedMessage) {
+      return {
+        title: 'Verificacion exitosa',
+        message: 'Correo verificado correctamente. Ya puedes iniciar sesion.',
+        type: 'success',
+      };
+    }
+
+    if (showResetMessage) {
+      return {
+        title: 'Clave actualizada',
+        message: 'La clave se actualizo correctamente. Ya puedes iniciar sesion.',
+        type: 'success',
+      };
+    }
+
     return null;
   });
 
@@ -67,7 +85,7 @@ export function LoginForm({
 
       setToast({
         title: 'Error de acceso',
-        message: 'No fue posible iniciar sesión. Intenta nuevamente.',
+        message: 'No fue posible iniciar sesion. Intenta nuevamente.',
         type: 'error',
       });
     }
@@ -104,23 +122,37 @@ export function LoginForm({
         />
 
         <Button disabled={isBusy} type="submit">
-          {isBusy ? 'Ingresando...' : 'Iniciar sesión'}
+          {isBusy ? 'Ingresando...' : 'Iniciar sesion'}
         </Button>
       </form>
 
-      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <a
-          className="auth-inline-link text-sm"
-          href="/register"
-        >
-          Registrarse
-        </a>
-        <a
-          className="auth-inline-link text-sm"
-          href="/forgot-password"
-        >
-          Olvidé mi clave
-        </a>
+      <div className="mt-6 flex flex-col items-center gap-3">
+        <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
+          <button
+            type="button"
+            className="hover:text-slate-800 transition-colors"
+            onClick={() => router.push('/register')}
+          >
+            Registrarse
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            className="hover:text-slate-800 transition-colors"
+            onClick={() => router.push('/forgot-password')}
+          >
+            Olvidé mi clave
+          </button>
+        </div>
+        {email.trim() ? (
+          <button
+            type="button"
+            className="auth-inline-link text-sm font-medium mt-1"
+            onClick={() => router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`)}
+          >
+            Volver a verificación
+          </button>
+        ) : null}
       </div>
 
       {toast && (
@@ -134,9 +166,9 @@ export function LoginForm({
               type="button"
               className="toast-dismiss"
               onClick={() => setToast(null)}
-              aria-label="Cerrar notificación"
+              aria-label="Cerrar notificacion"
             >
-              ✕
+              ×
             </button>
           </div>
         </div>

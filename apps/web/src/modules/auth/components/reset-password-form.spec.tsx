@@ -27,7 +27,7 @@ describe('ResetPasswordForm', () => {
 
     expect(screen.getByText('Media')).toBeInTheDocument();
     expect(
-      screen.getByText('Buena base. Puedes reforzarla con un simbolo.'),
+      screen.getByText('Buena base. Puedes reforzarla con un símbolo.'),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Mostrar nueva contraseña' }));

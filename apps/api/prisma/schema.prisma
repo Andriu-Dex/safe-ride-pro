@@ -327,7 +327,6 @@ model DriverProfile {
   id                      String                    @id @default(uuid())
   membershipId            String                    @unique
   licenseTypeId           String
-  licenseNumber           String                    @unique
   licenseExpiresAt        DateTime
   identityDocumentFileKey String?
   licenseDocumentFileKey  String?
