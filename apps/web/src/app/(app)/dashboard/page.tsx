@@ -5,10 +5,11 @@ import {
   GlobalUserRole,
   InstitutionMembershipRole,
 } from '@saferidepro/shared-types';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
+import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { canAccessAudit } from '../../../modules/audit/lib/audit-access';
@@ -17,18 +18,19 @@ import { getOperationalAccessState } from '../../../modules/auth/lib/operational
 import {
   getDriverLicenseAlertMessage,
   getDriverLicenseStatusLabel,
-  getDriverLicenseStatusTone,
   getDriverStatusLabel,
   getDriverStatusTone,
 } from '../../../modules/driver/lib/driver-status';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
 import {
   getAdministrativeRiskStateLabel,
+  getAdministrativeRiskTone,
   getTrustRestrictions,
   getVisibleReputationStateLabel,
   getVisibleReputationTone,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
+import styles from './page.module.css';
 
 function getGlobalRoleLabel(role: GlobalUserRole): string {
   switch (role) {
@@ -65,6 +67,29 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const pushToast = (
+    title: string,
+    description: string,
+    tone: ToastItem['tone'] = 'info',
+  ) => {
+    setToasts((currentToasts) => [
+      ...currentToasts,
+      {
+        id: `dashboard-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title,
+        description,
+        tone,
+      },
+    ]);
+  };
+
+  const dismissToast = (toastId: string) => {
+    setToasts((currentToasts) =>
+      currentToasts.filter((toast) => toast.id !== toastId),
+    );
+  };
 
   const loadDashboard = async (accessToken: string) => {
     if (!operationalAccess.hasOperationalMembership) {
@@ -87,13 +112,17 @@ export default function DashboardPage() {
 
     try {
       await loadDashboard(authSession.accessToken);
+
+      if (showSpinner) {
+        pushToast('Dashboard actualizado', 'Los indicadores fueron sincronizados.', 'success');
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
       setErrorMessage(
-        getApiErrorMessage(error, 'No fue posible sincronizar el resumen del panel.'),
+        getApiErrorMessage(error, 'No fue posible sincronizar el dashboard.'),
       );
     } finally {
       if (showSpinner) {
@@ -130,7 +159,7 @@ export default function DashboardPage() {
         }
 
         setErrorMessage(
-          getApiErrorMessage(error, 'No fue posible cargar el resumen del panel.'),
+          getApiErrorMessage(error, 'No fue posible cargar el dashboard.'),
         );
       } finally {
         if (isMounted) {
@@ -156,9 +185,19 @@ export default function DashboardPage() {
     },
   );
 
+  useEffect(() => {
+    if (!errorMessage) {
+      return;
+    }
+
+    pushToast('No se pudo cargar', errorMessage, 'error');
+    setErrorMessage(null);
+  }, [errorMessage]);
+
   const restrictions = getTrustRestrictions(trustSummary);
   const effectiveDriverStatus =
-    currentMembership?.effectiveDriverVerificationStatus ?? currentMembership?.driverVerificationStatus;
+    currentMembership?.effectiveDriverVerificationStatus ??
+    currentMembership?.driverVerificationStatus;
   const driverLicenseMessage = getDriverLicenseAlertMessage(
     currentMembership?.licenseStatus,
     currentMembership?.licenseExpiresInDays,
@@ -187,83 +226,74 @@ export default function DashboardPage() {
           ? 'Observacion activa'
           : 'Sin bloqueos';
 
+  const metrics = useMemo(
+    () => [
+      {
+        label: 'Institucion',
+        value: currentMembership?.institutionName ?? 'Sin institucion',
+        note: membershipRoleLabel,
+      },
+      {
+        label: 'Confianza visible',
+        value: visibleTrustLabel,
+        note: 'Estado reputacional actual.',
+      },
+      {
+        label: 'Riesgo',
+        value: administrativeRiskLabel,
+        note: 'Lectura administrativa.',
+      },
+      {
+        label: 'Restricciones',
+        value: hasRestrictions ? restrictionTitle : 'Sin bloqueos',
+        note: restrictions.message ?? 'Cuenta habilitada para operar.',
+      },
+    ],
+    [
+      administrativeRiskLabel,
+      currentMembership?.institutionName,
+      hasRestrictions,
+      membershipRoleLabel,
+      restrictionTitle,
+      restrictions.message,
+      visibleTrustLabel,
+    ],
+  );
+
+  if (isLoading) {
+    return (
+      <>
+        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+        <section className={styles.loadingShell}>
+          <article className={styles.loadingCard}>
+            <div aria-hidden="true" className={styles.loadingPulse} />
+            <h1 className={styles.loadingTitle}>Cargando dashboard</h1>
+            <p className={styles.loadingText}>Estamos preparando los indicadores principales.</p>
+          </article>
+        </section>
+      </>
+    );
+  }
+
   return (
-    <section className="dash-shell">
-      <section className="dash-command">
-        <div className="dash-command-copy">
-          <p className="section-label">Dashboard</p>
-          <h1 className="dash-command-title">Control operativo</h1>
-          <p className="dash-command-subtitle">
-            Monitorea estado institucional, riesgo y restricciones desde una sola vista ejecutiva.
-          </p>
-          <div className="chip-row">
-            <span className="topbar-badge">Vista analitica</span>
+    <section className={styles.dashboardShell}>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
+
+      <section className={`${styles.hero} ${styles.reveal}`}>
+        <div className={styles.heroTop}>
+          <div className={styles.heroCopy}>
+            <p className={styles.kicker}>Dashboard</p>
+            <h1 className={styles.heroTitle}>Lectura ejecutiva</h1>
+            <p className={styles.heroLead}>
+              Supervisa contexto, riesgo y restricciones desde una vista resumida.
+            </p>
+          </div>
+
+          <div className={styles.heroActions}>
             <StatusPill
-              label={operationalAccess.hasOperationalMembership ? 'Contexto operativo listo' : 'Contexto limitado'}
+              label={operationalAccess.hasOperationalMembership ? 'Contexto listo' : 'Contexto limitado'}
               tone={operationalAccess.hasOperationalMembership ? 'success' : 'warning'}
             />
-            <StatusPill
-              label={visibleTrustLabel}
-              tone={trustSummary ? getVisibleReputationTone(trustSummary.visibleReputationState) : 'neutral'}
-            />
-          </div>
-        </div>
-
-        <div className="dash-command-actions">
-          <Button
-            disabled={isSyncing}
-            onClick={() => void refreshDashboard(true)}
-            variant="secondary"
-          >
-            {isRefreshing ? 'Actualizando...' : 'Sincronizar'}
-          </Button>
-          <StatusPill
-            label={currentMembership
-              ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
-              : 'Sin membresia'}
-            tone={currentMembership
-              ? getDriverStatusTone(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
-              : 'neutral'}
-          />
-          <StatusPill
-            label={isSyncing ? 'Sincronizando' : 'Actualizado'}
-            tone={isSyncing ? 'warning' : 'success'}
-          />
-        </div>
-      </section>
-
-      {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-
-      <section className="dash-metric-grid">
-        <article className="dash-metric-card">
-          <span className="dash-metric-label">Institucion</span>
-          <strong className="dash-metric-value">{currentMembership?.institutionName ?? 'Sin institucion'}</strong>
-          <p className="dash-metric-note">{membershipRoleLabel}</p>
-        </article>
-        <article className="dash-metric-card">
-          <span className="dash-metric-label">Confianza visible</span>
-          <strong className="dash-metric-value">{visibleTrustLabel}</strong>
-          <p className="dash-metric-note">Estado de reputacion actual</p>
-        </article>
-        <article className="dash-metric-card">
-          <span className="dash-metric-label">Riesgo</span>
-          <strong className="dash-metric-value">{administrativeRiskLabel}</strong>
-          <p className="dash-metric-note">Lectura administrativa interna</p>
-        </article>
-        <article className="dash-metric-card">
-          <span className="dash-metric-label">Restricciones</span>
-          <strong className="dash-metric-value">{hasRestrictions ? restrictionTitle : 'Sin bloqueos'}</strong>
-          <p className="dash-metric-note">{restrictions.message ?? 'Cuenta habilitada para operar.'}</p>
-        </article>
-      </section>
-
-      <section className="dash-main-grid">
-        <article className="dash-card dash-card-focus">
-          <div className="dash-card-head">
-            <div>
-              <p className="section-label">Operacion</p>
-              <h2 className="section-title">Estado operativo actual</h2>
-            </div>
             <StatusPill
               label={currentMembership
                 ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
@@ -272,155 +302,181 @@ export default function DashboardPage() {
                 ? getDriverStatusTone(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
                 : 'neutral'}
             />
-          </div>
-
-          <div className="dash-detail-grid">
-            <div className="dash-detail-item">
-              <span>Rol global</span>
-              <strong>{roleLabel}</strong>
-            </div>
-            <div className="dash-detail-item">
-              <span>Membresia</span>
-              <strong>{currentMembership?.membershipStatus ?? 'Sin membresia'}</strong>
-            </div>
-            <div className="dash-detail-item">
-              <span>Licencia</span>
-              <strong>
-                {currentMembership
-                  ? getDriverLicenseStatusLabel(currentMembership.licenseStatus)
-                  : 'Sin informacion'}
-              </strong>
-            </div>
-            <div className="dash-detail-item">
-              <span>Bloqueos</span>
-              <strong>{hasRestrictions ? restrictionTitle : 'Sin bloqueos'}</strong>
-            </div>
-          </div>
-
-          {driverLicenseMessage ? <div className="dash-inline-alert">{driverLicenseMessage}</div> : null}
-        </article>
-
-        <article className="dash-card">
-          <div className="dash-card-head">
-            <div>
-              <p className="section-label">Acciones</p>
-              <h2 className="section-title">Navegacion rapida</h2>
-            </div>
-            <StatusPill label="Prioridades" tone="success" />
-          </div>
-
-          <div className="dash-link-grid">
-            <Link className="dash-link-card" href="/viajes">
-              <strong>Viajes</strong>
-              <span>Operacion diaria de movilidad.</span>
-            </Link>
-            <Link className="dash-link-card" href="/conductor">
-              <strong>Conductor</strong>
-              <span>Estado de habilitacion y documentos.</span>
-            </Link>
-            <Link className="dash-link-card" href="/vehiculos">
-              <strong>Vehiculos</strong>
-              <span>Disponibilidad y consistencia de flota.</span>
-            </Link>
-            <Link className="dash-link-card" href="/confianza">
-              <strong>Confianza</strong>
-              <span>Reputacion, sanciones y apelaciones.</span>
-            </Link>
-            {auditVisible ? (
-              <Link className="dash-link-card" href="/auditoria">
-                <strong>Auditoria</strong>
-                <span>Eventos y trazabilidad administrativa.</span>
-              </Link>
-            ) : null}
-            <button
-              className="dash-link-card dash-link-card-action"
+            <Button
+              disabled={isSyncing}
               onClick={() => void refreshDashboard(true)}
-              type="button"
+              variant="secondary"
             >
-              <strong>{isRefreshing ? 'Actualizando...' : 'Actualizar panel'}</strong>
-              <span>Refresca toda la lectura del dashboard.</span>
-            </button>
+              {isRefreshing ? 'Actualizando...' : 'Sincronizar'}
+            </Button>
           </div>
-        </article>
+        </div>
+
+        <div className={styles.metricGrid}>
+          {metrics.map((metric) => (
+            <article className={styles.metricCard} key={metric.label}>
+              <span className={styles.metricLabel}>{metric.label}</span>
+              <strong className={styles.metricValue}>{metric.value}</strong>
+              <span className={styles.metricNote}>{metric.note}</span>
+            </article>
+          ))}
+        </div>
       </section>
 
-      <section className="dash-main-grid dash-main-grid-secondary">
-        <article className="dash-card">
-          <div className="dash-card-head">
-            <div>
-              <p className="section-label">Alertas</p>
-              <h2 className="section-title">Atencion inmediata</h2>
-            </div>
-            <StatusPill
-              label={hasRestrictions ? 'Revisar' : 'Estable'}
-              tone={hasRestrictions ? 'warning' : 'neutral'}
-            />
-          </div>
-
-          <div className="dash-alert-list">
-            <div className="dash-alert-item">
-              <strong>Contexto institucional</strong>
-              <p>
-                {currentMembership
-                  ? `Operando en ${currentMembership.institutionName} como ${membershipRoleLabel.toLowerCase()}.`
-                  : 'No hay membresia operativa activa para esta sesion.'}
-              </p>
-            </div>
-            <div className="dash-alert-item">
-              <strong>Restricciones</strong>
-              <p>{restrictions.message ?? 'No se detectan bloqueos operativos activos.'}</p>
-            </div>
-            <div className="dash-alert-item">
-              <strong>Confianza</strong>
-              <p>
-                {trustSummary
-                  ? `Visible: ${visibleTrustLabel.toLowerCase()} · Riesgo: ${administrativeRiskLabel.toLowerCase()}.`
-                  : 'Aun no hay resumen de confianza para mostrar.'}
-              </p>
-            </div>
-          </div>
-        </article>
-
-        <article className="dash-card">
-          <div className="dash-card-head">
-            <div>
-              <p className="section-label">Checklist</p>
-              <h2 className="section-title">Revision sugerida</h2>
-            </div>
-            <StatusPill label="4 pasos" tone="neutral" />
-          </div>
-
-          <div className="dash-checklist">
-            <div className="dash-check-item">
-              <span className="dash-check-index">1</span>
+      <section className={styles.mainGrid}>
+        <div className={styles.contentColumn}>
+          <article className={`${styles.focusCard} ${styles.reveal}`}>
+            <div className={styles.cardHeader}>
               <div>
-                <strong>Contexto</strong>
-                <p>Valida membresia, rol y permisos vigentes.</p>
+                <p className={styles.kicker}>Operacion</p>
+                <h2>Estado actual</h2>
               </div>
+              <StatusPill
+                label={currentMembership
+                  ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
+                  : 'Sin membresia'}
+                tone={currentMembership
+                  ? getDriverStatusTone(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
+                  : 'neutral'}
+              />
             </div>
-            <div className="dash-check-item">
-              <span className="dash-check-index">2</span>
-              <div>
-                <strong>Operacion</strong>
-                <p>Confirma licencia y restricciones activas.</p>
+
+            <div className={styles.detailGrid}>
+              <article className={styles.infoTile}>
+                <span>Rol global</span>
+                <strong>{roleLabel}</strong>
+              </article>
+              <article className={styles.infoTile}>
+                <span>Membresia</span>
+                <strong>{currentMembership?.membershipStatus ?? 'Sin membresia'}</strong>
+              </article>
+              <article className={styles.infoTile}>
+                <span>Licencia</span>
+                <strong>
+                  {currentMembership
+                    ? getDriverLicenseStatusLabel(currentMembership.licenseStatus)
+                    : 'Sin informacion'}
+                </strong>
+              </article>
+              <article className={styles.infoTile}>
+                <span>Bloqueos</span>
+                <strong>{hasRestrictions ? restrictionTitle : 'Sin bloqueos'}</strong>
+              </article>
+            </div>
+
+            {driverLicenseMessage ? (
+              <div className={styles.alertCard}>
+                <strong>Licencia</strong>
+                <span>{driverLicenseMessage}</span>
               </div>
-            </div>
-            <div className="dash-check-item">
-              <span className="dash-check-index">3</span>
+            ) : null}
+          </article>
+
+          <article className={`${styles.analyticsCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
               <div>
+                <p className={styles.kicker}>Lectura</p>
+                <h2>Indicadores clave</h2>
+              </div>
+              <StatusPill
+                label={trustSummary ? 'Actual' : 'Pendiente'}
+                tone={trustSummary ? getAdministrativeRiskTone(trustSummary.administrativeRiskState) : 'neutral'}
+              />
+            </div>
+
+            <div className={styles.analyticsGrid}>
+              <article className={styles.signalTile}>
+                <span>Confianza visible</span>
+                <strong>{visibleTrustLabel}</strong>
+              </article>
+              <article className={styles.signalTile}>
+                <span>Riesgo administrativo</span>
+                <strong>{administrativeRiskLabel}</strong>
+              </article>
+              <article className={styles.signalTile}>
+                <span>Pasajero</span>
+                <strong>{restrictions.blocksPassenger ? 'Restringido' : 'Habilitado'}</strong>
+              </article>
+              <article className={styles.signalTile}>
+                <span>Conductor</span>
+                <strong>{restrictions.blocksDriver ? 'Restringido' : 'Habilitado'}</strong>
+              </article>
+            </div>
+          </article>
+        </div>
+
+        <aside className={styles.sideColumn}>
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Accesos</p>
+                <h2>Rutas rapidas</h2>
+              </div>
+              <StatusPill label="Prioridades" tone="success" />
+            </div>
+
+            <div className={styles.quickGrid}>
+              <Link className={styles.quickLink} href="/viajes">
+                <strong>Viajes</strong>
+                <span>Operacion diaria de movilidad.</span>
+              </Link>
+              <Link className={styles.quickLink} href="/conductor">
+                <strong>Conductor</strong>
+                <span>Estado de habilitacion y documentos.</span>
+              </Link>
+              <Link className={styles.quickLink} href="/vehiculos">
+                <strong>Vehiculos</strong>
+                <span>Disponibilidad y consistencia de flota.</span>
+              </Link>
+              <Link className={styles.quickLink} href="/confianza">
                 <strong>Confianza</strong>
-                <p>Revisa reputacion y señales de riesgo.</p>
-              </div>
+                <span>Reputacion, sanciones y apelaciones.</span>
+              </Link>
+              {auditVisible ? (
+                <Link className={styles.quickLink} href="/auditoria">
+                  <strong>Auditoria</strong>
+                  <span>Eventos y trazabilidad administrativa.</span>
+                </Link>
+              ) : null}
             </div>
-            <div className="dash-check-item">
-              <span className="dash-check-index">4</span>
+          </article>
+
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
               <div>
-                <strong>Escalar</strong>
-                <p>Si es necesario, deriva a auditoria.</p>
+                <p className={styles.kicker}>Alertas</p>
+                <h2>Atencion inmediata</h2>
+              </div>
+              <StatusPill
+                label={hasRestrictions ? 'Revisar' : 'Estable'}
+                tone={hasRestrictions ? 'warning' : 'success'}
+              />
+            </div>
+
+            <div className={styles.noticeStack}>
+              <div className={styles.noticeCard}>
+                <strong>Contexto institucional</strong>
+                <span>
+                  {currentMembership
+                    ? `Operando en ${currentMembership.institutionName} como ${membershipRoleLabel.toLowerCase()}.`
+                    : 'No hay membresia operativa activa en esta sesion.'}
+                </span>
+              </div>
+              <div className={styles.noticeCard}>
+                <strong>Restricciones</strong>
+                <span>{restrictions.message ?? 'No se detectan bloqueos operativos activos.'}</span>
+              </div>
+              <div className={styles.noticeCard}>
+                <strong>Confianza</strong>
+                <span>
+                  {trustSummary
+                    ? `Visible: ${visibleTrustLabel.toLowerCase()} | Riesgo: ${administrativeRiskLabel.toLowerCase()}.`
+                    : 'Aun no hay resumen disponible.'}
+                </span>
               </div>
             </div>
-          </div>
-        </article>
+          </article>
+        </aside>
       </section>
     </section>
   );

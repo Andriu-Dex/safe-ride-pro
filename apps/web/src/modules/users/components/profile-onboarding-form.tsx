@@ -372,11 +372,6 @@ export function ProfileOnboardingForm() {
                   )}
                 </div>
 
-                <div className={styles.avatarPanel}>
-                  <p className={styles.avatarPanelTitle}>Foto de perfil</p>
-                  <span className={styles.avatarPanelText}>Visible en tu cuenta.</span>
-                </div>
-
                 <input
                   ref={fileInputRef}
                   accept="image/jpeg,image/png,image/webp"

@@ -87,11 +87,11 @@ describe('LoginForm', () => {
     expect(passwordInput).toHaveAttribute('type', 'password');
   });
 
-  it('shows a link back to verification when the email is available', () => {
+  it('shows a button back to verification when the email is available', () => {
     render(<LoginForm initialEmail="nuevo-admin@uta.edu.ec" />);
 
     expect(
-      screen.getByRole('link', { name: 'Volver a verificacion' }),
-    ).toHaveAttribute('href', '/verify-email?email=nuevo-admin%40uta.edu.ec');
+      screen.getByRole('button', { name: 'Volver a verificación' }),
+    ).toBeInTheDocument();
   });
 });

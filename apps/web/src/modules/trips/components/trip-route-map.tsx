@@ -89,6 +89,9 @@ export function TripRouteMap({
         };
 
         syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff, livePosition, history);
+        window.requestAnimationFrame(() => {
+          map.invalidateSize();
+        });
         setErrorMessage(null);
       } catch (error) {
         if (!isMounted) {
@@ -120,6 +123,9 @@ export function TripRouteMap({
     }
 
     syncMapBundle(bundle, origin, destination, pickup, dropoff, livePosition, history);
+    window.requestAnimationFrame(() => {
+      bundle.map.invalidateSize();
+    });
   }, [destination, dropoff, history, livePosition, origin, pickup]);
 
   useEffect(() => {

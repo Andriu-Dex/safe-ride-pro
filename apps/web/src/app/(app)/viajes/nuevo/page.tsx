@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   DriverLicenseStatus,
   DriverVerificationStatus,
@@ -10,6 +11,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError } from '../../../../lib/api-client';
 import { Button } from '../../../../components/ui/button';
+import { persistToast } from '../../../../components/ui/flash-toast';
 import { OperationalAccessCard } from '../../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../../components/ui/status-pill';
 import { ToastStack, type ToastItem } from '../../../../components/ui/toast-stack';
@@ -41,6 +43,7 @@ import {
 import type { TrustSummary } from '../../../../modules/users/types/trust-summary';
 import type { LatestTripRouteTemplate } from '../../../../modules/trips/types/trip';
 import type { VehicleRecord } from '../../../../modules/vehicles/types/vehicle';
+import styles from './page.module.css';
 
 function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof ApiError ? error.message : fallbackMessage;
@@ -73,7 +76,6 @@ export default function NewTripPage() {
   const [isCreatingTrip, setIsCreatingTrip] = useState(false);
   const [isRefreshingContext, setIsRefreshingContext] = useState(false);
   const [tripErrorMessage, setTripErrorMessage] = useState<string | null>(null);
-  const [tripSuccessMessage, setTripSuccessMessage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const pushToast = useCallback((title: string, description: string, tone: ToastItem['tone']) => {
@@ -128,6 +130,15 @@ export default function NewTripPage() {
       }
     }
   }, [authSession, loadCreateContext, refreshSession]);
+
+  useEffect(() => {
+    if (!tripErrorMessage) {
+      return;
+    }
+
+    pushToast('Operacion no completada', tripErrorMessage, 'error');
+    setTripErrorMessage(null);
+  }, [pushToast, tripErrorMessage]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -229,7 +240,6 @@ export default function NewTripPage() {
   const handleResetTripForm = useCallback(() => {
     setTripForm(EMPTY_TRIP_FORM);
     setTripErrorMessage(null);
-    setTripSuccessMessage(null);
   }, []);
 
   const handleUseLatestRoute = () => {
@@ -259,10 +269,12 @@ export default function NewTripPage() {
       estimatedArrivalAt: currentForm.estimatedArrivalAt,
     }));
 
-    setTripSuccessMessage(
+    pushToast(
+      'Ruta cargada',
       suggestedVehicle
         ? 'Se cargo tu ultima ruta. Ajusta fecha, hora o detalles antes de crear el nuevo viaje.'
         : 'Se cargo tu ultima ruta, pero necesitas elegir un vehiculo activo antes de crear el viaje.',
+      'success',
     );
     setTripErrorMessage(null);
   };
@@ -281,7 +293,6 @@ export default function NewTripPage() {
 
     setIsCreatingTrip(true);
     setTripErrorMessage(null);
-    setTripSuccessMessage(null);
 
     try {
       const response = await createTrip(authSession.accessToken, {
@@ -306,8 +317,12 @@ export default function NewTripPage() {
 
       await refreshCreateContext();
       setTripForm(EMPTY_TRIP_FORM);
-      setTripSuccessMessage(response.message);
-      pushToast('Viaje creado', response.message, 'success');
+      persistToast({
+        title: 'Viaje creado',
+        description: response.message,
+        tone: 'success',
+      });
+      router.push('/viajes');
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
@@ -315,7 +330,6 @@ export default function NewTripPage() {
 
       const message = getApiErrorMessage(error, 'No fue posible crear el viaje.');
       setTripErrorMessage(message);
-      pushToast('No se pudo crear el viaje', message, 'error');
     } finally {
       setIsCreatingTrip(false);
     }
@@ -323,193 +337,339 @@ export default function NewTripPage() {
 
   if (isLoading) {
     return (
-      <section className="loading-state compact-loading-state">
-        <div className="loading-card">
-          <div aria-hidden="true" className="loading-pulse" />
-          <h1 className="panel-title">Preparando configuracion de viaje</h1>
-          <p className="panel-text">
-            Estamos cargando tus vehiculos, estado de confianza y ultima ruta para agilizar la creacion.
+      <section className={styles.loadingShell}>
+        <article className={styles.loadingCard}>
+          <div aria-hidden="true" className={styles.loadingPulse} />
+          <h1 className={styles.loadingTitle}>Preparando nuevo viaje</h1>
+          <p className={styles.loadingText}>
+            Estamos cargando tu contexto operativo.
           </p>
-        </div>
+        </article>
       </section>
     );
   }
 
   if (!operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message) {
     return (
-      <section className="journey-shell">
+      <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
+        <section className={styles.lockedShell}>
+          <article className={styles.lockedCard}>
+            <div className={styles.lockedHeader}>
+              <div>
+                <p className={styles.kicker}>Nuevo viaje</p>
+                <h1 className={styles.lockedTitle}>Operacion no disponible</h1>
+              </div>
+              <StatusPill label="Bloqueado" tone="warning" />
+            </div>
 
-        <section className="journey-hero journey-hero-blocked">
-          <div className="journey-hero-copy">
-            <p className="section-label">Centro de movilidad</p>
-            <h1 className="journey-hero-title">Nuevo viaje</h1>
-          </div>
-          <div className="journey-hero-actions">
-            <Button onClick={() => router.push('/viajes')} variant="secondary">
-              Volver a viajes
-            </Button>
-            <StatusPill label="Operacion bloqueada" tone="warning" />
-          </div>
+            <OperationalAccessCard
+              message={operationalAccess.message}
+              title={operationalAccess.title}
+            />
+          </article>
         </section>
-
-        <section className="empty-state">
-          <OperationalAccessCard
-            message={operationalAccess.message}
-            title={operationalAccess.title}
-          />
-        </section>
-      </section>
+      </>
     );
   }
 
   return (
-    <section className="journey-shell">
+    <section className={styles.pageShell}>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <section className="journey-hero">
-        <div className="journey-hero-copy">
-          <p className="section-label">Centro de movilidad</p>
-          <h1 className="journey-hero-title">Nuevo viaje</h1>
-        </div>
-        <div className="journey-hero-actions">
-          <Button onClick={() => router.push('/viajes')} variant="secondary">
-            Volver a viajes
-          </Button>
-          <Button
-            disabled={isRefreshingContext}
-            onClick={() => void refreshCreateContext(true)}
-            variant="ghost"
-          >
-            {isRefreshingContext ? 'Actualizando...' : 'Actualizar contexto'}
-          </Button>
-        </div>
-      </section>
-
-      <section className="journey-hero-status-strip" aria-label="Estado de habilitacion para crear viajes">
-        <StatusPill
-          label={getDriverStatusLabel(driverStatus)}
-          tone={getDriverStatusTone(driverStatus)}
-        />
-        {trustSummary ? (
-          <StatusPill
-            label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
-            tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
-          />
-        ) : null}
-        {trustSummary ? (
-          <StatusPill
-            label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
-            tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
-          />
-        ) : null}
-      </section>
-
-      <section className="journey-layout">
-        <aside className="panel panel-stack journey-sidebar">
-          <div className="journey-sidebar-section">
-            <h2 className="panel-title">Resumen del viaje</h2>
-          </div>
-
-          <section className="journey-draft-preview">
-            <p className="section-label">Vista previa</p>
-            <strong className="journey-draft-preview-title">{draftTitle}</strong>
-            <p className="journey-draft-preview-copy">
-              {selectedVehicle
-                ? `${getVehicleLabel(selectedVehicle)} | ${selectedVehicle.plate}`
-                : 'Selecciona un vehiculo para empezar a estructurar el trayecto.'}
+      <section className={`${styles.hero} ${styles.reveal}`}>
+        <div className={styles.heroTop}>
+          <div className={styles.heroCopy}>
+            <p className={styles.kicker}>Viajes</p>
+            <h1 className={styles.heroTitle}>Nuevo viaje</h1>
+            <p className={styles.heroLead}>
+              Prepara una salida clara, con ruta, horarios y cupos bien definidos.
             </p>
-            <div className="journey-draft-preview-metrics">
-              <JourneyPreviewMetric
-                label="Salida"
-                value={tripForm.departureAt ? formatDateTime(tripForm.departureAt) : 'Pendiente'}
-              />
-              <JourneyPreviewMetric
-                label="Duracion"
-                value={estimatedDuration}
-              />
-              <JourneyPreviewMetric
-                label="Cupos"
-                value={tripForm.seatCount || 'Pendiente'}
-              />
-              <JourneyPreviewMetric
-                label="Referencia"
-                value={referenceFare}
-              />
-            </div>
-          </section>
-
-          <div className="journey-readiness">
-            <div className="journey-readiness-header">
-              <strong>Estado de preparacion</strong>
-              <StatusPill label={canCreateTrips ? 'Listo para crear' : 'Faltan requisitos'} tone={canCreateTrips ? 'success' : 'warning'} />
-            </div>
-            <ul className="journey-readiness-list">
-              <li className="journey-readiness-item">
-                <StatusPill label="Conductor" tone={driverStatus === DriverVerificationStatus.Approved ? 'success' : 'warning'} />
-                <div>
-                  <strong>Perfil operativo</strong>
-                  <p>{driverStatus === DriverVerificationStatus.Approved ? 'Aprobado' : 'Pendiente'}</p>
-                </div>
-              </li>
-              <li className="journey-readiness-item">
-                <StatusPill label="Licencia" tone={licenseStatus === DriverLicenseStatus.Expired ? 'warning' : 'success'} />
-                <div>
-                  <strong>Estado de licencia</strong>
-                  <p>{licenseStatus === DriverLicenseStatus.Expired ? 'Vencida' : 'Vigente'}</p>
-                </div>
-              </li>
-              <li className="journey-readiness-item">
-                <StatusPill label="Vehiculos" tone={activeVehicles.length > 0 ? 'success' : 'warning'} />
-                <div>
-                  <strong>Vehiculos activos</strong>
-                  <p>{activeVehicles.length > 0 ? `${activeVehicles.length} disponible(s)` : 'Sin vehiculos'}</p>
-                </div>
-              </li>
-              <li className="journey-readiness-item">
-                <StatusPill label="Restricciones" tone={trustRestrictions.blocksDriver ? 'warning' : 'success'} />
-                <div>
-                  <strong>Riesgo administrativo</strong>
-                  <p>{trustRestrictions.blocksDriver ? 'Con restriccion' : 'Sin bloqueos'}</p>
-                </div>
-              </li>
-            </ul>
           </div>
 
-          {latestRouteTemplate ? (
-            <section className="journey-sidebar-note-card">
-              <div className="journey-sidebar-route-suggestion">
-                <strong>
-                  {latestRouteTemplate.originLabel} {'->'} {latestRouteTemplate.destinationLabel}
-                </strong>
-                <p>Ultimo uso: {formatDateTime(latestRouteTemplate.departureAt)}</p>
-              </div>
-            </section>
-          ) : null}
-        </aside>
+          <div className={styles.heroActions}>
+            <Button onClick={() => router.push('/viajes')} variant="secondary">
+              Volver
+            </Button>
+            <Button
+              disabled={isRefreshingContext}
+              onClick={() => void refreshCreateContext(true)}
+              variant="ghost"
+            >
+              {isRefreshingContext ? 'Actualizando...' : 'Actualizar'}
+            </Button>
+          </div>
+        </div>
 
-        <div className="journey-main">
-          <section className="journey-main-surface journey-workspace-stage journey-workspace-stage-operation">
+        <div className={styles.heroPills} aria-label="Estado de habilitacion para crear viajes">
+          <StatusPill
+            label={getDriverStatusLabel(driverStatus)}
+            tone={getDriverStatusTone(driverStatus)}
+          />
+          {trustSummary ? (
+            <StatusPill
+              label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+              tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+            />
+          ) : null}
+          {trustSummary ? (
+            <StatusPill
+              label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
+              tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
+            />
+          ) : null}
+          <StatusPill
+            label={canCreateTrips ? 'Listo para crear' : 'Requiere revision'}
+            tone={canCreateTrips ? 'success' : 'warning'}
+          />
+        </div>
+
+        <div className={styles.heroHighlights}>
+          <article className={styles.heroHighlight}>
+            <span>Vehiculos</span>
+            <strong>{activeVehicles.length}</strong>
+          </article>
+          <article className={styles.heroHighlight}>
+            <span>Ruta reciente</span>
+            <strong>{latestRouteTemplate ? 'Disponible' : 'Sin historial'}</strong>
+          </article>
+          <article className={styles.heroHighlight}>
+            <span>Preparacion</span>
+            <strong>{completedChecklistItems}/4</strong>
+          </article>
+        </div>
+      </section>
+
+      <section className={styles.metricGrid}>
+        <article className={styles.metricCard}>
+          <span className={styles.metricLabel}>Vehiculo activo</span>
+          <strong className={styles.metricValue}>
+            {selectedVehicle ? getVehicleLabel(selectedVehicle) : 'Pendiente'}
+          </strong>
+          <p className={styles.metricText}>{selectedVehicle ? selectedVehicle.plate : 'Elige uno para continuar'}</p>
+        </article>
+        <article className={styles.metricCard}>
+          <span className={styles.metricLabel}>Salida</span>
+          <strong className={styles.metricValue}>
+            {tripForm.departureAt ? formatDateTime(tripForm.departureAt) : 'Pendiente'}
+          </strong>
+          <p className={styles.metricText}>{estimatedDuration}</p>
+        </article>
+        <article className={styles.metricCard}>
+          <span className={styles.metricLabel}>Cupos</span>
+          <strong className={styles.metricValue}>{tripForm.seatCount || '0'}</strong>
+          <p className={styles.metricText}>Precio {referenceFare}</p>
+        </article>
+        <article className={styles.metricCard}>
+          <span className={styles.metricLabel}>Ruta</span>
+          <strong className={styles.metricValue}>{routeReady ? 'Lista' : 'Pendiente'}</strong>
+          <p className={styles.metricText}>
+            {tripForm.originLabel.trim() && tripForm.destinationLabel.trim()
+              ? `${tripForm.originLabel.trim()} -> ${tripForm.destinationLabel.trim()}`
+              : 'Agrega origen y destino'}
+          </p>
+        </article>
+      </section>
+
+      <section className={styles.mainGrid}>
+        <div className={styles.contentColumn}>
+          <section className={`${styles.mainSurface} ${styles.reveal}`}>
             <TripCreationForm
               disabled={!canCreateTrips}
-              errorMessage={tripErrorMessage}
               isSubmitting={isCreatingTrip}
               latestRouteTemplate={latestRouteTemplate}
               onChange={handleTripFormChange}
               onReset={handleResetTripForm}
               onSubmit={handleCreateTrip}
               onUseLatestRoute={handleUseLatestRoute}
-              successMessage={tripSuccessMessage}
               values={tripForm}
               vehicles={activeVehicles}
             />
-            <div className="button-row">
+          </section>
+        </div>
+
+        <aside className={styles.sideColumn}>
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Vista previa</p>
+                <h2>Resumen del viaje</h2>
+              </div>
+              <span className={styles.previewMeta}>{completedChecklistItems}/4</span>
+            </div>
+
+            <div className={styles.previewCard}>
+              <div className={styles.previewHeadline}>
+                <h3 className={styles.previewTitle}>{draftTitle}</h3>
+                <p className={styles.previewRoute}>
+                  {selectedVehicle
+                    ? `${getVehicleLabel(selectedVehicle)} | ${selectedVehicle.plate}`
+                    : 'Selecciona un vehiculo para empezar'}
+                </p>
+              </div>
+
+              <div className={styles.previewMetrics}>
+                <JourneyPreviewMetric
+                  label="Salida"
+                  value={tripForm.departureAt ? formatDateTime(tripForm.departureAt) : 'Pendiente'}
+                />
+                <JourneyPreviewMetric
+                  label="Duracion"
+                  value={estimatedDuration}
+                />
+                <JourneyPreviewMetric
+                  label="Cupos"
+                  value={tripForm.seatCount || 'Pendiente'}
+                />
+                <JourneyPreviewMetric
+                  label="Referencia"
+                  value={referenceFare}
+                />
+              </div>
+            </div>
+          </article>
+
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Preparacion</p>
+                <h2>Estado operativo</h2>
+              </div>
+              <StatusPill
+                label={canCreateTrips ? 'Listo' : 'Pendiente'}
+                tone={canCreateTrips ? 'success' : 'warning'}
+              />
+            </div>
+
+            <div className={styles.readinessList}>
+              <div className={styles.readinessItem}>
+                <StatusPill label="Conductor" tone={driverStatus === DriverVerificationStatus.Approved ? 'success' : 'warning'} />
+                <div className={styles.readinessCopy}>
+                  <strong>Perfil operativo</strong>
+                  <span>{driverStatus === DriverVerificationStatus.Approved ? 'Aprobado' : 'Pendiente'}</span>
+                </div>
+              </div>
+              <div className={styles.readinessItem}>
+                <StatusPill label="Licencia" tone={licenseStatus === DriverLicenseStatus.Expired ? 'warning' : 'success'} />
+                <div className={styles.readinessCopy}>
+                  <strong>Licencia</strong>
+                  <span>{licenseStatus === DriverLicenseStatus.Expired ? 'Vencida' : 'Vigente'}</span>
+                </div>
+              </div>
+              <div className={styles.readinessItem}>
+                <StatusPill label="Vehiculos" tone={activeVehicles.length > 0 ? 'success' : 'warning'} />
+                <div className={styles.readinessCopy}>
+                  <strong>Vehiculos activos</strong>
+                  <span>{activeVehicles.length > 0 ? `${activeVehicles.length} disponible(s)` : 'Sin vehiculos activos'}</span>
+                </div>
+              </div>
+              <div className={styles.readinessItem}>
+                <StatusPill label="Restricciones" tone={trustRestrictions.blocksDriver ? 'warning' : 'success'} />
+                <div className={styles.readinessCopy}>
+                  <strong>Permiso para conducir</strong>
+                  <span>{trustRestrictions.blocksDriver ? 'Con restriccion activa' : 'Sin bloqueos'}</span>
+                </div>
+              </div>
+            </div>
+
+            {!canCreateTrips ? (
+              <div className={styles.sideLinks}>
+                <Link className={styles.inlineLink} href="/conductor">
+                  Revisar conductor
+                </Link>
+                <Link className={styles.inlineLink} href="/vehiculos">
+                  Gestionar vehiculos
+                </Link>
+              </div>
+            ) : null}
+          </article>
+
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Contexto</p>
+                <h2>Lectura rapida</h2>
+              </div>
+              <StatusPill
+                label={tripForm.routeMode === TripRouteMode.PlannedDetour ? 'Con desvio' : 'Directo'}
+                tone="neutral"
+              />
+            </div>
+
+            <div className={styles.signalGrid}>
+              <article className={styles.signalTile}>
+                <span className={styles.miniLabel}>Modo</span>
+                <strong className={styles.signalValue}>{tripForm.routeMode === TripRouteMode.PlannedDetour ? 'Desvio' : 'Directo'}</strong>
+                <p className={styles.signalCaption}>Configuracion actual</p>
+              </article>
+              <article className={styles.signalTile}>
+                <span className={styles.miniLabel}>Tarifa</span>
+                <strong className={styles.signalValue}>{referenceFare}</strong>
+                <p className={styles.signalCaption}>Monto referencial</p>
+              </article>
+              <article className={styles.signalTile}>
+                <span className={styles.miniLabel}>Horario</span>
+                <strong className={styles.signalValue}>{scheduleReady ? 'Listo' : 'Pendiente'}</strong>
+                <p className={styles.signalCaption}>Salida y llegada</p>
+              </article>
+              <article className={styles.signalTile}>
+                <span className={styles.miniLabel}>Ruta</span>
+                <strong className={styles.signalValue}>{routeReady ? 'Lista' : 'Pendiente'}</strong>
+                <p className={styles.signalCaption}>Coordenadas activas</p>
+              </article>
+            </div>
+          </article>
+
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Ruta reciente</p>
+                <h2>Acceso rapido</h2>
+              </div>
+              <StatusPill label={latestRouteTemplate ? 'Disponible' : 'Sin historial'} tone="neutral" />
+            </div>
+
+            {latestRouteTemplate ? (
+              <div className={styles.templateTile}>
+                <strong>
+                  {latestRouteTemplate.originLabel} {'->'} {latestRouteTemplate.destinationLabel}
+                </strong>
+                <p className={styles.metricText}>
+                  {latestRouteTemplate.vehicleDisplayName} | {latestRouteTemplate.vehiclePlate}
+                </p>
+                <p className={styles.metricText}>
+                  Ultimo uso: {formatDateTime(latestRouteTemplate.departureAt)}
+                </p>
+                <div className={styles.templateActions}>
+                  <Button disabled={!canCreateTrips} onClick={handleUseLatestRoute} type="button" variant="secondary">
+                    Cargar ruta
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.emptyNote}>
+                <strong>Aun no tienes una ruta reciente</strong>
+                <span>Tu proximo viaje aparecera aqui para reutilizarlo luego.</span>
+              </div>
+            )}
+          </article>
+
+          <section className={`${styles.mainSurface} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Navegacion</p>
+                <h2>Volver al centro de viajes</h2>
+              </div>
+              <StatusPill label="Accion rapida" tone="neutral" />
+            </div>
+
+            <div>
               <Button onClick={() => router.push('/viajes')} type="button" variant="secondary">
                 Volver a operacion
               </Button>
             </div>
           </section>
-        </div>
+        </aside>
       </section>
     </section>
   );
@@ -523,7 +683,7 @@ function JourneyPreviewMetric({
   value: string;
 }) {
   return (
-    <div className="journey-preview-metric">
+    <div className={styles.previewMetric}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>

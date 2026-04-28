@@ -1,0 +1,303 @@
+.trustShell {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.reveal {
+  animation: trustRise 0.5s ease both;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 1.1rem;
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.14), transparent 30%),
+    linear-gradient(160deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.95));
+  padding: clamp(1.2rem, 2.5vw, 2rem);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+}
+
+.hero::after {
+  position: absolute;
+  inset: auto -1.6rem -2.4rem auto;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.46), transparent 68%);
+  content: '';
+  pointer-events: none;
+}
+
+.heroTop,
+.lockedHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 44rem;
+}
+
+.kicker {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroTitle,
+.lockedTitle,
+.loadingTitle {
+  margin: 0;
+  color: #16343d;
+  font-size: clamp(2rem, 3.8vw, 3.2rem);
+  line-height: 1;
+}
+
+.heroLead,
+.loadingText {
+  margin: 0;
+  color: #5d767c;
+  line-height: 1.6;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.focusBanner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.92), rgba(240, 253, 250, 0.94));
+  padding: 1rem 1.1rem;
+}
+
+.focusBanner strong {
+  color: #16343d;
+}
+
+.focusBanner p {
+  margin: 0.28rem 0 0;
+  color: #567176;
+  line-height: 1.5;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.kpiCard {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.95rem 1rem;
+}
+
+.kpiCard span {
+  color: #5c767d;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.kpiCard strong {
+  color: #16343d;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.kpiCard p {
+  margin: 0;
+  color: #6a8388;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.kpiCardNeutral {
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
+}
+
+.kpiCardSuccess {
+  border-color: rgba(46, 168, 106, 0.18);
+  box-shadow: 0 14px 26px rgba(46, 168, 106, 0.08);
+}
+
+.kpiCardWarning {
+  border-color: rgba(245, 158, 11, 0.18);
+  box-shadow: 0 14px 26px rgba(245, 158, 11, 0.08);
+}
+
+.summaryGrid,
+.closureGrid,
+.historyGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.summaryGrid,
+.historyGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sectionBlock {
+  display: grid;
+  gap: 1rem;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.sectionMeta {
+  margin: 0.2rem 0 0;
+  color: #647b81;
+  line-height: 1.45;
+}
+
+.miniMetric,
+.policyCard {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.9rem;
+}
+
+.miniMetric span,
+.policyCard span {
+  color: #6b8389;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.miniMetric strong,
+.policyCard strong {
+  color: #16343d;
+}
+
+.footnote {
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 20px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 1rem 1.1rem;
+  color: #647b81;
+  line-height: 1.6;
+}
+
+.lockedShell,
+.loadingShell {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+.lockedCard,
+.loadingCard {
+  width: min(100%, 52rem);
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
+  padding: 1.2rem;
+}
+
+.lockedBody {
+  margin-top: 1rem;
+}
+
+.loadingCard {
+  justify-items: center;
+  text-align: center;
+}
+
+.loadingPulse {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(14, 165, 233, 0.24));
+  animation: trustPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes trustRise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes trustPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 1100px) {
+  .summaryGrid,
+  .historyGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .metricGrid,
+  .closureGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heroTop,
+  .lockedHeader,
+  .sectionHeading,
+  .focusBanner {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .metricGrid,
+  .closureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroActions {
+    display: grid;
+  }
+}

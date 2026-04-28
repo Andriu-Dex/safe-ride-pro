@@ -1,0 +1,434 @@
+.tripsShell {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.reveal {
+  animation: tripsRise 0.5s ease both;
+}
+
+.revealSoft {
+  animation: tripsFade 0.55s ease both;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 1.1rem;
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.14), transparent 30%),
+    linear-gradient(160deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.95));
+  padding: clamp(1.2rem, 2.5vw, 2rem);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+}
+
+.hero::after {
+  position: absolute;
+  inset: auto -1.6rem -2.4rem auto;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.46), transparent 68%);
+  content: '';
+  pointer-events: none;
+}
+
+.heroTop,
+.cardHeader,
+.lockedHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 44rem;
+}
+
+.kicker {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroTitle,
+.lockedTitle {
+  margin: 0;
+  color: #16343d;
+  font-size: clamp(2rem, 3.8vw, 3.2rem);
+  line-height: 1;
+}
+
+.heroLead,
+.lockedText {
+  margin: 0;
+  color: #5d767c;
+  line-height: 1.6;
+}
+
+.heroActions,
+.livePills,
+.liveActions,
+.sideLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.liveBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 22px;
+  background: rgba(247, 251, 251, 0.86);
+  padding: 0.95rem 1rem;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.metricCard,
+.workspaceNavCard,
+.workspaceSurface,
+.sideCard,
+.lockedCard,
+.loadingCard {
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
+}
+
+.metricCard {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.95rem 1rem;
+}
+
+.metricLabel {
+  color: #5c767d;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  color: #16343d;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.metricText {
+  margin: 0;
+  color: #6a8388;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.contentColumn,
+.sideColumn {
+  display: grid;
+  gap: 1rem;
+}
+
+.workspaceNavCard,
+.workspaceSurface,
+.sideCard,
+.lockedCard,
+.loadingCard {
+  padding: 1.2rem;
+}
+
+.cardHeader h2 {
+  margin: 0;
+  color: #16343d;
+}
+
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.workspaceButton {
+  display: grid;
+  gap: 0.3rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 20px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.workspaceButton:hover,
+.workspaceButton:focus-visible {
+  border-color: rgba(15, 118, 110, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+  outline: none;
+}
+
+.workspaceButtonActive {
+  border-color: rgba(15, 118, 110, 0.28);
+  background: linear-gradient(155deg, rgba(227, 249, 246, 0.96), rgba(239, 252, 250, 0.98));
+  box-shadow: 0 16px 30px rgba(15, 118, 110, 0.08);
+}
+
+.workspaceButtonTitle {
+  color: #16343d;
+  font-weight: 800;
+}
+
+.workspaceButtonMetric {
+  color: #0f766e;
+  font-size: 0.92rem;
+}
+
+.workspaceButtonDescription {
+  color: #647b81;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.workspaceSurface {
+  overflow: hidden;
+}
+
+.workspaceStage {
+  animation: tripsFade 0.3s ease both;
+}
+
+.readinessList,
+.filterChips,
+.signalGrid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.readinessItem,
+.signalTile,
+.emptyNote {
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+}
+
+.readinessItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.95rem;
+}
+
+.readinessCopy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.readinessCopy strong,
+.signalTile strong,
+.emptyNote strong {
+  color: #16343d;
+}
+
+.readinessCopy span,
+.emptyNote span {
+  color: #647d83;
+  line-height: 1.5;
+}
+
+.signalGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.signalTile {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.95rem;
+}
+
+.signalTile span {
+  color: #6b8389;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.filterChips {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.6rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 999px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.7rem 0.95rem;
+  color: #486269;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.emptyNote {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem;
+}
+
+.inlineLink {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.inlineLink:hover,
+.inlineLink:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.lockedShell,
+.loadingShell {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+.lockedCard,
+.loadingCard {
+  width: min(100%, 52rem);
+}
+
+.lockedBody {
+  margin-top: 1rem;
+}
+
+.lockedActions {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.loadingCard {
+  justify-items: center;
+  text-align: center;
+}
+
+.loadingPulse {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(14, 165, 233, 0.24));
+  animation: tripsPulse 1.2s ease-in-out infinite;
+}
+
+.loadingTitle {
+  margin: 0.9rem 0 0;
+  color: #16343d;
+}
+
+.loadingText {
+  margin: 0.35rem 0 0;
+  color: #647b81;
+}
+
+@keyframes tripsRise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tripsFade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tripsPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 1180px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .metricGrid,
+  .workspaceGrid,
+  .signalGrid,
+  .filterChips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heroTop,
+  .cardHeader,
+  .lockedHeader,
+  .liveBar {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .metricGrid,
+  .workspaceGrid,
+  .signalGrid,
+  .filterChips {
+    grid-template-columns: 1fr;
+  }
+
+  .heroActions,
+  .livePills,
+  .liveActions,
+  .sideLinks {
+    display: grid;
+  }
+}

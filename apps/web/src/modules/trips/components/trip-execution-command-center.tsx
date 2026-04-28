@@ -1,6 +1,7 @@
 import {
   DriverLicenseStatus,
   isTripRequestExecutionResolved,
+  TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH,
   TripRequestExecutionStatus,
   TripRequestStatus,
   TripStatus,
@@ -130,6 +131,11 @@ export function TripExecutionCommandCenter({
     primaryTrip.status !== TripStatus.Completed
     && primaryTrip.status !== TripStatus.InProgress
     && primaryTrip.status !== TripStatus.Cancelled;
+  const normalizedClosureNote = (tripClosureNotes[primaryTrip.id] ?? '').trim();
+  const requiresExceptionalClosureNote = canComplete && unresolvedPassengers.length > 0;
+  const hasValidExceptionalClosureNote =
+    !requiresExceptionalClosureNote
+    || normalizedClosureNote.length >= TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH;
 
   return (
     <article className="trip-command-center">
@@ -255,7 +261,7 @@ export function TripExecutionCommandCenter({
               <TextareaField
                 hint={
                   unresolvedPassengers.length > 0
-                    ? 'Obligatoria si finalizas con pasajeros pendientes de cerrar.'
+                    ? `Obligatoria si finalizas con pasajeros pendientes de cerrar. Minimo ${TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH} caracteres.`
                     : 'Opcional.'
                 }
                 label="Nota de cierre"
@@ -264,6 +270,13 @@ export function TripExecutionCommandCenter({
                 rows={3}
                 value={tripClosureNotes[primaryTrip.id] ?? ''}
               />
+              {requiresExceptionalClosureNote ? (
+                <small>
+                  {normalizedClosureNote.length >= TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH
+                    ? 'La nota excepcional ya cumple la longitud minima.'
+                    : `Debes escribir al menos ${TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH} caracteres para cerrar con pasajeros pendientes.`}
+                </small>
+              ) : null}
             </div>
           ) : null}
 
@@ -287,13 +300,15 @@ export function TripExecutionCommandCenter({
             ) : null}
             {canComplete ? (
               <Button
-                disabled={isMutatingTripId === primaryTrip.id}
+                disabled={
+                  isMutatingTripId === primaryTrip.id || !hasValidExceptionalClosureNote
+                }
                 onClick={() => onTripAction(primaryTrip.id, 'complete', {
                   closureNote: tripClosureNotes[primaryTrip.id],
                 })}
                 variant="secondary"
               >
-                Finalizar trayecto
+                {requiresExceptionalClosureNote ? 'Finalizar con cierre excepcional' : 'Finalizar trayecto'}
               </Button>
             ) : null}
             {canCancel ? (

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { TripRouteMode } from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
@@ -15,14 +16,13 @@ import type { PlaceSelection } from '../types/place-selection';
 import type { TripFormValues } from './trips-workspace.types';
 import { PlaceAutocompleteField } from './place-autocomplete-field';
 import { TripRouteMap } from './trip-route-map';
+import styles from './trip-creation-form.module.css';
 
 type TripCreationFormProps = {
   values: TripFormValues;
   vehicles: VehicleRecord[];
   disabled: boolean;
   isSubmitting: boolean;
-  errorMessage: string | null;
-  successMessage: string | null;
   onChange: (field: keyof TripFormValues, value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   latestRouteTemplate: LatestTripRouteTemplate | null;
@@ -37,8 +37,6 @@ export function TripCreationForm({
   vehicles,
   disabled,
   isSubmitting,
-  errorMessage,
-  successMessage,
   onChange,
   onSubmit,
   latestRouteTemplate,
@@ -69,8 +67,15 @@ export function TripCreationForm({
   const detourSurchargeReference = values.detourSurchargeReference
     ? Number.parseFloat(values.detourSurchargeReference)
     : 0;
+  const [isMapVisible, setIsMapVisible] = useState(Boolean(originSelection || destinationSelection));
   const validationIssues: string[] = [];
   const validationWarnings: string[] = [];
+
+  useEffect(() => {
+    if (originSelection || destinationSelection) {
+      setIsMapVisible(true);
+    }
+  }, [destinationSelection, originSelection]);
 
   if (!values.vehicleId) {
     validationIssues.push('Selecciona un vehiculo antes de crear el viaje.');
@@ -188,57 +193,67 @@ export function TripCreationForm({
   const completedSteps = progress.filter((step) => step.complete).length;
   const canSubmit = !disabled && !isSubmitting && validationIssues.length === 0;
   const durationLabel = getDurationLabel(departureDate, estimatedArrivalDate);
+  const routeModeLabel = getTripRouteModeLabel(values.routeMode);
+  const referencePriceLabel =
+    values.routeMode === TripRouteMode.PlannedDetour
+      ? `$${formatCurrency(basePriceReference + detourSurchargeReference)}`
+      : `$${formatCurrency(basePriceReference)}`;
 
   return (
-    <article className="trip-creation-shell">
-      <div className="trip-creation-header">
-        <div className="trip-creation-copy">
-          <p className="section-label">Creacion guiada</p>
-          <h2 className="trip-creation-title">Configura tu viaje paso a paso</h2>
+    <article className={styles.shell}>
+      <div className={styles.header}>
+        <div className={styles.headerCopy}>
+          <p className={styles.kicker}>Creacion</p>
+          <h2 className={styles.title}>Arma tu proximo viaje</h2>
+          <p className={styles.lead}>
+            Define ruta, horario y cupos en una sola pasada.
+          </p>
         </div>
 
-        <div className="trip-creation-progress-grid">
-          <div className="trip-creation-progress-card">
+        <div className={styles.headerStats}>
+          <div className={styles.statCard}>
             <span>Avance</span>
             <strong>
               {completedSteps}/{progress.length}
             </strong>
           </div>
-          <div className="trip-creation-progress-card">
-            <span>Duracion estimada</span>
+          <div className={styles.statCard}>
+            <span>Duracion</span>
             <strong>{durationLabel}</strong>
+          </div>
+          <div className={styles.statCard}>
+            <span>Referencia</span>
+            <strong>{referencePriceLabel}</strong>
           </div>
         </div>
       </div>
 
-      <div className="trip-creation-steps">
+      <div className={styles.steps}>
         {progress.map((step, index) => (
           <div
             key={step.label}
             className={[
-              'trip-progress-pill',
-              step.complete ? 'trip-progress-pill-complete' : null,
+              styles.stepCard,
+              step.complete ? styles.stepCardComplete : null,
             ]
               .filter(Boolean)
               .join(' ')}
           >
-            <span className="trip-progress-pill-index">0{index + 1}</span>
-            <div>
-              <strong>{step.label}</strong>
-            </div>
+            <span className={styles.stepIndex}>0{index + 1}</span>
+            <strong className={styles.stepTitle}>{step.label}</strong>
+            <span className={styles.stepText}>{step.helper}</span>
           </div>
         ))}
       </div>
 
       {latestRouteTemplate ? (
-        <section className="trip-template-card trip-template-card-prominent">
-          <div className="trip-template-card-header">
-            <div>
-              <p className="section-label">Ruta reutilizable</p>
-              <h3 className="panel-title">Tu ultima ruta guardada</h3>
+        <section className={styles.templateCard}>
+          <div className={styles.templateHeader}>
+            <div className={styles.templateRoute}>
+              <p className={styles.kicker}>Ruta guardada</p>
               <strong>{latestRouteTemplate.originLabel} {'->'} {latestRouteTemplate.destinationLabel}</strong>
             </div>
-            <div className="button-row">
+            <div className={styles.templateActions}>
               <Button
                 disabled={disabled}
                 onClick={onReset}
@@ -257,7 +272,7 @@ export function TripCreationForm({
               </Button>
             </div>
           </div>
-          <div className="trip-template-meta">
+          <div className={styles.templateMeta}>
             <span>
               Vehiculo sugerido: {latestRouteTemplate.vehicleDisplayName} ({latestRouteTemplate.vehiclePlate})
             </span>
@@ -266,14 +281,15 @@ export function TripCreationForm({
         </section>
       ) : null}
 
-      <form className="trip-creation-form-stack" onSubmit={onSubmit}>
-        <section className="trip-form-section-card">
+      <form className={styles.formStack} onSubmit={onSubmit}>
+        <section className={styles.sectionCard}>
           <TripFormSectionHeader
             badge="01"
+            hint="Vehiculo y modalidad"
             title="Base operativa"
           />
 
-          <div className="form-grid form-grid-2">
+          <div className={styles.grid2}>
             <SelectField
               disabled={disabled}
               label="Vehiculo"
@@ -304,7 +320,7 @@ export function TripCreationForm({
             </SelectField>
           </div>
 
-          <div className="trip-form-info-grid">
+          <div className={styles.miniGrid}>
             <TripMiniInfoCard
               description={
                 selectedVehicle
@@ -324,13 +340,14 @@ export function TripCreationForm({
           </div>
         </section>
 
-        <section className="trip-form-section-card">
+        <section className={styles.sectionCard}>
           <TripFormSectionHeader
             badge="02"
+            hint="Origen, destino y coordenadas"
             title="Ruta y ubicaciones"
           />
 
-          <div className="form-grid form-grid-2">
+          <div className={styles.grid2}>
             {isMapsEnabled ? (
               <>
                 <PlaceAutocompleteField
@@ -403,75 +420,91 @@ export function TripCreationForm({
           </div>
 
           {isMapsEnabled ? (
-            <section className="trip-map-card trip-map-card-expanded" aria-label="Mapa y coordenadas del viaje">
-              <div className="trip-map-card-header">
-                <div>
-                  <strong className="trip-map-card-title">Mapa de confirmacion</strong>
+            <section className={styles.mapCard} aria-label="Mapa y coordenadas del viaje">
+              <div className={styles.toggleRow}>
+                <div className={styles.toggleMeta}>
+                  <strong>Mapa de confirmacion</strong>
+                  <span>
+                    {originSelection || destinationSelection
+                      ? 'Ubicaciones detectadas'
+                      : 'Agrega origen y destino para visualizar la ruta'}
+                  </span>
                 </div>
-                <span className="topbar-badge">
-                  {originSelection || destinationSelection
-                    ? 'Ubicaciones detectadas'
-                    : 'Pendiente de seleccion'}
-                </span>
+                <Button
+                  onClick={() => setIsMapVisible((currentValue) => !currentValue)}
+                  type="button"
+                  variant="secondary"
+                >
+                  {isMapVisible ? 'Ocultar mapa' : 'Mostrar mapa'}
+                </Button>
               </div>
-              <TripRouteMap destination={destinationSelection} origin={originSelection} />
-              <div className="trip-location-grid">
-                <TripCoordinateCard
-                  emptyMessage="Selecciona un origen para completar automaticamente la coordenada."
-                  label="Coordenadas de origen"
-                  latitude={values.originLatitude}
-                  longitude={values.originLongitude}
-                />
-                <TripCoordinateCard
-                  emptyMessage="Selecciona un destino para completar automaticamente la coordenada."
-                  label="Coordenadas de destino"
-                  latitude={values.destinationLatitude}
-                  longitude={values.destinationLongitude}
-                />
-              </div>
-              <div className="form-grid form-grid-4">
-                <InputField
-                  disabled={disabled}
-                  label="Latitud origen"
-                  onChange={(event) => onChange('originLatitude', event.target.value)}
-                  placeholder="-1.2414"
-                  required
-                  type="number"
-                  value={values.originLatitude}
-                />
-                <InputField
-                  disabled={disabled}
-                  label="Longitud origen"
-                  onChange={(event) => onChange('originLongitude', event.target.value)}
-                  placeholder="-78.6278"
-                  required
-                  type="number"
-                  value={values.originLongitude}
-                />
-                <InputField
-                  disabled={disabled}
-                  label="Latitud destino"
-                  onChange={(event) => onChange('destinationLatitude', event.target.value)}
-                  placeholder="-1.2520"
-                  required
-                  type="number"
-                  value={values.destinationLatitude}
-                />
-                <InputField
-                  disabled={disabled}
-                  label="Longitud destino"
-                  onChange={(event) => onChange('destinationLongitude', event.target.value)}
-                  placeholder="-78.6160"
-                  required
-                  type="number"
-                  value={values.destinationLongitude}
-                />
-              </div>
+
+              {isMapVisible ? (
+                <div className={styles.mapBody}>
+                  <div className={styles.mapFrame}>
+                    <TripRouteMap destination={destinationSelection} origin={originSelection} />
+                  </div>
+
+                  <div className={styles.coordinateGrid}>
+                    <TripCoordinateCard
+                      emptyMessage="Selecciona un origen para completar automaticamente la coordenada."
+                      label="Coordenadas de origen"
+                      latitude={values.originLatitude}
+                      longitude={values.originLongitude}
+                    />
+                    <TripCoordinateCard
+                      emptyMessage="Selecciona un destino para completar automaticamente la coordenada."
+                      label="Coordenadas de destino"
+                      latitude={values.destinationLatitude}
+                      longitude={values.destinationLongitude}
+                    />
+                  </div>
+
+                  <div className={styles.grid4}>
+                    <InputField
+                      disabled={disabled}
+                      label="Latitud origen"
+                      onChange={(event) => onChange('originLatitude', event.target.value)}
+                      placeholder="-1.2414"
+                      required
+                      type="number"
+                      value={values.originLatitude}
+                    />
+                    <InputField
+                      disabled={disabled}
+                      label="Longitud origen"
+                      onChange={(event) => onChange('originLongitude', event.target.value)}
+                      placeholder="-78.6278"
+                      required
+                      type="number"
+                      value={values.originLongitude}
+                    />
+                    <InputField
+                      disabled={disabled}
+                      label="Latitud destino"
+                      onChange={(event) => onChange('destinationLatitude', event.target.value)}
+                      placeholder="-1.2520"
+                      required
+                      type="number"
+                      value={values.destinationLatitude}
+                    />
+                    <InputField
+                      disabled={disabled}
+                      label="Longitud destino"
+                      onChange={(event) => onChange('destinationLongitude', event.target.value)}
+                      placeholder="-78.6160"
+                      required
+                      type="number"
+                      value={values.destinationLongitude}
+                    />
+                  </div>
+                </div>
+              ) : null}
             </section>
           ) : (
             <>
               <div className="form-helper">{getGeoapifySetupMessage()}</div>
-              <div className="form-grid form-grid-4">
+              <div className={styles.grid4}>
                 <InputField
                   disabled={disabled}
                   label="Latitud origen"
@@ -513,13 +546,14 @@ export function TripCreationForm({
           )}
         </section>
 
-        <section className="trip-form-section-card">
+        <section className={styles.sectionCard}>
           <TripFormSectionHeader
             badge="03"
+            hint="Salida, llegada, cupos y tarifa"
             title="Horario, cupos y precio"
           />
 
-          <div className="form-grid form-grid-2">
+          <div className={styles.grid2}>
             <InputField
               disabled={disabled}
               label="Salida"
@@ -538,7 +572,7 @@ export function TripCreationForm({
             />
           </div>
 
-          <div className="form-grid form-grid-3">
+          <div className={styles.grid3}>
             <InputField
               disabled={disabled}
               label="Cupos"
@@ -566,7 +600,7 @@ export function TripCreationForm({
             />
           </div>
 
-          <div className="trip-form-info-grid">
+          <div className={styles.miniGrid}>
             <TripMiniInfoCard
               description={durationLabel}
               label="Duracion esperada"
@@ -590,9 +624,10 @@ export function TripCreationForm({
           </div>
         </section>
 
-        <section className="trip-form-section-card">
+        <section className={styles.sectionCard}>
           <TripFormSectionHeader
             badge="04"
+            hint="Detalles opcionales para pasajeros"
             title="Notas operativas"
           />
 
@@ -608,9 +643,9 @@ export function TripCreationForm({
         </section>
 
         {validationIssues.length ? (
-          <div className="validation-card validation-card-danger">
-            <strong>Revisa estos puntos antes de crear el viaje:</strong>
-            <ul className="validation-list">
+          <div className={styles.issuesCard}>
+            <strong>Revisa antes de publicar</strong>
+            <ul className={styles.issuesList}>
               {validationIssues.map((issue) => (
                 <li key={issue}>{issue}</li>
               ))}
@@ -619,9 +654,9 @@ export function TripCreationForm({
         ) : null}
 
         {validationWarnings.length ? (
-          <div className="validation-card validation-card-warning">
-            <strong>Advertencias utiles para revisar antes de guardar:</strong>
-            <ul className="validation-list">
+          <div className={styles.warningCard}>
+            <strong>Advertencias utiles</strong>
+            <ul className={styles.warningList}>
               {validationWarnings.map((warning) => (
                 <li key={warning}>{warning}</li>
               ))}
@@ -629,14 +664,16 @@ export function TripCreationForm({
           </div>
         ) : null}
 
-        {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-        {successMessage ? <div className="form-success">{successMessage}</div> : null}
-
-        <div className="trip-form-action-bar">
-          <div className="trip-form-action-copy">
-            <strong>{canSubmit ? 'Listo para guardar el viaje' : 'Aun faltan datos por completar'}</strong>
+        <div className={styles.actionBar}>
+          <div className={styles.actionCopy}>
+            <strong className={styles.summaryTitle}>
+              {canSubmit ? 'Listo para crear el viaje' : 'Completa los datos pendientes'}
+            </strong>
+            <span>
+              {selectedVehicle ? `${getVehicleLabel(selectedVehicle)} | ${routeModeLabel}` : 'Selecciona un vehiculo para continuar'}
+            </span>
           </div>
-          <div className="trip-form-action-buttons">
+          <div className={styles.actionButtons}>
             <Button
               disabled={disabled || isSubmitting}
               onClick={onReset}
@@ -646,7 +683,7 @@ export function TripCreationForm({
               Limpiar
             </Button>
             <Button disabled={!canSubmit} type="submit">
-              {isSubmitting ? 'Guardando...' : 'Guardar viaje'}
+              {isSubmitting ? 'Creando...' : 'Crear viaje'}
             </Button>
           </div>
         </div>
@@ -674,16 +711,19 @@ function buildPlaceSelection(
 
 function TripFormSectionHeader({
   badge,
+  hint,
   title,
 }: {
   badge: string;
+  hint: string;
   title: string;
 }) {
   return (
-    <div className="trip-form-section-header">
-      <span className="trip-form-section-badge">{badge}</span>
-      <div className="trip-form-section-copy">
-        <h3 className="trip-form-section-title">{title}</h3>
+    <div className={styles.sectionHeader}>
+      <span className={styles.badge}>{badge}</span>
+      <div className={styles.sectionLead}>
+        <h3 className={styles.sectionTitle}>{title}</h3>
+        <p className={styles.sectionHint}>{hint}</p>
       </div>
     </div>
   );
@@ -697,7 +737,7 @@ function TripMiniInfoCard({
   description: string;
 }) {
   return (
-    <div className="trip-mini-info-card">
+    <div className={styles.miniInfo}>
       <span>{label}</span>
       <strong>{description}</strong>
     </div>
@@ -718,15 +758,15 @@ function TripCoordinateCard({
   const hasCoordinates = latitude.trim() && longitude.trim();
 
   return (
-    <div className="trip-coordinate-card">
-      <span className="trip-coordinate-card-label">{label}</span>
+    <div className={styles.coordinateCard}>
+      <span className={styles.coordinateLabel}>{label}</span>
       {hasCoordinates ? (
-        <div className="trip-coordinate-card-values">
+        <div className={styles.coordinateValues}>
           <strong>{latitude}</strong>
           <strong>{longitude}</strong>
         </div>
       ) : (
-        <p className="panel-text">{emptyMessage}</p>
+        <p className={styles.coordinateEmpty}>{emptyMessage}</p>
       )}
     </div>
   );

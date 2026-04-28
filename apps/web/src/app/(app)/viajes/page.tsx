@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   CancellationTiming,
   DriverLicenseStatus,
@@ -77,17 +78,17 @@ import {
   getVisibleReputationTone,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
-import {
-  TripsControlSidebar,
-  type TripsReadinessItem,
-  type TripsWorkspaceOption,
-  type TripsWorkspaceSection,
+import type {
+  TripsReadinessItem,
+  TripsWorkspaceOption,
+  TripsWorkspaceSection,
 } from '../../../modules/trips/components/trips-control-sidebar';
 import { TripsWorkspaceSkeleton } from '../../../modules/trips/components/trips-workspace-skeleton';
 import {
   EMPTY_REQUEST_DRAFT,
   type TripRequestDraft,
 } from '../../../modules/trips/components/trips-workspace.types';
+import styles from './page.module.css';
 
 const TripsOperationWorkspace = dynamic(
   () => import('../../../modules/trips/components/trips-operation-workspace').then((module) => module.TripsOperationWorkspace),
@@ -880,123 +881,163 @@ export default function TripsPage() {
 
   if (isLoading) {
     return (
-      <section className="loading-state compact-loading-state">
-        <div className="loading-card">
-          <div aria-hidden="true" className="loading-pulse" />
-          <h1 className="panel-title">Preparando viajes y solicitudes</h1>
-          <p className="panel-text">
-            Estamos cargando tus viajes, los cupos disponibles y las solicitudes vinculadas.
+      <section className={styles.loadingShell}>
+        <article className={styles.loadingCard}>
+          <div aria-hidden="true" className={styles.loadingPulse} />
+          <h1 className={styles.loadingTitle}>Cargando viajes</h1>
+          <p className={styles.loadingText}>
+            Estamos preparando tu actividad, solicitudes y cupos disponibles.
           </p>
-        </div>
+        </article>
       </section>
     );
   }
 
   if (!operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message) {
     return (
-      <section className="journey-shell">
+      <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className="journey-hero journey-hero-blocked">
-          <div className="journey-hero-copy">
-            <p className="section-label">Centro de movilidad</p>
-            <h1 className="journey-hero-title">Viajes</h1>
-          </div>
-          <div className="journey-hero-actions">
-            <StatusPill label="Operacion bloqueada" tone="warning" />
-          </div>
+        <section className={styles.lockedShell}>
+          <article className={styles.lockedCard}>
+            <div className={styles.lockedHeader}>
+              <div>
+                <p className={styles.kicker}>Viajes</p>
+                <h1 className={styles.lockedTitle}>Operacion no disponible</h1>
+              </div>
+              <div className={styles.lockedActions}>
+                <StatusPill label="Operacion bloqueada" tone="warning" />
+              </div>
+            </div>
+            <div className={styles.lockedBody}>
+              <OperationalAccessCard
+                message={operationalAccess.message}
+                title={operationalAccess.title}
+              />
+            </div>
+          </article>
         </section>
-        <section className="empty-state">
-          <OperationalAccessCard
-            message={operationalAccess.message}
-            title={operationalAccess.title}
-          />
-        </section>
-      </section>
+      </>
     );
   }
 
   return (
-    <section className="journey-shell">
+    <section className={styles.tripsShell}>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <section className="journey-hero">
-        <div className="journey-hero-copy">
-          <p className="section-label">Centro de movilidad</p>
-          <h1 className="journey-hero-title">Viajes</h1>
+      <section className={`${styles.hero} ${styles.reveal}`}>
+        <div className={styles.heroTop}>
+          <div className={styles.heroCopy}>
+            <p className={styles.kicker}>Viajes</p>
+            <h1 className={styles.heroTitle}>Centro de movilidad</h1>
+            <p className={styles.heroLead}>
+              Gestiona tus trayectos, solicitudes y cupos desde un solo lugar.
+            </p>
+          </div>
+
+          <div className={styles.heroActions}>
+            <StatusPill label={realtimeStatusLabel} tone={realtimeStatusTone} />
+            <Button
+              disabled={isRefreshingData}
+              onClick={() => void refreshTripsData(true)}
+              variant="secondary"
+            >
+              {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
+            </Button>
+          </div>
         </div>
-        <div className="journey-hero-actions">
-          <Button
-            disabled={isRefreshingData}
-            onClick={() => void refreshTripsData(true)}
-            variant="secondary"
-          >
-            {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
+      </section>
+
+      <div className={styles.liveBar}>
+        <div className={styles.livePills}>
+          <StatusPill
+            label={getDriverStatusLabel(driverStatus)}
+            tone={getDriverStatusTone(driverStatus)}
+          />
+          {trustSummary ? (
+            <StatusPill
+              label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+              tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+            />
+          ) : null}
+          {trustSummary ? (
+            <StatusPill
+              label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
+              tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
+            />
+          ) : null}
+          {activeFiltersCount > 0 ? (
+            <StatusPill label={`${activeFiltersCount} filtros`} tone="neutral" />
+          ) : null}
+        </div>
+
+        <div className={styles.liveActions}>
+          <Button disabled={!canCreateTrips} onClick={() => router.push('/viajes/nuevo')}>
+            Nuevo viaje
+          </Button>
+          <Button onClick={() => setActiveWorkspace('discover')} variant="ghost">
+            Buscar cupos
           </Button>
         </div>
-      </section>
+      </div>
 
-      <section className="journey-hero-status-strip" aria-label="Estado operacional del conductor">
-        <StatusPill label={realtimeStatusLabel} tone={realtimeStatusTone} />
-        <StatusPill
-          label={getDriverStatusLabel(driverStatus)}
-          tone={getDriverStatusTone(driverStatus)}
-        />
-        {trustSummary ? (
-          <StatusPill
-            label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
-            tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
-          />
-        ) : null}
-        {trustSummary ? (
-          <StatusPill
-            label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
-            tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
-          />
-        ) : null}
-        {activeFiltersCount > 0 ? (
-          <span className="topbar-badge">{activeFiltersCount} filtros</span>
-        ) : null}
-      </section>
-
-      <section className="journey-kpi-grid">
-        <article className="journey-kpi-card journey-kpi-card-operation">
-          <span className="journey-kpi-label">Operacion</span>
-          <strong className="journey-kpi-value">{activeMyTripsCount}</strong>
-          <p className="journey-kpi-text">{myTrips.length} registrados</p>
+      <section className={styles.metricGrid}>
+        <article className={styles.metricCard}>
+          <span className={styles.metricLabel}>Operacion</span>
+          <strong className={styles.metricValue}>{activeMyTripsCount}</strong>
+          <p className={styles.metricText}>{myTrips.length} registrados</p>
         </article>
-        <article className="journey-kpi-card journey-kpi-card-requests">
-          <span className="journey-kpi-label">Solicitudes</span>
-          <strong className="journey-kpi-value">{totalRequestsCount}</strong>
-          <p className="journey-kpi-text">
+        <article className={styles.metricCard}>
+          <span className={styles.metricLabel}>Solicitudes</span>
+          <strong className={styles.metricValue}>{totalRequestsCount}</strong>
+          <p className={styles.metricText}>
             {actionableIncomingRequestsCount} por atender
           </p>
         </article>
-        <article className="journey-kpi-card journey-kpi-card-discover">
-          <span className="journey-kpi-label">Explorar</span>
-          <strong className="journey-kpi-value">{visibleAvailableTrips.length}</strong>
-          <p className="journey-kpi-text">{discoverableTripsWithSeatsCount} con cupos</p>
+        <article className={styles.metricCard}>
+          <span className={styles.metricLabel}>Explorar</span>
+          <strong className={styles.metricValue}>{visibleAvailableTrips.length}</strong>
+          <p className={styles.metricText}>{discoverableTripsWithSeatsCount} con cupos</p>
+        </article>
+        <article className={styles.metricCard}>
+          <span className={styles.metricLabel}>Preparacion</span>
+          <strong className={styles.metricValue}>{readinessCompletion}%</strong>
+          <p className={styles.metricText}>{readinessReadyCount} de {readinessItems.length} listos</p>
         </article>
       </section>
 
-      <section className="journey-layout">
-        <TripsControlSidebar
-          activeWorkspace={activeWorkspace}
-          canCreateTrips={canCreateTrips}
-          onCreateTrip={() => router.push('/viajes/nuevo')}
-          onDiscoverTrips={() => setActiveWorkspace('discover')}
-          onWorkspaceChange={setActiveWorkspace}
-          readinessCompletion={readinessCompletion}
-          readinessItems={readinessItems}
-          workspaceOptions={workspaceOptions}
-        />
+      <section className={styles.mainGrid}>
+        <div className={styles.contentColumn}>
+          <article className={`${styles.workspaceNavCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Espacios</p>
+                <h2>Navegacion principal</h2>
+              </div>
+              <StatusPill label={workspaceOptions.find((item) => item.id === activeWorkspace)?.metric ?? 'Activo'} tone="neutral" />
+            </div>
 
-        <div className="journey-main">
-          <section className="journey-main-surface">
+            <div className={styles.workspaceGrid}>
+              {workspaceOptions.map((workspace) => (
+                <button
+                  key={workspace.id}
+                  aria-pressed={activeWorkspace === workspace.id}
+                  className={[
+                    styles.workspaceButton,
+                    activeWorkspace === workspace.id ? styles.workspaceButtonActive : '',
+                  ].join(' ')}
+                  onClick={() => setActiveWorkspace(workspace.id)}
+                  type="button"
+                >
+                  <span className={styles.workspaceButtonTitle}>{workspace.label}</span>
+                  <strong className={styles.workspaceButtonMetric}>{workspace.metric}</strong>
+                  <span className={styles.workspaceButtonDescription}>{workspace.description}</span>
+                </button>
+              ))}
+            </div>
+          </article>
 
-            <div
-              className={`journey-workspace-stage journey-workspace-stage-${activeWorkspace}`}
-              key={activeWorkspace}
-            >
+          <section className={`${styles.workspaceSurface} ${styles.reveal}`}>
+            <div className={styles.workspaceStage} key={activeWorkspace}>
 
             {activeWorkspace === 'operation' ? (
               <TripsOperationWorkspace
@@ -1078,6 +1119,98 @@ export default function TripsPage() {
             </div>
           </section>
         </div>
+
+        <aside className={styles.sideColumn}>
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Preparacion</p>
+                <h2>Estado operativo</h2>
+              </div>
+              <StatusPill label={`${readinessCompletion}% listo`} tone={readinessCompletion === 100 ? 'success' : 'warning'} />
+            </div>
+
+            <div className={styles.readinessList}>
+              {readinessItems.map((item) => (
+                <div className={styles.readinessItem} key={item.id}>
+                  <StatusPill
+                    label={item.tone === 'success' ? 'Listo' : 'Pendiente'}
+                    tone={item.tone === 'success' ? 'success' : 'warning'}
+                  />
+                  <div className={styles.readinessCopy}>
+                    <strong>{item.label}</strong>
+                    <span>{item.detail}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {!canCreateTrips ? (
+              <div className={styles.sideLinks}>
+                <Link className={styles.inlineLink} href="/conductor">
+                  Revisar conductor
+                </Link>
+                <Link className={styles.inlineLink} href="/vehiculos">
+                  Gestionar vehiculos
+                </Link>
+              </div>
+            ) : null}
+          </article>
+
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Contexto</p>
+                <h2>Lectura rapida</h2>
+              </div>
+              <StatusPill label={realtimeStatusLabel} tone={realtimeStatusTone} />
+            </div>
+
+            <div className={styles.signalGrid}>
+              <article className={styles.signalTile}>
+                <span>Vehiculos activos</span>
+                <strong>{activeVehicles.length}</strong>
+              </article>
+              <article className={styles.signalTile}>
+                <span>Solicitudes propias</span>
+                <strong>{myRequests.length}</strong>
+              </article>
+              <article className={styles.signalTile}>
+                <span>Entrantes</span>
+                <strong>{incomingRequests.length}</strong>
+              </article>
+              <article className={styles.signalTile}>
+                <span>Licencia</span>
+                <strong>{licenseStatus === DriverLicenseStatus.Expired ? 'Vencida' : 'Vigente'}</strong>
+              </article>
+            </div>
+          </article>
+
+          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+            <div className={styles.cardHeader}>
+              <div>
+                <p className={styles.kicker}>Filtros</p>
+                <h2>Busqueda actual</h2>
+              </div>
+              <StatusPill label={activeFiltersCount ? `${activeFiltersCount} activos` : 'Sin filtros'} tone="neutral" />
+            </div>
+
+            {activeFilterLabels.length ? (
+              <div className={styles.filterChips}>
+                {activeFilterLabels.map((label) => (
+                  <span className={styles.filterChip} key={label}>
+                    {label}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.emptyNote}>
+                <strong>Sin filtros aplicados</strong>
+                <span>Explora todos los viajes disponibles.</span>
+              </div>
+            )}
+          </article>
+        </aside>
       </section>
     </section>
   );

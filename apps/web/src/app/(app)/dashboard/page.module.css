@@ -1,0 +1,317 @@
+.dashboardShell {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.reveal {
+  animation: dashboardRise 0.5s ease both;
+}
+
+.revealSoft {
+  animation: dashboardFade 0.55s ease both;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 1.1rem;
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.14), transparent 30%),
+    linear-gradient(160deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.95));
+  padding: clamp(1.2rem, 2.5vw, 2rem);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+}
+
+.hero::after {
+  position: absolute;
+  inset: auto -1.6rem -2.4rem auto;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.46), transparent 68%);
+  content: '';
+  pointer-events: none;
+}
+
+.heroTop,
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 44rem;
+}
+
+.kicker {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroTitle,
+.loadingTitle {
+  margin: 0;
+  color: #16343d;
+  font-size: clamp(2rem, 3.8vw, 3.2rem);
+  line-height: 1;
+}
+
+.heroLead,
+.loadingText {
+  margin: 0;
+  color: #5d767c;
+  line-height: 1.6;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.metricCard,
+.focusCard,
+.analyticsCard,
+.sideCard,
+.loadingCard {
+  border: 1px solid rgba(22, 47, 58, 0.1);
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
+}
+
+.metricCard {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.95rem 1rem;
+}
+
+.metricLabel,
+.signalTile span,
+.infoTile span {
+  color: #5c767d;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  color: #16343d;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.metricNote {
+  color: #6a8388;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.16fr) minmax(320px, 0.84fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.contentColumn,
+.sideColumn {
+  display: grid;
+  gap: 1rem;
+}
+
+.focusCard,
+.analyticsCard,
+.sideCard,
+.loadingCard {
+  padding: 1.2rem;
+}
+
+.cardHeader h2 {
+  margin: 0;
+  color: #16343d;
+}
+
+.detailGrid,
+.analyticsGrid,
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.infoTile,
+.signalTile,
+.noticeCard {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.95rem;
+}
+
+.infoTile strong,
+.signalTile strong,
+.noticeCard strong {
+  color: #16343d;
+}
+
+.alertCard {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(181, 71, 62, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.95), rgba(254, 242, 242, 0.95));
+  padding: 0.95rem 1rem;
+}
+
+.alertCard strong {
+  color: #16343d;
+}
+
+.alertCard span,
+.noticeCard span,
+.quickLink span {
+  color: #647d83;
+  line-height: 1.5;
+}
+
+.quickGrid {
+  grid-template-columns: 1fr;
+}
+
+.quickLink {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: rgba(247, 251, 251, 0.84);
+  padding: 0.95rem;
+  color: inherit;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quickLink:hover,
+.quickLink:focus-visible {
+  border-color: rgba(15, 118, 110, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+  outline: none;
+}
+
+.quickLink strong {
+  color: #16343d;
+}
+
+.noticeStack {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.loadingShell {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+.loadingCard {
+  width: min(100%, 34rem);
+  justify-items: center;
+  text-align: center;
+}
+
+.loadingPulse {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(14, 165, 233, 0.24));
+  animation: dashboardPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes dashboardRise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboardFade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboardPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 1180px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .metricGrid,
+  .detailGrid,
+  .analyticsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heroTop,
+  .cardHeader {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .metricGrid,
+  .detailGrid,
+  .analyticsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroActions {
+    display: grid;
+  }
+}

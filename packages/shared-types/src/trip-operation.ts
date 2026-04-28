@@ -1,0 +1,1 @@
+export const TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH = 12;

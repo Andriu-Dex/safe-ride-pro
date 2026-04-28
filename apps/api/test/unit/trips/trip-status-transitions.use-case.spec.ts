@@ -499,6 +499,70 @@ describe('Trip status transition use cases', () => {
     expect(repository.updateTripStatus).not.toHaveBeenCalled();
   });
 
+  it('allows exceptional closure when an unresolved passenger exists and the closure note is valid', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new CompleteTripUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.InProgress));
+    repository.listTripExecutionPassengers.mockResolvedValue([
+      {
+        requestId: 'request-1',
+        passengerMembershipId: 'membership-passenger',
+        passengerFullName: 'Pasajero Uno',
+        status: TripRequestStatus.Accepted,
+        executionStatus: null,
+        boardedAt: null,
+        droppedOffAt: null,
+      },
+    ]);
+    repository.updateTripStatus.mockResolvedValue(buildTrip(TripStatus.Completed));
+    repository.endTripLiveTracking.mockResolvedValue({
+      tripId: 'trip-1',
+      status: TripLiveTrackingStatus.Ended,
+      startedAt: new Date(),
+      endedAt: new Date(),
+      lastSignalAt: null,
+      currentLatitude: null,
+      currentLongitude: null,
+      currentAccuracyMeters: null,
+      currentHeadingDegrees: null,
+      currentSpeedKph: null,
+      history: [],
+    });
+
+    const response = await useCase.execute(
+      'user-1',
+      'trip-1',
+      'Pasajero no localizado en el punto',
+    );
+
+    expect(response.message).toBe('Viaje finalizado con cierre operativo excepcional.');
+    expect(repository.updateTripStatus).toHaveBeenCalledWith('trip-1', TripStatus.Completed);
+    expect(auditService.record).toHaveBeenCalledWith({
+      institutionId: 'institution-1',
+      actorUserId: 'user-1',
+      action: AuditAction.TripCompleted,
+      entityType: AuditEntityType.Trip,
+      entityId: 'trip-1',
+      metadata: {
+        status: TripStatus.Completed,
+        unresolvedPassengerCount: 1,
+        forcedClosure: true,
+        closureNote: 'Pasajero no localizado en el punto',
+      },
+    });
+  });
+
   it('cancels a trip and cascades active trip requests', async () => {
     const repository = createTripsRepositoryMock();
     const auditService = {

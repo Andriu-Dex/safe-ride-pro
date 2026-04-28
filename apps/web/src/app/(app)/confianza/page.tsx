@@ -16,6 +16,7 @@ import { Button } from '../../../components/ui/button';
 import { OperationalAccessCard } from '../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { TextareaField } from '../../../components/ui/textarea-field';
+import { ToastStack, type ToastItem } from '../../../components/ui/toast-stack';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
@@ -66,6 +67,7 @@ import {
   SANCTION_APPEAL_REASON_MIN_LENGTH,
 } from '../../../modules/sanctions/lib/sanction-labels';
 import type { OperationalSanctionAppealRecord } from '../../../modules/sanctions/types/sanction';
+import styles from './page.module.css';
 
 type RatingDraft = {
   score: string;
@@ -408,7 +410,30 @@ export default function TrustPage() {
   const [isSubmittingSanctionAppealId, setIsSubmittingSanctionAppealId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const reportDraftsRef = useRef(reportDrafts);
+
+  const pushToast = (
+    title: string,
+    description: string,
+    tone: ToastItem['tone'] = 'info',
+  ) => {
+    setToasts((currentToasts) => [
+      ...currentToasts,
+      {
+        id: `trust-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title,
+        description,
+        tone,
+      },
+    ]);
+  };
+
+  const dismissToast = (toastId: string) => {
+    setToasts((currentToasts) =>
+      currentToasts.filter((toast) => toast.id !== toastId),
+    );
+  };
 
   const defaultMembership = selectOperationalMembership(authSession?.user.memberships);
   const defaultMembershipId =
@@ -530,6 +555,24 @@ export default function TrustPage() {
   useEffect(() => {
     reportDraftsRef.current = reportDrafts;
   }, [reportDrafts]);
+
+  useEffect(() => {
+    if (!errorMessage) {
+      return;
+    }
+
+    pushToast('No se pudo completar la accion', errorMessage, 'error');
+    setErrorMessage(null);
+  }, [errorMessage]);
+
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    pushToast('Accion completada', successMessage, 'success');
+    setSuccessMessage(null);
+  }, [successMessage]);
 
   useEffect(() => {
     return () => {
@@ -856,80 +899,89 @@ export default function TrustPage() {
 
   if (isLoading) {
     return (
-      <section className="loading-state compact-loading-state">
-        <div className="loading-card">
-          <div aria-hidden="true" className="loading-pulse" />
-          <h1 className="panel-title">Cargando confianza y seguridad</h1>
-          <p className="panel-text">
-            Estamos preparando tu historial de calificaciones y reportes del sistema.
-          </p>
-        </div>
-      </section>
+      <>
+        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+        <section className={styles.loadingShell}>
+          <article className={styles.loadingCard}>
+            <div aria-hidden="true" className={styles.loadingPulse} />
+            <h1 className={styles.loadingTitle}>Cargando confianza</h1>
+            <p className={styles.loadingText}>
+              Estamos preparando tus calificaciones, reportes y restricciones.
+            </p>
+          </article>
+        </section>
+      </>
     );
   }
 
   if (!operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message) {
     return (
       <>
-        <header className="topbar">
-          <div>
-            <h1 className="topbar-title">Confianza</h1>
-            <p className="topbar-subtitle">
-              Revisa tu reputacion, califica interacciones cerradas y registra incidentes de cierre operativo.
-            </p>
-          </div>
-          <StatusPill label="Operacion bloqueada" tone="warning" />
-        </header>
-
-        <section className="empty-state">
-          <OperationalAccessCard
-            message={operationalAccess.message}
-            title={operationalAccess.title}
-          />
+        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+        <section className={styles.lockedShell}>
+          <article className={styles.lockedCard}>
+            <div className={styles.lockedHeader}>
+              <div>
+                <p className={styles.kicker}>Confianza</p>
+                <h1 className={styles.lockedTitle}>Operacion no disponible</h1>
+              </div>
+              <StatusPill label="Operacion bloqueada" tone="warning" />
+            </div>
+            <div className={styles.lockedBody}>
+              <OperationalAccessCard
+                message={operationalAccess.message}
+                title={operationalAccess.title}
+              />
+            </div>
+          </article>
         </section>
       </>
     );
   }
 
   return (
-    <section className="trust-shell">
-      <header className="trust-command">
-        <div className="trust-command-copy">
-          <p className="section-label">Confianza</p>
-          <h1 className="trust-command-title">Reputacion y cierre operativo</h1>
-          <p className="trust-command-subtitle">
+    <section className={styles.trustShell}>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
+
+      <header className={`${styles.hero} ${styles.reveal}`}>
+        <div className={styles.heroTop}>
+          <div className={styles.heroCopy}>
+            <p className={styles.kicker}>Confianza</p>
+            <h1 className={styles.heroTitle}>Reputacion y seguridad</h1>
+            <p className={styles.heroLead}>
             Controla tus pendientes de calificacion, reportes y estado administrativo desde un solo lugar.
-          </p>
-        </div>
-        <div className="trust-command-actions">
-          <Button
-            disabled={isRefreshingData}
-            onClick={() => void refreshData(true)}
-            variant="secondary"
-          >
-            {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
-          </Button>
-          <StatusPill
-            label={`${totalPendingActions} acciones pendientes`}
-            tone={totalPendingActions ? 'warning' : 'success'}
-          />
-          {trustSummary ? (
+            </p>
+          </div>
+          <div className={styles.heroActions}>
+            <Button
+              disabled={isRefreshingData}
+              onClick={() => void refreshData(true)}
+              variant="secondary"
+            >
+              {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
+            </Button>
             <StatusPill
-              label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
-              tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+              label={`${totalPendingActions} pendientes`}
+              tone={totalPendingActions ? 'warning' : 'success'}
             />
-          ) : null}
-          {trustSummary ? (
-            <StatusPill
-              label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
-              tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
-            />
-          ) : null}
+            {trustSummary ? (
+              <StatusPill
+                label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+                tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+              />
+            ) : null}
+            {trustSummary ? (
+              <StatusPill
+                label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
+                tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
+              />
+            ) : null}
+          </div>
         </div>
       </header>
 
       {focusedKind && focusedTripId ? (
-        <article className="trust-focus-banner">
+        <article className={styles.focusBanner}>
           <div>
             <strong>{focusedKind === 'rating' ? 'Accion de calificacion abierta' : 'Accion de reporte abierta'}</strong>
             <p>
@@ -943,10 +995,7 @@ export default function TrustPage() {
         </article>
       ) : null}
 
-      {errorMessage ? <div className="form-error">{errorMessage}</div> : null}
-      {successMessage ? <div className="form-success">{successMessage}</div> : null}
-
-      <section className="trust-kpi-grid">
+      <section className={styles.metricGrid}>
         <TrustKpiCard
           label="Pendientes"
           note="Acciones de cierre activas"
@@ -973,7 +1022,7 @@ export default function TrustPage() {
         />
       </section>
 
-      <section className="trust-main-grid">
+      <section className={styles.summaryGrid}>
         {trustSummary ? (
           <article className="trust-summary-card">
             <div className="trust-summary-head">
@@ -1096,21 +1145,21 @@ export default function TrustPage() {
         ) : null}
       </section>
 
-      <section className="trust-section-block">
-        <div className="section-heading">
+      <section className={styles.sectionBlock}>
+        <div className={styles.sectionHeading}>
           <div>
             <h2 className="panel-title">Bandeja de cierre</h2>
-            <p className="section-heading-meta">
+            <p className={styles.sectionMeta}>
               {pendingRatingOpportunities.length} calificaciones y {pendingReportOpportunities.length} reportes pendientes
             </p>
           </div>
         </div>
 
-        <div className="page-grid page-grid-wide">
+        <div className={styles.closureGrid}>
           <article className="panel panel-stack">
-            <div className="section-heading">
+            <div className={styles.sectionHeading}>
               <h3 className="panel-title">Calificaciones pendientes</h3>
-              <p className="section-heading-meta">{pendingRatingOpportunities.length} disponibles</p>
+              <p className={styles.sectionMeta}>{pendingRatingOpportunities.length} disponibles</p>
             </div>
             {pendingRatingOpportunities.length ? (
               <div className="list-stack">
@@ -1143,9 +1192,9 @@ export default function TrustPage() {
           </article>
 
           <article className="panel panel-stack">
-            <div className="section-heading">
+            <div className={styles.sectionHeading}>
               <h3 className="panel-title">Reportes pendientes</h3>
-              <p className="section-heading-meta">{pendingReportOpportunities.length} disponibles</p>
+              <p className={styles.sectionMeta}>{pendingReportOpportunities.length} disponibles</p>
             </div>
             {pendingReportOpportunities.length ? (
               <div className="list-stack">
@@ -1191,9 +1240,9 @@ export default function TrustPage() {
 
         {trustSummary?.activeSanctions?.length ? (
           <article className="panel panel-stack">
-            <div className="section-heading">
+            <div className={styles.sectionHeading}>
               <h2 className="panel-title">Restricciones activas</h2>
-              <p className="section-heading-meta">
+              <p className={styles.sectionMeta}>
                 {trustSummary.activeSanctions.length} vigentes
               </p>
             </div>
@@ -1280,9 +1329,9 @@ export default function TrustPage() {
 
         {sanctionAppeals.length ? (
           <article className="panel panel-stack">
-            <div className="section-heading">
+            <div className={styles.sectionHeading}>
               <h2 className="panel-title">Historial de apelaciones</h2>
-              <p className="section-heading-meta">{sanctionAppeals.length} registradas</p>
+              <p className={styles.sectionMeta}>{sanctionAppeals.length} registradas</p>
             </div>
             <div className="list-stack">
               {sanctionAppeals.map((appeal) => (
@@ -1308,11 +1357,11 @@ export default function TrustPage() {
           </article>
         ) : null}
 
-      <section className="trust-history-grid">
+      <section className={styles.historyGrid}>
           <article className="panel panel-stack">
-            <div className="section-heading">
+            <div className={styles.sectionHeading}>
               <h2 className="panel-title">Calificaciones emitidas</h2>
-              <p className="section-heading-meta">{ratings.given.length} registradas</p>
+              <p className={styles.sectionMeta}>{ratings.given.length} registradas</p>
             </div>
             {ratings.given.length ? (
               <div className="list-stack">
@@ -1336,9 +1385,9 @@ export default function TrustPage() {
           </article>
 
           <article className="panel panel-stack">
-            <div className="section-heading">
+            <div className={styles.sectionHeading}>
               <h2 className="panel-title">Calificaciones recibidas</h2>
-              <p className="section-heading-meta">{ratings.received.length} registradas</p>
+              <p className={styles.sectionMeta}>{ratings.received.length} registradas</p>
             </div>
             {ratings.received.length ? (
               <div className="list-stack">
@@ -1363,9 +1412,9 @@ export default function TrustPage() {
       </section>
 
         <article className="panel panel-stack">
-          <div className="section-heading">
+          <div className={styles.sectionHeading}>
             <h2 className="panel-title">Mis reportes</h2>
-            <p className="section-heading-meta">{reports.length} registrados</p>
+            <p className={styles.sectionMeta}>{reports.length} registrados</p>
           </div>
           {reports.length ? (
             <div className="list-stack">
@@ -1404,7 +1453,7 @@ export default function TrustPage() {
         </article>
 
       {trustSummary ? (
-        <div className="form-helper trust-footnote">
+        <div className={styles.footnote}>
           Cancelacion tardia: {trustSummary.cancellationPolicy.lateWindowMinutes} minutos antes de la salida.
           Ultimo calculo: {formatDateTime(trustSummary.cancellationPolicy.lastComputedAt)}.
           {' '}
@@ -1432,7 +1481,16 @@ function TrustKpiCard({
   tone?: 'neutral' | 'success' | 'warning';
 }) {
   return (
-    <article className={`trust-kpi-card trust-kpi-card-${tone}`}>
+    <article
+      className={[
+        styles.kpiCard,
+        tone === 'success'
+          ? styles.kpiCardSuccess
+          : tone === 'warning'
+            ? styles.kpiCardWarning
+            : styles.kpiCardNeutral,
+      ].join(' ')}
+    >
       <span>{label}</span>
       <strong>{value}</strong>
       <p>{note}</p>
@@ -1448,7 +1506,7 @@ function TrustMiniMetric({
   value: string;
 }) {
   return (
-    <div className="trust-mini-metric">
+    <div className={styles.miniMetric}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -1463,7 +1521,7 @@ function TrustPolicyCard({
   value: string;
 }) {
   return (
-    <div className="trust-policy-card">
+    <div className={styles.policyCard}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>

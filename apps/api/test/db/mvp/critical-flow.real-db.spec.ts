@@ -212,6 +212,18 @@ describe('Critical MVP flow real DB integration', () => {
       .expect(200);
 
     await request(app.getHttpServer())
+      .patch(`/api/trip-requests/${tripRequestId}/boarded`)
+      .set('Authorization', `Bearer ${driverToken}`)
+      .send({})
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .patch(`/api/trip-requests/${tripRequestId}/dropped-off`)
+      .set('Authorization', `Bearer ${driverToken}`)
+      .send({})
+      .expect(200);
+
+    await request(app.getHttpServer())
       .patch(`/api/trips/${tripId}/complete`)
       .set('Authorization', `Bearer ${driverToken}`)
       .send({})
@@ -314,6 +326,7 @@ describe('Critical MVP flow real DB integration', () => {
     expect(storedTrip?.status).toBe(TripStatus.Completed);
     expect(storedTrip?.availableSeats).toBe(1);
     expect(storedRequest?.status).toBe('ACCEPTED');
+    expect(storedRequest?.executionStatus).toBe('DROPPED_OFF');
     expect(storedPendingRequest?.status).toBe('REJECTED');
     expect(storedPendingRequest?.reviewNote).toBe(
       'Solicitud cerrada automaticamente porque el viaje ya inicio.',

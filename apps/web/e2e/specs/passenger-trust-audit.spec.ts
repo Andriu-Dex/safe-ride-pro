@@ -93,6 +93,17 @@ test('pasajero, conductor y admin completan el flujo critico de solicitud, confi
     await expect(myTripCard).toBeVisible();
     await myTripCard.getByRole('button', { name: 'Iniciar' }).click();
     await expect(driverPage.getByText('Viaje iniciado correctamente.')).toBeVisible();
+
+    const commandPassengerCard = driverPage
+      .locator('.trip-command-passenger-card')
+      .filter({ hasText: passenger.fullName })
+      .first();
+    await expect(commandPassengerCard).toBeVisible();
+    await commandPassengerCard.getByRole('button', { name: 'Marcar abordo' }).click();
+    await expect(driverPage.getByText('Pasajero marcado como abordado.')).toBeVisible();
+    await commandPassengerCard.getByRole('button', { name: 'Marcar finalizado' }).click();
+    await expect(driverPage.getByText('Pasajero marcado como finalizado.')).toBeVisible();
+
     await myTripCard.getByRole('button', { name: 'Finalizar' }).click();
     await expect(driverPage.getByText('Viaje finalizado correctamente.')).toBeVisible();
 

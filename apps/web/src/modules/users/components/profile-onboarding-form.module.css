@@ -188,8 +188,8 @@
   z-index: 1;
   display: grid;
   align-content: start;
-  justify-items: stretch;
-  gap: 0.9rem;
+  justify-items: center;
+  gap: 0.7rem;
   width: min(100%, 12rem);
 }
 

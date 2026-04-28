@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import 'leaflet/dist/leaflet.css';
+
 import { FlashToastHost } from '../components/ui/flash-toast-host';
 import { AuthProvider } from '../modules/auth/components/auth-provider';
 import './globals.css';
@@ -8,6 +10,11 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'SafeRidePro',
   description: 'Plataforma web para transporte seguro compartido entre estudiantes.',
+  icons: {
+    icon: 'https://i.imgur.com/HMtKckK.png',
+    shortcut: 'https://i.imgur.com/HMtKckK.png',
+    apple: 'https://i.imgur.com/HMtKckK.png',
+  },
 };
 
 type RootLayoutProps = Readonly<{

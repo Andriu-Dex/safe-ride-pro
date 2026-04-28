@@ -194,6 +194,8 @@ export {
   type TripPostClosureSummary,
 } from './trip-post-closure';
 
+export { TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH } from './trip-operation';
+
 export {
   isTripTimeFilterValue,
   TripAvailabilityFilter,

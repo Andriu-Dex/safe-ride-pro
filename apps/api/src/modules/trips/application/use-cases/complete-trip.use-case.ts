@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import {
   isTripRequestExecutionResolved,
   MembershipStatus,
+  TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH,
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
@@ -16,8 +17,6 @@ import {
 
 @Injectable()
 export class CompleteTripUseCase {
-  private static readonly FORCE_CLOSURE_NOTE_MIN_LENGTH = 12;
-
   constructor(
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
@@ -58,7 +57,7 @@ export class CompleteTripUseCase {
     if (
       unresolvedParticipants.length > 0 &&
       (!normalizedClosureNote ||
-        normalizedClosureNote.length < CompleteTripUseCase.FORCE_CLOSURE_NOTE_MIN_LENGTH)
+        normalizedClosureNote.length < TRIP_FORCE_CLOSURE_NOTE_MIN_LENGTH)
     ) {
       throw new BadRequestException(
         'Antes de finalizar el viaje debes cerrar a todos los pasajeros o registrar una nota de cierre excepcional.',
