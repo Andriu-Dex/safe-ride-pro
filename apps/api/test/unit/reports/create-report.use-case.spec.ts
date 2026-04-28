@@ -44,6 +44,8 @@ function buildCreatedReport(input: CreateReportInput): ReportRecord {
     tripOriginLabel: 'Huachi',
     tripDestinationLabel: 'Centro',
     tripDepartureAt: new Date('2030-01-01T10:00:00.000Z'),
+    tripCompletedAt: new Date('2030-01-01T10:40:00.000Z'),
+    tripClosureNote: null,
     status: ReportStatus.Pending,
     reason: input.reason,
     description: input.description ?? null,
@@ -85,6 +87,7 @@ describe('CreateReportUseCase', () => {
       destinationLabel: 'Centro',
       departureAt: new Date('2030-01-01T10:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      completedAt: new Date('2030-01-01T10:40:00.000Z'),
       cancelledAt: null,
     });
     repository.hasReportableTripParticipation.mockResolvedValue(true);
@@ -148,6 +151,7 @@ describe('CreateReportUseCase', () => {
       destinationLabel: 'Centro',
       departureAt: new Date('2030-01-01T10:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      completedAt: null,
       cancelledAt: new Date('2030-01-01T09:50:00.000Z'),
     });
     repository.hasReportableTripParticipation.mockResolvedValue(true);
@@ -203,6 +207,7 @@ describe('CreateReportUseCase', () => {
         destinationLabel: 'Centro',
         departureAt: new Date('2030-01-01T10:00:00.000Z'),
         estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+        completedAt: new Date('2030-01-01T10:40:00.000Z'),
         cancelledAt: null,
       });
 

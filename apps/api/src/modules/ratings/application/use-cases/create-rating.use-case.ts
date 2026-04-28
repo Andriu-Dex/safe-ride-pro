@@ -46,6 +46,7 @@ export class CreateRatingUseCase {
         status: trip.status,
         departureAt: trip.departureAt,
         estimatedArrivalAt: trip.estimatedArrivalAt,
+        completedAt: trip.completedAt,
       })
     ) {
       throw new BadRequestException(

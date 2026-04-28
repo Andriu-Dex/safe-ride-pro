@@ -69,6 +69,7 @@ describe('CreateRatingUseCase', () => {
       destinationLabel: 'Centro',
       departureAt: new Date('2030-01-01T10:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      completedAt: new Date('2030-01-01T10:40:00.000Z'),
       cancelledAt: null,
     });
     repository.hasAcceptedTripRequest.mockResolvedValue(true);
@@ -117,6 +118,7 @@ describe('CreateRatingUseCase', () => {
       destinationLabel: 'Centro',
       departureAt: new Date('2030-01-01T10:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      completedAt: new Date('2030-01-01T10:40:00.000Z'),
       cancelledAt: null,
     });
     repository.hasAcceptedTripRequest.mockResolvedValue(true);
@@ -170,6 +172,7 @@ describe('CreateRatingUseCase', () => {
         destinationLabel: 'Centro',
         departureAt: new Date('2030-01-01T10:00:00.000Z'),
         estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+        completedAt: new Date('2030-01-01T10:40:00.000Z'),
         cancelledAt: null,
       });
 

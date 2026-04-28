@@ -1931,6 +1931,13 @@ export default function AuditPage() {
                         </div>
                       ) : null}
 
+                      {report.tripClosureNote ? (
+                        <div className="audit-note-banner audit-note-banner-muted">
+                          <span>Nota de cierre operativo</span>
+                          <p>{report.tripClosureNote}</p>
+                        </div>
+                      ) : null}
+
                       <div className="audit-link-grid">
                         <article className="audit-link-card">
                           <span className="audit-link-card-label">Impacto disciplinario</span>

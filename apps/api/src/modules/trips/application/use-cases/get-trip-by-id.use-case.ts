@@ -65,7 +65,9 @@ export class GetTripByIdUseCase {
       basePriceReference: reconciledTrip.basePriceReference,
       detourSurchargeReference: reconciledTrip.detourSurchargeReference,
       notes: reconciledTrip.notes,
+      closureNote: reconciledTrip.closureNote,
       cancelledAt: reconciledTrip.cancelledAt,
+      completedAt: reconciledTrip.completedAt,
       cancellationTiming: reconciledTrip.cancellationTiming,
       createdAt: reconciledTrip.createdAt,
     };

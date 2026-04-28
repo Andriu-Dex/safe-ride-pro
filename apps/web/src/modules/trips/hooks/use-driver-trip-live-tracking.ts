@@ -5,9 +5,10 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../lib/api-client';
 import { updateTripLiveTracking } from '../lib/trip-api';
 
-const MIN_SYNC_INTERVAL_MS = 12_000;
-const HEARTBEAT_INTERVAL_MS = 30_000;
-const MIN_MOVEMENT_DISTANCE_METERS = 25;
+const MIN_SYNC_INTERVAL_MS = 8_000;
+const HEARTBEAT_INTERVAL_MS = 20_000;
+const MIN_MOVEMENT_DISTANCE_METERS = 15;
+const LOW_ACCURACY_THRESHOLD_METERS = 120;
 
 type TrackingTone = 'neutral' | 'success' | 'warning' | 'danger';
 
@@ -133,6 +134,22 @@ export function useDriverTripLiveTracking({
 
     const maybeSyncPosition = (position: PositionSnapshot, force = false) => {
       const lastSentPosition = lastSentPositionRef.current;
+
+      if (
+        !force
+        && typeof position.accuracyMeters === 'number'
+        && position.accuracyMeters > LOW_ACCURACY_THRESHOLD_METERS
+        && lastSentPosition
+      ) {
+        setState((currentState) => ({
+          ...currentState,
+          label: 'GPS con precision baja',
+          tone: 'warning',
+          detail: 'Esperando una lectura GPS mas estable para compartir el avance con mejor calidad.',
+        }));
+        pendingPositionRef.current = position;
+        return;
+      }
 
       if (!force && lastSentPosition) {
         const elapsedMs =

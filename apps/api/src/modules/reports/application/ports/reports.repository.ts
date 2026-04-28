@@ -27,6 +27,7 @@ export type ReportTripRecord = {
   destinationLabel: string;
   departureAt: Date;
   estimatedArrivalAt: Date;
+  completedAt: Date | null;
   cancelledAt: Date | null;
 };
 
@@ -45,6 +46,8 @@ export type ReportRecord = {
   tripOriginLabel: string;
   tripDestinationLabel: string;
   tripDepartureAt: Date;
+  tripCompletedAt: Date | null;
+  tripClosureNote: string | null;
   status: ReportStatus;
   reason: string;
   description: string | null;

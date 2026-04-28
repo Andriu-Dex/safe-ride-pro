@@ -24,6 +24,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
     updateTripStatus: jest.fn(),
+    completeTrip: jest.fn(),
     autoCancelTripForDriverAbsence: jest.fn(),
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
@@ -61,7 +62,9 @@ function buildTrip(): TripRecord {
     basePriceReference: 2.5,
     detourSurchargeReference: null,
     notes: 'Ruta habitual',
+    closureNote: null,
     cancelledAt: null,
+    completedAt: new Date('2030-01-02T13:31:00.000Z'),
     cancellationTiming: null,
     createdAt: new Date('2030-01-01T12:00:00.000Z'),
   };

@@ -50,6 +50,7 @@ export class CreateReportUseCase {
       status: trip.status,
       departureAt: trip.departureAt,
       estimatedArrivalAt: trip.estimatedArrivalAt,
+      completedAt: trip.completedAt,
       cancelledAt: trip.cancelledAt,
     });
 

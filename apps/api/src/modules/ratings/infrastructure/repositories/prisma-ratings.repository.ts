@@ -81,6 +81,7 @@ export class PrismaRatingsRepository implements RatingsRepository {
       destinationLabel: trip.destinationLabel,
       departureAt: trip.departureAt,
       estimatedArrivalAt: trip.estimatedArrivalAt,
+      completedAt: trip.completedAt,
       cancelledAt: trip.cancelledAt,
     };
   }

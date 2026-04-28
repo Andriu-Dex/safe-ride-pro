@@ -29,7 +29,9 @@ export type TripRecord = {
   basePriceReference: number;
   detourSurchargeReference: number | null;
   notes: string | null;
+  closureNote: string | null;
   cancelledAt: string | null;
+  completedAt: string | null;
   cancellationTiming: CancellationTiming | null;
   createdAt: string;
 };

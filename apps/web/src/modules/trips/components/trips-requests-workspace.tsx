@@ -394,6 +394,7 @@ function buildPassengerClosureItems(myRequests: TripRequestRecord[]): TripClosur
         status: request.tripStatus,
         departureAt: request.tripDepartureAt,
         estimatedArrivalAt: request.tripEstimatedArrivalAt,
+        completedAt: request.tripCompletedAt,
         cancelledAt: request.tripCancelledAt,
       });
 
@@ -440,7 +441,9 @@ function buildPassengerClosureItems(myRequests: TripRequestRecord[]): TripClosur
         id: request.id,
         title: `${request.tripOriginLabel} -> ${request.tripDestinationLabel}`,
         subtitle: `Pasajero | ${request.driverFullName}`,
-        summary: actionParts.join(' y '),
+        summary: request.tripClosureNote
+          ? `${actionParts.join(' y ')}. Nota de cierre: ${request.tripClosureNote}`
+          : actionParts.join(' y '),
         windowLabel: getTripClosureWindowCopy(summary),
         tripStatusLabel: getTripStatusLabel(request.tripStatus),
         tripStatusTone: getTripStatusTone(request.tripStatus),

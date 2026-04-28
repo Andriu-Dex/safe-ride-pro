@@ -596,6 +596,8 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       destinationLabel: string;
       departureAt: Date;
       estimatedArrivalAt: Date;
+      completedAt: Date | null;
+      closureNote: string | null;
       cancelledAt: Date | null;
       seatCount: number;
       availableSeats: number;
@@ -635,6 +637,8 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       tripDestinationLabel: tripRequest.trip.destinationLabel,
       tripDepartureAt: tripRequest.trip.departureAt,
       tripEstimatedArrivalAt: tripRequest.trip.estimatedArrivalAt,
+      tripCompletedAt: tripRequest.trip.completedAt,
+      tripClosureNote: tripRequest.trip.closureNote,
       tripCancelledAt: tripRequest.trip.cancelledAt,
       tripSeatCount: tripRequest.trip.seatCount,
       tripAvailableSeats: tripRequest.trip.availableSeats,

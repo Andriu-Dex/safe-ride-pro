@@ -114,6 +114,7 @@ type ReportParticipationOpportunity = {
   incidentTone: 'neutral' | 'success' | 'warning' | 'danger';
   incidentSummary: string;
   suggestedReason: string;
+  tripClosureNote: string | null;
   windowClosesAt: string;
 };
 
@@ -136,18 +137,25 @@ function sortByDepartureDateDescending<T extends { tripDepartureAt: string }>(it
   );
 }
 
-function getIncidentSummary(incidentType: TripClosureIncidentType): string {
+function getIncidentSummary(
+  incidentType: TripClosureIncidentType,
+  tripClosureNote: string | null = null,
+): string {
+  const closureContext = tripClosureNote?.trim()
+    ? ` Cierre operativo registrado: ${tripClosureNote.trim()}`
+    : '';
+
   switch (incidentType) {
     case TripClosureIncidentType.Completed:
-      return 'Viaje completado dentro de la ventana de cierre. Si hubo un problema, registralo ahora.';
+      return `Viaje completado dentro de la ventana de cierre. Si hubo un problema, registralo ahora.${closureContext}`;
     case TripClosureIncidentType.LateDriverCancellation:
-      return 'El conductor cancelo tarde un viaje que ya tenia participantes confirmados.';
+      return `El conductor cancelo tarde un viaje que ya tenia participantes confirmados.${closureContext}`;
     case TripClosureIncidentType.DriverAbsence:
-      return 'El viaje fue cancelado por ausencia del conductor despues de la hora prevista de salida.';
+      return `El viaje fue cancelado por ausencia del conductor despues de la hora prevista de salida.${closureContext}`;
     case TripClosureIncidentType.OverdueInProgress:
-      return 'El viaje sigue abierto fuera del tiempo estimado y puede requerir cierre o revision administrativa.';
+      return `El viaje sigue abierto fuera del tiempo estimado y puede requerir cierre o revision administrativa.${closureContext}`;
     default:
-      return 'Incidente operativo disponible para revision.';
+      return `Incidente operativo disponible para revision.${closureContext}`;
   }
 }
 
@@ -186,6 +194,7 @@ function buildRatingOpportunities(
       status: request.tripStatus,
       departureAt: request.tripDepartureAt,
       estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      completedAt: request.tripCompletedAt,
       cancelledAt: request.tripCancelledAt,
     });
 
@@ -197,6 +206,7 @@ function buildRatingOpportunities(
         status: request.tripStatus,
         departureAt: request.tripDepartureAt,
         estimatedArrivalAt: request.tripEstimatedArrivalAt,
+        completedAt: request.tripCompletedAt,
       })
     ) {
       return;
@@ -220,6 +230,7 @@ function buildRatingOpportunities(
       status: request.tripStatus,
       departureAt: request.tripDepartureAt,
       estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      completedAt: request.tripCompletedAt,
       cancelledAt: request.tripCancelledAt,
     });
 
@@ -232,6 +243,7 @@ function buildRatingOpportunities(
         status: request.tripStatus,
         departureAt: request.tripDepartureAt,
         estimatedArrivalAt: request.tripEstimatedArrivalAt,
+        completedAt: request.tripCompletedAt,
       })
     ) {
       return;
@@ -279,6 +291,7 @@ function buildReportOpportunities(
       status: request.tripStatus,
       departureAt: request.tripDepartureAt,
       estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      completedAt: request.tripCompletedAt,
       cancelledAt: request.tripCancelledAt,
     });
 
@@ -302,8 +315,12 @@ function buildReportOpportunities(
       incidentType: closureSummary.incidentType,
       incidentLabel: getTripClosureIncidentLabel(closureSummary.incidentType),
       incidentTone: getTripClosureIncidentTone(closureSummary.incidentType),
-      incidentSummary: getIncidentSummary(closureSummary.incidentType),
+      incidentSummary: getIncidentSummary(
+        closureSummary.incidentType,
+        request.tripClosureNote,
+      ),
       suggestedReason: getSuggestedReportReason(closureSummary.incidentType),
+      tripClosureNote: request.tripClosureNote,
       windowClosesAt: closureSummary.actionWindowClosesAt.toISOString(),
     });
   });
@@ -320,6 +337,7 @@ function buildReportOpportunities(
       status: request.tripStatus,
       departureAt: request.tripDepartureAt,
       estimatedArrivalAt: request.tripEstimatedArrivalAt,
+      completedAt: request.tripCompletedAt,
       cancelledAt: request.tripCancelledAt,
     });
 
@@ -345,8 +363,12 @@ function buildReportOpportunities(
       incidentType: closureSummary.incidentType,
       incidentLabel: getTripClosureIncidentLabel(closureSummary.incidentType),
       incidentTone: getTripClosureIncidentTone(closureSummary.incidentType),
-      incidentSummary: getIncidentSummary(closureSummary.incidentType),
+      incidentSummary: getIncidentSummary(
+        closureSummary.incidentType,
+        request.tripClosureNote,
+      ),
       suggestedReason: getSuggestedReportReason(closureSummary.incidentType),
+      tripClosureNote: request.tripClosureNote,
       windowClosesAt: closureSummary.actionWindowClosesAt.toISOString(),
     });
   });
@@ -1225,6 +1247,7 @@ export default function TrustPage() {
                       incidentLabel: opportunity.incidentLabel,
                       incidentTone: opportunity.incidentTone,
                       incidentSummary: opportunity.incidentSummary,
+                      tripClosureNote: opportunity.tripClosureNote,
                       windowClosesAt: opportunity.windowClosesAt,
                     } satisfies ReportOpportunity}
                     value={reportDrafts[opportunity.id] ?? getInitialReportDraft(opportunity)}

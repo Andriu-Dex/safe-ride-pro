@@ -64,7 +64,9 @@ export type TripRecord = {
   basePriceReference: number;
   detourSurchargeReference: number | null;
   notes: string | null;
+  closureNote: string | null;
   cancelledAt: Date | null;
+  completedAt: Date | null;
   cancellationTiming?: CancellationTiming | null;
   createdAt: Date;
 };
@@ -149,6 +151,12 @@ export type RecordTripLiveTrackingPositionInput = {
   speedKph?: number;
 };
 
+export type CompleteTripInput = {
+  tripId: string;
+  closureNote?: string | null;
+  completedAt: Date;
+};
+
 export interface TripsRepository {
   findDefaultMembershipByUserId(userId: string): Promise<TripMembershipRecord | null>;
   findVehicleByIdForMembership(membershipId: string, vehicleId: string): Promise<TripVehicleRecord | null>;
@@ -168,6 +176,7 @@ export interface TripsRepository {
     excludeTripId?: string,
   ): Promise<TripRecord[]>;
   updateTripStatus(tripId: string, status: TripStatus): Promise<TripRecord>;
+  completeTrip(input: CompleteTripInput): Promise<TripRecord>;
   autoCancelTripForDriverAbsence(tripId: string): Promise<TripRecord | null>;
   cancelTripAndActiveRequests(tripId: string): Promise<TripRecord>;
   startTripAndClosePendingRequests(tripId: string, autoReviewNote: string): Promise<TripRecord>;

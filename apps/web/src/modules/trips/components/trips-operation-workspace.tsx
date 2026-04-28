@@ -305,6 +305,7 @@ function buildDriverClosureItems(
         status: trip.status,
         departureAt: trip.departureAt,
         estimatedArrivalAt: trip.estimatedArrivalAt,
+        completedAt: trip.completedAt,
         cancelledAt: trip.cancelledAt,
       });
       const acceptedPassengers = incomingRequests.filter(
@@ -357,7 +358,9 @@ function buildDriverClosureItems(
         id: trip.id,
         title: `${trip.originLabel} -> ${trip.destinationLabel}`,
         subtitle: `Conductor | ${acceptedPassengers.length} participante${acceptedPassengers.length === 1 ? '' : 's'} confirmado${acceptedPassengers.length === 1 ? '' : 's'}`,
-        summary: actionParts.join(' y '),
+        summary: trip.closureNote
+          ? `${actionParts.join(' y ')}. Nota de cierre: ${trip.closureNote}`
+          : actionParts.join(' y '),
         windowLabel: getTripClosureWindowCopy(summary),
         tripStatusLabel: getTripStatusLabel(trip.status),
         tripStatusTone: getTripStatusTone(trip.status),

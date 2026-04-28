@@ -64,7 +64,12 @@ export class CompleteTripUseCase {
       );
     }
 
-    const updatedTrip = await this.tripsRepository.updateTripStatus(trip.id, TripStatus.Completed);
+    const completionDate = new Date();
+    const updatedTrip = await this.tripsRepository.completeTrip({
+      tripId: trip.id,
+      completedAt: completionDate,
+      closureNote: normalizedClosureNote,
+    });
     const tracking = await this.tripsRepository.endTripLiveTracking(trip.id);
     const recipientMembershipIds = [
       membership.id,

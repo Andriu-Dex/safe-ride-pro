@@ -37,6 +37,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
     updateTripStatus: jest.fn(),
+    completeTrip: jest.fn(),
     autoCancelTripForDriverAbsence: jest.fn(),
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
@@ -91,7 +92,9 @@ function buildTrip(status: TripStatus, overrides: Partial<TripRecord> = {}): Tri
     basePriceReference: 2.5,
     detourSurchargeReference: null,
     notes: null,
+    closureNote: null,
     cancelledAt: null,
+    completedAt: null,
     cancellationTiming: null,
     createdAt: new Date('2030-01-01T09:00:00.000Z'),
     ...overrides,
@@ -429,7 +432,11 @@ describe('Trip status transition use cases', () => {
     });
     repository.findTripById.mockResolvedValue(buildTrip(TripStatus.InProgress));
     repository.listTripExecutionPassengers.mockResolvedValue([]);
-    repository.updateTripStatus.mockResolvedValue(buildTrip(TripStatus.Completed));
+    repository.completeTrip.mockResolvedValue(
+      buildTrip(TripStatus.Completed, {
+        completedAt: new Date('2030-01-01T10:31:00.000Z'),
+      }),
+    );
     repository.endTripLiveTracking.mockResolvedValue({
       tripId: 'trip-1',
       status: TripLiveTrackingStatus.Ended,
@@ -447,7 +454,11 @@ describe('Trip status transition use cases', () => {
     const response = await useCase.execute('user-1', 'trip-1');
 
     expect(response.message).toBe('Viaje finalizado correctamente.');
-    expect(repository.updateTripStatus).toHaveBeenCalledWith('trip-1', TripStatus.Completed);
+    expect(repository.completeTrip).toHaveBeenCalledWith({
+      tripId: 'trip-1',
+      completedAt: expect.any(Date),
+      closureNote: null,
+    });
     expect(auditService.record).toHaveBeenCalledWith({
       institutionId: 'institution-1',
       actorUserId: 'user-1',
@@ -496,7 +507,7 @@ describe('Trip status transition use cases', () => {
       ),
     );
 
-    expect(repository.updateTripStatus).not.toHaveBeenCalled();
+    expect(repository.completeTrip).not.toHaveBeenCalled();
   });
 
   it('allows exceptional closure when an unresolved passenger exists and the closure note is valid', async () => {
@@ -525,7 +536,12 @@ describe('Trip status transition use cases', () => {
         droppedOffAt: null,
       },
     ]);
-    repository.updateTripStatus.mockResolvedValue(buildTrip(TripStatus.Completed));
+    repository.completeTrip.mockResolvedValue(
+      buildTrip(TripStatus.Completed, {
+        completedAt: new Date('2030-01-01T10:31:00.000Z'),
+        closureNote: 'Pasajero no localizado en el punto',
+      }),
+    );
     repository.endTripLiveTracking.mockResolvedValue({
       tripId: 'trip-1',
       status: TripLiveTrackingStatus.Ended,
@@ -547,7 +563,11 @@ describe('Trip status transition use cases', () => {
     );
 
     expect(response.message).toBe('Viaje finalizado con cierre operativo excepcional.');
-    expect(repository.updateTripStatus).toHaveBeenCalledWith('trip-1', TripStatus.Completed);
+    expect(repository.completeTrip).toHaveBeenCalledWith({
+      tripId: 'trip-1',
+      completedAt: expect.any(Date),
+      closureNote: 'Pasajero no localizado en el punto',
+    });
     expect(auditService.record).toHaveBeenCalledWith({
       institutionId: 'institution-1',
       actorUserId: 'user-1',

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { ApiError } from '../../../lib/api-client';
 import { type DriverTripLiveTrackingState } from '../hooks/use-driver-trip-live-tracking';
+import { buildTripLiveTrackingInsights } from '../lib/trip-live-tracking-metrics';
 import { getTripById, getTripLiveTracking } from '../lib/trip-api';
 import {
   getCancellationTimingLabel,
@@ -199,6 +200,11 @@ export function TripLiveTrackingPanel({
   const trackingSteps = buildTrackingSteps(selectedCandidate.status);
   const liveSignalLabel = getTrackingSignalLabel(liveTracking?.signalStatus ?? null);
   const liveSignalTone = getTrackingSignalTone(liveTracking?.signalStatus ?? null);
+  const trackingInsights = buildTripLiveTrackingInsights(
+    tripDetail,
+    liveTracking,
+    selectedCandidate.status,
+  );
   const lastSignalValue = formatLastSignal(
     liveTracking?.lastSignalAt ?? null,
     liveTracking?.lastSignalAgeInSeconds ?? null,
@@ -206,6 +212,10 @@ export function TripLiveTrackingPanel({
   const speedValue = formatSpeed(liveTracking?.currentSpeedKph ?? null);
   const accuracyValue = formatAccuracy(liveTracking?.currentAccuracyMeters ?? null);
   const headingValue = formatHeading(liveTracking?.currentHeadingDegrees ?? null);
+  const signalAlertMessage = getTrackingSignalAlertMessage(
+    liveTracking?.signalStatus ?? null,
+    selectedCandidate.status,
+  );
 
   return (
     <article className="trip-live-panel">
@@ -260,6 +270,12 @@ export function TripLiveTrackingPanel({
           <div className="trip-live-progress-bar" aria-hidden="true">
             <span style={{ width: `${trackingProgress}%` }} />
           </div>
+          <small>
+            {getTrackingProgressCaption(
+              selectedCandidate.status,
+              trackingInsights.geoProgressPercentage,
+            )}
+          </small>
         </div>
       </div>
 
@@ -272,6 +288,11 @@ export function TripLiveTrackingPanel({
                   ? 'Ruta y posicion actual'
                   : 'Ruta planificada'}
               </strong>
+              <p className="panel-text">
+                {selectedCandidate.status === TripStatus.InProgress
+                  ? 'Seguimiento activo con ruta base, puntos GPS recientes y posicion actual.'
+                  : 'Vista previa de la ruta antes del inicio operativo.'}
+              </p>
             </div>
             {tripDetail?.cancellationTiming ? (
               <StatusPill
@@ -302,9 +323,41 @@ export function TripLiveTrackingPanel({
               <strong>Ruta precisa no disponible.</strong>
             </div>
           )}
+
+          {routePrecisionVisible ? (
+            <div className="trip-live-map-legend" aria-label="Leyenda del mapa">
+              <LegendItem accentClassName="trip-live-legend-origin" label="Origen" />
+              <LegendItem accentClassName="trip-live-legend-destination" label="Destino" />
+              <LegendItem accentClassName="trip-live-legend-history" label="Recorrido reciente" />
+              <LegendItem accentClassName="trip-live-legend-live" label="Posicion actual" />
+            </div>
+          ) : null}
         </div>
 
         <div className="trip-live-sidebar">
+          <div className="trip-live-highlight-grid">
+            <TrackingStatCard
+              compact
+              label="Avance geoespacial"
+              value={formatPercentage(trackingInsights.geoProgressPercentage)}
+            />
+            <TrackingStatCard
+              compact
+              label="Distancia restante"
+              value={formatDistance(trackingInsights.distanceRemainingMeters)}
+            />
+            <TrackingStatCard
+              compact
+              label="Distancia recorrida"
+              value={formatDistance(trackingInsights.distanceCoveredMeters)}
+            />
+            <TrackingStatCard
+              compact
+              label="Tiempo transcurrido"
+              value={formatElapsedTime(trackingInsights.elapsedSeconds)}
+            />
+          </div>
+
           <div className="trip-live-stat-grid">
             <TrackingStatCard
               label="Salida programada"
@@ -319,21 +372,26 @@ export function TripLiveTrackingPanel({
               label="Ocupacion"
               value={`${selectedCandidate.seatCount - selectedCandidate.availableSeats}/${selectedCandidate.seatCount}`}
             />
-            <TrackingStatCard
-              label="Ultima senal"
-              value={lastSignalValue}
-            />
-            <TrackingStatCard
-              label="Precision"
-              value={accuracyValue}
-            />
+            <TrackingStatCard label="Ultima senal" value={lastSignalValue} />
+            <TrackingStatCard label="Precision" value={accuracyValue} />
             <TrackingStatCard label="Velocidad" value={speedValue} />
             <TrackingStatCard label="Rumbo" value={headingValue} />
             <TrackingStatCard
               label="Modalidad"
               value={tripDetail ? getTripRouteModeLabel(tripDetail.routeMode) : 'Cargando'}
             />
-            <TrackingStatCard label="Estado compartido" value={getTripStatusLabel(selectedCandidate.status)} />
+            <TrackingStatCard
+              label="Puntos registrados"
+              value={`${trackingInsights.sampledPointCount}`}
+            />
+            <TrackingStatCard
+              label="Ruta estimada"
+              value={formatDistance(trackingInsights.routeDistanceMeters)}
+            />
+            <TrackingStatCard
+              label="Estado compartido"
+              value={getTripStatusLabel(selectedCandidate.status)}
+            />
           </div>
 
           <div className="trip-live-timeline">
@@ -356,6 +414,33 @@ export function TripLiveTrackingPanel({
             </div>
           </div>
 
+          {signalAlertMessage ? (
+            <div className="trip-live-note-card">
+              <strong>Atencion del seguimiento</strong>
+              <p>{signalAlertMessage}</p>
+            </div>
+          ) : null}
+
+          {trackingInsights.recentCheckpoints.length ? (
+            <div className="trip-live-note-card">
+              <div className="trip-live-section-heading">
+                <strong>Ultimos puntos GPS</strong>
+                <span>{trackingInsights.sampledPointCount} muestras</span>
+              </div>
+              <div className="trip-live-checkpoint-list">
+                {trackingInsights.recentCheckpoints.map((checkpoint) => (
+                  <div key={checkpoint.id} className="trip-live-checkpoint-item">
+                    <strong>{formatTime(checkpoint.capturedAt)}</strong>
+                    <span>
+                      Precision {formatAccuracy(checkpoint.accuracyMeters)} | Velocidad{' '}
+                      {formatSpeed(checkpoint.speedKph)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {driverCaptureState?.detail && selectedCandidate.status === TripStatus.InProgress ? (
             <div className="trip-live-note-card">
               <strong>GPS del conductor</strong>
@@ -375,11 +460,34 @@ export function TripLiveTrackingPanel({
   );
 }
 
-function TrackingStatCard({ label, value }: { label: string; value: string }) {
+function TrackingStatCard({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+}) {
   return (
-    <div className="trip-live-stat-card">
+    <div className={compact ? 'trip-live-stat-card trip-live-stat-card-compact' : 'trip-live-stat-card'}>
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function LegendItem({
+  accentClassName,
+  label,
+}: {
+  accentClassName: string;
+  label: string;
+}) {
+  return (
+    <div className="trip-live-legend-item">
+      <span className={['trip-live-legend-swatch', accentClassName].join(' ')} />
+      <small>{label}</small>
     </div>
   );
 }
@@ -451,6 +559,25 @@ function getTrackingProgress(status: TripStatus): number {
   }
 }
 
+function getTrackingProgressCaption(
+  status: TripStatus,
+  geoProgressPercentage: number | null,
+): string {
+  if (status === TripStatus.InProgress && geoProgressPercentage !== null) {
+    return `${geoProgressPercentage}% estimado del trayecto cubierto`;
+  }
+
+  if (status === TripStatus.Completed) {
+    return 'Trayecto cerrado correctamente';
+  }
+
+  if (status === TripStatus.Cancelled) {
+    return 'Trayecto cerrado por cancelacion';
+  }
+
+  return 'Progreso operativo del viaje';
+}
+
 function getTrackingSignalLabel(signalStatus: TripLiveTrackingSignalStatus | null): string {
   switch (signalStatus) {
     case TripLiveTrackingSignalStatus.Live:
@@ -485,12 +612,41 @@ function getTrackingSignalTone(
   }
 }
 
+function getTrackingSignalAlertMessage(
+  signalStatus: TripLiveTrackingSignalStatus | null,
+  tripStatus: TripStatus,
+): string | null {
+  if (tripStatus !== TripStatus.InProgress) {
+    return null;
+  }
+
+  switch (signalStatus) {
+    case TripLiveTrackingSignalStatus.Pending:
+      return 'El viaje ya puede ser seguido, pero todavia no se ha recibido una primera posicion GPS.';
+    case TripLiveTrackingSignalStatus.Delayed:
+      return 'La ultima posicion viene con retraso. Conviene revisar permiso de ubicacion, bateria o cobertura.';
+    case TripLiveTrackingSignalStatus.Offline:
+      return 'No se estan recibiendo nuevas posiciones. El seguimiento puede haber perdido senal o permiso GPS.';
+    default:
+      return null;
+  }
+}
+
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
+  });
+}
+
+function formatTime(value: string): string {
+  return new Date(value).toLocaleTimeString('es-EC', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     hour12: false,
   });
 }
@@ -518,24 +674,19 @@ function formatLastSignal(value: string | null, ageInSeconds: number | null): st
     return 'Pendiente';
   }
 
-  const timeLabel = new Date(value).toLocaleTimeString('es-EC', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+  const timeLabel = formatTime(value);
 
   if (ageInSeconds === null) {
     return timeLabel;
   }
 
   if (ageInSeconds < 60) {
-    return `${timeLabel} · ${ageInSeconds}s`;
+    return `${timeLabel} - ${ageInSeconds}s`;
   }
 
   const ageInMinutes = Math.round(ageInSeconds / 60);
 
-  return `${timeLabel} · ${ageInMinutes} min`;
+  return `${timeLabel} - ${ageInMinutes} min`;
 }
 
 function formatSpeed(value: number | null): string {
@@ -559,5 +710,45 @@ function formatHeading(value: number | null): string {
     return 'Sin dato';
   }
 
-  return `${Math.round(value)}°`;
+  return `${Math.round(value)} grados`;
+}
+
+function formatDistance(value: number | null): string {
+  if (value === null) {
+    return 'Sin dato';
+  }
+
+  if (value < 1_000) {
+    return `${Math.round(value)} m`;
+  }
+
+  return `${(value / 1_000).toFixed(1)} km`;
+}
+
+function formatPercentage(value: number | null): string {
+  if (value === null) {
+    return 'Sin dato';
+  }
+
+  return `${value}%`;
+}
+
+function formatElapsedTime(value: number | null): string {
+  if (value === null) {
+    return 'Sin dato';
+  }
+
+  if (value < 60) {
+    return `${value}s`;
+  }
+
+  const totalMinutes = Math.floor(value / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${totalMinutes} min`;
+  }
+
+  return minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`;
 }

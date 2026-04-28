@@ -15,6 +15,8 @@ export type ReportRecord = {
   tripOriginLabel: string;
   tripDestinationLabel: string;
   tripDepartureAt: string;
+  tripCompletedAt: string | null;
+  tripClosureNote: string | null;
   status: ReportStatus;
   reason: string;
   description: string | null;

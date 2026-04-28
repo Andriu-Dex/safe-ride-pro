@@ -21,6 +21,7 @@ import {
 
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import {
+  CompleteTripInput,
   CreateTripInput,
   RecordTripLiveTrackingPositionInput,
   TripExecutionPassengerRecord,
@@ -450,6 +451,20 @@ export class PrismaTripsRepository implements TripsRepository {
     return this.mapTrip(trip);
   }
 
+  async completeTrip(input: CompleteTripInput): Promise<TripRecord> {
+    const trip = await this.prisma.trip.update({
+      where: { id: input.tripId },
+      data: {
+        status: TripStatus.Completed,
+        completedAt: input.completedAt,
+        closureNote: input.closureNote ?? null,
+      },
+      include: this.tripInclude(),
+    });
+
+    return this.mapTrip(trip);
+  }
+
   async getTripLiveTrackingByTripId(
     tripId: string,
     historyLimit = 40,
@@ -646,7 +661,9 @@ export class PrismaTripsRepository implements TripsRepository {
     basePriceReference: { toString(): string };
     detourSurchargeReference: { toString(): string } | null;
     notes: string | null;
+    closureNote: string | null;
     cancelledAt: Date | null;
+    completedAt: Date | null;
     createdAt: Date;
     institution: { name: string };
     driverMembership: {
@@ -688,7 +705,9 @@ export class PrismaTripsRepository implements TripsRepository {
         ? Number.parseFloat(trip.detourSurchargeReference.toString())
         : null,
       notes: trip.notes,
+      closureNote: trip.closureNote,
       cancelledAt: trip.cancelledAt,
+      completedAt: trip.completedAt,
       cancellationTiming: getCancellationTiming({
         departureAt: trip.departureAt,
         cancelledAt: trip.cancelledAt,

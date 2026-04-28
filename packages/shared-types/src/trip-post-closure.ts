@@ -17,6 +17,7 @@ type TripPostClosureInput = {
   status: string;
   departureAt?: Date | string | null;
   estimatedArrivalAt?: Date | string | null;
+  completedAt?: Date | string | null;
   cancelledAt?: Date | string | null;
   now?: Date;
 };
@@ -76,15 +77,18 @@ export function getTripPostClosureSummary({
   status,
   departureAt,
   estimatedArrivalAt,
+  completedAt,
   cancelledAt,
   now = new Date(),
 }: TripPostClosureInput): TripPostClosureSummary {
   const normalizedDepartureAt = toDate(departureAt);
   const normalizedEstimatedArrivalAt = toDate(estimatedArrivalAt);
+  const normalizedCompletedAt = toDate(completedAt);
   const normalizedCancelledAt = toDate(cancelledAt);
 
   if (status === 'COMPLETED') {
-    const actionReferenceAt = normalizedEstimatedArrivalAt ?? normalizedDepartureAt;
+    const actionReferenceAt =
+      normalizedCompletedAt ?? normalizedEstimatedArrivalAt ?? normalizedDepartureAt;
     const actionWindowClosesAt = getTripPostActionWindowClosesAt(actionReferenceAt);
     const isActionWindowOpen = isWithinTripPostActionWindow({
       referenceAt: actionReferenceAt,

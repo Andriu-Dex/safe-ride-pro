@@ -96,7 +96,9 @@ export class ListTripsUseCase {
       basePriceReference: trip.basePriceReference,
       detourSurchargeReference: trip.detourSurchargeReference,
       notes: trip.notes,
+      closureNote: trip.closureNote,
       cancelledAt: trip.cancelledAt,
+      completedAt: trip.completedAt,
       cancellationTiming: trip.cancellationTiming,
       createdAt: trip.createdAt,
     }));

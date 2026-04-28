@@ -4165,11 +4165,55 @@ main {
   font-size: 1.02rem;
 }
 
+.trip-live-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.trip-live-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(23, 51, 56, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  padding: 0.38rem 0.65rem;
+}
+
+.trip-live-legend-item small {
+  color: var(--color-text-soft);
+  font-weight: 700;
+}
+
+.trip-live-legend-swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 999px;
+}
+
+.trip-live-legend-origin {
+  background: #0f766e;
+}
+
+.trip-live-legend-destination {
+  background: #d39d35;
+}
+
+.trip-live-legend-history {
+  background: #14b8a6;
+}
+
+.trip-live-legend-live {
+  background: radial-gradient(circle at 30% 30%, #9ffcf3, #0f766e 58%, #0a2f31);
+}
+
 .trip-live-sidebar {
   display: grid;
   gap: 0.9rem;
 }
 
+.trip-live-highlight-grid,
 .trip-live-stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4196,6 +4240,16 @@ main {
 .trip-live-stat-card strong {
   font-size: 0.96rem;
   line-height: 1.45;
+}
+
+.trip-live-stat-card-compact {
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 48%),
+    rgba(255, 255, 255, 0.86);
+}
+
+.trip-live-stat-card-compact strong {
+  font-size: 1.08rem;
 }
 
 .trip-live-timeline,
@@ -4261,6 +4315,25 @@ main {
   margin: 0.2rem 0 0;
   color: var(--color-text-soft);
   line-height: 1.55;
+}
+
+.trip-live-checkpoint-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.trip-live-checkpoint-item {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(23, 51, 56, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.75rem 0.8rem;
+}
+
+.trip-live-checkpoint-item span {
+  color: var(--color-text-soft);
+  line-height: 1.5;
 }
 
 .trip-command-center,
@@ -5624,6 +5697,7 @@ main {
   .trip-live-summary-strip,
   .trip-live-layout,
   .trip-command-phase-strip,
+  .trip-live-highlight-grid,
   .trip-live-stat-grid,
   .trip-command-center-grid,
   .ride-companion-grid,
@@ -5633,6 +5707,11 @@ main {
   .ride-companion-stat-grid,
   .ride-companion-location-grid {
     grid-template-columns: 1fr;
+  }
+
+  .trip-live-map-legend {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .trip-command-center-header,

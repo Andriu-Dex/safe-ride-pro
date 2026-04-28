@@ -25,6 +25,7 @@ export type ReportOpportunity = {
   incidentLabel: string;
   incidentTone: 'neutral' | 'success' | 'warning' | 'danger';
   incidentSummary: string;
+  tripClosureNote: string | null;
   windowClosesAt: string;
 };
 
@@ -199,6 +200,12 @@ export function ReportOpportunityCard({
       </p>
       <p className="panel-text">Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
       <p className="form-helper compact-helper">{opportunity.incidentSummary}</p>
+      {opportunity.tripClosureNote ? (
+        <div className="audit-note-banner audit-note-banner-muted">
+          <span>Nota de cierre operativo</span>
+          <p>{opportunity.tripClosureNote}</p>
+        </div>
+      ) : null}
       <p className="form-helper compact-helper">
         Disponible hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}.
       </p>

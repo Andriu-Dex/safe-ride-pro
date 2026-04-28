@@ -84,6 +84,7 @@ export class PrismaReportsRepository implements ReportsRepository {
       destinationLabel: trip.destinationLabel,
       departureAt: trip.departureAt,
       estimatedArrivalAt: trip.estimatedArrivalAt,
+      completedAt: trip.completedAt,
       cancelledAt: trip.cancelledAt,
     };
   }
@@ -258,6 +259,8 @@ export class PrismaReportsRepository implements ReportsRepository {
       originLabel: string;
       destinationLabel: string;
       departureAt: Date;
+      completedAt: Date | null;
+      closureNote: string | null;
       institution: {
         name: string;
       };
@@ -293,6 +296,8 @@ export class PrismaReportsRepository implements ReportsRepository {
       tripOriginLabel: report.trip.originLabel,
       tripDestinationLabel: report.trip.destinationLabel,
       tripDepartureAt: report.trip.departureAt,
+      tripCompletedAt: report.trip.completedAt,
+      tripClosureNote: report.trip.closureNote,
       status: report.status as ReportStatus,
       reason: report.reason,
       description: report.description,
