@@ -1,6 +1,8 @@
 import {
   CancellationTiming,
   getTripPostClosureSummary,
+  isTripPaymentClosed,
+  isTripPaymentSettled,
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
@@ -17,6 +19,12 @@ import {
 } from '../../trip-requests/lib/trip-request-labels';
 import { wasConfirmedBeforeClosure } from '../../trip-requests/lib/trip-request-closure';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
+import {
+  formatTripPaymentAmount,
+  getPaymentProviderLabel,
+  getTripPaymentStatusLabel,
+  getTripPaymentStatusTone,
+} from '../../payments/lib/payment-labels';
 import {
   getTripClosureIncidentLabel,
   getTripClosureIncidentTone,
@@ -39,6 +47,7 @@ type TripsRequestsWorkspaceProps = {
   incomingRequests: TripRequestRecord[];
   myRequests: TripRequestRecord[];
   isMutatingRequestId: string | null;
+  isMutatingPaymentId: string | null;
   noShowNotes: Record<string, string>;
   defaultNoShowNote: string;
   canAcceptIncomingRequest: (request: TripRequestRecord) => boolean;
@@ -49,6 +58,8 @@ type TripsRequestsWorkspaceProps = {
   onNoShowNoteChange: (requestId: string, value: string) => void;
   onMarkNoShow: (requestId: string) => void;
   onCancelMyRequest: (requestId: string) => void;
+  onCreatePaymentCheckout: (paymentId: string) => void;
+  onRefreshPaymentStatus: (paymentId: string) => void;
   isRefreshingData?: boolean;
   onExploreTrips: () => void;
   accessToken?: string;
@@ -61,6 +72,7 @@ export function TripsRequestsWorkspace({
   incomingRequests,
   myRequests,
   isMutatingRequestId,
+  isMutatingPaymentId,
   noShowNotes,
   defaultNoShowNote,
   canAcceptIncomingRequest,
@@ -71,6 +83,8 @@ export function TripsRequestsWorkspace({
   onNoShowNoteChange,
   onMarkNoShow,
   onCancelMyRequest,
+  onCreatePaymentCheckout,
+  onRefreshPaymentStatus,
   isRefreshingData = false,
   onExploreTrips,
   accessToken,
@@ -133,8 +147,11 @@ export function TripsRequestsWorkspace({
         <PassengerActiveRidePanel
           canCancelOwnRequest={canCancelOwnRequest}
           isMutatingRequestId={isMutatingRequestId}
+          isMutatingPaymentId={isMutatingPaymentId}
           myRequests={myRequests}
           onCancelMyRequest={onCancelMyRequest}
+          onCreatePaymentCheckout={onCreatePaymentCheckout}
+          onRefreshPaymentStatus={onRefreshPaymentStatus}
         />
       </div>
 
@@ -166,6 +183,12 @@ export function TripsRequestsWorkspace({
                         tone={getTripRequestExecutionStatusTone(request.executionStatus)}
                       />
                     ) : null}
+                    {request.payment ? (
+                      <StatusPill
+                        label={getTripPaymentStatusLabel(request.payment.status)}
+                        tone={getTripPaymentStatusTone(request.payment.status)}
+                      />
+                    ) : null}
                   </div>
                 </div>
 
@@ -182,6 +205,14 @@ export function TripsRequestsWorkspace({
                     value={getTripRequestExecutionStatusLabel(request.executionStatus)}
                   />
                   <RequestMetaItem label="Pasajero" value={request.passengerFullName} />
+                  <RequestMetaItem
+                    label="Pago"
+                    value={
+                      request.payment
+                        ? getTripPaymentStatusLabel(request.payment.status)
+                        : 'Aun no generado'
+                    }
+                  />
                 </div>
 
                 {request.requestMessage ? (
@@ -212,6 +243,16 @@ export function TripsRequestsWorkspace({
                           : 'neutral'
                       }
                     />
+                  </div>
+                ) : null}
+                {request.payment ? (
+                  <div className="trip-request-note trip-request-note-muted">
+                    <strong>Pago del pasajero</strong>
+                    <p>
+                      {formatTripPaymentAmount(request.payment.amount, request.payment.currencyCode)}
+                      {' | '}
+                      {getPaymentProviderLabel(request.payment.provider)}
+                    </p>
                   </div>
                 ) : null}
                 {canMarkRequestAsNoShow(request) ? (
@@ -286,6 +327,12 @@ export function TripsRequestsWorkspace({
                         tone={getTripRequestExecutionStatusTone(request.executionStatus)}
                       />
                     ) : null}
+                    {request.payment ? (
+                      <StatusPill
+                        label={getTripPaymentStatusLabel(request.payment.status)}
+                        tone={getTripPaymentStatusTone(request.payment.status)}
+                      />
+                    ) : null}
                   </div>
                 </div>
 
@@ -298,12 +345,33 @@ export function TripsRequestsWorkspace({
                     label="Ejecucion"
                     value={getTripRequestExecutionStatusLabel(request.executionStatus)}
                   />
+                  <RequestMetaItem
+                    label="Pago"
+                    value={
+                      request.payment
+                        ? formatTripPaymentAmount(request.payment.amount, request.payment.currencyCode)
+                        : 'Sin cargo'
+                    }
+                  />
                 </div>
 
                 {request.reviewNote ? (
                   <div className="trip-request-note trip-request-note-muted">
                     <strong>Revision</strong>
                     <p>{request.reviewNote}</p>
+                  </div>
+                ) : null}
+                {request.payment ? (
+                  <div className="trip-request-note trip-request-note-muted">
+                    <strong>Estado de pago</strong>
+                    <p>
+                      {getTripPaymentStatusLabel(request.payment.status)}
+                      {' | '}
+                      {getPaymentProviderLabel(request.payment.provider)}
+                    </p>
+                    {request.payment.paidAt ? (
+                      <p>Confirmado {formatDateTime(request.payment.paidAt)}</p>
+                    ) : null}
                   </div>
                 ) : null}
                 {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
@@ -335,6 +403,27 @@ export function TripsRequestsWorkspace({
                     >
                       Cancelar solicitud
                     </Button>
+                  </div>
+                ) : null}
+                {request.payment ? (
+                  <div className="button-row trip-request-action-row">
+                    {!isTripPaymentSettled(request.payment.status) && !isTripPaymentClosed(request.payment.status) ? (
+                      <Button
+                        disabled={isMutatingPaymentId === request.payment.id}
+                        onClick={() => onCreatePaymentCheckout(request.payment!.id)}
+                      >
+                        {request.payment.checkoutUrl ? 'Abrir pago' : 'Pagar con PayPal'}
+                      </Button>
+                    ) : null}
+                    {!isTripPaymentSettled(request.payment.status) ? (
+                      <Button
+                        disabled={isMutatingPaymentId === request.payment.id}
+                        onClick={() => onRefreshPaymentStatus(request.payment!.id)}
+                        variant="secondary"
+                      >
+                        Actualizar pago
+                      </Button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

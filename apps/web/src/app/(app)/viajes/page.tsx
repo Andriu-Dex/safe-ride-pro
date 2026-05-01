@@ -14,7 +14,7 @@ import {
   VehicleType,
 } from '@saferidepro/shared-types';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiError } from '../../../lib/api-client';
@@ -31,6 +31,11 @@ import {
   getDriverStatusLabel,
   getDriverStatusTone,
 } from '../../../modules/driver/lib/driver-status';
+import {
+  capturePayment,
+  createPaymentCheckoutLink,
+  refreshPaymentStatus,
+} from '../../../modules/payments/lib/payment-api';
 import {
   acceptTripRequest,
   cancelTripRequest,
@@ -220,6 +225,7 @@ function canCreateRequestForTrip(trip: TripRecord, hasActiveRequest: boolean): b
 
 export default function TripsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { authSession, isHydrated, refreshSession } = useAuth();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const [vehicleOverview, setVehicleOverview] = useState<VehicleOverview | null>(null);
@@ -238,11 +244,15 @@ export default function TripsPage() {
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isMutatingTripId, setIsMutatingTripId] = useState<string | null>(null);
   const [isMutatingRequestId, setIsMutatingRequestId] = useState<string | null>(null);
+  const [isMutatingPaymentId, setIsMutatingPaymentId] = useState<string | null>(null);
+  const paymentCaptureInFlightRef = useRef<string | null>(null);
   const [activeWorkspace, setActiveWorkspace] = useState<TripsWorkspaceSection>('operation');
   const [tripErrorMessage, setTripErrorMessage] = useState<string | null>(null);
   const [tripSuccessMessage, setTripSuccessMessage] = useState<string | null>(null);
   const [requestErrorMessage, setRequestErrorMessage] = useState<string | null>(null);
   const [requestSuccessMessage, setRequestSuccessMessage] = useState<string | null>(null);
+  const [paymentErrorMessage, setPaymentErrorMessage] = useState<string | null>(null);
+  const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [trackingVersionByTripId, setTrackingVersionByTripId] = useState<Record<string, number>>({});
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -461,6 +471,85 @@ export default function TripsPage() {
     pushToast('Solicitud actualizada', requestSuccessMessage, 'success');
     setRequestSuccessMessage(null);
   }, [pushToast, requestSuccessMessage]);
+
+  useEffect(() => {
+    if (!paymentErrorMessage) {
+      return;
+    }
+
+    pushToast('Pago no completado', paymentErrorMessage, 'error');
+    setPaymentErrorMessage(null);
+  }, [paymentErrorMessage, pushToast]);
+
+  useEffect(() => {
+    if (!paymentSuccessMessage) {
+      return;
+    }
+
+    pushToast('Pago actualizado', paymentSuccessMessage, 'success');
+    setPaymentSuccessMessage(null);
+  }, [paymentSuccessMessage, pushToast]);
+
+  useEffect(() => {
+    const paymentId = searchParams.get('paymentId');
+    const paymentProvider = searchParams.get('paymentProvider');
+    const paymentToken = searchParams.get('token');
+    const paymentResult = searchParams.get('paymentResult');
+
+    if (!paymentId && !paymentResult) {
+      return;
+    }
+
+    if (paymentProvider === 'paypal' && paymentId && paymentToken && authSession) {
+      const captureKey = `${paymentId}:${paymentToken}`;
+
+      if (paymentCaptureInFlightRef.current === captureKey) {
+        return;
+      }
+
+      paymentCaptureInFlightRef.current = captureKey;
+      setIsMutatingPaymentId(paymentId);
+
+      void capturePayment(authSession.accessToken, paymentId)
+        .then(async (response) => {
+          await refreshTripsData();
+          setPaymentSuccessMessage(response.message);
+        })
+        .catch(async (error) => {
+          if (error instanceof ApiError && error.status === 403) {
+            await refreshSession().catch(() => undefined);
+          }
+
+          setPaymentErrorMessage(
+            getApiErrorMessage(error, 'No fue posible confirmar el pago con PayPal.'),
+          );
+          await refreshTripsData();
+        })
+        .finally(() => {
+          setIsMutatingPaymentId(null);
+          paymentCaptureInFlightRef.current = null;
+          router.replace('/viajes');
+        });
+
+      return;
+    }
+
+    if (paymentResult === 'cancel') {
+      pushToast(
+        'Pago cancelado',
+        'El flujo de PayPal fue cancelado antes de confirmar el pago.',
+        'info',
+      );
+    } else if (paymentResult === 'error') {
+      pushToast(
+        'Pago no completado',
+        'El intento de pago termino con error. Puedes generar otro enlace o intentarlo de nuevo.',
+        'error',
+      );
+    }
+
+    router.replace('/viajes');
+  }, [authSession, pushToast, refreshSession, refreshTripsData, router, searchParams]);
 
   const handleFilterChange = (field: keyof TripFilters, value: string) => {
     setFilterFormValues((currentFilters) => ({
@@ -748,6 +837,68 @@ export default function TripsPage() {
       await refreshTripsData();
     } finally {
       setIsMutatingRequestId(null);
+    }
+  };
+
+  const handleCreatePaymentCheckout = async (paymentId: string) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsMutatingPaymentId(paymentId);
+    setPaymentErrorMessage(null);
+    setPaymentSuccessMessage(null);
+
+    try {
+      const response = await createPaymentCheckoutLink(authSession.accessToken, paymentId);
+      await reloadData();
+      setPaymentSuccessMessage(response.message);
+
+      if (response.checkoutUrl) {
+        const newWindow = window.open(response.checkoutUrl, '_blank', 'noopener,noreferrer');
+
+        if (!newWindow) {
+          window.location.href = response.checkoutUrl;
+        }
+      }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setPaymentErrorMessage(
+        getApiErrorMessage(error, 'No fue posible preparar el enlace de pago.'),
+      );
+      await refreshTripsData();
+    } finally {
+      setIsMutatingPaymentId(null);
+    }
+  };
+
+  const handleRefreshPaymentStatus = async (paymentId: string) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsMutatingPaymentId(paymentId);
+    setPaymentErrorMessage(null);
+    setPaymentSuccessMessage(null);
+
+    try {
+      const response = await refreshPaymentStatus(authSession.accessToken, paymentId);
+      await reloadData();
+      setPaymentSuccessMessage(response.message);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 403) {
+        await refreshSession().catch(() => undefined);
+      }
+
+      setPaymentErrorMessage(
+        getApiErrorMessage(error, 'No fue posible actualizar el estado del pago.'),
+      );
+      await refreshTripsData();
+    } finally {
+      setIsMutatingPaymentId(null);
     }
   };
 
@@ -1077,9 +1228,11 @@ export default function TripsPage() {
                 canRejectIncomingRequest={canRejectIncomingRequest}
                 defaultNoShowNote={DEFAULT_NO_SHOW_NOTE}
                 incomingRequests={incomingRequests}
+                isMutatingPaymentId={isMutatingPaymentId}
                 isMutatingRequestId={isMutatingRequestId}
                 isRefreshingData={isRefreshingData}
                 myRequests={myRequests}
+                onCreatePaymentCheckout={(paymentId) => void handleCreatePaymentCheckout(paymentId)}
                 noShowNotes={noShowNotes}
                 onCancelMyRequest={(requestId) => void handleCancelMyRequest(requestId)}
                 onExploreTrips={() => setActiveWorkspace('discover')}
@@ -1087,6 +1240,7 @@ export default function TripsPage() {
                   void handleIncomingRequestAction(requestId, action)}
                 onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
                 onNoShowNoteChange={handleNoShowNoteChange}
+                onRefreshPaymentStatus={(paymentId) => void handleRefreshPaymentStatus(paymentId)}
                 realtimeStatusLabel={realtimeStatusLabel}
                 realtimeStatusTone={realtimeStatusTone}
                 trackingVersionByTripId={trackingVersionByTripId}

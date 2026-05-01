@@ -203,6 +203,13 @@ export {
 } from './trip-search';
 
 export {
+  isTripPaymentClosed,
+  isTripPaymentSettled,
+  PaymentProvider,
+  TripPaymentStatus,
+} from './trip-payment';
+
+export {
   getTripLiveTrackingSignalAgeInSeconds,
   getTripLiveTrackingSignalStatus,
   TRIP_LIVE_TRACKING_DELAYED_AFTER_SECONDS,

@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 
 export type AppEnvironment = {
   port: number;
+  apiPublicBaseUrl: string;
   databaseUrl: string;
   jwtSecret: string;
   accessTokenTtlMinutes: number;
@@ -23,6 +24,12 @@ export type AppEnvironment = {
   imgurClientId: string | null;
   imgurClientSecret: string | null;
   webAppOrigins: string[];
+  paymentsCurrency: string;
+  paypalEnabled: boolean;
+  paypalApiBaseUrl: string;
+  paypalClientId: string | null;
+  paypalClientSecret: string | null;
+  paypalBrandName: string;
 };
 
 let cachedEnvironment: AppEnvironment | null = null;
@@ -176,6 +183,8 @@ export function getAppEnvironment(): AppEnvironment {
 
   cachedEnvironment = {
     port: getPositiveInteger('PORT', 3001),
+    apiPublicBaseUrl:
+      getOptionalString('API_PUBLIC_BASE_URL') ?? `http://localhost:${getPositiveInteger('PORT', 3001)}/api`,
     databaseUrl: getRequiredString('DATABASE_URL'),
     jwtSecret: getRequiredString('JWT_SECRET'),
     accessTokenTtlMinutes: getPositiveInteger('ACCESS_TOKEN_TTL_MINUTES', 15),
@@ -205,6 +214,13 @@ export function getAppEnvironment(): AppEnvironment {
     imgurClientId: getOptionalString('IMGUR_CLIENT_ID'),
     imgurClientSecret: getOptionalString('IMGUR_CLIENT_SECRET'),
     webAppOrigins: getStringList('WEB_APP_ORIGINS', ['http://localhost:3000']),
+    paymentsCurrency: getOptionalString('PAYMENTS_CURRENCY') ?? 'USD',
+    paypalEnabled: getBoolean('PAYPAL_ENABLED', false),
+    paypalApiBaseUrl:
+      getOptionalString('PAYPAL_API_BASE_URL') ?? 'https://api-m.sandbox.paypal.com',
+    paypalClientId: getOptionalString('PAYPAL_CLIENT_ID'),
+    paypalClientSecret: getOptionalString('PAYPAL_CLIENT_SECRET'),
+    paypalBrandName: getOptionalString('PAYPAL_BRAND_NAME') ?? 'SafeRidePro',
   };
 
   return cachedEnvironment;

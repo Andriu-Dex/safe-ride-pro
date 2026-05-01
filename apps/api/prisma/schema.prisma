@@ -91,6 +91,21 @@ enum TripRequestExecutionStatus {
   CANCELLED_BEFORE_BOARDING
 }
 
+enum PaymentProvider {
+  PAYPAL
+}
+
+enum TripPaymentStatus {
+  PENDING
+  CHECKOUT_READY
+  PROCESSING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+
 enum ReportStatus {
   PENDING
   UNDER_REVIEW
@@ -175,16 +190,17 @@ enum AssetStorageProvider {
 }
 
 model Institution {
-  id          String                      @id @default(uuid())
-  name        String
-  code        String                      @unique
-  isActive    Boolean                     @default(true)
-  createdAt   DateTime                    @default(now())
-  updatedAt   DateTime                    @updatedAt
-  domains     InstitutionDomain[]
-  memberships UserInstitutionMembership[]
-  trips       Trip[]
-  auditEvents AuditEvent[]
+  id           String                      @id @default(uuid())
+  name         String
+  code         String                      @unique
+  isActive     Boolean                     @default(true)
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  domains      InstitutionDomain[]
+  memberships  UserInstitutionMembership[]
+  trips        Trip[]
+  tripPayments TripPayment[]
+  auditEvents  AuditEvent[]
 
   @@map("institutions")
 }
@@ -204,36 +220,36 @@ model InstitutionDomain {
 }
 
 model User {
-  id                     String                      @id @default(uuid())
-  email                  String                      @unique
-  passwordHash           String
-  fullName               String
-  career                 String?
-  phone                  String?
-  referenceNeighborhood  String?
-  documentType           DocumentType
-  documentNumber         String
-  profilePhotoUrl        String?
+  id                          String                      @id @default(uuid())
+  email                       String                      @unique
+  passwordHash                String
+  fullName                    String
+  career                      String?
+  phone                       String?
+  referenceNeighborhood       String?
+  documentType                DocumentType
+  documentNumber              String
+  profilePhotoUrl             String?
   profilePhotoStorageProvider AssetStorageProvider?
-  profilePhotoStorageKey String?
-  globalRole             GlobalUserRole              @default(USER)
-  accountStatus          AccountStatus               @default(PENDING_EMAIL_VERIFICATION)
-  emailVerifiedAt        DateTime?
-  termsAcceptedAt        DateTime?
-  privacyAcceptedAt      DateTime?
-  safetyRulesAcceptedAt  DateTime?
-  onboardingCompletedAt  DateTime?
-  createdAt              DateTime                    @default(now())
-  updatedAt              DateTime                    @updatedAt
-  memberships            UserInstitutionMembership[]
-  emailVerificationCodes EmailVerificationCode[]
-  passwordResetCodes     PasswordResetCode[]
-  refreshTokenSessions   RefreshTokenSession[]
-  reviewedDriverProfiles DriverProfile[]             @relation("DriverProfileReviewedBy")
-  reviewedReports        Report[]                    @relation("ReportReviewedBy")
-  requestedSanctionAppeals OperationalSanctionAppeal[] @relation("SanctionAppealRequestedBy")
-  reviewedSanctionAppeals OperationalSanctionAppeal[] @relation("SanctionAppealReviewedBy")
-  auditEvents            AuditEvent[]                @relation("AuditActor")
+  profilePhotoStorageKey      String?
+  globalRole                  GlobalUserRole              @default(USER)
+  accountStatus               AccountStatus               @default(PENDING_EMAIL_VERIFICATION)
+  emailVerifiedAt             DateTime?
+  termsAcceptedAt             DateTime?
+  privacyAcceptedAt           DateTime?
+  safetyRulesAcceptedAt       DateTime?
+  onboardingCompletedAt       DateTime?
+  createdAt                   DateTime                    @default(now())
+  updatedAt                   DateTime                    @updatedAt
+  memberships                 UserInstitutionMembership[]
+  emailVerificationCodes      EmailVerificationCode[]
+  passwordResetCodes          PasswordResetCode[]
+  refreshTokenSessions        RefreshTokenSession[]
+  reviewedDriverProfiles      DriverProfile[]             @relation("DriverProfileReviewedBy")
+  reviewedReports             Report[]                    @relation("ReportReviewedBy")
+  requestedSanctionAppeals    OperationalSanctionAppeal[] @relation("SanctionAppealRequestedBy")
+  reviewedSanctionAppeals     OperationalSanctionAppeal[] @relation("SanctionAppealReviewedBy")
+  auditEvents                 AuditEvent[]                @relation("AuditActor")
 
   @@unique([documentType, documentNumber])
   @@map("users")
@@ -257,6 +273,8 @@ model UserInstitutionMembership {
   vehicles                 Vehicle[]
   driverTrips              Trip[]
   passengerTripRequests    TripRequest[]
+  passengerTripPayments    TripPayment[]            @relation("TripPaymentPassenger")
+  driverTripPayments       TripPayment[]            @relation("TripPaymentDriver")
   ratingsGiven             Rating[]                 @relation("RatingAuthor")
   ratingsReceived          Rating[]                 @relation("RatingTarget")
   reportsCreated           Report[]                 @relation("ReportReporter")
@@ -269,26 +287,26 @@ model UserInstitutionMembership {
 }
 
 model EmailVerificationCode {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   userId     String
-  tokenHash  String   @unique
+  tokenHash  String    @unique
   expiresAt  DateTime
   verifiedAt DateTime?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@map("email_verification_codes")
 }
 
 model PasswordResetCode {
-  id         String   @id @default(uuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, usedAt, expiresAt])
@@ -296,14 +314,14 @@ model PasswordResetCode {
 }
 
 model RefreshTokenSession {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   userId     String
-  tokenHash  String   @unique
+  tokenHash  String    @unique
   expiresAt  DateTime
   revokedAt  DateTime?
   lastUsedAt DateTime?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, revokedAt, expiresAt])
@@ -357,14 +375,14 @@ model VehicleBrand {
 }
 
 model VehicleModel {
-  id          String         @id @default(uuid())
+  id          String       @id @default(uuid())
   brandId     String
   name        String
   vehicleType VehicleType
-  isActive    Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  brand       VehicleBrand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  brand       VehicleBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
   vehicles    Vehicle[]
 
   @@unique([brandId, name, vehicleType])
@@ -432,6 +450,7 @@ model Trip {
   vehicle                  Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   tripRequests             TripRequest[]
   liveTracking             TripLiveTracking?
+  payments                 TripPayment[]
   ratings                  Rating[]
   reports                  Report[]
 
@@ -442,67 +461,128 @@ model Trip {
 }
 
 model TripLiveTracking {
-  id                   String                 @id @default(uuid())
-  tripId               String                 @unique
-  status               TripLiveTrackingStatus @default(READY)
-  startedAt            DateTime?
-  endedAt              DateTime?
-  lastSignalAt         DateTime?
-  currentLatitude      Float?                 @db.DoublePrecision
-  currentLongitude     Float?                 @db.DoublePrecision
-  currentAccuracyMeters Float?                @db.DoublePrecision
-  currentHeadingDegrees Float?                @db.DoublePrecision
-  currentSpeedKph      Float?                 @db.DoublePrecision
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  trip                 Trip                   @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  points               TripLiveTrackingPoint[]
+  id                    String                  @id @default(uuid())
+  tripId                String                  @unique
+  status                TripLiveTrackingStatus  @default(READY)
+  startedAt             DateTime?
+  endedAt               DateTime?
+  lastSignalAt          DateTime?
+  currentLatitude       Float?                  @db.DoublePrecision
+  currentLongitude      Float?                  @db.DoublePrecision
+  currentAccuracyMeters Float?                  @db.DoublePrecision
+  currentHeadingDegrees Float?                  @db.DoublePrecision
+  currentSpeedKph       Float?                  @db.DoublePrecision
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  trip                  Trip                    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  points                TripLiveTrackingPoint[]
 
   @@index([status, lastSignalAt])
   @@map("trip_live_trackings")
 }
 
 model TripLiveTrackingPoint {
-  id               String           @id @default(uuid())
-  trackingId       String
-  capturedAt       DateTime
-  latitude         Float            @db.DoublePrecision
-  longitude        Float            @db.DoublePrecision
-  accuracyMeters   Float?           @db.DoublePrecision
-  headingDegrees   Float?           @db.DoublePrecision
-  speedKph         Float?           @db.DoublePrecision
-  createdAt        DateTime         @default(now())
-  tracking         TripLiveTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
+  id             String           @id @default(uuid())
+  trackingId     String
+  capturedAt     DateTime
+  latitude       Float            @db.DoublePrecision
+  longitude      Float            @db.DoublePrecision
+  accuracyMeters Float?           @db.DoublePrecision
+  headingDegrees Float?           @db.DoublePrecision
+  speedKph       Float?           @db.DoublePrecision
+  createdAt      DateTime         @default(now())
+  tracking       TripLiveTracking @relation(fields: [trackingId], references: [id], onDelete: Cascade)
 
   @@index([trackingId, capturedAt])
   @@map("trip_live_tracking_points")
 }
+
 model TripRequest {
-  id                       String                    @id @default(uuid())
-  tripId                   String
-  passengerMembershipId    String
-  status                   TripRequestStatus         @default(PENDING)
-  executionStatus          TripRequestExecutionStatus?
-  requestedPickupLatitude  Float?                    @db.DoublePrecision
-  requestedPickupLongitude Float?                    @db.DoublePrecision
-  requestedDropoffLatitude Float?                    @db.DoublePrecision
-  requestedDropoffLongitude Float?                   @db.DoublePrecision
-  requestMessage           String?
-  reviewNote               String?
-  executionStatusUpdatedAt DateTime?
-  boardedAt                DateTime?
-  droppedOffAt             DateTime?
-  createdAt                DateTime                  @default(now())
-  reviewedAt               DateTime?
-  cancelledAt              DateTime?
-  trip                     Trip                      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  passengerMembership      UserInstitutionMembership @relation(fields: [passengerMembershipId], references: [id], onDelete: Cascade)
+  id                        String                      @id @default(uuid())
+  tripId                    String
+  passengerMembershipId     String
+  status                    TripRequestStatus           @default(PENDING)
+  executionStatus           TripRequestExecutionStatus?
+  requestedPickupLatitude   Float?                      @db.DoublePrecision
+  requestedPickupLongitude  Float?                      @db.DoublePrecision
+  requestedDropoffLatitude  Float?                      @db.DoublePrecision
+  requestedDropoffLongitude Float?                      @db.DoublePrecision
+  requestMessage            String?
+  reviewNote                String?
+  executionStatusUpdatedAt  DateTime?
+  boardedAt                 DateTime?
+  droppedOffAt              DateTime?
+  createdAt                 DateTime                    @default(now())
+  reviewedAt                DateTime?
+  cancelledAt               DateTime?
+  trip                      Trip                        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passengerMembership       UserInstitutionMembership   @relation(fields: [passengerMembershipId], references: [id], onDelete: Cascade)
+  payment                   TripPayment?
 
   @@index([tripId, status, createdAt])
   @@index([tripId, executionStatus, createdAt])
   @@index([passengerMembershipId, status, createdAt])
   @@index([tripId, passengerMembershipId])
   @@map("trip_requests")
+}
+
+model TripPayment {
+  id                     String                    @id @default(uuid())
+  institutionId          String
+  tripId                 String
+  tripRequestId          String                    @unique
+  passengerMembershipId  String
+  driverMembershipId     String
+  provider               PaymentProvider           @default(PAYPAL)
+  status                 TripPaymentStatus         @default(PENDING)
+  currencyCode           String                    @default("USD")
+  amount                 Decimal                   @db.Decimal(10, 2)
+  merchantOrderReference String                    @unique
+  providerOrderToken     String?                   @unique
+  providerPaymentLinkId  String?
+  providerPaymentLinkUrl String?
+  providerOrderStatus    String?
+  providerPaymentStatus  String?
+  failureReason          String?
+  paidAt                 DateTime?
+  cancelledAt            DateTime?
+  expiresAt              DateTime?
+  lastSyncedAt           DateTime?
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  institution            Institution               @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  trip                   Trip                      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripRequest            TripRequest               @relation(fields: [tripRequestId], references: [id], onDelete: Cascade)
+  passengerMembership    UserInstitutionMembership @relation("TripPaymentPassenger", fields: [passengerMembershipId], references: [id], onDelete: Cascade)
+  driverMembership       UserInstitutionMembership @relation("TripPaymentDriver", fields: [driverMembershipId], references: [id], onDelete: Cascade)
+  attempts               TripPaymentAttempt[]
+
+  @@index([institutionId, status, createdAt])
+  @@index([tripId, status, createdAt])
+  @@index([passengerMembershipId, status, createdAt])
+  @@index([driverMembershipId, status, createdAt])
+  @@map("trip_payments")
+}
+
+model TripPaymentAttempt {
+  id                    String            @id @default(uuid())
+  paymentId             String
+  provider              PaymentProvider
+  status                TripPaymentStatus
+  checkoutUrl           String?
+  providerOrderToken    String?
+  providerPaymentLinkId String?
+  providerOrderStatus   String?
+  providerPaymentStatus String?
+  requestPayload        Json?
+  responsePayload       Json?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  payment               TripPayment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId, createdAt])
+  @@index([providerOrderToken])
+  @@map("trip_payment_attempts")
 }
 
 model Rating {
@@ -552,21 +632,21 @@ model Report {
 }
 
 model OperationalSanction {
-  id           String                    @id @default(uuid())
+  id           String                     @id @default(uuid())
   membershipId String
   type         OperationalSanctionType
   scope        OperationalSanctionScope
-  status       OperationalSanctionStatus @default(ACTIVE)
+  status       OperationalSanctionStatus  @default(ACTIVE)
   trigger      OperationalSanctionTrigger
   reason       String
-  isAutomatic  Boolean                   @default(true)
-  startedAt    DateTime                  @default(now())
+  isAutomatic  Boolean                    @default(true)
+  startedAt    DateTime                   @default(now())
   endsAt       DateTime?
   expiredAt    DateTime?
   metadata     Json?
-  createdAt    DateTime                  @default(now())
-  updatedAt    DateTime                  @updatedAt
-  membership   UserInstitutionMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  membership   UserInstitutionMembership  @relation(fields: [membershipId], references: [id], onDelete: Cascade)
   appeal       OperationalSanctionAppeal?
 
   @@index([membershipId, status])

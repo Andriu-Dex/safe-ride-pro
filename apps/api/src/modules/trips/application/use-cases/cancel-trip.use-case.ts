@@ -3,6 +3,7 @@ import { CancellationTiming, MembershipStatus, TripStatus } from '@saferidepro/s
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { TripPaymentsOrchestratorService } from '../../../payments/application/services/trip-payments-orchestrator.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
@@ -17,6 +18,13 @@ export class CancelTripUseCase {
     private readonly tripsRepository: TripsRepository,
     private readonly auditService: AuditService,
     private readonly operationalSanctionsService: OperationalSanctionsService,
+    @Optional()
+    private readonly tripPaymentsOrchestratorService: Pick<
+      TripPaymentsOrchestratorService,
+      'cancelTripPayments'
+    > = {
+      cancelTripPayments: async () => 0,
+    },
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
@@ -62,6 +70,11 @@ export class CancelTripUseCase {
     if (updatedTrip.cancellationTiming === CancellationTiming.Late) {
       await this.operationalSanctionsService.synchronizeAutomaticSanctions(membership.id);
     }
+
+    await this.tripPaymentsOrchestratorService.cancelTripPayments(
+      trip.id,
+      'Pago cancelado porque el viaje fue cancelado por el conductor.',
+    );
 
     const tracking = await this.tripsRepository.endTripLiveTracking(trip.id);
 

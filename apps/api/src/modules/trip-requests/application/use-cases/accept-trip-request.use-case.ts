@@ -11,6 +11,8 @@ import {
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { getAppEnvironment } from '../../../../shared/infrastructure/config/app-environment';
+import { TripPaymentsOrchestratorService } from '../../../payments/application/services/trip-payments-orchestrator.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import {
   TRIP_REQUESTS_REPOSITORY,
@@ -22,6 +24,13 @@ export class AcceptTripRequestUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
+    @Optional()
+    private readonly tripPaymentsOrchestratorService: Pick<
+      TripPaymentsOrchestratorService,
+      'ensureAcceptedTripRequestPayment'
+    > = {
+      ensureAcceptedTripRequestPayment: async () => null,
+    },
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
@@ -61,6 +70,11 @@ export class AcceptTripRequestUseCase {
         'La solicitud ya no pudo aceptarse porque el viaje cambio de estado.',
       );
     }
+
+    await this.tripPaymentsOrchestratorService.ensureAcceptedTripRequestPayment(
+      updatedTripRequest.id,
+      getAppEnvironment().paymentsCurrency,
+    );
 
     this.realtimeEventsService.publishTripRequestChanged({
       actorUserId: userId,

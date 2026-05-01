@@ -1,0 +1,1 @@
+ALTER TYPE "PaymentProvider" RENAME VALUE 'DEUNA' TO 'PAYPAL';

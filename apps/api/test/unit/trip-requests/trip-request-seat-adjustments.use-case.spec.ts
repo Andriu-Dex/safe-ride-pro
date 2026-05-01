@@ -62,6 +62,8 @@ function buildTripRequest(
     tripDestinationLabel: 'Centro',
     tripDepartureAt: new Date('2030-01-01T10:00:00.000Z'),
     tripEstimatedArrivalAt: new Date('2030-01-01T10:30:00.000Z'),
+    tripCompletedAt: null,
+    tripClosureNote: null,
     tripCancelledAt: null,
     tripSeatCount: 4,
     tripAvailableSeats: 2,
@@ -78,8 +80,9 @@ function buildTripRequest(
     reviewedAt: null,
     cancelledAt: null,
     cancellationTiming: null,
+    payment: null,
     ...overrides,
-  };
+  } as TripRequestRecord;
 }
 
 describe('Trip request seat adjustment use cases', () => {

@@ -1,4 +1,6 @@
 import {
+  isTripPaymentClosed,
+  isTripPaymentSettled,
   TripRequestExecutionStatus,
   TripRequestStatus,
   TripStatus,
@@ -14,6 +16,12 @@ import {
 } from '../../trip-requests/lib/trip-request-labels';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
 import {
+  formatTripPaymentAmount,
+  getPaymentProviderLabel,
+  getTripPaymentStatusLabel,
+  getTripPaymentStatusTone,
+} from '../../payments/lib/payment-labels';
+import {
   getTripCompletionOverdueMessage,
   getTripRouteModeLabel,
   getTripStatusLabel,
@@ -23,15 +31,21 @@ import {
 type PassengerActiveRidePanelProps = {
   myRequests: TripRequestRecord[];
   isMutatingRequestId: string | null;
+  isMutatingPaymentId: string | null;
   canCancelOwnRequest: (request: TripRequestRecord) => boolean;
   onCancelMyRequest: (requestId: string) => void;
+  onCreatePaymentCheckout: (paymentId: string) => void;
+  onRefreshPaymentStatus: (paymentId: string) => void;
 };
 
 export function PassengerActiveRidePanel({
   myRequests,
   isMutatingRequestId,
+  isMutatingPaymentId,
   canCancelOwnRequest,
   onCancelMyRequest,
+  onCreatePaymentCheckout,
+  onRefreshPaymentStatus,
 }: PassengerActiveRidePanelProps) {
   const activeRide = selectPrimaryAcceptedRide(myRequests);
 
@@ -66,6 +80,12 @@ export function PassengerActiveRidePanel({
     activeRide.requestedDropoffLatitude,
     activeRide.requestedDropoffLongitude,
   );
+  const payment = activeRide.payment;
+  const canCreatePaymentCheckout =
+    payment !== null
+    && !isTripPaymentSettled(payment.status)
+    && !isTripPaymentClosed(payment.status);
+  const paymentUpdatedLabel = payment ? formatDateTime(payment.updatedAt) : null;
 
   return (
     <article className="ride-companion-panel">
@@ -186,6 +206,53 @@ export function PassengerActiveRidePanel({
             <div className="ride-companion-note-card ride-companion-note-card-muted">
               <strong>Nota operativa</strong>
               <p>{activeRide.reviewNote}</p>
+            </div>
+          ) : null}
+
+          {payment ? (
+            <div className="ride-companion-note-card">
+              <div className="ride-companion-command-head">
+                <div>
+                  <span className="ride-companion-command-kicker">Pago del cupo</span>
+                  <strong>{formatTripPaymentAmount(payment.amount, payment.currencyCode)}</strong>
+                </div>
+                <StatusPill
+                  label={getTripPaymentStatusLabel(payment.status)}
+                  tone={getTripPaymentStatusTone(payment.status)}
+                />
+              </div>
+              <p>
+                {getPaymentProviderLabel(payment.provider)}
+                {payment.paidAt
+                  ? ` | Confirmado ${formatDateTime(payment.paidAt)}`
+                  : paymentUpdatedLabel
+                    ? ` | Actualizado ${paymentUpdatedLabel}`
+                    : ''}
+              </p>
+              <div className="button-row trip-request-action-row">
+                {canCreatePaymentCheckout ? (
+                  <Button
+                    disabled={isMutatingPaymentId === payment.id}
+                    onClick={() => onCreatePaymentCheckout(payment.id)}
+                  >
+                    {payment.checkoutUrl ? 'Abrir pago' : 'Pagar con PayPal'}
+                  </Button>
+                ) : null}
+                {!isTripPaymentSettled(payment.status) ? (
+                  <Button
+                    disabled={isMutatingPaymentId === payment.id}
+                    onClick={() => onRefreshPaymentStatus(payment.id)}
+                    variant="secondary"
+                  >
+                    Actualizar pago
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : activeRide.status === TripRequestStatus.Accepted ? (
+            <div className="ride-companion-note-card ride-companion-note-card-muted">
+              <strong>Pago del cupo</strong>
+              <p>Tu solicitud fue aceptada y el cobro aun se esta preparando.</p>
             </div>
           ) : null}
 

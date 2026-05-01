@@ -4,7 +4,9 @@ import {
   getEffectiveTripRequestExecutionStatus,
   getCancellationTiming,
   MembershipStatus,
+  PaymentProvider,
   TripRequestExecutionStatus,
+  TripPaymentStatus,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -527,6 +529,7 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
           },
         },
       },
+      payment: true,
       passengerMembership: {
         include: {
           institution: true,
@@ -590,6 +593,17 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
     createdAt: Date;
     reviewedAt: Date | null;
     cancelledAt: Date | null;
+    payment: {
+      id: string;
+      provider: string;
+      status: string;
+      currencyCode: string;
+      amount: { toString(): string };
+      providerPaymentLinkUrl: string | null;
+      paidAt: Date | null;
+      expiresAt: Date | null;
+      updatedAt: Date;
+    } | null;
     trip: {
       institutionId: string;
       originLabel: string;
@@ -658,6 +672,19 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
         departureAt: tripRequest.trip.departureAt,
         cancelledAt: tripRequest.cancelledAt,
       }),
+      payment: tripRequest.payment
+        ? {
+            id: tripRequest.payment.id,
+            provider: tripRequest.payment.provider as PaymentProvider,
+            status: tripRequest.payment.status as TripPaymentStatus,
+            currencyCode: tripRequest.payment.currencyCode,
+            amount: Number.parseFloat(tripRequest.payment.amount.toString()),
+            checkoutUrl: tripRequest.payment.providerPaymentLinkUrl,
+            paidAt: tripRequest.payment.paidAt,
+            expiresAt: tripRequest.payment.expiresAt,
+            updatedAt: tripRequest.payment.updatedAt,
+          }
+        : null,
     };
   }
 }

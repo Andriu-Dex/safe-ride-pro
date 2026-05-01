@@ -1,0 +1,811 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[letterpaper,top=2.5cm,bottom=3cm,left=2.5cm,right=2.5cm]{geometry}
+\usepackage{lmodern}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{caption}
+\usepackage[table]{xcolor}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black,
+    pdftitle={Diseno de Casos de Prueba - SafeRidePro},
+    pdfauthor={Aguilar Erick, Llerena Gabriel, Navarro Maybelline, Paredes Steven}
+}
+
+\setlength{\headheight}{56pt}
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+\renewcommand{\arraystretch}{1.25}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{%
+    \begin{minipage}[c]{2.4cm}
+        \centering
+        \includegraphics[width=1.8cm]{Imagenes/UTA.jpeg}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{8.8cm}
+        \centering
+        \small \textbf{UNIVERSIDAD T\'ECNICA DE AMBATO}\\
+        \scriptsize \textbf{FACULTAD DE INGENIER\'IA EN SISTEMAS, ELECTR\'ONICA E INDUSTRIAL}\\
+        \scriptsize \textbf{CARRERA DE SOFTWARE}\\
+        \scriptsize Gesti\'on de Pruebas e Implantaci\'on de Software
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{2.4cm}
+        \centering
+        \includegraphics[width=1.7cm]{Imagenes/fisei.png}
+    \end{minipage}
+}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\newcommand{\fichacaso}[5]{%
+\subsubsection*{#1 -- #4}%
+\addcontentsline{toc}{subsubsection}{#1 -- #4}%
+\begin{tabular}{|P{3.2cm}|P{11.2cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Contenido} \\
+\hline
+Caso de prueba & #1 \\
+\hline
+Requisito asociado & #2 \\
+\hline
+Tipo de prueba & #3 \\
+\hline
+Escenario & #4 \\
+\hline
+Precondiciones & #5 \\
+\hline
+\end{tabular}
+\vspace{0.4em}
+}
+
+\newenvironment{pasostable}
+{
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|P{0.85cm}|P{4cm}|P{3cm}|P{3.2cm}|P{1.8cm}|P{1.8cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Paso} & \textbf{Descripci\'on de pasos a seguir} & \textbf{Datos de entrada} & \textbf{Resultado esperado} & \textbf{Res. obtenido} & \textbf{Obs.} \\
+\hline
+}
+{
+\end{tabular}
+\end{center}
+\vspace{0.8em}
+}
+
+\newcommand{\paso}[4]{#1 & #2 & #3 & #4 &  &  \\\hline}
+
+\title{Dise\~no de Casos de Prueba}
+\author{SafeRidePro}
+\date{Abril de 2026}
+
+\begin{document}
+\onehalfspacing
+\pagenumbering{gobble}
+
+\begin{titlepage}
+    \centering
+    \vspace*{-3.5cm}
+
+    \vspace{1.2cm}
+
+    {\Large \textbf{UNIVERSIDAD T\'ECNICA DE AMBATO}\par}
+    \vspace{0.2cm}
+    {\normalsize Facultad de Ingenier\'ia en Sistemas, Electr\'onica e Industrial\par}
+    {\normalsize Carrera de Software\par}
+
+    \vspace{1.5cm}
+
+    {\LARGE \textbf{Dise\~no de Casos de Prueba}\par}
+    \vspace{0.4cm}
+    {\Large Pruebas de integraci\'on y pruebas del sistema\par}
+
+    \vspace{1.0cm}
+
+    {\Large \textbf{Proyecto: SafeRidePro}\par}
+    \vspace{0.3cm}
+    {\normalsize Plataforma web para coordinaci\'on segura de viajes compartidos entre estudiantes\par}
+
+    \vfill
+
+    \begin{tabular}{P{5cm}P{8cm}}
+        \textbf{Asignatura:} & Gesti\'on de Pruebas e Implantaci\'on de Software \\
+        \textbf{Docente:} & Ing.\ Leonardo Torres \\
+        \textbf{Versi\'on del documento:} & 1.0 \\
+        \textbf{Fecha:} & 28 de abril de 2026 \\
+    \end{tabular}
+
+    \vspace{1.2cm}
+
+    \textbf{Elaborado por:}
+
+    \vspace{0.3cm}
+
+    Aguilar Erick\\
+    Llerena Gabriel\\
+    Navarro Maybelline\\
+    Paredes Steven
+
+    \vfill
+\end{titlepage}
+
+\clearpage
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+
+\section*{Ficha del documento}
+\addcontentsline{toc}{section}{Ficha del documento}
+
+\begin{longtable}{|P{3.2cm}|P{11.2cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Campo} & \textbf{Detalle} \\
+\hline
+Nombre del documento & Dise\~no de Casos de Prueba de SafeRidePro \\
+\hline
+Tipo de documento & Plan detallado de casos de prueba de integraci\'on y del sistema \\
+\hline
+Versi\'on & 1.0 \\
+\hline
+Estado & Entrega acad\'emica derivada de la ERS aprobada \\
+\hline
+Proyecto & SafeRidePro \\
+\hline
+Fecha & 28 de abril de 2026 \\
+\hline
+Autores & Aguilar Erick, Llerena Gabriel, Navarro Maybelline, Paredes Steven \\
+\hline
+Fuente base & Informe de requisitos funcionales y no funcionales documentado en \texttt{main.tex} \\
+\hline
+Objetivo de esta entrega & Dise\~nar casos de prueba que permitan validar cada requisito funcional mediante escenarios positivos y negativos enfocados en integraci\'on y sistema. \\
+\hline
+\end{longtable}
+
+\newpage
+\pagenumbering{arabic}
+
+\section{Introducci\'on}
+
+Este documento presenta el dise\~no de los casos de prueba para \textbf{SafeRidePro}, tomando como base los requisitos funcionales definidos previamente en el informe de especificaci\'on de requisitos. La finalidad del entregable es dejar establecida una bater\'ia inicial de verificaci\'on que permita validar el comportamiento funcional del sistema desde una perspectiva de integraci\'on entre m\'odulos y de comportamiento global de la plataforma.
+
+La propuesta se concentra en los requisitos funcionales RF-001 a RF-024. Para cada uno de ellos se dise\~nan al menos tres casos de prueba, incluyendo escenarios positivos y negativos. Los casos contemplan la interacci\'on entre interfaz, servicios, reglas de negocio, persistencia y restricciones operativas reales del producto.
+
+\subsection{Prop\'osito}
+
+Definir un conjunto trazable de casos de prueba que permita:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Validar cada requisito funcional especificado en la ERS.
+    \item Identificar escenarios de aceptaci\'on y rechazo.
+    \item Preparar la futura ejecuci\'on manual o semiautomatizada de pruebas.
+    \item Servir como base para matrices de trazabilidad, registro de incidencias y evidencias.
+\end{itemize}
+
+\subsection{Alcance}
+
+El alcance del documento incluye:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Acceso institucional, verificaci\'on, autenticaci\'on y recuperaci\'on.
+    \item Perfil, contexto institucional, conductor y veh\'iculos.
+    \item Viajes, solicitudes, ejecuci\'on operativa y tracking v1.
+    \item Confianza comunitaria, reportes, sanciones, apelaciones y auditor\'ia.
+\end{itemize}
+
+No forma parte de este entregable la ejecuci\'on real de las pruebas, la automatizaci\'on formal de scripts, la medici\'on de rendimiento o la elaboraci\'on de reportes de defectos.
+
+\section{Enfoque de dise\~no}
+
+\subsection{Criterios utilizados}
+
+Los casos de prueba se dise\~naron con los siguientes criterios:
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Cobertura directa de cada requisito funcional identificado en la ERS.
+    \item Equilibrio entre escenarios positivos y negativos.
+    \item \'Enfasis en reglas de negocio, permisos, persistencia de estados y consistencia entre pantallas y backend.
+    \item Orientaci\'on a pruebas de integraci\'on y pruebas del sistema, evitando casos de unidad.
+\end{itemize}
+
+\subsection{Tipos de prueba considerados}
+
+\begin{longtable}{|P{3.2cm}|P{11.2cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Tipo} & \textbf{Aplicaci\'on en este documento} \\
+\hline
+Prueba de integraci\'on & Verifica la interacci\'on entre interfaz, API, reglas de negocio, base de datos, servicios de archivos, correo, restricciones y auditor\'ia. \\
+\hline
+Prueba del sistema & Verifica el flujo extremo a extremo desde la perspectiva del usuario o del administrador, incluyendo transiciones de estado y comportamiento observable del producto completo. \\
+\hline
+\end{longtable}
+
+\subsection{Convenci\'on de identificadores}
+
+\begin{itemize}[leftmargin=1.2cm]
+    \item Los requisitos funcionales conservan el identificador del informe base: RF-001 a RF-024.
+    \item Cada caso de prueba se identifica como CP-XXX.
+    \item La relaci\'on requisito-caso se mantiene en orden secuencial para facilitar la trazabilidad.
+\end{itemize}
+
+\section{Resumen de cobertura}
+
+\begin{center}
+\scriptsize
+\begin{longtable}{|P{1.6cm}|P{4.3cm}|P{2cm}|P{6.8cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Req.} & \textbf{Nombre} & \textbf{N.\ de casos} & \textbf{Cobertura dominante} \\
+\hline
+\endfirsthead
+\hline
+\rowcolor{gray!15}
+\textbf{Req.} & \textbf{Nombre} & \textbf{N.\ de casos} & \textbf{Cobertura dominante} \\
+\hline
+\endhead
+RF-001 & Registro institucional & 3 & Validaci\'on de dominio, unicidad y creaci\'on de cuenta. \\
+\hline
+RF-002 & Verificaci\'on de correo & 3 & Activaci\'on, rechazo por c\'odigo inv\'alido y vigencia de OTP. \\
+\hline
+RF-003 & Inicio de sesi\'on y recuperaci\'on & 3 & Autenticaci\'on, rechazo credencial y reinicio de contrase\~na. \\
+\hline
+RF-004 & Gesti\'on de perfil & 3 & Consulta, actualizaci\'on y validaciones de perfil. \\
+\hline
+RF-005 & Contexto institucional & 3 & Resoluci\'on de membres\'ia, acceso operativo y bloqueo. \\
+\hline
+RF-006 & Solicitud de conductor & 3 & Env\'io, validaci\'on documental y reenv\'io. \\
+\hline
+RF-007 & Revisi\'on de conductor & 3 & Aprobaci\'on, rechazo y control de permisos. \\
+\hline
+RF-008 & Registro de veh\'iculo & 3 & Alta v\'alida, rechazo por datos y control de habilitaci\'on. \\
+\hline
+RF-009 & Gesti\'on de estado del veh\'iculo & 3 & Activaci\'on, desactivaci\'on y propiedad del recurso. \\
+\hline
+RF-010 & Publicaci\'on de viaje & 3 & Creaci\'on, validaci\'on de reglas y bloqueo por contexto. \\
+\hline
+RF-011 & Exploraci\'on de viajes & 3 & Filtros, vac\'ios y aislamiento institucional. \\
+\hline
+RF-012 & Solicitud de cupo & 3 & Solicitud exitosa, duplicados y viaje no elegible. \\
+\hline
+RF-013 & Gesti\'on de solicitudes & 3 & Aceptar, rechazar y cancelar con consistencia de cupos. \\
+\hline
+RF-014 & Inicio de viaje & 3 & Inicio dentro de ventana, rechazo e impacto en pendientes. \\
+\hline
+RF-015 & Abordaje de pasajero & 3 & Cambio a bordo, restricci\'on de estado y reflejo al pasajero. \\
+\hline
+RF-016 & Finalizaci\'on operativa de pasajero & 3 & Cierre individual, rechazo e impacto en el viaje. \\
+\hline
+RF-017 & Registro de no-show & 3 & Marcaci\'on permitida, restricci\'on y visibilidad. \\
+\hline
+RF-018 & Cierre excepcional del viaje & 3 & Nota obligatoria, cierre v\'alido y cierre normal. \\
+\hline
+RF-019 & Seguimiento operativo v1 & 3 & Visualizaci\'on autorizada, restricci\'on y actualizaci\'on de estado. \\
+\hline
+RF-020 & Calificaciones post-viaje & 3 & Registro v\'alido, ventana y elegibilidad. \\
+\hline
+RF-021 & Reportes con evidencia & 3 & Env\'io, validaci\'on de archivos y elegibilidad. \\
+\hline
+RF-022 & Sanciones y apelaciones & 3 & Aplicaci\'on, visualizaci\'on y apelaci\'on. \\
+\hline
+RF-023 & Auditor\'ia administrativa & 3 & Consulta administrativa, filtros y control de acceso. \\
+\hline
+RF-024 & Trazabilidad de eventos & 3 & Registro de eventos cr\'iticos y protecci\'on de trazas. \\
+\hline
+\end{longtable}
+\end{center}
+
+\section{Casos de prueba por requisito funcional}
+
+\subsection{RF-001 Registro institucional}
+\fichacaso{CP-001}{RF-001}{Sistema}{Registro valido con dominio autorizado}{Usuario visitante, correo institucional autorizado no registrado y datos obligatorios completos.}
+\begin{pasostable}
+\paso{1}{Ingresar a la pantalla de registro.}{URL del sistema.}{El formulario de registro se muestra disponible.}
+\paso{2}{Completar nombres, correo institucional y contrasena valida.}{Correo con dominio autorizado.}{La informacion es aceptada por validaciones de interfaz.}
+\paso{3}{Enviar el formulario.}{Datos completos.}{La cuenta se crea en estado pendiente de verificacion y el sistema redirige al flujo de activacion.}
+\end{pasostable}
+\fichacaso{CP-002}{RF-001}{Integracion}{Rechazo por dominio no autorizado}{Usuario visitante y correo con dominio externo.}
+\begin{pasostable}
+\paso{1}{Abrir el formulario de registro.}{URL del sistema.}{El formulario se carga correctamente.}
+\paso{2}{Ingresar datos personales y un correo fuera de la institucion.}{Correo: usuario@gmail.com.}{La solicitud puede enviarse a la capa de negocio para validacion final.}
+\paso{3}{Confirmar el registro.}{Datos enviados.}{La API rechaza el registro, la interfaz informa el dominio invalido y no se crea la cuenta.}
+\end{pasostable}
+\fichacaso{CP-003}{RF-001}{Integracion}{Rechazo por correo duplicado}{Existe una cuenta previa con el correo institucional ingresado.}
+\begin{pasostable}
+\paso{1}{Abrir registro con un correo ya existente.}{Correo institucional previamente registrado.}{El formulario acepta la entrada inicial.}
+\paso{2}{Completar los demas campos obligatorios.}{Datos personales validos.}{La informacion queda lista para envio.}
+\paso{3}{Enviar el formulario.}{Datos completos.}{El sistema informa duplicidad y mantiene intacto el registro existente.}
+\end{pasostable}
+
+\subsection{RF-002 Verificaci\'on de correo}
+\fichacaso{CP-004}{RF-002}{Sistema}{Verificacion correcta con codigo vigente}{Cuenta pendiente de verificacion y OTP vigente asociado al usuario.}
+\begin{pasostable}
+\paso{1}{Ingresar a la pantalla de verificacion.}{Cuenta registrada.}{Se muestran los campos para el codigo OTP.}
+\paso{2}{Escribir el codigo recibido por correo.}{OTP vigente.}{La interfaz acepta el codigo.}
+\paso{3}{Confirmar la verificacion.}{Codigo correcto.}{La cuenta pasa a verificada y el codigo queda invalidado.}
+\end{pasostable}
+\fichacaso{CP-005}{RF-002}{Integracion}{Rechazo por codigo incorrecto}{Cuenta pendiente y codigo de verificacion emitido.}
+\begin{pasostable}
+\paso{1}{Abrir la pantalla de verificacion.}{Cuenta pendiente.}{La vista se muestra correctamente.}
+\paso{2}{Ingresar un codigo distinto al enviado.}{OTP incorrecto.}{La validacion del backend detecta discrepancia.}
+\paso{3}{Enviar el codigo.}{Codigo invalido.}{La cuenta sigue sin verificar y se muestra mensaje de error.}
+\end{pasostable}
+\fichacaso{CP-006}{RF-002}{Integracion}{Uso exclusivo del ultimo codigo reenviado}{Cuenta pendiente y solicitud de reenvio realizada.}
+\begin{pasostable}
+\paso{1}{Solicitar reenvio de codigo.}{Cuenta pendiente.}{El sistema genera y envia un nuevo OTP.}
+\paso{2}{Intentar verificar con el codigo anterior.}{OTP previo.}{La verificacion es rechazada.}
+\paso{3}{Verificar con el codigo mas reciente.}{Ultimo OTP enviado.}{La activacion se completa correctamente.}
+\end{pasostable}
+
+\subsection{RF-003 Inicio de sesi\'on y recuperaci\'on}
+\fichacaso{CP-007}{RF-003}{Sistema}{Inicio de sesion con credenciales correctas}{Cuenta verificada y credenciales vigentes.}
+\begin{pasostable}
+\paso{1}{Abrir la pantalla de inicio de sesion.}{URL del sistema.}{Se muestran campos de correo y contrasena.}
+\paso{2}{Ingresar credenciales validas.}{Correo y contrasena correctos.}{La informacion es aceptada para autenticacion.}
+\paso{3}{Confirmar el acceso.}{Credenciales validas.}{Se crea la sesion y el usuario ingresa al sistema con su contexto activo.}
+\end{pasostable}
+\fichacaso{CP-008}{RF-003}{Integracion}{Rechazo por contrasena incorrecta}{Cuenta verificada y correo correcto.}
+\begin{pasostable}
+\paso{1}{Abrir el formulario de inicio de sesion.}{URL del sistema.}{El formulario se carga normalmente.}
+\paso{2}{Ingresar el correo correcto y una contrasena errada.}{Correo valido; contrasena incorrecta.}{Se envia la solicitud de autenticacion.}
+\paso{3}{Intentar iniciar sesion.}{Credenciales incorrectas.}{La autenticacion falla y no se genera sesion.}
+\end{pasostable}
+\fichacaso{CP-009}{RF-003}{Sistema}{Recuperacion de contrasena y acceso posterior}{Cuenta verificada y acceso al correo institucional.}
+\begin{pasostable}
+\paso{1}{Solicitar recuperacion de contrasena.}{Correo institucional valido.}{El sistema emite el flujo de restablecimiento.}
+\paso{2}{Definir una nueva contrasena distinta a la anterior.}{Nueva contrasena valida.}{La nueva clave queda persistida.}
+\paso{3}{Iniciar sesion con la nueva contrasena.}{Credenciales actualizadas.}{El acceso se realiza correctamente y la clave anterior deja de funcionar.}
+\end{pasostable}
+
+\subsection{RF-004 Gesti\'on de perfil}
+\fichacaso{CP-010}{RF-004}{Sistema}{Consulta de perfil existente}{Usuario autenticado con perfil parcial o completo.}
+\begin{pasostable}
+\paso{1}{Ingresar a la vista de perfil.}{Sesion activa.}{La pantalla de perfil se carga.}
+\paso{2}{Esperar la carga de datos.}{Perfil persistido.}{Se consultan los datos desde la API.}
+\paso{3}{Verificar la informacion visible.}{Nombre, carrera, zona, telefono y foto.}{La vista refleja los datos registrados del usuario.}
+\end{pasostable}
+\fichacaso{CP-011}{RF-004}{Integracion}{Actualizacion correcta de datos de perfil}{Usuario autenticado y servicios de perfil y archivos disponibles.}
+\begin{pasostable}
+\paso{1}{Abrir la opcion de editar perfil.}{Sesion activa.}{El modal o formulario de edicion se muestra.}
+\paso{2}{Modificar datos y cargar una foto valida.}{Nuevos datos; imagen permitida.}{Los cambios superan validaciones de interfaz y backend.}
+\paso{3}{Guardar cambios y recargar la vista.}{Datos enviados.}{La informacion actualizada se persiste y vuelve a mostrarse correctamente.}
+\end{pasostable}
+\fichacaso{CP-012}{RF-004}{Integracion}{Rechazo por archivo invalido o dato obligatorio faltante}{Usuario autenticado y perfil ya existente.}
+\begin{pasostable}
+\paso{1}{Abrir edicion de perfil.}{Sesion activa.}{La interfaz permite modificar campos.}
+\paso{2}{Eliminar un dato obligatorio o cargar un archivo no permitido.}{Campo vacio o archivo invalido.}{La validacion detecta la inconsistencia.}
+\paso{3}{Intentar guardar.}{Datos invalidos.}{El sistema rechaza la operacion y conserva la informacion previa.}
+\end{pasostable}
+
+\subsection{RF-005 Contexto institucional}
+\fichacaso{CP-013}{RF-005}{Sistema}{Resolucion del contexto al iniciar sesion}{Usuario con membresia operativa activa.}
+\begin{pasostable}
+\paso{1}{Autenticar al usuario.}{Credenciales validas.}{La sesion queda iniciada.}
+\paso{2}{Permitir la carga inicial de la aplicacion.}{Membresia activa.}{Se solicita el contexto institucional del usuario.}
+\paso{3}{Verificar menus y vistas habilitadas.}{Rol y permisos operativos.}{La interfaz muestra informacion acorde a la membresia activa.}
+\end{pasostable}
+\fichacaso{CP-014}{RF-005}{Integracion}{Cambio correcto de membresia activa}{Usuario con multiples membresias.}
+\begin{pasostable}
+\paso{1}{Ingresar con una cuenta que tenga mas de una membresia.}{Sesion valida.}{El sistema carga una membresia por defecto.}
+\paso{2}{Cambiar la membresia activa desde la interfaz.}{Seleccion de otra institucion o contexto.}{La solicitud de cambio se envia al backend.}
+\paso{3}{Revisar el nuevo contexto.}{Membresia seleccionada.}{Se actualizan permisos, vistas y datos asociados al nuevo contexto.}
+\end{pasostable}
+\fichacaso{CP-015}{RF-005}{Sistema}{Bloqueo por ausencia de membresia operativa}{Usuario autenticado sin membresia operativa vigente.}
+\begin{pasostable}
+\paso{1}{Iniciar sesion con el usuario restringido.}{Credenciales validas.}{La sesion se inicia.}
+\paso{2}{Acceder a una vista operativa.}{Intento de abrir modulo operativo.}{El sistema consulta el contexto institucional.}
+\paso{3}{Validar la respuesta del sistema.}{Contexto sin membresia operativa.}{La vista queda bloqueada y se muestra el mensaje correspondiente.}
+\end{pasostable}
+
+\subsection{RF-006 Solicitud de conductor}
+\fichacaso{CP-016}{RF-006}{Sistema}{Envio exitoso de solicitud de conductor}{Usuario autenticado con perfil base completo y documentos validos.}
+\begin{pasostable}
+\paso{1}{Abrir el modulo de conductor.}{Sesion activa.}{Se muestra el estado actual del usuario.}
+\paso{2}{Completar licencia, fecha y cargar documentos requeridos.}{Cédula y licencia en formato valido.}{Los archivos quedan vinculados al formulario.}
+\paso{3}{Enviar la solicitud.}{Formulario completo.}{La solicitud se registra en estado pendiente y queda disponible para revision.}
+\end{pasostable}
+\fichacaso{CP-017}{RF-006}{Integracion}{Rechazo por falta de documento requerido}{Usuario autenticado sin todos los adjuntos obligatorios.}
+\begin{pasostable}
+\paso{1}{Ingresar al formulario de solicitud.}{Sesion activa.}{El formulario se habilita.}
+\paso{2}{Completar datos pero omitir un documento obligatorio.}{Falta cédula o licencia.}{La capa de validacion detecta el faltante.}
+\paso{3}{Intentar enviar la solicitud.}{Formulario incompleto.}{La operacion es rechazada y no se crea el expediente.}
+\end{pasostable}
+\fichacaso{CP-018}{RF-006}{Integracion}{Reenvio de solicitud corregida}{Existe una solicitud previa rechazada o editable.}
+\begin{pasostable}
+\paso{1}{Abrir la solicitud existente.}{Expediente previo disponible.}{Se muestran los datos y documentos cargados.}
+\paso{2}{Reemplazar el documento observado y actualizar datos si aplica.}{Nuevo archivo valido.}{El sistema acepta la modificacion.}
+\paso{3}{Reenviar la solicitud.}{Solicitud actualizada.}{El expediente vigente se actualiza con trazabilidad del nuevo envio.}
+\end{pasostable}
+
+\subsection{RF-007 Revisi\'on de conductor}
+\fichacaso{CP-019}{RF-007}{Sistema}{Aprobacion administrativa de solicitud}{Administrador autenticado y solicitud pendiente de revision.}
+\begin{pasostable}
+\paso{1}{Abrir la bandeja de revision de conductores.}{Sesion administrativa.}{Se listan las solicitudes pendientes.}
+\paso{2}{Seleccionar una solicitud y revisar evidencia.}{Documentos del solicitante.}{La informacion detallada se muestra completa.}
+\paso{3}{Aprobar la solicitud.}{Decision de aprobacion.}{El solicitante queda habilitado como conductor y se registra la decision.}
+\end{pasostable}
+\fichacaso{CP-020}{RF-007}{Sistema}{Rechazo administrativo con observacion}{Administrador autenticado y solicitud pendiente.}
+\begin{pasostable}
+\paso{1}{Abrir la solicitud pendiente.}{Sesion administrativa.}{La evidencia queda visible para revision.}
+\paso{2}{Registrar una observacion de rechazo.}{Motivo de rechazo.}{La observacion se asocia a la decision.}
+\paso{3}{Confirmar el rechazo.}{Decision final.}{La solicitud cambia a rechazada y el usuario puede visualizar la observacion.}
+\end{pasostable}
+\fichacaso{CP-021}{RF-007}{Integracion}{Bloqueo de revision para usuario no administrador}{Usuario sin rol administrativo autenticado.}
+\begin{pasostable}
+\paso{1}{Intentar abrir el modulo de revision de conductores.}{Sesion no administrativa.}{La ruta o menu puede ser invocado.}
+\paso{2}{Solicitar el contenido administrativo.}{Acceso sin permisos.}{La capa de autorizacion valida el rol.}
+\paso{3}{Verificar respuesta del sistema.}{Usuario no autorizado.}{El acceso es denegado y no se muestran acciones de aprobacion o rechazo.}
+\end{pasostable}
+
+\subsection{RF-008 Registro de veh\'iculo}
+\fichacaso{CP-022}{RF-008}{Sistema}{Registro exitoso de vehiculo}{Conductor aprobado, licencia vigente y documento de matricula valido.}
+\begin{pasostable}
+\paso{1}{Abrir la vista de vehiculos.}{Sesion de conductor aprobado.}{Se visualiza la flota y la opcion de registrar.}
+\paso{2}{Completar datos del vehiculo y adjuntar matricula.}{Placa, marca, modelo, capacidad, archivo permitido.}{Las validaciones locales y de backend son superadas.}
+\paso{3}{Guardar el vehiculo.}{Formulario completo.}{El registro se crea y aparece en la lista de vehiculos del usuario.}
+\end{pasostable}
+\fichacaso{CP-023}{RF-008}{Integracion}{Rechazo por datos obligatorios o documento invalido}{Conductor aprobado con formulario incompleto o archivo no permitido.}
+\begin{pasostable}
+\paso{1}{Abrir el formulario de registro.}{Sesion valida.}{El formulario se muestra operativo.}
+\paso{2}{Ingresar datos incompletos o adjuntar archivo invalido.}{Placa faltante o archivo no permitido.}{La validacion detecta el error.}
+\paso{3}{Intentar guardar.}{Datos invalidos.}{El sistema rechaza el registro y no persiste el vehiculo.}
+\end{pasostable}
+\fichacaso{CP-024}{RF-008}{Sistema}{Bloqueo para usuario no habilitado como conductor}{Usuario autenticado sin aprobacion de conductor.}
+\begin{pasostable}
+\paso{1}{Acceder a la vista de vehiculos.}{Sesion de usuario no conductor.}{El sistema carga el modulo bajo restricciones.}
+\paso{2}{Intentar registrar un vehiculo.}{Intento de alta.}{La accion llega a las validaciones de permiso.}
+\paso{3}{Verificar respuesta.}{Usuario no habilitado.}{El registro es denegado y no se crea ningun vehiculo.}
+\end{pasostable}
+
+\subsection{RF-009 Gesti\'on de estado del veh\'iculo}
+\fichacaso{CP-025}{RF-009}{Sistema}{Activacion de vehiculo propio}{Conductor aprobado con vehiculo propio en estado inactivo.}
+\begin{pasostable}
+\paso{1}{Abrir la lista de vehiculos.}{Sesion activa del conductor.}{Se visualizan los vehiculos registrados.}
+\paso{2}{Seleccionar un vehiculo inactivo y activar.}{Vehiculo propio.}{La accion se envia al backend.}
+\paso{3}{Verificar el nuevo estado.}{Cambio solicitado.}{El vehiculo pasa a activo y queda disponible para viajes.}
+\end{pasostable}
+\fichacaso{CP-026}{RF-009}{Integracion}{Desactivacion de vehiculo activo}{Conductor aprobado con vehiculo propio activo.}
+\begin{pasostable}
+\paso{1}{Abrir la gestion de vehiculos.}{Sesion activa.}{El estado actual del vehiculo se muestra como activo.}
+\paso{2}{Ejecutar la opcion de desactivar.}{Vehiculo propio activo.}{El sistema procesa el cambio de estado.}
+\paso{3}{Revisar impacto en el modulo de viajes.}{Vehiculo desactivado.}{El vehiculo deja de aparecer como elegible para nuevas publicaciones.}
+\end{pasostable}
+\fichacaso{CP-027}{RF-009}{Integracion}{Rechazo al modificar un vehiculo ajeno}{Usuario autenticado intenta operar sobre un vehiculo que no le pertenece.}
+\begin{pasostable}
+\paso{1}{Invocar la accion de activar o desactivar sobre un vehiculo ajeno.}{Identificador de vehiculo no propio.}{La solicitud llega al backend.}
+\paso{2}{Validar propiedad del recurso.}{Vehiculo asociado a otro usuario.}{La capa de negocio detecta la falta de propiedad.}
+\paso{3}{Verificar resultado.}{Operacion no autorizada.}{El sistema rechaza la modificacion y el estado del vehiculo no cambia.}
+\end{pasostable}
+
+\subsection{RF-010 Publicaci\'on de viaje}
+\fichacaso{CP-028}{RF-010}{Sistema}{Creacion valida de viaje}{Conductor aprobado, vehiculo activo y datos de ruta consistentes.}
+\begin{pasostable}
+\paso{1}{Abrir la vista de nuevo viaje.}{Sesion de conductor habilitado.}{El formulario de viaje se muestra disponible.}
+\paso{2}{Completar origen, destino, horarios, cupos, vehiculo y tarifa.}{Datos validos y coherentes.}{La vista calcula un resumen correcto del viaje.}
+\paso{3}{Crear el viaje.}{Formulario completo.}{El viaje queda registrado y disponible para el flujo operativo posterior.}
+\end{pasostable}
+\fichacaso{CP-029}{RF-010}{Integracion}{Rechazo por horario o ruta invalida}{Conductor aprobado con datos inconsistentes en el formulario.}
+\begin{pasostable}
+\paso{1}{Ingresar a nuevo viaje.}{Sesion valida.}{El formulario se carga correctamente.}
+\paso{2}{Registrar una llegada anterior a la salida o coordenadas inconsistentes.}{Horario o ruta invalida.}{Las validaciones marcan la inconsistencia.}
+\paso{3}{Intentar guardar.}{Datos invalidos.}{El viaje no se persiste y se informa el motivo del rechazo.}
+\end{pasostable}
+\fichacaso{CP-030}{RF-010}{Sistema}{Bloqueo por conductor o vehiculo no elegible}{Usuario sin aprobacion, con licencia vencida o sin vehiculo activo.}
+\begin{pasostable}
+\paso{1}{Abrir la vista de nuevo viaje.}{Sesion con restricciones operativas.}{La vista consulta el contexto habilitante.}
+\paso{2}{Intentar completar y enviar el formulario.}{Usuario o vehiculo no elegible.}{La accion es evaluada por las reglas del negocio.}
+\paso{3}{Verificar respuesta.}{Operacion restringida.}{El sistema bloquea la creacion del viaje y mantiene el estado previo.}
+\end{pasostable}
+
+\subsection{RF-011 Exploraci\'on de viajes}
+\fichacaso{CP-031}{RF-011}{Sistema}{Busqueda con filtros validos}{Pasajero autenticado y viajes publicados en su institucion.}
+\begin{pasostable}
+\paso{1}{Abrir la vista de explorar viajes.}{Sesion de pasajero.}{Se muestra la lista inicial de viajes disponibles.}
+\paso{2}{Aplicar filtros por origen y fecha.}{Valores de filtro validos.}{La solicitud de filtrado se envia al backend.}
+\paso{3}{Verificar resultados.}{Filtro aplicado.}{La lista contiene solo viajes compatibles con los filtros y la institucion activa.}
+\end{pasostable}
+\fichacaso{CP-032}{RF-011}{Sistema}{Resultado vacio con filtros restrictivos}{Pasajero autenticado y combinacion de filtros sin coincidencias.}
+\begin{pasostable}
+\paso{1}{Ingresar a explorar viajes.}{Sesion activa.}{La vista muestra el buscador y la lista.}
+\paso{2}{Aplicar filtros que no correspondan a ningun viaje.}{Filtros sin coincidencias.}{El sistema procesa la consulta.}
+\paso{3}{Verificar el estado vacio.}{Resultado sin registros.}{La interfaz informa ausencia de coincidencias sin generar error.}
+\end{pasostable}
+\fichacaso{CP-033}{RF-011}{Integracion}{Aislamiento de viajes de otras instituciones}{Existen viajes publicados en otra institucion distinta a la membresia activa.}
+\begin{pasostable}
+\paso{1}{Autenticar un pasajero de una institucion especifica.}{Sesion activa.}{Se carga su contexto institucional.}
+\paso{2}{Consultar la lista de viajes y aplicar filtros generales.}{Busqueda abierta.}{La API devuelve viajes disponibles para el contexto actual.}
+\paso{3}{Revisar los resultados listados.}{Viajes de varias instituciones en base de datos.}{No se muestran viajes pertenecientes a otras instituciones.}
+\end{pasostable}
+
+\subsection{RF-012 Solicitud de cupo}
+\fichacaso{CP-034}{RF-012}{Sistema}{Solicitud exitosa de cupo}{Pasajero autenticado, viaje ajeno publicado y cupos disponibles.}
+\begin{pasostable}
+\paso{1}{Abrir el detalle de un viaje disponible.}{Viaje publicado con cupos.}{La ficha del viaje se muestra con opcion de solicitar.}
+\paso{2}{Ingresar mensaje opcional y confirmar la solicitud.}{Mensaje de solicitud y viaje elegible.}{La informacion se envia al backend.}
+\paso{3}{Verificar bandeja del pasajero.}{Solicitud enviada.}{La solicitud aparece registrada en estado pendiente.}
+\end{pasostable}
+\fichacaso{CP-035}{RF-012}{Integracion}{Rechazo por solicitud duplicada o viaje propio}{Pasajero intenta solicitar sobre el mismo viaje mas de una vez o sobre su propio viaje.}
+\begin{pasostable}
+\paso{1}{Abrir el detalle del viaje no elegible.}{Viaje propio o solicitud ya existente.}{La vista puede mostrar la accion o el intento directo.}
+\paso{2}{Intentar confirmar la solicitud.}{Viaje no elegible.}{La operacion llega a validacion de negocio.}
+\paso{3}{Verificar respuesta.}{Solicitud duplicada o viaje propio.}{El sistema rechaza la solicitud y no crea registros adicionales.}
+\end{pasostable}
+\fichacaso{CP-036}{RF-012}{Sistema}{Rechazo sobre viaje lleno o no publicado}{Pasajero autenticado y viaje sin cupos o fuera de estado permitido.}
+\begin{pasostable}
+\paso{1}{Abrir el detalle del viaje.}{Viaje lleno o no publicado.}{La informacion del viaje es consultada.}
+\paso{2}{Intentar solicitar cupo.}{Solicitud sobre viaje no elegible.}{La accion es enviada al backend.}
+\paso{3}{Verificar resultado.}{Viaje sin disponibilidad.}{El sistema deniega la solicitud e informa que el viaje no acepta pasajeros.}
+\end{pasostable}
+
+\subsection{RF-013 Gesti\'on de solicitudes}
+\fichacaso{CP-037}{RF-013}{Integracion}{Aceptacion de solicitud por el conductor}{Conductor autenticado, viaje publicado y solicitud pendiente.}
+\begin{pasostable}
+\paso{1}{Abrir la bandeja de solicitudes entrantes.}{Sesion de conductor.}{La lista de solicitudes del viaje se muestra.}
+\paso{2}{Seleccionar una solicitud pendiente y aceptar.}{Solicitud pendiente.}{La API procesa la decision.}
+\paso{3}{Revisar estado y cupos del viaje.}{Solicitud aceptada.}{La solicitud pasa a aceptada y los cupos del viaje se actualizan.}
+\end{pasostable}
+\fichacaso{CP-038}{RF-013}{Integracion}{Rechazo de solicitud por el conductor}{Conductor autenticado y solicitud pendiente.}
+\begin{pasostable}
+\paso{1}{Abrir la bandeja de solicitudes.}{Sesion valida.}{Se muestran las solicitudes pendientes.}
+\paso{2}{Elegir una solicitud y rechazarla.}{Solicitud pendiente.}{La accion se registra en backend.}
+\paso{3}{Verificar estado para ambas partes.}{Solicitud rechazada.}{El pasajero ve el rechazo y el viaje conserva su consistencia de cupos.}
+\end{pasostable}
+\fichacaso{CP-039}{RF-013}{Sistema}{Cancelacion permitida por el pasajero}{Pasajero autenticado con solicitud propia cancelable.}
+\begin{pasostable}
+\paso{1}{Abrir la bandeja de solicitudes propias.}{Sesion de pasajero.}{La solicitud aparece con accion de cancelacion.}
+\paso{2}{Confirmar la cancelacion.}{Solicitud pendiente o aceptada segun regla.}{La API procesa la cancelacion.}
+\paso{3}{Revisar bandejas y cupos.}{Solicitud cancelada.}{La solicitud cambia a cancelada y el viaje recupera disponibilidad si corresponde.}
+\end{pasostable}
+
+\subsection{RF-014 Inicio de viaje}
+\fichacaso{CP-040}{RF-014}{Sistema}{Inicio dentro de la ventana operativa}{Conductor autenticado, viaje publicado en horario permitido.}
+\begin{pasostable}
+\paso{1}{Abrir la vista de operacion del viaje.}{Viaje publicado.}{Se muestran acciones operativas disponibles.}
+\paso{2}{Presionar iniciar viaje dentro de la ventana permitida.}{Horario valido.}{La solicitud de cambio de estado se procesa.}
+\paso{3}{Verificar estado del viaje y solicitudes pendientes.}{Viaje iniciado.}{El viaje cambia a en curso y las solicitudes pendientes se cierran automaticamente.}
+\end{pasostable}
+\fichacaso{CP-041}{RF-014}{Integracion}{Rechazo por intento de inicio fuera de ventana}{Conductor autenticado y viaje publicado fuera del horario permitido.}
+\begin{pasostable}
+\paso{1}{Abrir el detalle operativo del viaje.}{Viaje publicado.}{La vista se carga normalmente.}
+\paso{2}{Intentar iniciar el viaje antes o despues de la ventana valida.}{Horario invalido.}{La API valida la regla temporal.}
+\paso{3}{Revisar el resultado.}{Intento fuera de ventana.}{El viaje no cambia de estado y las solicitudes siguen intactas.}
+\end{pasostable}
+\fichacaso{CP-042}{RF-014}{Sistema}{Bloqueo de inicio por usuario no autorizado}{Pasajero u otro conductor intenta iniciar un viaje ajeno.}
+\begin{pasostable}
+\paso{1}{Acceder al viaje desde una cuenta no autorizada.}{Sesion sin permiso.}{El detalle puede mostrarse segun contexto, pero no las acciones validas.}
+\paso{2}{Invocar la accion de inicio por interfaz o peticion directa.}{Viaje ajeno.}{La capa de negocio verifica propiedad y rol.}
+\paso{3}{Verificar respuesta.}{Intento no autorizado.}{La accion es denegada y el viaje conserva su estado original.}
+\end{pasostable}
+
+\subsection{RF-015 Abordaje de pasajero}
+\fichacaso{CP-043}{RF-015}{Integracion}{Marcacion exitosa de pasajero a bordo}{Viaje en curso y solicitud aceptada pendiente de abordaje.}
+\begin{pasostable}
+\paso{1}{Abrir la operacion del viaje en curso.}{Sesion de conductor.}{Se listan los pasajeros aceptados.}
+\paso{2}{Seleccionar al pasajero aceptado y marcarlo como a bordo.}{Solicitud aceptada.}{La accion es enviada al backend.}
+\paso{3}{Verificar estado actualizado.}{Pasajero marcado.}{El estado operativo pasa a a bordo y se refleja para conductor y pasajero.}
+\end{pasostable}
+\fichacaso{CP-044}{RF-015}{Integracion}{Rechazo al abordar una solicitud no aceptada}{Viaje en curso y solicitud pendiente, rechazada o cancelada.}
+\begin{pasostable}
+\paso{1}{Intentar marcar como a bordo a un pasajero no aceptado.}{Solicitud no elegible.}{La accion se intenta procesar.}
+\paso{2}{Validar reglas del estado de la solicitud.}{Estado distinto de aceptada.}{La API detecta la violacion de secuencia.}
+\paso{3}{Verificar resultado.}{Operacion invalida.}{No se actualiza el estado operativo del pasajero.}
+\end{pasostable}
+\fichacaso{CP-045}{RF-015}{Sistema}{Reflejo del abordaje en seguimiento}{Pasajero aceptado y conductor observan el viaje luego del cambio.}
+\begin{pasostable}
+\paso{1}{Marcar a un pasajero como a bordo.}{Solicitud aceptada.}{El backend persiste el cambio.}
+\paso{2}{Abrir o refrescar la vista de seguimiento del conductor.}{Sesion del conductor.}{La vista consulta el estado actualizado.}
+\paso{3}{Abrir o refrescar la vista del pasajero.}{Sesion del pasajero aceptado.}{Ambas vistas muestran el estado a bordo de forma consistente.}
+\end{pasostable}
+
+\subsection{RF-016 Finalizaci\'on operativa de pasajero}
+\fichacaso{CP-046}{RF-016}{Integracion}{Finalizacion exitosa de pasajero a bordo}{Viaje en curso y pasajero previamente marcado como a bordo.}
+\begin{pasostable}
+\paso{1}{Abrir el detalle del viaje en curso.}{Sesion de conductor.}{Se observan los pasajeros en estado a bordo.}
+\paso{2}{Seleccionar al pasajero y marcarlo como finalizado.}{Pasajero a bordo.}{La accion es enviada correctamente.}
+\paso{3}{Verificar el nuevo estado.}{Cierre individual solicitado.}{El pasajero cambia a finalizado y queda resuelto operativamente.}
+\end{pasostable}
+\fichacaso{CP-047}{RF-016}{Integracion}{Rechazo al finalizar un pasajero no abordado}{Viaje en curso y pasajero aceptado sin estado a bordo.}
+\begin{pasostable}
+\paso{1}{Abrir la operacion del viaje.}{Sesion de conductor.}{Se listan pasajeros con distintos estados.}
+\paso{2}{Intentar finalizar a un pasajero que aun no esta a bordo.}{Pasajero aceptado sin abordaje.}{La validacion de secuencia es ejecutada.}
+\paso{3}{Verificar respuesta.}{Operacion invalida.}{El sistema rechaza el cierre individual y mantiene el estado previo.}
+\end{pasostable}
+\fichacaso{CP-048}{RF-016}{Sistema}{Impacto del cierre individual en el resumen del viaje}{Viaje en curso con varios pasajeros en distintos estados.}
+\begin{pasostable}
+\paso{1}{Finalizar a uno o varios pasajeros a bordo.}{Pasajeros elegibles.}{Los cambios se registran correctamente.}
+\paso{2}{Actualizar el resumen del viaje.}{Estados operativos modificados.}{La vista recalcula pasajeros pendientes y resueltos.}
+\paso{3}{Verificar la disponibilidad de cierre global.}{Resumen actualizado.}{El viaje refleja correctamente cuantos pasajeros faltan por resolver.}
+\end{pasostable}
+
+\subsection{RF-017 Registro de no-show}
+\fichacaso{CP-049}{RF-017}{Integracion}{Marcacion valida de no-show}{Viaje en curso o completado y pasajero aceptado sin abordaje previo.}
+\begin{pasostable}
+\paso{1}{Abrir la operacion del viaje.}{Sesion de conductor.}{Se muestra la lista de solicitudes aceptadas.}
+\paso{2}{Marcar a un pasajero como no-show.}{Pasajero aceptado no abordado.}{La accion es validada por backend.}
+\paso{3}{Verificar resultado.}{Marcacion de no-show.}{El estado final del pasajero pasa a no-show y queda visible en el viaje.}
+\end{pasostable}
+\fichacaso{CP-050}{RF-017}{Integracion}{Rechazo de no-show para pasajero ya abordado o finalizado}{Pasajero con estado a bordo o finalizado.}
+\begin{pasostable}
+\paso{1}{Seleccionar a un pasajero ya abordado o finalizado.}{Estado no elegible.}{La accion de no-show se intenta ejecutar.}
+\paso{2}{Procesar la solicitud.}{Pasajero no elegible para no-show.}{La regla de negocio se valida.}
+\paso{3}{Verificar respuesta.}{Operacion invalida.}{La marcacion es rechazada y el estado del pasajero no cambia.}
+\end{pasostable}
+\fichacaso{CP-051}{RF-017}{Sistema}{Visibilidad del no-show para las partes}{Conductor y pasajero consultan el viaje tras registrar el no-show.}
+\begin{pasostable}
+\paso{1}{Registrar el no-show del pasajero.}{Pasajero aceptado no abordado.}{El evento queda persistido.}
+\paso{2}{Refrescar la vista del conductor.}{Sesion del conductor.}{La vista refleja el nuevo estado del pasajero.}
+\paso{3}{Refrescar la vista del pasajero.}{Sesion del pasajero.}{El pasajero visualiza el estado no-show asociado a su solicitud.}
+\end{pasostable}
+
+\subsection{RF-018 Cierre excepcional del viaje}
+\fichacaso{CP-052}{RF-018}{Sistema}{Rechazo de cierre sin nota excepcional}{Viaje en curso y pasajeros aceptados sin cierre operativo resuelto.}
+\begin{pasostable}
+\paso{1}{Abrir la operacion del viaje con pasajeros pendientes.}{Sesion de conductor.}{La vista muestra que existen pasajeros sin resolver.}
+\paso{2}{Intentar finalizar el viaje sin ingresar nota.}{Cierre sin nota.}{La solicitud se procesa contra reglas de negocio.}
+\paso{3}{Verificar resultado.}{Intento de cierre invalido.}{El sistema impide finalizar y exige una nota de cierre excepcional.}
+\end{pasostable}
+\fichacaso{CP-053}{RF-018}{Sistema}{Cierre exitoso con nota excepcional}{Viaje en curso con pasajeros aceptados sin resolucion final.}
+\begin{pasostable}
+\paso{1}{Abrir el flujo de finalizacion del viaje.}{Sesion de conductor.}{Se detecta la necesidad de cierre excepcional.}
+\paso{2}{Ingresar una nota justificativa y confirmar cierre.}{Nota obligatoria.}{La validacion acepta el cierre excepcional.}
+\paso{3}{Revisar el estado del viaje.}{Cierre confirmado.}{El viaje pasa a completado y la nota queda almacenada.}
+\end{pasostable}
+\fichacaso{CP-054}{RF-018}{Integracion}{Cierre normal sin nota cuando todos estan resueltos}{Viaje en curso con todos los pasajeros finalizados o no-show.}
+\begin{pasostable}
+\paso{1}{Abrir la finalizacion del viaje.}{Sesion de conductor.}{La vista detecta que no hay pasajeros pendientes.}
+\paso{2}{Confirmar el cierre sin nota adicional.}{Viaje completamente resuelto.}{La regla de negocio permite la operacion.}
+\paso{3}{Verificar resultado.}{Cierre normal.}{El viaje se completa sin exigir nota excepcional.}
+\end{pasostable}
+
+\subsection{RF-019 Seguimiento operativo v1}
+\fichacaso{CP-055}{RF-019}{Sistema}{Visualizacion autorizada del seguimiento}{Conductor o pasajero aceptado accede a un viaje elegible.}
+\begin{pasostable}
+\paso{1}{Abrir el detalle operativo del viaje.}{Sesion autorizada.}{La pantalla de seguimiento se carga.}
+\paso{2}{Consultar ruta y estado operativo.}{Viaje elegible.}{La vista solicita la informacion del trayecto.}
+\paso{3}{Verificar contenido visible.}{Datos de seguimiento.}{Se muestran ruta planificada y estado segun el rol del usuario.}
+\end{pasostable}
+\fichacaso{CP-056}{RF-019}{Integracion}{Bloqueo de seguimiento para usuario no autorizado}{Usuario ajeno al viaje intenta acceder al detalle.}
+\begin{pasostable}
+\paso{1}{Intentar abrir el seguimiento de un viaje no relacionado.}{Sesion de usuario ajeno.}{La ruta es invocada.}
+\paso{2}{Solicitar los datos operativos del viaje.}{Identificador de viaje ajeno.}{El backend valida pertenencia y permisos.}
+\paso{3}{Verificar respuesta.}{Acceso no autorizado.}{El sistema deniega la visualizacion y no expone datos del trayecto.}
+\end{pasostable}
+\fichacaso{CP-057}{RF-019}{Integracion}{Actualizacion del seguimiento tras cambio operativo}{El conductor inicia el viaje o modifica estados mientras otro usuario autorizado observa.}
+\begin{pasostable}
+\paso{1}{Abrir seguimiento desde dos sesiones autorizadas.}{Conductor y pasajero aceptado.}{Ambas vistas cargan el mismo viaje.}
+\paso{2}{Ejecutar un cambio operativo desde la sesion del conductor.}{Inicio del viaje o cambio de pasajero.}{El backend persiste el nuevo estado.}
+\paso{3}{Actualizar o esperar refresco en la otra sesion.}{Cambio operativo registrado.}{La vista refleja el nuevo estado de manera coherente.}
+\end{pasostable}
+
+\subsection{RF-020 Calificaciones post-viaje}
+\fichacaso{CP-058}{RF-020}{Sistema}{Registro exitoso de calificacion}{Viaje elegible finalizado y participante autorizado dentro de la ventana de cierre.}
+\begin{pasostable}
+\paso{1}{Abrir la vista de confianza o cierre del viaje.}{Sesion de participante elegible.}{Se muestra la opcion de calificar.}
+\paso{2}{Asignar puntuacion y comentario si aplica.}{Calificacion valida.}{La informacion queda lista para envio.}
+\paso{3}{Guardar la calificacion.}{Valoracion confirmada.}{La calificacion se registra correctamente y se informa exito.}
+\end{pasostable}
+\fichacaso{CP-059}{RF-020}{Integracion}{Rechazo por intento fuera de ventana}{Viaje elegible finalizado con ventana de calificacion expirada.}
+\begin{pasostable}
+\paso{1}{Abrir el flujo de calificacion fuera del plazo permitido.}{Sesion de participante.}{El sistema consulta elegibilidad temporal.}
+\paso{2}{Intentar registrar una valoracion.}{Calificacion fuera de ventana.}{La solicitud llega al backend.}
+\paso{3}{Verificar respuesta.}{Plazo vencido.}{La calificacion es rechazada y no se almacena.}
+\end{pasostable}
+\fichacaso{CP-060}{RF-020}{Sistema}{Bloqueo para usuario no elegible o duplicado}{Usuario no participante o participante que ya califico.}
+\begin{pasostable}
+\paso{1}{Abrir el flujo de calificacion con una cuenta no elegible.}{Usuario no participante o duplicado.}{La vista intenta resolver permisos.}
+\paso{2}{Intentar registrar la valoracion.}{Solicitud no elegible.}{La capa de negocio valida la restriccion.}
+\paso{3}{Verificar resultado.}{Operacion invalida.}{El sistema bloquea el registro y no altera el historial existente.}
+\end{pasostable}
+
+\subsection{RF-021 Reportes con evidencia}
+\fichacaso{CP-061}{RF-021}{Sistema}{Envio exitoso de reporte con evidencia}{Participante autorizado y viaje o incidente elegible.}
+\begin{pasostable}
+\paso{1}{Abrir el flujo de reporte.}{Sesion de participante elegible.}{Se muestra el formulario de reporte.}
+\paso{2}{Ingresar descripcion y adjuntar evidencia valida.}{Archivo permitido y datos completos.}{La evidencia se carga correctamente.}
+\paso{3}{Enviar el reporte.}{Formulario completo.}{El reporte queda registrado y visible para administracion.}
+\end{pasostable}
+\fichacaso{CP-062}{RF-021}{Integracion}{Rechazo por archivo no permitido}{Participante elegible con evidencia en formato o tamano invalido.}
+\begin{pasostable}
+\paso{1}{Abrir el formulario de reporte.}{Sesion valida.}{La vista se carga con campos disponibles.}
+\paso{2}{Adjuntar un archivo no permitido.}{Formato o tamano invalido.}{La capa de validacion detecta el problema.}
+\paso{3}{Intentar enviar el reporte.}{Evidencia invalida.}{El sistema rechaza la operacion y no registra el caso.}
+\end{pasostable}
+\fichacaso{CP-063}{RF-021}{Sistema}{Bloqueo para usuario no elegible}{Usuario que no participo en el viaje o sin contexto permitido.}
+\begin{pasostable}
+\paso{1}{Intentar abrir el flujo de reporte sobre un viaje no relacionado.}{Sesion no elegible.}{La ruta o accion es invocada.}
+\paso{2}{Solicitar el formulario o enviar datos.}{Intento de reporte.}{La autorizacion valida pertenencia al caso.}
+\paso{3}{Verificar resultado.}{Usuario no autorizado.}{El sistema impide crear el reporte y no expone informacion sensible.}
+\end{pasostable}
+
+\subsection{RF-022 Sanciones y apelaciones}
+\fichacaso{CP-064}{RF-022}{Sistema}{Aplicacion de sancion con efecto visible}{Administrador autenticado y expediente que justifica sancion.}
+\begin{pasostable}
+\paso{1}{Abrir el expediente administrativo del usuario.}{Sesion de administrador.}{Se visualizan antecedentes y reportes.}
+\paso{2}{Registrar una sancion valida.}{Motivo, tipo de sancion y soporte.}{La accion se procesa correctamente.}
+\paso{3}{Verificar el impacto en el perfil restringido.}{Sancion creada.}{La restriccion queda visible y operativa para el usuario afectado.}
+\end{pasostable}
+\fichacaso{CP-065}{RF-022}{Sistema}{Presentacion exitosa de apelacion}{Usuario sancionado con opcion de apelacion vigente.}
+\begin{pasostable}
+\paso{1}{Abrir el detalle de la sancion.}{Sesion del usuario afectado.}{La vista muestra la opcion de apelar si aplica.}
+\paso{2}{Ingresar motivo y evidencia de apelacion si corresponde.}{Datos de apelacion.}{El formulario queda listo para envio.}
+\paso{3}{Enviar la apelacion.}{Solicitud valida.}{La apelacion queda registrada para revision administrativa.}
+\end{pasostable}
+\fichacaso{CP-066}{RF-022}{Integracion}{Rechazo de apelacion fuera de regla}{Usuario sin sancion apelable o fuera de plazo.}
+\begin{pasostable}
+\paso{1}{Intentar abrir o invocar el flujo de apelacion.}{Sesion con sancion no apelable o sin sancion.}{La accion llega a validacion de negocio.}
+\paso{2}{Enviar una apelacion no permitida.}{Datos de apelacion.}{El backend verifica elegibilidad y plazo.}
+\paso{3}{Verificar respuesta.}{Apelacion invalida.}{El sistema rechaza la apelacion y no crea expediente inconsistente.}
+\end{pasostable}
+
+\subsection{RF-023 Auditor\'ia administrativa}
+\fichacaso{CP-067}{RF-023}{Sistema}{Consulta integral de expediente administrativo}{Administrador autenticado y existencia de solicitudes, reportes o sanciones relacionadas.}
+\begin{pasostable}
+\paso{1}{Abrir el modulo de auditoria administrativa.}{Sesion de administrador.}{La interfaz muestra los accesos de revision.}
+\paso{2}{Seleccionar un expediente con historial relacionado.}{Conductor, reporte o sancion.}{El sistema consulta informacion cruzada.}
+\paso{3}{Verificar contenido mostrado.}{Expediente seleccionado.}{Se visualizan datos, evidencia y contexto asociado al caso.}
+\end{pasostable}
+\fichacaso{CP-068}{RF-023}{Integracion}{Filtrado administrativo por entidad o estado}{Administrador autenticado y multiples registros en auditoria.}
+\begin{pasostable}
+\paso{1}{Abrir listados administrativos.}{Sesion valida.}{Se muestran registros disponibles.}
+\paso{2}{Aplicar filtros por conductor, reporte, sancion o apelacion.}{Parametros de filtro.}{La solicitud de filtrado se procesa en backend.}
+\paso{3}{Verificar resultados.}{Filtros aplicados.}{La lista resultante responde a los criterios seleccionados.}
+\end{pasostable}
+\fichacaso{CP-069}{RF-023}{Sistema}{Bloqueo de acceso para perfiles no administrativos}{Conductor o pasajero autenticado sin rol administrativo.}
+\begin{pasostable}
+\paso{1}{Intentar abrir el modulo de auditoria.}{Sesion no administrativa.}{La ruta o menu es invocado.}
+\paso{2}{Solicitar el contenido administrativo.}{Acceso no autorizado.}{La capa de autorizacion valida el rol.}
+\paso{3}{Verificar respuesta.}{Perfil no administrativo.}{El sistema deniega acceso y no expone informacion sensible.}
+\end{pasostable}
+
+\subsection{RF-024 Trazabilidad de eventos}
+\fichacaso{CP-070}{RF-024}{Integracion}{Registro de evento al aprobar conductor}{Administrador aprueba una solicitud de conductor.}
+\begin{pasostable}
+\paso{1}{Abrir una solicitud pendiente y aprobarla.}{Sesion administrativa y solicitud valida.}{La decision cambia el estado del expediente.}
+\paso{2}{Consultar el historial de auditoria asociado.}{Expediente revisado.}{El sistema recupera las trazas del evento.}
+\paso{3}{Verificar los datos registrados.}{Evento de aprobacion.}{La auditoria contiene actor, fecha, entidad y resultado de la accion.}
+\end{pasostable}
+\fichacaso{CP-071}{RF-024}{Integracion}{Registro de evento al iniciar o cerrar viaje}{Conductor ejecuta una transicion critica sobre un viaje propio.}
+\begin{pasostable}
+\paso{1}{Iniciar o finalizar un viaje en una operacion valida.}{Sesion de conductor y viaje elegible.}{La transicion del viaje se ejecuta.}
+\paso{2}{Acceder a la auditoria del viaje o del sistema.}{Entidad afectada.}{Se consulta el historial asociado a la operacion.}
+\paso{3}{Verificar la traza registrada.}{Evento operativo critico.}{La auditoria conserva la transicion de estado y su relacion con el viaje.}
+\end{pasostable}
+\fichacaso{CP-072}{RF-024}{Sistema}{Proteccion de la trazabilidad frente a usuarios sin permiso}{Usuario no administrativo intenta consultar o alterar el historial de auditoria.}
+\begin{pasostable}
+\paso{1}{Intentar abrir la vista de auditoria desde una cuenta sin permisos.}{Sesion no administrativa.}{La solicitud es procesada por la capa de autorizacion.}
+\paso{2}{Intentar consultar o modificar trazas.}{Acceso no autorizado.}{El sistema valida restricciones sobre el historial.}
+\paso{3}{Verificar respuesta.}{Intento invalido.}{El acceso es denegado y la informacion de auditoria permanece protegida.}
+\end{pasostable}
+
+\section{Conclusiones}
+
+El presente documento cubre los 24 requisitos funcionales definidos para SafeRidePro y propone un total de 72 casos de prueba, cumpliendo con el criterio m\'inimo de tres casos por requisito. La selecci\'on combina escenarios positivos y negativos con \'enfasis en la interacci\'on entre m\'odulos, servicios y reglas de negocio.
+
+Este dise\~no constituye una base adecuada para las siguientes actividades del proceso de pruebas: preparaci\'on de datos, configuraci\'on del entorno, ejecuci\'on, registro de evidencias, control de defectos y construcci\'on de la matriz de trazabilidad entre requisitos, casos y resultados.
+
+\end{document}

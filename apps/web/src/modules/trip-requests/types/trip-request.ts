@@ -1,6 +1,8 @@
 import {
   CancellationTiming,
+  PaymentProvider,
   TripRequestExecutionStatus,
+  TripPaymentStatus,
   TripRequestStatus,
   TripRouteMode,
   TripStatus,
@@ -43,6 +45,17 @@ export type TripRequestRecord = {
   reviewedAt: string | null;
   cancelledAt: string | null;
   cancellationTiming: CancellationTiming | null;
+  payment: {
+    id: string;
+    provider: PaymentProvider;
+    status: TripPaymentStatus;
+    currencyCode: string;
+    amount: number;
+    checkoutUrl: string | null;
+    paidAt: string | null;
+    expiresAt: string | null;
+    updatedAt: string;
+  } | null;
 };
 
 export type CreateTripRequestInput = {

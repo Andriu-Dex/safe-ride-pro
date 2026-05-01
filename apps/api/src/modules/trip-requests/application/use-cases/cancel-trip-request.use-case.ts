@@ -12,6 +12,7 @@ import {
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { TripPaymentsOrchestratorService } from '../../../payments/application/services/trip-payments-orchestrator.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
@@ -25,6 +26,13 @@ export class CancelTripRequestUseCase {
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
     private readonly operationalSanctionsService: OperationalSanctionsService,
+    @Optional()
+    private readonly tripPaymentsOrchestratorService: Pick<
+      TripPaymentsOrchestratorService,
+      'cancelTripRequestPayment'
+    > = {
+      cancelTripRequestPayment: async () => null,
+    },
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
@@ -69,6 +77,11 @@ export class CancelTripRequestUseCase {
         updatedTripRequest.passengerMembershipId,
       );
     }
+
+    await this.tripPaymentsOrchestratorService.cancelTripRequestPayment(
+      updatedTripRequest.id,
+      'Pago cancelado porque la solicitud fue cancelada por el pasajero.',
+    );
 
     this.realtimeEventsService.publishTripRequestChanged({
       actorUserId: userId,
