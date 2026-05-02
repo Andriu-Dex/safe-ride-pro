@@ -11,6 +11,7 @@ import { getOperationalAccessState } from '../../modules/auth/lib/operational-co
 import { NotificationBell } from '../../modules/notifications/components/notification-bell';
 import { getUserInitials } from '../../modules/users/lib/get-user-initials';
 import { NavbarLogo } from '../ui/navbar-logo';
+import styles from './authenticated-shell.module.css';
 
 const COMPANY_LOGO_URL = 'https://i.imgur.com/HMtKckK.png';
 
@@ -367,7 +368,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                 <button
                   aria-expanded={isUserMenuOpen}
                   aria-label="Abrir menú de usuario"
-                  className="flex items-center gap-3 p-1.5 pr-3 rounded-2xl hover:bg-white/10 hover:shadow-sm transition-all focus:outline-none group border border-transparent hover:border-teal-800"
+                  className={`${styles.userProfileButton} group`}
                   onClick={() => setIsUserMenuOpen((currentValue) => !currentValue)}
                   type="button"
                 >
@@ -389,23 +390,32 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                 </button>
 
                 {isUserMenuOpen ? (
-                  <div className="absolute right-0 top-full mt-3 w-56 bg-white rounded-2xl shadow-2xl shadow-slate-200/50 border border-slate-100 p-2 flex flex-col z-50 transform origin-top-right transition-all animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-3 py-2 border-b border-slate-100 mb-2 sm:hidden">
-                      <strong className="block text-sm font-bold text-slate-800 truncate">{authSession?.user.fullName}</strong>
-                      <span className="block text-xs text-slate-500 truncate">{authSession?.user.email}</span>
+                  <div className={styles.userMenuDropdown}>
+                    <div className={styles.dropdownHeader}>
+                      <strong className={styles.dropdownHeaderName}>{authSession?.user.fullName}</strong>
+                      <span className={styles.dropdownHeaderEmail}>{authSession?.user.email}</span>
                     </div>
                     <Link
-                      className="px-3 py-2.5 text-base font-semibold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all rounded-xl text-left flex items-center gap-2 active:scale-95"
+                      className={styles.dropdownItem}
                       href="/perfil"
                       onClick={() => setIsUserMenuOpen(false)}
                     >
+                      <svg className={styles.dropdownIcon} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
                       Mi perfil
                     </Link>
                     <button 
-                      className="px-3 py-2.5 text-base font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all rounded-xl text-left flex items-center gap-2 mt-1 active:scale-95" 
+                      className={styles.dropdownItemDanger}
                       onClick={handleSignOut} 
                       type="button"
                     >
+                      <svg className={styles.dropdownIconDanger} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                      </svg>
                       Cerrar sesión
                     </button>
                   </div>
