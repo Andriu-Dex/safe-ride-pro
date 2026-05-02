@@ -25,6 +25,7 @@ import {
   getTrustRestrictions,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
+import styles from './page.module.css';
 
 function getMembershipRoleLabel(role?: InstitutionMembershipRole): string {
   switch (role) {
@@ -385,52 +386,48 @@ export default function HomePage() {
     <>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <div className="min-h-screen bg-slate-50 pb-12">
-        {/* CABECERA OSCURA - ALTO CONTRASTE */}
-        <header className="bg-teal-950 pt-8 sm:pt-10 pb-28 sm:pb-32 px-4 sm:px-6 md:px-8">
-          <div className="max-w-5xl mx-auto mt-2 sm:mt-4">
-            <div className="bg-teal-900 p-6 sm:p-8 md:p-10 rounded-3xl sm:rounded-[2rem] flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6">
-              <div className="flex items-center gap-5">
-                <div className="hidden sm:flex shrink-0 w-16 h-16 rounded-full bg-teal-800 items-center justify-center text-2xl font-bold text-teal-100 border-2 border-teal-700 shadow-inner">
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-teal-300 font-bold text-sm sm:text-base uppercase tracking-wider mb-2">Bienvenido de vuelta</p>
-                  <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">Hola, {displayName}</h1>
-                </div>
-              </div>
-              <button
-                disabled={isRefreshing}
-                onClick={() => void refreshHome(true)}
-                className="text-base font-bold text-teal-950 bg-teal-400 hover:bg-teal-300 transition-colors flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl w-full sm:w-auto"
-              >
-                {isRefreshing ? 'Actualizando...' : 'Actualizar información'}
-              </button>
-            </div>
-          </div>
-        </header>
+      <div className={`min-h-screen pb-12 pt-4 sm:pt-8 transition-colors px-3 sm:px-6 lg:px-8 ${styles.pageBackground}`}>
+        {/* CONTENEDOR PRINCIPAL TIPO "LIENZO" */}
+        <main className="max-w-5xl mx-auto w-full bg-white/90 backdrop-blur-3xl rounded-3xl sm:rounded-4xl p-5 sm:p-8 md:p-10 flex flex-col gap-6 sm:gap-8 shadow-2xl shadow-slate-400/50 border border-white">
 
-        {/* DASHBOARD PRINCIPAL SUPERPUESTO */}
-        <main className="-mt-12 sm:-mt-16 max-w-5xl mx-auto w-full px-4 sm:px-6 md:px-8 flex flex-col gap-5 sm:gap-6 relative">
+          {/* TARJETA DE BIENVENIDA */}
+          <div className="bg-linear-to-br from-teal-950 via-teal-900 to-teal-800 p-6 sm:p-8 md:p-10 rounded-3xl sm:rounded-4xl flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 shadow-2xl shadow-teal-900/20 border border-teal-800/50">
+            <div className="flex items-center gap-5">
+              <div className="hidden sm:flex shrink-0 w-16 h-16 rounded-full bg-teal-800 items-center justify-center text-2xl font-bold text-teal-100 border-2 border-teal-700 shadow-inner">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-teal-300 font-bold text-sm sm:text-base uppercase tracking-wider mb-2">Bienvenido de vuelta</p>
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">Hola, {displayName}</h1>
+              </div>
+            </div>
+            <button
+              disabled={isRefreshing}
+              onClick={() => void refreshHome(true)}
+              className="text-base font-bold text-teal-950 bg-teal-400 hover:bg-teal-300 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl shadow-lg shadow-teal-950/30 hover:shadow-teal-400/40 w-full sm:w-auto"
+            >
+              {isRefreshing ? 'Actualizando...' : 'Actualizar información'}
+            </button>
+          </div>
 
           {/* BANNER DE ACCIÓN PRINCIPAL */}
           {activeIssue ? (
-            <Link href={activeIssue.href} className="bg-rose-500 hover:bg-rose-600 transition-colors text-white rounded-3xl sm:rounded-[2rem] p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 group">
+            <Link href={activeIssue.href} className="bg-linear-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 transition-all duration-300 text-white rounded-3xl sm:rounded-4xl p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 shadow-xl shadow-rose-500/20 hover:shadow-2xl hover:shadow-rose-600/30 group hover:-translate-y-0.5">
               <div>
                 <p className="text-rose-100 text-sm sm:text-base font-bold uppercase tracking-wider mb-2">Acción Requerida</p>
                 <strong className="text-2xl sm:text-3xl font-extrabold">{activeIssue.title}</strong>
               </div>
-              <span className="bg-rose-900 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg whitespace-nowrap text-center group-hover:bg-rose-950 transition-colors w-full sm:w-auto">
+              <span className="bg-white text-rose-600 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg whitespace-nowrap text-center group-hover:bg-rose-50 transition-colors shadow-md w-full sm:w-auto">
                 Revisar ahora
               </span>
             </Link>
           ) : (
-            <div className="bg-teal-600 text-white rounded-3xl sm:rounded-[2rem] p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6">
+            <div className="bg-linear-to-r from-teal-600 to-teal-500 text-white rounded-3xl sm:rounded-4xl p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 shadow-xl shadow-teal-600/20 border border-teal-500/50">
               <div>
                 <p className="text-teal-100 text-sm sm:text-base font-bold uppercase tracking-wider mb-2">Estado General</p>
                 <strong className="text-2xl sm:text-3xl font-extrabold">{primaryAction.title}</strong>
               </div>
-              <Link href={primaryAction.href} className="bg-teal-900 text-white hover:bg-teal-950 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-colors whitespace-nowrap text-center w-full sm:w-auto">
+              <Link href={primaryAction.href} className="bg-teal-950 text-white hover:bg-teal-900 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all shadow-lg hover:shadow-xl active:scale-95 whitespace-nowrap text-center w-full sm:w-auto">
                 {primaryAction.label}
               </Link>
             </div>
@@ -439,13 +436,13 @@ export default function HomePage() {
           {/* ACCESOS RÁPIDOS */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
             {quickActions.map((action) => (
-              <Link key={action.href} href={action.href} className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-teal-500 hover:shadow-teal-500/10 transition-all group flex flex-col justify-between min-h-[120px] sm:min-h-[140px]">
+              <Link key={action.href} href={action.href} className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-100/80 shadow-md shadow-slate-200/40 hover:shadow-xl hover:shadow-teal-500/10 hover:border-teal-200 hover:-translate-y-1 transition-all duration-300 group flex flex-col justify-between min-h-30 sm:min-h-35">
                 <div>
                   {getActionIcon(action.href)}
                   <strong className="text-slate-800 text-sm sm:text-lg font-semibold group-hover:text-teal-700 transition-colors line-clamp-2">{action.title}</strong>
                 </div>
                 <div className="flex justify-end mt-3 sm:mt-4">
-                  <div className="bg-slate-50 group-hover:bg-teal-50 p-2 rounded-xl transition-colors">
+                  <div className="bg-slate-50 group-hover:bg-teal-50 group-hover:shadow-sm p-2 rounded-xl transition-all">
                     <svg className="w-5 h-5 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                     </svg>
@@ -457,22 +454,22 @@ export default function HomePage() {
 
           {/* PANELES DE DETALLE (2 COLUMNAS) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mt-2 sm:mt-4">
-             <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+             <section className="bg-white rounded-3xl border border-slate-100/80 shadow-xl shadow-slate-200/30 p-6 sm:p-8 hover:shadow-2xl hover:shadow-slate-200/40 transition-shadow duration-300">
                 <div className="flex items-center justify-between mb-6 sm:mb-8">
                   <h2 className="text-xl font-bold text-slate-800">Resumen de cuenta</h2>
                   <Link href="/perfil" className="text-base font-semibold text-teal-600 hover:text-teal-700 transition-colors">Editar perfil</Link>
                 </div>
                 <div className="space-y-4 sm:space-y-5">
                   {spotlightItems.map((item) => (
-                    <div key={item.label} className="flex justify-between items-center gap-4 pb-4 sm:pb-5 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div key={item.label} className="flex justify-between items-center gap-4 pb-4 sm:pb-5 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-2 -mx-2 rounded-lg last:border-0 last:pb-2">
                       <span className="text-slate-500 text-sm sm:text-base">{item.label}</span>
-                      <strong className="text-slate-800 text-sm sm:text-base font-semibold text-right break-words">{item.value}</strong>
+                      <strong className="text-slate-800 text-sm sm:text-base font-semibold text-right wrap-break-word">{item.value}</strong>
                     </div>
                   ))}
                 </div>
              </section>
 
-             <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+             <section className="bg-white rounded-3xl border border-slate-100/80 shadow-xl shadow-slate-200/30 p-6 sm:p-8 hover:shadow-2xl hover:shadow-slate-200/40 transition-shadow duration-300">
                 <div className="flex items-center justify-between mb-6 sm:mb-8">
                   <h2 className="text-xl font-bold text-slate-800">Estado operativo</h2>
                   {auditVisible && (
@@ -481,9 +478,9 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-4 sm:space-y-5">
                   {statusItems.map((item) => (
-                    <div key={item.label} className="flex justify-between items-center gap-4 pb-4 sm:pb-5 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div key={item.label} className="flex justify-between items-center gap-4 pb-4 sm:pb-5 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-2 -mx-2 rounded-lg last:border-0 last:pb-2">
                       <span className="text-slate-500 text-sm sm:text-base">{item.label}</span>
-                      <span className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wide text-center ${getBadgeColor(item.value)}`}>
+                      <span className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wide text-center shadow-sm ${getBadgeColor(item.value)}`}>
                         {item.value}
                       </span>
                     </div>
