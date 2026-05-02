@@ -5,6 +5,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { DriversModule } from './modules/drivers/drivers.module';
 import { HealthModule } from './modules/health/health.module';
 import { InstitutionsModule } from './modules/institutions/institutions.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { RatingsModule } from './modules/ratings/ratings.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
@@ -28,6 +29,7 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
     DriversModule,
     VehiclesModule,
     RealtimeModule,
+    NotificationsModule,
     SanctionsModule,
     PaymentsModule,
     TripsModule,

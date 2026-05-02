@@ -93,6 +93,7 @@ enum TripRequestExecutionStatus {
 
 enum PaymentProvider {
   PAYPAL
+  CASH
 }
 
 enum TripPaymentStatus {
@@ -185,6 +186,20 @@ enum AuditEntityType {
   AUTH_SESSION
 }
 
+enum AppNotificationType {
+  TRIP_REQUEST_CREATED
+  TRIP_REQUEST_ACCEPTED
+  TRIP_REQUEST_REJECTED
+  TRIP_REQUEST_CANCELLED
+  PAYMENT_CONFIRMED
+  PAYMENT_ACTION_REQUIRED
+  CASH_PAYMENT_REPORTED
+  RATING_PENDING
+  TRUST_ACTION
+  DRIVER_APPLICATION_UPDATED
+  SYSTEM
+}
+
 enum AssetStorageProvider {
   IMGUR
 }
@@ -201,6 +216,7 @@ model Institution {
   trips        Trip[]
   tripPayments TripPayment[]
   auditEvents  AuditEvent[]
+  notifications AppNotification[]
 
   @@map("institutions")
 }
@@ -250,6 +266,7 @@ model User {
   requestedSanctionAppeals    OperationalSanctionAppeal[] @relation("SanctionAppealRequestedBy")
   reviewedSanctionAppeals     OperationalSanctionAppeal[] @relation("SanctionAppealReviewedBy")
   auditEvents                 AuditEvent[]                @relation("AuditActor")
+  actorNotifications          AppNotification[]           @relation("NotificationActor")
 
   @@unique([documentType, documentNumber])
   @@map("users")
@@ -280,6 +297,7 @@ model UserInstitutionMembership {
   reportsCreated           Report[]                 @relation("ReportReporter")
   reportsReceived          Report[]                 @relation("ReportReported")
   operationalSanctions     OperationalSanction[]
+  notifications            AppNotification[]
 
   @@unique([userId, institutionId])
   @@unique([institutionId, studentCode])
@@ -692,4 +710,24 @@ model AuditEvent {
   @@index([action, createdAt])
   @@index([entityType, entityId, createdAt])
   @@map("audit_events")
+}
+
+model AppNotification {
+  id                    String                    @id @default(uuid())
+  institutionId         String
+  recipientMembershipId String
+  actorUserId           String?
+  type                  AppNotificationType
+  title                 String
+  body                  String?
+  actionUrl             String?
+  readAt                DateTime?
+  createdAt             DateTime                  @default(now())
+  institution           Institution               @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  recipientMembership   UserInstitutionMembership @relation(fields: [recipientMembershipId], references: [id], onDelete: Cascade)
+  actorUser             User?                     @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([recipientMembershipId, readAt, createdAt])
+  @@index([institutionId, createdAt])
+  @@map("app_notifications")
 }

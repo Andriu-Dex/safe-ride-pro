@@ -2,8 +2,10 @@ import type {
   TripLiveTrackingSignalStatus,
   TripLiveTrackingStatus,
 } from './trip-live-tracking';
+import type { AppNotificationRecord } from './notification';
 
 export const REALTIME_CONNECTED_EVENT = 'connected' as const;
+export const REALTIME_NOTIFICATION_CREATED_EVENT = 'notification.created' as const;
 export const REALTIME_TRIP_CHANGED_EVENT = 'trip.changed' as const;
 export const REALTIME_TRIP_REQUEST_CHANGED_EVENT = 'trip-request.changed' as const;
 export const REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT =
@@ -31,6 +33,14 @@ export type RealtimeConnectedEvent = {
   userId: string;
   institutionIds: string[];
   membershipIds: string[];
+};
+
+export type RealtimeNotificationCreatedEvent = {
+  type: typeof REALTIME_NOTIFICATION_CREATED_EVENT;
+  institutionId: string;
+  recipientMembershipId: string;
+  notification: AppNotificationRecord;
+  occurredAt: string;
 };
 
 export type RealtimeTripChangedEvent = {
@@ -74,6 +84,7 @@ export type RealtimeTripLiveTrackingUpdatedEvent = {
 
 export type RealtimeEvent =
   | RealtimeConnectedEvent
+  | RealtimeNotificationCreatedEvent
   | RealtimeTripChangedEvent
   | RealtimeTripRequestChangedEvent
   | RealtimeTripLiveTrackingUpdatedEvent;

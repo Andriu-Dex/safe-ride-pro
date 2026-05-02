@@ -39,3 +39,26 @@ export async function capturePayment(
     body: {},
   });
 }
+
+export async function confirmCashPayment(
+  accessToken: string,
+  paymentId: string,
+): Promise<PaymentMutationResponse> {
+  return apiRequest<PaymentMutationResponse>(`/payments/${paymentId}/confirm-cash`, {
+    method: 'POST',
+    accessToken,
+    body: {},
+  });
+}
+
+export async function reportCashPaymentIssue(
+  accessToken: string,
+  paymentId: string,
+  note: string,
+): Promise<PaymentMutationResponse> {
+  return apiRequest<PaymentMutationResponse>(`/payments/${paymentId}/report-cash-issue`, {
+    method: 'POST',
+    accessToken,
+    body: { note },
+  });
+}

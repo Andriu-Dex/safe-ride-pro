@@ -7,11 +7,15 @@ import {
   Optional,
 } from '@nestjs/common';
 import {
+  AppNotificationType,
   MembershipStatus,
+  PaymentProvider,
   TripRouteMode,
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { getAppEnvironment } from '../../../../shared/infrastructure/config/app-environment';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
 import {
@@ -27,6 +31,7 @@ export type CreateTripRequestCommand = {
   requestedDropoffLatitude?: number;
   requestedDropoffLongitude?: number;
   requestMessage?: string;
+  paymentProvider?: PaymentProvider;
 };
 
 @Injectable()
@@ -37,6 +42,8 @@ export class CreateTripRequestUseCase {
     private readonly operationalSanctionsService: OperationalSanctionsService,
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async execute(command: CreateTripRequestCommand) {
@@ -84,6 +91,8 @@ export class CreateTripRequestUseCase {
     const tripRequest = await this.tripRequestsRepository.createTripRequest({
       tripId: trip.id,
       passengerMembershipId: membership.id,
+      paymentProvider: command.paymentProvider ?? PaymentProvider.Cash,
+      currencyCode: getAppEnvironment().paymentsCurrency,
       requestedPickupLatitude: command.requestedPickupLatitude,
       requestedPickupLongitude: command.requestedPickupLongitude,
       requestedDropoffLatitude: command.requestedDropoffLatitude,
@@ -101,8 +110,33 @@ export class CreateTripRequestUseCase {
       tripId: trip.id,
     });
 
+    if (tripRequest.payment?.provider === PaymentProvider.Paypal) {
+      await this.notificationsService?.notifyMembership({
+        institutionId: trip.institutionId,
+        recipientMembershipId: membership.id,
+        actorUserId: command.userId,
+        type: AppNotificationType.PaymentActionRequired,
+        title: 'Completa tu pago',
+        body: 'Tu solicitud se enviara al conductor cuando PayPal confirme el pago.',
+        actionUrl: '/viajes',
+      });
+    } else {
+      await this.notificationsService?.notifyMembership({
+        institutionId: trip.institutionId,
+        recipientMembershipId: trip.driverMembershipId,
+        actorUserId: command.userId,
+        type: AppNotificationType.TripRequestCreated,
+        title: 'Nueva solicitud de viaje',
+        body: `${membership.fullName} quiere unirse a tu ruta.`,
+        actionUrl: '/viajes',
+      });
+    }
+
     return {
-      message: 'Solicitud enviada correctamente.',
+      message:
+        tripRequest.payment?.provider === PaymentProvider.Paypal
+          ? 'Solicitud creada. Completa el pago para enviarla al conductor.'
+          : 'Solicitud enviada correctamente.',
       tripRequest,
     };
   }

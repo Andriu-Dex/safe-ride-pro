@@ -81,4 +81,6 @@ export interface PaymentsRepository {
     failureReason?: string,
   ): Promise<TripPaymentRecord | null>;
   markPaymentsCancelledByTripId(tripId: string, failureReason?: string): Promise<number>;
+  markCashPaymentPaid(paymentId: string): Promise<TripPaymentRecord | null>;
+  markCashPaymentFailed(paymentId: string, failureReason: string): Promise<TripPaymentRecord | null>;
 }

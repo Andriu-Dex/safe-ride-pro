@@ -60,6 +60,7 @@ export type TripRequestRecord = {
 
 export type CreateTripRequestInput = {
   tripId: string;
+  paymentProvider?: PaymentProvider;
   requestedPickupLatitude?: number;
   requestedPickupLongitude?: number;
   requestedDropoffLatitude?: number;

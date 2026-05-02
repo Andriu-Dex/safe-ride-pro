@@ -3,6 +3,8 @@ import {
   getTripPostClosureSummary,
   isTripPaymentClosed,
   isTripPaymentSettled,
+  PaymentProvider,
+  TripPaymentStatus,
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
@@ -60,6 +62,8 @@ type TripsRequestsWorkspaceProps = {
   onCancelMyRequest: (requestId: string) => void;
   onCreatePaymentCheckout: (paymentId: string) => void;
   onRefreshPaymentStatus: (paymentId: string) => void;
+  onConfirmCashPayment: (paymentId: string) => void;
+  onReportCashPaymentIssue: (paymentId: string) => void;
   isRefreshingData?: boolean;
   onExploreTrips: () => void;
   accessToken?: string;
@@ -85,6 +89,8 @@ export function TripsRequestsWorkspace({
   onCancelMyRequest,
   onCreatePaymentCheckout,
   onRefreshPaymentStatus,
+  onConfirmCashPayment,
+  onReportCashPaymentIssue,
   isRefreshingData = false,
   onExploreTrips,
   accessToken,
@@ -255,6 +261,25 @@ export function TripsRequestsWorkspace({
                     </p>
                   </div>
                 ) : null}
+                {request.payment?.provider === PaymentProvider.Cash &&
+                request.payment.status === TripPaymentStatus.Pending &&
+                request.status === TripRequestStatus.Accepted ? (
+                  <div className="button-row trip-request-action-row">
+                    <Button
+                      disabled={isMutatingPaymentId === request.payment.id}
+                      onClick={() => onConfirmCashPayment(request.payment!.id)}
+                    >
+                      Pago recibido
+                    </Button>
+                    <Button
+                      disabled={isMutatingPaymentId === request.payment.id}
+                      onClick={() => onReportCashPaymentIssue(request.payment!.id)}
+                      variant="secondary"
+                    >
+                      Reportar novedad
+                    </Button>
+                  </div>
+                ) : null}
                 {canMarkRequestAsNoShow(request) ? (
                   <TextareaField
                     label="Nota no-show"
@@ -407,7 +432,9 @@ export function TripsRequestsWorkspace({
                 ) : null}
                 {request.payment ? (
                   <div className="button-row trip-request-action-row">
-                    {!isTripPaymentSettled(request.payment.status) && !isTripPaymentClosed(request.payment.status) ? (
+                    {request.payment.provider === PaymentProvider.Paypal &&
+                    !isTripPaymentSettled(request.payment.status) &&
+                    !isTripPaymentClosed(request.payment.status) ? (
                       <Button
                         disabled={isMutatingPaymentId === request.payment.id}
                         onClick={() => onCreatePaymentCheckout(request.payment!.id)}
@@ -415,7 +442,8 @@ export function TripsRequestsWorkspace({
                         {request.payment.checkoutUrl ? 'Abrir pago' : 'Pagar con PayPal'}
                       </Button>
                     ) : null}
-                    {!isTripPaymentSettled(request.payment.status) ? (
+                    {request.payment.provider === PaymentProvider.Paypal &&
+                    !isTripPaymentSettled(request.payment.status) ? (
                       <Button
                         disabled={isMutatingPaymentId === request.payment.id}
                         onClick={() => onRefreshPaymentStatus(request.payment!.id)}

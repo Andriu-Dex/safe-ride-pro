@@ -79,6 +79,8 @@ function buildReport(status: ReportStatus): ReportRecord {
     tripOriginLabel: 'Huachi',
     tripDestinationLabel: 'Centro',
     tripDepartureAt: new Date('2030-01-01T10:00:00.000Z'),
+    tripCompletedAt: new Date('2030-01-01T10:30:00.000Z'),
+    tripClosureNote: null,
     status,
     reason: 'UNSAFE_DRIVING',
     description: 'Detalle del incidente',

@@ -3,10 +3,12 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { TripPaymentStatus } from '@saferidepro/shared-types';
+import { AppNotificationType, TripPaymentStatus } from '@saferidepro/shared-types';
 
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { mapPaypalStatusesToTripPaymentStatus } from '../../domain/payment-status';
 import {
   PAYMENT_PROVIDER,
@@ -24,6 +26,8 @@ export class CapturePaymentUseCase {
     private readonly paymentsRepository: PaymentsRepository,
     @Inject(PAYMENT_PROVIDER)
     private readonly paymentProvider: PaymentProviderPort,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async execute(userId: string, paymentId: string) {
@@ -73,6 +77,18 @@ export class CapturePaymentUseCase {
 
     if (!updatedPayment) {
       throw new NotFoundException('No fue posible confirmar el pago solicitado.');
+    }
+
+    if (updatedPayment.status === TripPaymentStatus.Paid) {
+      await this.notificationsService?.notifyMembership({
+        institutionId: updatedPayment.institutionId,
+        recipientMembershipId: updatedPayment.driverMembershipId,
+        actorUserId: userId,
+        type: AppNotificationType.TripRequestCreated,
+        title: 'Solicitud pagada',
+        body: `${updatedPayment.passengerFullName} pago por PayPal y espera tu respuesta.`,
+        actionUrl: '/viajes',
+      });
     }
 
     return {

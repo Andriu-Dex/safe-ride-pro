@@ -3,9 +3,11 @@ import {
   getTripLiveTrackingSignalStatus,
   type RealtimeConnectedEvent,
   REALTIME_CONNECTED_EVENT,
+  REALTIME_NOTIFICATION_CREATED_EVENT,
   REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT,
   REALTIME_TRIP_CHANGED_EVENT,
   REALTIME_TRIP_REQUEST_CHANGED_EVENT,
+  type AppNotificationRecord,
   type RealtimeEvent,
   type RealtimeTripChangeReason,
   type RealtimeTripLiveTrackingUpdatedEvent,
@@ -130,6 +132,20 @@ export class RealtimeEventsService {
     });
   }
 
+  publishNotificationCreated(input: {
+    institutionId: string;
+    recipientMembershipId: string;
+    notification: AppNotificationRecord;
+  }): void {
+    this.publish({
+      type: REALTIME_NOTIFICATION_CREATED_EVENT,
+      institutionId: input.institutionId,
+      occurredAt: new Date().toISOString(),
+      notification: input.notification,
+      recipientMembershipId: input.recipientMembershipId,
+    });
+  }
+
   publishTripRequestChanged(input: {
     actorUserId: string;
     driverMembershipId: string;
@@ -210,6 +226,10 @@ export class RealtimeEventsService {
 
     if (!connection.institutionIds.includes(event.institutionId)) {
       return false;
+    }
+
+    if (event.type === REALTIME_NOTIFICATION_CREATED_EVENT) {
+      return connection.membershipIds.includes(event.recipientMembershipId);
     }
 
     if (event.type === REALTIME_TRIP_REQUEST_CHANGED_EVENT) {

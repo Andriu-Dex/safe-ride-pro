@@ -210,6 +210,11 @@ export {
 } from './trip-payment';
 
 export {
+  AppNotificationType,
+  type AppNotificationRecord,
+} from './notification';
+
+export {
   getTripLiveTrackingSignalAgeInSeconds,
   getTripLiveTrackingSignalStatus,
   TRIP_LIVE_TRACKING_DELAYED_AFTER_SECONDS,
@@ -220,11 +225,13 @@ export {
 
 export {
   REALTIME_CONNECTED_EVENT,
+  REALTIME_NOTIFICATION_CREATED_EVENT,
   REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT,
   REALTIME_TRIP_CHANGED_EVENT,
   REALTIME_TRIP_REQUEST_CHANGED_EVENT,
   type RealtimeConnectedEvent,
   type RealtimeEvent,
+  type RealtimeNotificationCreatedEvent,
   type RealtimeTripLiveTrackingUpdatedEvent,
   type RealtimeTripChangedEvent,
   type RealtimeTripChangeReason,

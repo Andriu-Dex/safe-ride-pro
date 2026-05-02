@@ -250,6 +250,52 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
     return result.count;
   }
 
+  async markCashPaymentPaid(paymentId: string): Promise<TripPaymentRecord | null> {
+    const payment = await this.prisma.tripPayment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment || payment.provider !== PaymentProvider.Cash) {
+      return null;
+    }
+
+    await this.prisma.tripPayment.update({
+      where: { id: paymentId },
+      data: {
+        status: TripPaymentStatus.Paid,
+        paidAt: new Date(),
+        failureReason: null,
+        lastSyncedAt: new Date(),
+      },
+    });
+
+    return this.findPaymentById(paymentId);
+  }
+
+  async markCashPaymentFailed(
+    paymentId: string,
+    failureReason: string,
+  ): Promise<TripPaymentRecord | null> {
+    const payment = await this.prisma.tripPayment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment || payment.provider !== PaymentProvider.Cash) {
+      return null;
+    }
+
+    await this.prisma.tripPayment.update({
+      where: { id: paymentId },
+      data: {
+        status: TripPaymentStatus.Failed,
+        failureReason,
+        lastSyncedAt: new Date(),
+      },
+    });
+
+    return this.findPaymentById(paymentId);
+  }
+
   private paymentInclude() {
     return {
       trip: {

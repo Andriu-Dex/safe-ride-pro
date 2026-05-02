@@ -6,7 +6,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { TripPaymentStatus } from '@saferidepro/shared-types';
+import { PaymentProvider, TripPaymentStatus } from '@saferidepro/shared-types';
 
 import { mapPaypalStatusesToTripPaymentStatus } from '../../domain/payment-status';
 import {
@@ -36,6 +36,10 @@ export class CreatePaymentCheckoutLinkUseCase {
 
     if (payment.passengerUserId !== userId) {
       throw new ForbiddenException('Solo el pasajero asociado puede iniciar este pago.');
+    }
+
+    if (payment.provider !== PaymentProvider.Paypal) {
+      throw new BadRequestException('Este pago no corresponde a PayPal.');
     }
 
     if (payment.status === TripPaymentStatus.Paid) {

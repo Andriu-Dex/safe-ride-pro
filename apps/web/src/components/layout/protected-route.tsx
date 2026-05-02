@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { DriverVerificationStatus } from '@saferidepro/shared-types';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
+import { canAccessAudit } from '../../modules/audit/lib/audit-access';
 import { useAuth } from '../../modules/auth/hooks/use-auth';
+import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
 
 type ProtectedRouteProps = Readonly<{
   children: React.ReactNode;
@@ -15,6 +18,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { authSession, isHydrated } = useAuth();
   const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
   const isProfileRoute = pathname === '/perfil';
+  const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
+  const currentMembership =
+    operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
+  const isApprovedDriver =
+    currentMembership?.effectiveDriverVerificationStatus === DriverVerificationStatus.Approved ||
+    currentMembership?.driverVerificationStatus === DriverVerificationStatus.Approved;
+  const isDriverOnlyRoute = pathname === '/vehiculos' || pathname === '/viajes/nuevo';
+  const isAdminOnlyRoute = pathname === '/auditoria';
+  const canUseAdminRoutes = canAccessAudit(authSession?.user);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -28,10 +40,37 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
     if (requiresOnboarding && !isProfileRoute) {
       router.replace(`/perfil?next=${encodeURIComponent(pathname)}`);
+      return;
     }
-  }, [authSession, isHydrated, isProfileRoute, pathname, requiresOnboarding, router]);
 
-  if (!isHydrated || !authSession || (requiresOnboarding && !isProfileRoute)) {
+    if (authSession && isDriverOnlyRoute && !isApprovedDriver) {
+      router.replace('/conductor');
+      return;
+    }
+
+    if (authSession && isAdminOnlyRoute && !canUseAdminRoutes) {
+      router.replace('/inicio');
+    }
+  }, [
+    authSession,
+    canUseAdminRoutes,
+    isAdminOnlyRoute,
+    isApprovedDriver,
+    isDriverOnlyRoute,
+    isHydrated,
+    isProfileRoute,
+    pathname,
+    requiresOnboarding,
+    router,
+  ]);
+
+  if (
+    !isHydrated ||
+    !authSession ||
+    (requiresOnboarding && !isProfileRoute) ||
+    (isDriverOnlyRoute && !isApprovedDriver) ||
+    (isAdminOnlyRoute && !canUseAdminRoutes)
+  ) {
     return (
       <main className="auth-loading-shell">
         <div className="auth-loading-card">
@@ -47,7 +86,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
             <p className="auth-loading-kicker">Acceso seguro</p>
             <h1 className="auth-loading-title">Preparando tu panel inteligente</h1>
             <p className="auth-loading-text">
-              Estamos validando tu sesión para mostrarte la información de SafeRidePro.
+              Estamos validando tu sesion para mostrarte la informacion de SafeRidePro.
             </p>
           </div>
 
@@ -61,5 +100,3 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   return <>{children}</>;
 }
-
-

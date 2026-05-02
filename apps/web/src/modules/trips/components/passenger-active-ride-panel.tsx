@@ -1,6 +1,7 @@
 import {
   isTripPaymentClosed,
   isTripPaymentSettled,
+  PaymentProvider,
   TripRequestExecutionStatus,
   TripRequestStatus,
   TripStatus,
@@ -232,10 +233,17 @@ export function PassengerActiveRidePanel({
               <div className="button-row trip-request-action-row">
                 {canCreatePaymentCheckout ? (
                   <Button
-                    disabled={isMutatingPaymentId === payment.id}
+                    disabled={
+                      payment.provider !== PaymentProvider.Paypal ||
+                      isMutatingPaymentId === payment.id
+                    }
                     onClick={() => onCreatePaymentCheckout(payment.id)}
                   >
-                    {payment.checkoutUrl ? 'Abrir pago' : 'Pagar con PayPal'}
+                    {payment.provider === PaymentProvider.Paypal
+                      ? payment.checkoutUrl
+                        ? 'Abrir pago'
+                        : 'Pagar con PayPal'
+                      : 'Pago en efectivo'}
                   </Button>
                 ) : null}
                 {!isTripPaymentSettled(payment.status) ? (

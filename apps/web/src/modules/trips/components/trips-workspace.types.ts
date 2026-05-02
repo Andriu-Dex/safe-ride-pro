@@ -1,4 +1,4 @@
-import { TripRouteMode } from '@saferidepro/shared-types';
+import { PaymentProvider, TripRouteMode } from '@saferidepro/shared-types';
 
 export type TripFormValues = {
   vehicleId: string;
@@ -35,6 +35,7 @@ export const EMPTY_TRIP_FORM: TripFormValues = {
 };
 
 export type TripRequestDraft = {
+  paymentProvider: PaymentProvider;
   requestMessage: string;
   requestedPickupLabel: string;
   requestedPickupLatitude: string;
@@ -45,6 +46,7 @@ export type TripRequestDraft = {
 };
 
 export const EMPTY_REQUEST_DRAFT: TripRequestDraft = {
+  paymentProvider: PaymentProvider.Cash,
   requestMessage: '',
   requestedPickupLabel: '',
   requestedPickupLatitude: '',

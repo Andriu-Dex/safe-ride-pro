@@ -177,12 +177,6 @@ export function ProfileOnboardingForm() {
         ? current.acceptSafetyRules
         : true,
     }));
-
-    pushToast(
-      'Consentimientos listos',
-      'Se marcaron todas las opciones disponibles.',
-      'success',
-    );
   };
 
   const handleAvatarFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {

@@ -7,11 +7,15 @@ import {
   Optional,
 } from '@nestjs/common';
 import {
+  AppNotificationType,
+  PaymentProvider,
+  TripPaymentStatus,
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
 
 import { getAppEnvironment } from '../../../../shared/infrastructure/config/app-environment';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { TripPaymentsOrchestratorService } from '../../../payments/application/services/trip-payments-orchestrator.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import {
@@ -33,6 +37,8 @@ export class AcceptTripRequestUseCase {
     },
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async execute(userId: string, requestId: string, reviewNote?: string) {
@@ -60,6 +66,15 @@ export class AcceptTripRequestUseCase {
       throw new BadRequestException('El viaje ya no tiene cupos disponibles.');
     }
 
+    if (
+      tripRequest.payment?.provider === PaymentProvider.Paypal &&
+      tripRequest.payment.status !== TripPaymentStatus.Paid
+    ) {
+      throw new BadRequestException(
+        'Esta solicitud todavia no tiene el pago PayPal confirmado.',
+      );
+    }
+
     const updatedTripRequest = await this.tripRequestsRepository.acceptTripRequest(
       requestId,
       reviewNote?.trim() || undefined,
@@ -84,6 +99,16 @@ export class AcceptTripRequestUseCase {
       reason: 'accepted',
       requestId: updatedTripRequest.id,
       tripId: updatedTripRequest.tripId,
+    });
+
+    await this.notificationsService?.notifyMembership({
+      institutionId: updatedTripRequest.institutionId,
+      recipientMembershipId: updatedTripRequest.passengerMembershipId,
+      actorUserId: userId,
+      type: AppNotificationType.TripRequestAccepted,
+      title: 'Solicitud aceptada',
+      body: `${updatedTripRequest.driverFullName} acepto tu viaje.`,
+      actionUrl: '/viajes',
     });
 
     return {

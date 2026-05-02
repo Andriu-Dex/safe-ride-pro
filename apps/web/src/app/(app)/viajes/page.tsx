@@ -7,6 +7,7 @@ import {
   DriverVerificationStatus,
   isOperationalMembership,
   OperationalSanctionType,
+  PaymentProvider,
   selectOperationalMembership,
   TripRequestExecutionStatus,
   TripRequestStatus,
@@ -33,7 +34,9 @@ import {
 } from '../../../modules/driver/lib/driver-status';
 import {
   capturePayment,
+  confirmCashPayment,
   createPaymentCheckoutLink,
+  reportCashPaymentIssue,
   refreshPaymentStatus,
 } from '../../../modules/payments/lib/payment-api';
 import {
@@ -645,6 +648,7 @@ export default function TripsPage() {
     try {
       const response = await createTripRequest(authSession.accessToken, {
         tripId: trip.id,
+        paymentProvider: draft.paymentProvider,
         requestMessage: draft.requestMessage || undefined,
         requestedPickupLatitude: draft.requestedPickupLatitude
           ? Number.parseFloat(draft.requestedPickupLatitude)
@@ -659,6 +663,21 @@ export default function TripsPage() {
           ? Number.parseFloat(draft.requestedDropoffLongitude)
           : undefined,
       });
+
+      if (
+        draft.paymentProvider === PaymentProvider.Paypal &&
+        response.tripRequest.payment?.id
+      ) {
+        const checkoutResponse = await createPaymentCheckoutLink(
+          authSession.accessToken,
+          response.tripRequest.payment.id,
+        );
+
+        if (checkoutResponse.checkoutUrl) {
+          window.location.assign(checkoutResponse.checkoutUrl);
+          return;
+        }
+      }
 
       await reloadData();
       setRequestSuccessMessage(response.message);
@@ -896,6 +915,54 @@ export default function TripsPage() {
       setPaymentErrorMessage(
         getApiErrorMessage(error, 'No fue posible actualizar el estado del pago.'),
       );
+      await refreshTripsData();
+    } finally {
+      setIsMutatingPaymentId(null);
+    }
+  };
+
+  const handleConfirmCashPayment = async (paymentId: string) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsMutatingPaymentId(paymentId);
+    setPaymentErrorMessage(null);
+    setPaymentSuccessMessage(null);
+
+    try {
+      const response = await confirmCashPayment(authSession.accessToken, paymentId);
+
+      await reloadData();
+      setPaymentSuccessMessage(response.message);
+    } catch (error) {
+      setPaymentErrorMessage(getApiErrorMessage(error, 'No fue posible confirmar el pago.'));
+      await refreshTripsData();
+    } finally {
+      setIsMutatingPaymentId(null);
+    }
+  };
+
+  const handleReportCashPaymentIssue = async (paymentId: string) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsMutatingPaymentId(paymentId);
+    setPaymentErrorMessage(null);
+    setPaymentSuccessMessage(null);
+
+    try {
+      const response = await reportCashPaymentIssue(
+        authSession.accessToken,
+        paymentId,
+        'El pasajero no cumplio con el pago en efectivo acordado.',
+      );
+
+      await reloadData();
+      setPaymentSuccessMessage(response.message);
+    } catch (error) {
+      setPaymentErrorMessage(getApiErrorMessage(error, 'No fue posible reportar la novedad.'));
       await refreshTripsData();
     } finally {
       setIsMutatingPaymentId(null);
@@ -1232,7 +1299,10 @@ export default function TripsPage() {
                 isMutatingRequestId={isMutatingRequestId}
                 isRefreshingData={isRefreshingData}
                 myRequests={myRequests}
+                onConfirmCashPayment={(paymentId) => void handleConfirmCashPayment(paymentId)}
                 onCreatePaymentCheckout={(paymentId) => void handleCreatePaymentCheckout(paymentId)}
+                onReportCashPaymentIssue={(paymentId) =>
+                  void handleReportCashPaymentIssue(paymentId)}
                 noShowNotes={noShowNotes}
                 onCancelMyRequest={(requestId) => void handleCancelMyRequest(requestId)}
                 onExploreTrips={() => setActiveWorkspace('discover')}

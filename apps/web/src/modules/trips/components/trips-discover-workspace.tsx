@@ -1,4 +1,9 @@
-import { TripRequestStatus, TripRouteMode, TripStatus } from '@saferidepro/shared-types';
+import {
+  PaymentProvider,
+  TripRequestStatus,
+  TripRouteMode,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
 import { DisclosurePanel } from '../../../components/ui/disclosure-panel';
@@ -216,6 +221,46 @@ export function TripsDiscoverWorkspace({
                           rows={3}
                           value={draft.requestMessage}
                         />
+
+                        <fieldset className="trip-payment-choice">
+                          <legend>Forma de pago</legend>
+                          <label className="trip-payment-option">
+                            <input
+                              checked={draft.paymentProvider === PaymentProvider.Cash}
+                              disabled={hasActiveRequest || isMutatingRequestId === trip.id}
+                              name={`payment-${trip.id}`}
+                              onChange={() =>
+                                onRequestDraftChange(
+                                  trip.id,
+                                  'paymentProvider',
+                                  PaymentProvider.Cash,
+                                )}
+                              type="radio"
+                            />
+                            <span>
+                              <strong>Efectivo</strong>
+                              <small>Pagas al finalizar el viaje.</small>
+                            </span>
+                          </label>
+                          <label className="trip-payment-option">
+                            <input
+                              checked={draft.paymentProvider === PaymentProvider.Paypal}
+                              disabled={hasActiveRequest || isMutatingRequestId === trip.id}
+                              name={`payment-${trip.id}`}
+                              onChange={() =>
+                                onRequestDraftChange(
+                                  trip.id,
+                                  'paymentProvider',
+                                  PaymentProvider.Paypal,
+                                )}
+                              type="radio"
+                            />
+                            <span>
+                              <strong>PayPal</strong>
+                              <small>Debes pagar antes de enviar al conductor.</small>
+                            </span>
+                          </label>
+                        </fieldset>
 
                         <div className="button-row trip-request-composer-footer">
                           <Button

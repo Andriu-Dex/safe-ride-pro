@@ -99,17 +99,58 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
   }
 
   async createTripRequest(input: CreateTripRequestInput): Promise<TripRequestRecord> {
-    const tripRequest = await this.prisma.tripRequest.create({
-      data: {
-        tripId: input.tripId,
-        passengerMembershipId: input.passengerMembershipId,
-        requestedPickupLatitude: input.requestedPickupLatitude,
-        requestedPickupLongitude: input.requestedPickupLongitude,
-        requestedDropoffLatitude: input.requestedDropoffLatitude,
-        requestedDropoffLongitude: input.requestedDropoffLongitude,
-        requestMessage: input.requestMessage,
-      },
-      include: this.tripRequestInclude(),
+    const tripRequest = await this.prisma.$transaction(async (transaction) => {
+      const trip = await transaction.trip.findUnique({
+        where: { id: input.tripId },
+      });
+
+      if (!trip) {
+        throw new Error(TRIP_REQUEST_CONFLICT);
+      }
+
+      const createdTripRequest = await transaction.tripRequest.create({
+        data: {
+          tripId: input.tripId,
+          passengerMembershipId: input.passengerMembershipId,
+          requestedPickupLatitude: input.requestedPickupLatitude,
+          requestedPickupLongitude: input.requestedPickupLongitude,
+          requestedDropoffLatitude: input.requestedDropoffLatitude,
+          requestedDropoffLongitude: input.requestedDropoffLongitude,
+          requestMessage: input.requestMessage,
+        },
+      });
+
+      const amount =
+        Number.parseFloat(trip.basePriceReference.toString())
+        + (trip.detourSurchargeReference
+          ? Number.parseFloat(trip.detourSurchargeReference.toString())
+          : 0);
+
+      await transaction.tripPayment.create({
+        data: {
+          institutionId: trip.institutionId,
+          tripId: trip.id,
+          tripRequestId: createdTripRequest.id,
+          passengerMembershipId: input.passengerMembershipId,
+          driverMembershipId: trip.driverMembershipId,
+          provider: input.paymentProvider,
+          status: TripPaymentStatus.Pending,
+          currencyCode: input.currencyCode,
+          amount,
+          merchantOrderReference: `SRP-${createdTripRequest.id}`,
+        },
+      });
+
+      const createdTripRequestWithRelations = await transaction.tripRequest.findUnique({
+        where: { id: createdTripRequest.id },
+        include: this.tripRequestInclude(),
+      });
+
+      if (!createdTripRequestWithRelations) {
+        throw new Error(TRIP_REQUEST_CONFLICT);
+      }
+
+      return createdTripRequestWithRelations;
     });
 
     return this.mapTripRequest(tripRequest);
@@ -135,6 +176,22 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
         trip: {
           driverMembershipId,
         },
+        OR: [
+          {
+            payment: null,
+          },
+          {
+            payment: {
+              provider: PaymentProvider.Cash,
+            },
+          },
+          {
+            payment: {
+              provider: PaymentProvider.Paypal,
+              status: TripPaymentStatus.Paid,
+            },
+          },
+        ],
       },
       include: this.tripRequestInclude(),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

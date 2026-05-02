@@ -1,5 +1,6 @@
 export enum PaymentProvider {
   Paypal = 'PAYPAL',
+  Cash = 'CASH',
 }
 
 export enum TripPaymentStatus {

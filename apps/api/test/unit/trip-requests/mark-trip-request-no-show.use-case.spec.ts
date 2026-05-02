@@ -62,6 +62,8 @@ function buildTripRequestRecord(overrides: Partial<TripRequestRecord> = {}): Tri
     tripDestinationLabel: 'Centro',
     tripDepartureAt: new Date('2030-01-01T10:00:00.000Z'),
     tripEstimatedArrivalAt: new Date('2030-01-01T10:30:00.000Z'),
+    tripCompletedAt: null,
+    tripClosureNote: null,
     tripCancelledAt: null,
     tripSeatCount: 2,
     tripAvailableSeats: 1,
@@ -78,6 +80,7 @@ function buildTripRequestRecord(overrides: Partial<TripRequestRecord> = {}): Tri
     reviewedAt: new Date('2030-01-01T09:40:00.000Z'),
     cancelledAt: null,
     cancellationTiming: null,
+    payment: null,
     ...overrides,
   };
 }

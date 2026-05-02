@@ -1,12 +1,14 @@
 'use client';
 
+import { DriverVerificationStatus } from '@saferidepro/shared-types';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useAuth } from '../../modules/auth/hooks/use-auth';
 import { canAccessAudit } from '../../modules/audit/lib/audit-access';
+import { useAuth } from '../../modules/auth/hooks/use-auth';
 import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
+import { NotificationBell } from '../../modules/notifications/components/notification-bell';
 import { getUserInitials } from '../../modules/users/lib/get-user-initials';
 import { AppLogo } from '../ui/app-logo';
 import { Button } from '../ui/button';
@@ -16,60 +18,68 @@ const COMPANY_LOGO_URL = 'https://i.imgur.com/HMtKckK.png';
 
 const NAV_ITEMS = [
   {
-    href: '/perfil',
-    label: 'Perfil',
-    subtitle: 'Cuenta y seguridad',
-    requiresOperationalMembership: false,
-    icon: 'profile',
-  },
-  {
     href: '/inicio',
     label: 'Inicio',
-    subtitle: 'Resumen operativo',
+    subtitle: 'Principal',
     requiresOperationalMembership: false,
     icon: 'home',
-  },
-  {
-    href: '/dashboard',
-    label: 'Dashboard',
-    subtitle: 'Indicadores en tiempo real',
-    requiresOperationalMembership: false,
-    icon: 'dashboard',
-  },
-  {
-    href: '/conductor',
-    label: 'Conductor',
-    subtitle: 'Estado y requisitos',
-    requiresOperationalMembership: true,
-    icon: 'driver',
-  },
-  {
-    href: '/vehiculos',
-    label: 'Vehículos',
-    subtitle: 'Flota y habilitación',
-    requiresOperationalMembership: true,
-    icon: 'vehicle',
+    audience: 'all',
   },
   {
     href: '/viajes',
     label: 'Viajes',
-    subtitle: 'Despacho y seguimiento',
+    subtitle: 'Movilidad',
     requiresOperationalMembership: true,
     icon: 'trip',
+    audience: 'passenger',
   },
   {
     href: '/confianza',
     label: 'Confianza',
-    subtitle: 'Calidad y reputación',
+    subtitle: 'Estado',
     requiresOperationalMembership: true,
     icon: 'trust',
+    audience: 'all',
+  },
+  {
+    href: '/conductor',
+    label: 'Conductor',
+    subtitle: 'Conducir',
+    requiresOperationalMembership: true,
+    icon: 'driver',
+    audience: 'all',
+  },
+  {
+    href: '/viajes/nuevo',
+    label: 'Nuevo viaje',
+    subtitle: 'Publicar',
+    requiresOperationalMembership: true,
+    icon: 'trip',
+    audience: 'driver',
+  },
+  {
+    href: '/vehiculos',
+    label: 'Vehiculos',
+    subtitle: 'Flota',
+    requiresOperationalMembership: true,
+    icon: 'vehicle',
+    audience: 'driver',
+  },
+  {
+    href: '/dashboard',
+    label: 'Dashboard',
+    subtitle: 'Reportes',
+    requiresOperationalMembership: true,
+    icon: 'dashboard',
+    audience: 'all',
   },
   {
     href: '/auditoria',
-    label: 'Auditoría',
-    subtitle: 'Trazabilidad y control',
+    label: 'Auditoria',
+    subtitle: 'Control interno',
     requiresOperationalMembership: false,
     icon: 'audit',
+    audience: 'admin',
   },
 ] as const;
 
@@ -86,13 +96,6 @@ function NavIcon({ name }: { name: NavIconName }) {
         <svg aria-hidden="true" className={styles.navIcon} viewBox="0 0 24 24">
           <path d="M3 11.5 12 4l9 7.5" />
           <path d="M6.5 10.5V20h11V10.5" />
-        </svg>
-      );
-    case 'profile':
-      return (
-        <svg aria-hidden="true" className={styles.navIcon} viewBox="0 0 24 24">
-          <circle cx="12" cy="8" r="3.2" />
-          <path d="M5 19c1.8-3.2 4-4.8 7-4.8s5.2 1.6 7 4.8" />
         </svg>
       );
     case 'dashboard':
@@ -152,31 +155,62 @@ function NavIcon({ name }: { name: NavIconName }) {
   }
 }
 
+function getDisplayName(fullName?: string): string {
+  if (!fullName) {
+    return 'Usuario';
+  }
+
+  return fullName.trim().split(/\s+/)[0] ?? fullName;
+}
+
 export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { authSession, signOut } = useAuth();
-  const [isDesktopSidebarHidden, setIsDesktopSidebarHidden] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
   const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
   const auditVisible = canAccessAudit(authSession?.user);
-
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const currentMembership =
     operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
   const userInitials = getUserInitials(authSession?.user.fullName);
+  const displayName = getDisplayName(authSession?.user.fullName);
+  const isApprovedDriver =
+    currentMembership?.effectiveDriverVerificationStatus === DriverVerificationStatus.Approved ||
+    currentMembership?.driverVerificationStatus === DriverVerificationStatus.Approved;
 
-  const handleSignOut = (): void => {
-    signOut();
-    router.replace('/login');
-  };
+  const visibleNavItems = useMemo(
+    () =>
+      NAV_ITEMS.filter((item) => {
+        if (item.audience === 'admin') {
+          return auditVisible;
+        }
+
+        if (item.audience === 'driver') {
+          return isApprovedDriver;
+        }
+
+        return true;
+      }).map((item) =>
+        item.href === '/conductor'
+          ? {
+              ...item,
+              label: isApprovedDriver ? 'Conductor' : 'Ser conductor',
+            }
+          : item,
+      ),
+    [auditVisible, isApprovedDriver],
+  );
 
   useEffect(() => {
-    setIsMobileSidebarOpen(false);
+    setIsMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    if (!isMobileSidebarOpen) {
+    if (!isMobileMenuOpen) {
       document.body.style.removeProperty('overflow');
       return;
     }
@@ -186,195 +220,245 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     return () => {
       document.body.style.removeProperty('overflow');
     };
-  }, [isMobileSidebarOpen]);
+  }, [isMobileMenuOpen]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsMobileSidebarOpen(false);
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
+  const handleSignOut = () => {
+    signOut();
+    router.replace('/login');
+  };
+
+  const renderNavItem = (
+    item: (typeof visibleNavItems)[number],
+    mode: 'desktop' | 'mobile',
+  ) => {
+    const isActive = pathname === item.href;
+    const isDisabled =
+      requiresOnboarding ||
+      (item.requiresOperationalMembership && !operationalAccess.hasOperationalMembership);
+
+    if (isDisabled) {
+      return (
+        <li
+          key={`${mode}-${item.href}`}
+          aria-disabled="true"
+          className={mode === 'desktop' ? styles.desktopNavItemDisabled : styles.mobileNavItemDisabled}
+        >
+          <NavIcon name={item.icon} />
+          <div className={mode === 'desktop' ? styles.desktopNavCopy : styles.mobileNavCopy}>
+            <strong>{item.label}</strong>
+            {mode === 'mobile' ? <span>{item.subtitle}</span> : null}
+          </div>
+        </li>
+      );
+    }
+
+    return (
+      <li key={`${mode}-${item.href}`}>
+        <Link
+          className={[
+            mode === 'desktop' ? styles.desktopNavLink : styles.mobileNavLink,
+            isActive
+              ? mode === 'desktop'
+                ? styles.desktopNavLinkActive
+                : styles.mobileNavLinkActive
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          href={item.href}
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <NavIcon name={item.icon} />
+          <div className={mode === 'desktop' ? styles.desktopNavCopy : styles.mobileNavCopy}>
+            <strong>{item.label}</strong>
+            {mode === 'mobile' ? <span>{item.subtitle}</span> : null}
+          </div>
+        </Link>
+      </li>
+    );
+  };
+
   return (
-    <div
-      className={[
-        styles.shell,
-        isDesktopSidebarHidden ? styles.shellSidebarHidden : '',
-        isMobileSidebarOpen ? styles.shellMobileSidebarOpen : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-    >
-      <button
-        aria-label={isMobileSidebarOpen ? 'Cerrar menu de navegacion' : 'Abrir menu de navegacion'}
-        aria-expanded={isMobileSidebarOpen}
-        className={styles.mobileMenuButton}
-        onClick={() => setIsMobileSidebarOpen((currentValue) => !currentValue)}
-        type="button"
-      >
-        <svg aria-hidden="true" className={styles.toggleIcon} viewBox="0 0 24 24">
-          {isMobileSidebarOpen ? (
-            <path d="M6 6 18 18M18 6 6 18" />
-          ) : (
-            <>
-              <path d="M4 7h16" />
-              <path d="M4 12h16" />
-              <path d="M4 17h16" />
-            </>
-          )}
-        </svg>
-      </button>
+    <div className={styles.shell}>
+      <header className={styles.topbar}>
+        <div className={styles.topbarGlow} aria-hidden="true" />
+
+        <div className={styles.topbarLeft}>
+          <button
+            aria-expanded={isMobileMenuOpen}
+            aria-label={isMobileMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+            className={styles.mobileMenuButton}
+            onClick={() => setIsMobileMenuOpen((currentValue) => !currentValue)}
+            type="button"
+          >
+            <svg aria-hidden="true" className={styles.toggleIcon} viewBox="0 0 24 24">
+              {isMobileMenuOpen ? (
+                <path d="M6 6 18 18M18 6 6 18" />
+              ) : (
+                <>
+                  <path d="M4 7h16" />
+                  <path d="M4 12h16" />
+                  <path d="M4 17h16" />
+                </>
+              )}
+            </svg>
+          </button>
+
+          <Link className={styles.brandLink} href="/inicio">
+            <AppLogo avatarUrl={COMPANY_LOGO_URL} initials={userInitials} />
+          </Link>
+        </div>
+
+        <nav aria-label="Principal" className={styles.desktopNav}>
+          <ul className={styles.desktopNavList}>
+            {visibleNavItems.map((item) => renderNavItem(item, 'desktop'))}
+          </ul>
+        </nav>
+
+        <div className={styles.topbarRight}>
+          <NotificationBell accessToken={authSession?.accessToken} />
+
+          <div className={styles.userMenuWrap} ref={userMenuRef}>
+            <button
+              aria-expanded={isUserMenuOpen}
+              aria-label="Abrir menu de usuario"
+              className={styles.userMenuTrigger}
+              onClick={() => setIsUserMenuOpen((currentValue) => !currentValue)}
+              type="button"
+            >
+              <div className={styles.userMenuIdentity}>
+                <strong>{displayName}</strong>
+              </div>
+
+              <div className={styles.userMenuAvatar} aria-hidden="true">
+                {authSession?.user.profilePhotoUrl ? (
+                  <img
+                    alt=""
+                    className={styles.userMenuAvatarImage}
+                    src={authSession.user.profilePhotoUrl}
+                  />
+                ) : (
+                  <span>{userInitials}</span>
+                )}
+              </div>
+            </button>
+
+            {isUserMenuOpen ? (
+              <div className={styles.userMenuDropdown}>
+                <Link
+                  className={styles.userMenuItem}
+                  href="/perfil"
+                  onClick={() => setIsUserMenuOpen(false)}
+                >
+                  Perfil
+                </Link>
+                <button className={styles.userMenuItem} onClick={handleSignOut} type="button">
+                  Cerrar sesion
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </header>
 
       <button
-        aria-label={isDesktopSidebarHidden ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
-        className={styles.desktopToggleButton}
-        onClick={() => setIsDesktopSidebarHidden((currentValue) => !currentValue)}
-        title={isDesktopSidebarHidden ? 'Mostrar panel' : 'Ocultar panel'}
-        type="button"
-      >
-        {isDesktopSidebarHidden ? (
-          <svg aria-hidden="true" className={styles.toggleIcon} viewBox="0 0 24 24">
-            <path d="m9 6 6 6-6 6" />
-          </svg>
-        ) : (
-          <svg aria-hidden="true" className={styles.toggleIcon} viewBox="0 0 24 24">
-            <path d="m15 6-6 6 6 6" />
-          </svg>
-        )}
-      </button>
-
-      <button
-        aria-hidden={!isMobileSidebarOpen}
+        aria-hidden={!isMobileMenuOpen}
         className={styles.mobileBackdrop}
-        onClick={() => setIsMobileSidebarOpen(false)}
-        tabIndex={isMobileSidebarOpen ? 0 : -1}
+        onClick={() => setIsMobileMenuOpen(false)}
+        tabIndex={isMobileMenuOpen ? 0 : -1}
         type="button"
       />
 
-      <aside className={styles.sidebar}>
-        <section className={styles.userCard}>
-          <p className={styles.cardLabel}>Sesión activa</p>
-          <div className={styles.userSummary}>
-            <div className={styles.userAvatar} aria-hidden="true">
-              {authSession?.user.profilePhotoUrl ? (
-                <img
-                  alt=""
-                  className={styles.userAvatarImage}
-                  src={authSession.user.profilePhotoUrl}
-                />
-              ) : (
-                <div className={styles.userAvatarFallback}>{userInitials}</div>
-              )}
-            </div>
-            <div className={styles.userIdentity}>
-              <strong>{authSession?.user.fullName}</strong>
-              <p>{currentMembership?.institutionName ?? 'Institucion no disponible'}</p>
-              <p>{authSession?.user.email}</p>
-            </div>
+      <aside
+        className={[styles.mobileDrawer, isMobileMenuOpen ? styles.mobileDrawerOpen : '']
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <section className={styles.mobileProfileCard}>
+          <div className={styles.userAvatar} aria-hidden="true">
+            {authSession?.user.profilePhotoUrl ? (
+              <img alt="" className={styles.userAvatarImage} src={authSession.user.profilePhotoUrl} />
+            ) : (
+              <div className={styles.userAvatarFallback}>{userInitials}</div>
+            )}
           </div>
-          <Button variant="secondary" onClick={handleSignOut}>
-            Cerrar sesión
-          </Button>
+          <div className={styles.mobileProfileCopy}>
+            <strong>{authSession?.user.fullName}</strong>
+            <p>{currentMembership?.institutionName ?? 'Institucion no disponible'}</p>
+          </div>
         </section>
 
-        <div className={styles.sidebarMain}>
-          <section className={styles.navCard}>
-            <p className={styles.cardLabel}>Navegación</p>
-            <nav>
-              <ul className={styles.navList}>
-              {NAV_ITEMS.filter((item) => auditVisible || item.href !== '/auditoria').map((item) => {
-                const isActive = pathname === item.href;
-                const isDisabled =
-                  (requiresOnboarding && item.href !== '/perfil') ||
-                  (item.requiresOperationalMembership &&
-                    !operationalAccess.hasOperationalMembership);
+        <nav aria-label="Navegacion movil" className={styles.mobileNav}>
+          <ul className={styles.mobileNavList}>
+            {visibleNavItems.map((item) => renderNavItem(item, 'mobile'))}
+            <li>
+              <Link
+                className={[
+                  styles.mobileNavLink,
+                  pathname === '/perfil' ? styles.mobileNavLinkActive : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                href="/perfil"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <div className={styles.mobileNavCopy}>
+                  <strong>Perfil</strong>
+                  <span>Mi cuenta</span>
+                </div>
+              </Link>
+            </li>
+          </ul>
+        </nav>
 
-                if (isDisabled) {
-                  return (
-                    <li
-                      key={item.href}
-                      aria-disabled="true"
-                      className={styles.navLinkDisabled}
-                    >
-                      <NavIcon name={item.icon} />
-                      <div className={styles.navText}>
-                        <strong>{item.label}</strong>
-                        <span>{item.subtitle}</span>
-                      </div>
-                      <span className={styles.navMeta}>Bloq.</span>
-                    </li>
-                  );
-                }
-
-                return (
-                  <li key={item.href}>
-                    <Link
-                      className={[
-                        styles.navLink,
-                        isActive ? styles.navLinkActive : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                      href={item.href}
-                      onClick={() => setIsMobileSidebarOpen(false)}
-                    >
-                      <NavIcon name={item.icon} />
-                      <div className={styles.navText}>
-                        <strong>{item.label}</strong>
-                        <span>{item.subtitle}</span>
-                      </div>
-                      <span className={styles.navMeta}>{isActive ? 'Activo' : 'Ir'}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-              </ul>
-            </nav>
+        {!operationalAccess.hasOperationalMembership &&
+        operationalAccess.title &&
+        operationalAccess.message ? (
+          <section className={styles.noteCard}>
+            <p className={styles.noteLabel}>Acceso</p>
+            <strong>{operationalAccess.title}</strong>
+            <p>{operationalAccess.message}</p>
           </section>
+        ) : null}
 
-          {!operationalAccess.hasOperationalMembership &&
-          operationalAccess.title &&
-          operationalAccess.message ? (
-            <section className={styles.noteCard}>
-              <p className={styles.cardLabel}>Acceso operativo</p>
-              <strong>{operationalAccess.title}</strong>
-              <p>{operationalAccess.message}</p>
-            </section>
-          ) : null}
+        {requiresOnboarding ? (
+          <section className={styles.noteCard}>
+            <p className={styles.noteLabel}>Perfil pendiente</p>
+            <strong>Completa tu perfil para continuar.</strong>
+          </section>
+        ) : null}
 
-          {requiresOnboarding ? (
-            <section className={styles.noteCard}>
-              <p className={styles.cardLabel}>Onboarding pendiente</p>
-              <strong>Completa tu perfil antes de operar.</strong>
-              <p>
-                Necesitas terminar tu perfil y aceptar las reglas base para usar el resto
-                de módulos de SafeRidePro.
-              </p>
-            </section>
-          ) : null}
+        <div className={styles.mobileDrawerFooter}>
+          <NotificationBell accessToken={authSession?.accessToken} />
+          <Button variant="secondary" onClick={handleSignOut}>
+            Cerrar sesion
+          </Button>
         </div>
-
-        <section className={styles.sidebarFooter}>
-          <p className={styles.cardLabel}>Sistema</p>
-          <AppLogo
-            avatarUrl={COMPANY_LOGO_URL}
-            initials={userInitials}
-          />
-        </section>
       </aside>
 
-      <div className={styles.content}>
-        {children}
-      </div>
+      <main className={styles.content}>{children}</main>
     </div>
   );
 }
-
-
