@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { DriverVerificationStatus } from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
 import { persistToast } from '../../../components/ui/flash-toast';
@@ -101,6 +102,17 @@ export function ProfileOnboardingForm() {
   const activeMembershipName =
     authSession.user.memberships.find((membership) => membership.isDefault)
       ?.institutionName ?? 'Sin contexto';
+  const activeMembership =
+    authSession.user.memberships.find((membership) => membership.isDefault)
+    ?? authSession.user.memberships[0]
+    ?? null;
+  const effectiveDriverStatus =
+    activeMembership?.effectiveDriverVerificationStatus
+    ?? activeMembership?.driverVerificationStatus
+    ?? DriverVerificationStatus.NotRequested;
+  const hasDriverApplication =
+    effectiveDriverStatus !== DriverVerificationStatus.NotRequested;
+  const hasDriverTools = effectiveDriverStatus === DriverVerificationStatus.Approved;
   const acceptedConsentsCount = [
     authSession.user.termsAcceptedAt,
     authSession.user.privacyAcceptedAt,
@@ -543,18 +555,22 @@ export function ProfileOnboardingForm() {
               </div>
 
               <div className={styles.quickGrid}>
-                <Link className={styles.quickLink} href="/conductor">
-                  <strong>Conductor</strong>
-                  <span>Valida tu estado y documentacion para operar.</span>
-                </Link>
-                <Link className={styles.quickLink} href="/vehiculos">
-                  <strong>Vehiculos</strong>
-                  <span>Registra y activa tu flota antes de publicar.</span>
-                </Link>
                 <Link className={styles.quickLink} href="/viajes">
                   <strong>Viajes</strong>
-                  <span>Gestiona solicitudes y trayectos del dia.</span>
+                  <span>Consulta rutas, solicitudes y actividad reciente.</span>
                 </Link>
+                {hasDriverApplication ? (
+                  <Link className={styles.quickLink} href="/conductor">
+                    <strong>Conductor</strong>
+                    <span>Revisa tu estado y la documentacion enviada.</span>
+                  </Link>
+                ) : null}
+                {hasDriverTools ? (
+                  <Link className={styles.quickLink} href="/vehiculos">
+                    <strong>Vehiculos</strong>
+                    <span>Registra y activa tu vehiculo antes de publicar.</span>
+                  </Link>
+                ) : null}
               </div>
             </article>
           </aside>

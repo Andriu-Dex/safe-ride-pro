@@ -6,7 +6,7 @@ import {
   DriverVerificationStatus,
   InstitutionMembershipRole,
 } from '@saferidepro/shared-types';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
@@ -178,7 +178,7 @@ function DocumentCard({
 
       <div className={styles.documentActions}>
         <label
-          className={['button', 'button-secondary', styles.documentTrigger].join(' ')}
+          className={styles.actionBtnPrimary}
           htmlFor={isBusy ? undefined : inputId}
           onClick={() => {
             if (!isBusy) {
@@ -219,20 +219,22 @@ function DocumentCard({
           type="file"
         />
 
-        <Button
+        <button
+          className={styles.actionBtnSecondary}
           disabled={!hasFile || isBusy}
           onClick={() => onPreview(documentType)}
-          variant="ghost"
+          type="button"
         >
           Ver
-        </Button>
-        <Button
+        </button>
+        <button
+          className={styles.actionBtnGhost}
           disabled={!hasFile || isDownloading}
           onClick={() => onDownload(documentType)}
-          variant="ghost"
+          type="button"
         >
           {isDownloading ? 'Descargando...' : 'Descargar'}
-        </Button>
+        </button>
       </div>
     </article>
   );
@@ -384,32 +386,6 @@ export default function DriverPage() {
   const hasDriverProfile = Boolean(driverOverview?.driverProfile);
   const canEditApplication = currentStatus !== DriverVerificationStatus.Approved;
   const validationMessage = buildValidationMessage(formValues);
-
-  const metrics = useMemo(
-    () => [
-      {
-        label: 'Institucion',
-        value: driverOverview?.membership?.institutionName ?? 'No disponible',
-        note: 'Contexto activo.',
-      },
-      {
-        label: 'Estado',
-        value: getDriverStatusLabel(currentStatus),
-        note: 'Revision actual.',
-      },
-      {
-        label: 'Licencia',
-        value: getDriverLicenseStatusLabel(licenseStatus),
-        note: 'Vigencia registrada.',
-      },
-      {
-        label: 'Documentos',
-        value: driverOverview?.driverProfile?.hasRequiredDocuments ? 'Completos' : 'Pendientes',
-        note: 'Identidad y licencia.',
-      },
-    ],
-    [currentStatus, driverOverview?.driverProfile?.hasRequiredDocuments, driverOverview?.membership?.institutionName, licenseStatus],
-  );
 
   const openApplicationModal = () => {
     if (driverOverview) {
@@ -637,6 +613,15 @@ export default function DriverPage() {
     });
   };
 
+  const getBadgeClass = (tone: string) => {
+    switch (tone) {
+      case 'success': return styles.heroBadgeSuccess;
+      case 'warning': return styles.heroBadgeWarning;
+      case 'danger': return styles.heroBadgeDanger;
+      default: return styles.heroBadgeNeutral;
+    }
+  };
+
   if (
     !isLoading &&
     !operationalAccess.hasOperationalMembership &&
@@ -646,8 +631,8 @@ export default function DriverPage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.lockedShell}>
-          <article className={styles.lockedCard}>
+        <section className={styles.pageBackground}>
+          <article className={`${styles.canvas} ${styles.canvasSmall}`}>
             <div className={styles.lockedHeader}>
               <div>
                 <p className={styles.kicker}>Conductor</p>
@@ -670,8 +655,8 @@ export default function DriverPage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.lockedShell}>
-          <article className={styles.lockedCard}>
+        <section className={styles.pageBackground}>
+          <article className={`${styles.canvas} ${styles.canvasSmall}`}>
             <div className={styles.lockedHeader}>
               <div>
                 <p className={styles.kicker}>Conductor</p>
@@ -696,61 +681,50 @@ export default function DriverPage() {
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
       {isLoading ? (
-        <section className={styles.loadingShell}>
-          <article className={styles.loadingCard}>
+        <section className={styles.pageBackground}>
+          <article className={`${styles.canvas} ${styles.canvasSmall}`}>
             <div aria-hidden="true" className={styles.loadingPulse} />
             <h2 className={styles.loadingTitle}>Cargando conductor</h2>
             <p className={styles.loadingText}>Estamos consultando tu estado actual.</p>
           </article>
         </section>
       ) : (
-        <section className={styles.driverShell}>
-          <section className={`${styles.hero} ${styles.reveal}`}>
+        <section className={styles.pageBackground}>
+          <div className={`${styles.canvas} ${styles.revealSoft}`}>
+            <section className={styles.hero}>
             <div className={styles.heroTop}>
               <div className={styles.heroCopy}>
                 <p className={styles.kicker}>Conductor</p>
                 <h1 className={styles.heroTitle}>Tu estado operativo</h1>
                 <p className={styles.heroLead}>
-                  Revisa tu habilitacion y gestiona tu solicitud cuando lo necesites.
+                  Revisa tu habilitacion, tus documentos y el siguiente paso para operar.
                 </p>
               </div>
 
               <div className={styles.heroPills}>
-                <StatusPill
-                  label={getDriverStatusLabel(currentStatus)}
-                  tone={getDriverStatusTone(currentStatus)}
-                />
-                <StatusPill
-                  label={getDriverLicenseStatusLabel(licenseStatus)}
-                  tone={getDriverLicenseStatusTone(licenseStatus)}
-                />
+                <span className={`${styles.heroBadge} ${getBadgeClass(getDriverStatusTone(currentStatus))}`}>
+                  {getDriverStatusLabel(currentStatus)}
+                </span>
+                <span className={`${styles.heroBadge} ${getBadgeClass(getDriverLicenseStatusTone(licenseStatus))}`}>
+                  {getDriverLicenseStatusLabel(licenseStatus)}
+                </span>
               </div>
             </div>
 
             <div className={styles.heroActions}>
               {canEditApplication ? (
-                <Button onClick={openApplicationModal} variant="primary">
+                <button className={styles.heroBtnPrimary} onClick={openApplicationModal} type="button">
                   {hasDriverProfile
                     ? getApplicationActionLabel(currentStatus)
                     : 'Crear solicitud'}
-                </Button>
+                </button>
               ) : null}
-              <Link className="button button-secondary" href="/vehiculos">
+              <Link className={styles.heroBtnSecondary} href="/vehiculos">
                 Ir a vehiculos
               </Link>
-              <Link className="button button-ghost" href="/viajes">
+              <Link className={styles.heroBtnGhost} href="/viajes">
                 Ir a viajes
               </Link>
-            </div>
-
-            <div className={styles.metricGrid}>
-              {metrics.map((metric) => (
-                <article className={styles.metricCard} key={metric.label}>
-                  <span className={styles.metricLabel}>{metric.label}</span>
-                  <strong className={styles.metricValue}>{metric.value}</strong>
-                  <span className={styles.metricNote}>{metric.note}</span>
-                </article>
-              ))}
             </div>
           </section>
 
@@ -915,6 +889,7 @@ export default function DriverPage() {
               </article>
             </aside>
           </section>
+          </div>
         </section>
       )}
 
