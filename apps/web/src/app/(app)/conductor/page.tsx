@@ -897,36 +897,37 @@ export default function DriverPage() {
         <div
           aria-labelledby="driver-application-modal-title"
           aria-modal="true"
-          className="modal-backdrop"
+          className={styles.modalBackdrop}
           onClick={closeApplicationModal}
           role="dialog"
         >
           <div
-            className={`modal-card modal-card-lg ${styles.applicationModalCard}`}
+            className={styles.modalCanvas}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="modal-header">
+            <div className={styles.modalHeader}>
               <div>
                 <p className={styles.kicker}>Solicitud</p>
-                <h2 className="panel-title" id="driver-application-modal-title">
+                <h2 className={styles.modalTitle} id="driver-application-modal-title">
                   {hasDriverProfile
                     ? getApplicationActionLabel(currentStatus)
                     : 'Nueva solicitud de conductor'}
                 </h2>
-                <p className="panel-text">
+                <p className={styles.modalText}>
                   Completa tus datos y carga los documentos requeridos.
                 </p>
               </div>
-              <Button
+              <button
+                className={styles.actionBtnSecondary}
                 disabled={isSubmitting}
                 onClick={closeApplicationModal}
-                variant="secondary"
+                type="button"
               >
                 Cerrar
-              </Button>
+              </button>
             </div>
 
-            <form className={`form-stack ${styles.applicationForm}`} onSubmit={handleSubmit}>
+            <form className={styles.applicationForm} onSubmit={handleSubmit}>
               <section className={styles.formSection}>
                 <div className={styles.formSectionHeader}>
                   <div>
@@ -1015,21 +1016,21 @@ export default function DriverPage() {
               ) : null}
 
               <div className={styles.modalActions}>
-                <Button disabled={isSubmitting} type="submit" variant="primary">
+                <button
+                  disabled={isSubmitting}
+                  onClick={closeApplicationModal}
+                  type="button"
+                  className={styles.actionBtnGhost}
+                >
+                  Cancelar
+                </button>
+                <button disabled={isSubmitting} type="submit" className={styles.actionBtnPrimary}>
                   {isSubmitting
                     ? 'Enviando...'
                     : hasDriverProfile
                       ? getApplicationActionLabel(currentStatus)
                       : 'Enviar solicitud'}
-                </Button>
-                <Button
-                  disabled={isSubmitting}
-                  onClick={closeApplicationModal}
-                  type="button"
-                  variant="secondary"
-                >
-                  Cancelar
-                </Button>
+                </button>
               </div>
             </form>
           </div>
