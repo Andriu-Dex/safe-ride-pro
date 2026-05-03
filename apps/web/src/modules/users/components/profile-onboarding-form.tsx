@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
+import { persistToast } from '../../../components/ui/flash-toast';
 import { InputField } from '../../../components/ui/input-field';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
@@ -259,13 +260,21 @@ export function ProfileOnboardingForm() {
 
       await refreshSession();
       setIsEditModalOpen(false);
-      pushToast(
-        requiresOnboarding ? 'Perfil completado' : 'Perfil actualizado',
-        requiresOnboarding
-          ? 'Tu perfil base se completo correctamente.'
-          : 'Tu perfil se actualizo correctamente.',
-        'success',
-      );
+      const successTitle = requiresOnboarding ? 'Perfil completado' : 'Perfil actualizado';
+      const successDescription = requiresOnboarding
+        ? 'Tu perfil base se completo correctamente.'
+        : 'Tu perfil se actualizo correctamente.';
+
+      if (requiresOnboarding) {
+        persistToast({
+          title: successTitle,
+          description: successDescription,
+          tone: 'success',
+        });
+      } else {
+        pushToast(successTitle, successDescription, 'success');
+      }
+
       setSaveHighlightVisible(true);
       window.setTimeout(() => {
         setSaveHighlightVisible(false);
@@ -306,40 +315,18 @@ export function ProfileOnboardingForm() {
                 {requiresOnboarding ? 'Completa tu perfil' : 'Tu perfil'}
               </h1>
               <p className={styles.heroLead}>
-                Manten tus datos y permisos al dia.
+                Mantén tu información personal, tus permisos y tu contexto institucional al día.
               </p>
             </div>
 
             <div className={styles.heroStatus}>
-              <StatusPill
-                label={requiresOnboarding ? 'Onboarding pendiente' : 'Perfil completo'}
-                tone={requiresOnboarding ? 'warning' : 'success'}
-              />
-              <StatusPill label={`${onboardingProgress}% completo`} tone="neutral" />
+              <span className={`${styles.heroBadge} ${requiresOnboarding ? styles.heroBadgeWarning : styles.heroBadgeSuccess}`}>
+                {requiresOnboarding ? 'Onboarding pendiente' : 'Perfil completo'}
+              </span>
+              <span className={`${styles.heroBadge} ${styles.heroBadgeNeutral}`}>
+                {onboardingProgress}% completo
+              </span>
             </div>
-          </div>
-
-          <div className={styles.statGrid}>
-            <article className={`${styles.statCard} ${styles.revealSoft}`}>
-              <span className={styles.statLabel}>Campos base</span>
-              <strong className={styles.statValue}>{requiredProfileFieldsCount}/3</strong>
-              <span className={styles.statNote}>Nombre, carrera y zona.</span>
-            </article>
-            <article className={`${styles.statCard} ${styles.revealSoft}`}>
-              <span className={styles.statLabel}>Aceptaciones</span>
-              <strong className={styles.statValue}>{acceptedConsentsCount}/3</strong>
-              <span className={styles.statNote}>Terminos, privacidad y seguridad.</span>
-            </article>
-            <article className={`${styles.statCard} ${styles.revealSoft}`}>
-              <span className={styles.statLabel}>Consentimientos</span>
-              <strong className={styles.statValue}>{pendingConsentCount}</strong>
-              <span className={styles.statNote}>Opciones pendientes.</span>
-            </article>
-            <article className={`${styles.statCard} ${styles.revealSoft}`}>
-              <span className={styles.statLabel}>Pendientes</span>
-              <strong className={styles.statValue}>{missingRequirementLabels.length}</strong>
-              <span className={styles.statNote}>Elementos por completar.</span>
-            </article>
           </div>
 
           {saveHighlightVisible ? (

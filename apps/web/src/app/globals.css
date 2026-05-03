@@ -3,6 +3,9 @@
 :root {
   --color-canvas: #f3ecdf;
   --color-canvas-deep: #e9ddca;
+  --color-badge-standar: #75a7ff63;;
+  --color-badge-warning: #ff64646b;
+  --color-badge-danger: #ff646430;
   --color-surface: rgba(255, 252, 246, 0.84);
   --color-surface-strong: #fffaf1;
   --color-surface-muted: rgba(255, 255, 255, 0.68);
@@ -11,6 +14,7 @@
   --color-text: #173338;
   --color-text-soft: #567176;
   --color-text-on-dark: #f5efe4;
+  --color-text-warning: #ff7d00;
   --color-primary: #0f766e;
   --color-primary-strong: #0d5c56;
   --color-primary-soft: rgba(15, 118, 110, 0.14);
@@ -21,6 +25,7 @@
   --color-success: #1f7a4a;
   --shadow-panel: 0 28px 60px rgba(23, 51, 56, 0.12);
   --shadow-soft: 0 12px 30px rgba(23, 51, 56, 0.08);
+
   --radius-lg: 28px;
   --radius-md: 18px;
   --radius-sm: 12px;
@@ -465,7 +470,7 @@ main {
 }
 
 .status-pill-neutral {
-  background: rgba(23, 51, 56, 0.08);
+  background: var(--color-badge-standar);
   color: var(--color-text);
 }
 
@@ -475,8 +480,8 @@ main {
 }
 
 .status-pill-warning {
-  background: rgba(183, 121, 31, 0.16);
-  color: var(--color-warning);
+  background: var(--color-badge-warning);
+  color: var(--color-text-warning);
 }
 
 .status-pill-danger {
