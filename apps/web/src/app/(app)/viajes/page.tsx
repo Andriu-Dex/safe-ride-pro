@@ -2,17 +2,14 @@
 
 import Link from 'next/link';
 import {
-  CancellationTiming,
   DriverLicenseStatus,
   DriverVerificationStatus,
   isOperationalMembership,
-  OperationalSanctionType,
   PaymentProvider,
   selectOperationalMembership,
   TripRequestExecutionStatus,
   TripRequestStatus,
   TripStatus,
-  VehicleType,
 } from '@saferidepro/shared-types';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -64,9 +61,7 @@ import {
   publishTrip,
   startTrip,
 } from '../../../modules/trips/lib/trip-api';
-import { useDriverTripLiveTracking } from '../../../modules/trips/hooks/use-driver-trip-live-tracking';
 import {
-  canStartTripNow,
   getTripAvailabilityFilterLabel,
   getTripRouteModeLabel,
 } from '../../../modules/trips/lib/trip-labels';
@@ -80,18 +75,11 @@ import type { VehicleOverview } from '../../../modules/vehicles/types/vehicle';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
 import {
   getAdministrativeRiskStateLabel,
-  getAdministrativeRiskTone,
   getTrustRestrictions,
-  getVisibleReputationStateLabel,
-  getVisibleReputationTone,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
-import type {
-  TripsReadinessItem,
-  TripsWorkspaceOption,
-  TripsWorkspaceSection,
-} from '../../../modules/trips/components/trips-control-sidebar';
 import { TripsWorkspaceSkeleton } from '../../../modules/trips/components/trips-workspace-skeleton';
+import { TripFiltersPanel } from '../../../modules/trips/components/trip-filters-panel';
 import {
   EMPTY_REQUEST_DRAFT,
   type TripRequestDraft,
@@ -132,6 +120,10 @@ const EMPTY_TRIP_FILTERS: TripFilters = {
 };
 
 const DEFAULT_NO_SHOW_NOTE = 'El pasajero no se presento al punto acordado.';
+
+type TripsMode = 'passenger' | 'driver';
+type PassengerWorkspace = 'discover' | 'requests';
+type DriverWorkspace = 'operation' | 'requests';
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
@@ -249,7 +241,9 @@ export default function TripsPage() {
   const [isMutatingRequestId, setIsMutatingRequestId] = useState<string | null>(null);
   const [isMutatingPaymentId, setIsMutatingPaymentId] = useState<string | null>(null);
   const paymentCaptureInFlightRef = useRef<string | null>(null);
-  const [activeWorkspace, setActiveWorkspace] = useState<TripsWorkspaceSection>('operation');
+  const [activeMode, setActiveMode] = useState<TripsMode>('driver');
+  const [passengerWorkspace, setPassengerWorkspace] = useState<PassengerWorkspace>('discover');
+  const [driverWorkspace, setDriverWorkspace] = useState<DriverWorkspace>('operation');
   const [tripErrorMessage, setTripErrorMessage] = useState<string | null>(null);
   const [tripSuccessMessage, setTripSuccessMessage] = useState<string | null>(null);
   const [requestErrorMessage, setRequestErrorMessage] = useState<string | null>(null);
@@ -257,7 +251,6 @@ export default function TripsPage() {
   const [paymentErrorMessage, setPaymentErrorMessage] = useState<string | null>(null);
   const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [trackingVersionByTripId, setTrackingVersionByTripId] = useState<Record<string, number>>({});
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeRefreshPendingRef = useRef(false);
   const realtimeRefreshRunningRef = useRef(false);
@@ -332,7 +325,6 @@ export default function TripsPage() {
       setAvailableTrips([]);
       setIncomingRequests([]);
       setMyRequests([]);
-      setTrackingVersionByTripId({});
       setIsLoading(false);
       return;
     }
@@ -422,19 +414,12 @@ export default function TripsPage() {
     };
   }, []);
 
-  const realtimeStatus = useRealtimeEventStream({
+  useRealtimeEventStream({
     accessToken: authSession?.accessToken,
     enabled: Boolean(authSession && operationalAccess.hasOperationalMembership),
     onEvent: (event) => {
       if (event.type === 'trip.changed' || event.type === 'trip-request.changed') {
         scheduleRealtimeRefresh();
-      }
-
-      if (event.type === 'trip-live-tracking.updated') {
-        setTrackingVersionByTripId((currentState) => ({
-          ...currentState,
-          [event.tripId]: (currentState[event.tripId] ?? 0) + 1,
-        }));
       }
     },
   });
@@ -979,6 +964,7 @@ export default function TripsPage() {
     ?? vehicleOverview?.membership?.driverVerificationStatus
     ?? DriverVerificationStatus.NotRequested;
   const licenseStatus = vehicleOverview?.membership?.licenseStatus ?? DriverLicenseStatus.Missing;
+  const hasDriverMode = driverStatus === DriverVerificationStatus.Approved;
   const activeVehicles = (vehicleOverview?.vehicles ?? []).filter((vehicle) => vehicle.isActive);
   const trustRestrictions = getTrustRestrictions(trustSummary);
   const canCreateTrips =
@@ -994,108 +980,28 @@ export default function TripsPage() {
   );
   const activeFiltersCount = countActiveFilters(tripFilters);
   const activeFilterLabels = buildTripFilterLabels(tripFilters);
-  const activeMyTripsCount = myTrips.filter(
-    (trip) => trip.status !== TripStatus.Completed && trip.status !== TripStatus.Cancelled,
-  ).length;
-  const totalRequestsCount = incomingRequests.length + myRequests.length;
-  const actionableIncomingRequestsCount = incomingRequests.filter(
-    (request) =>
-      canAcceptIncomingRequest(request)
-      || canRejectIncomingRequest(request)
-      || canMarkRequestAsNoShow(request),
-  ).length;
-  const discoverableTripsWithSeatsCount = visibleAvailableTrips.filter(
-    (trip) => trip.status === TripStatus.Published && trip.availableSeats > 0,
-  ).length;
-  const realtimeStatusLabel =
-    realtimeStatus === 'connected'
-      ? 'Tiempo real activo'
-      : realtimeStatus === 'connecting' || realtimeStatus === 'reconnecting'
-        ? 'Reconectando'
-        : realtimeStatus === 'error'
-          ? 'Tiempo real inestable'
-          : 'Tiempo real en pausa';
-  const realtimeStatusTone = realtimeStatus === 'connected'
-    ? 'success'
-    : realtimeStatus === 'error'
-      ? 'warning'
-      : 'neutral';
-  const workspaceOptions: TripsWorkspaceOption[] = [
-    {
-      id: 'operation',
-      label: 'Operacion',
-      description: 'Conduce y gestiona tus viajes activos.',
-      metric: `${activeMyTripsCount} activos`,
-    },
-    {
-      id: 'requests',
-      label: 'Solicitudes',
-      description: 'Responde solicitudes entrantes y seguimiento propio.',
-      metric: `${totalRequestsCount} registros`,
-    },
-    {
-      id: 'discover',
-      label: 'Explorar',
-      description: 'Busca cupos y solicita viaje con filtros.',
-      metric: `${discoverableTripsWithSeatsCount} con cupos`,
-    },
-  ];
-  const readinessItems: TripsReadinessItem[] = [
-    {
-      id: 'driver-profile',
-      label: 'Perfil de conductor',
-      detail: driverStatus === DriverVerificationStatus.Approved
-        ? 'Aprobado para operar.'
-        : 'Pendiente de aprobacion o actualizacion.',
-      tone: driverStatus === DriverVerificationStatus.Approved ? 'success' : 'warning',
-    },
-    {
-      id: 'active-vehicle',
-      label: 'Vehiculo activo',
-      detail: activeVehicles.length > 0
-        ? `${activeVehicles.length} disponible(s) para viajes.`
-        : 'No tienes vehiculos activos todavia.',
-      tone: activeVehicles.length > 0 ? 'success' : 'warning',
-    },
-    {
-      id: 'license',
-      label: 'Licencia',
-      detail: licenseStatus === DriverLicenseStatus.Expired
-        ? 'Requiere renovacion para conducir.'
-        : driverLicenseAlertMessage ?? 'Vigente y verificada.',
-      tone: licenseStatus === DriverLicenseStatus.Expired ? 'warning' : 'success',
-    },
-    {
-      id: 'driver-restrictions',
-      label: 'Permiso para conducir',
-      detail: trustRestrictions.blocksDriver
-        ? trustRestrictions.message ?? 'Existe una restriccion temporal activa.'
-        : 'Sin restricciones para conducir.',
-      tone: trustRestrictions.blocksDriver ? 'warning' : 'success',
-    },
-    {
-      id: 'passenger-restrictions',
-      label: 'Permiso para solicitar',
-      detail: trustRestrictions.blocksPassenger
-        ? trustRestrictions.message ?? 'No puedes enviar solicitudes por ahora.'
-        : 'Puedes enviar solicitudes con normalidad.',
-      tone: trustRestrictions.blocksPassenger ? 'warning' : 'success',
-    },
-  ];
-  const readinessReadyCount = readinessItems.filter((item) => item.tone === 'success').length;
-  const readinessCompletion = Math.round((readinessReadyCount / readinessItems.length) * 100);
-  const activeDriverTrip =
-    [...myTrips]
-      .filter((trip) => trip.status === TripStatus.InProgress)
-      .sort(
-        (left, right) =>
-          new Date(left.departureAt).getTime() - new Date(right.departureAt).getTime(),
-      )[0] ?? null;
-  const driverCaptureState = useDriverTripLiveTracking({
-    accessToken: authSession?.accessToken,
-    tripId: activeDriverTrip?.id ?? null,
-    enabled: Boolean(authSession && activeDriverTrip),
-  });
+  const activeViewTitle =
+    activeMode === 'driver'
+      ? driverWorkspace === 'operation'
+        ? 'Mis viajes'
+        : 'Solicitudes recibidas'
+      : passengerWorkspace === 'discover'
+        ? 'Viajes disponibles'
+        : 'Mis solicitudes';
+  const modeBadgeLabel = hasDriverMode
+    ? activeMode === 'driver'
+      ? 'Modo conductor'
+      : 'Modo pasajero'
+    : null;
+  const shouldShowFiltersSidebar =
+    activeMode === 'passenger' && passengerWorkspace === 'discover';
+
+  useEffect(() => {
+    if (!hasDriverMode && activeMode === 'driver') {
+      setActiveMode('passenger');
+      setPassengerWorkspace('discover');
+    }
+  }, [activeMode, hasDriverMode]);
 
   if (isLoading) {
     return (
@@ -1139,21 +1045,28 @@ export default function TripsPage() {
   }
 
   return (
-    <section className={styles.tripsShell}>
+    <section className={styles.pageShell}>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <section className={`${styles.hero} ${styles.reveal}`}>
-        <div className={styles.heroTop}>
-          <div className={styles.heroCopy}>
+      <main className={styles.tripsShell}>
+        <section className={`${styles.topbar} ${styles.reveal}`}>
+          <div className={styles.topbarCopy}>
             <p className={styles.kicker}>Viajes</p>
-            <h1 className={styles.heroTitle}>Centro de movilidad</h1>
-            <p className={styles.heroLead}>
-              Gestiona tus trayectos, solicitudes y cupos desde un solo lugar.
-            </p>
+            <h1 className={styles.topbarTitle}>{activeViewTitle}</h1>
           </div>
 
-          <div className={styles.heroActions}>
-            <StatusPill label={realtimeStatusLabel} tone={realtimeStatusTone} />
+          <div className={styles.topbarActions}>
+            {modeBadgeLabel ? (
+              <StatusPill
+                label={modeBadgeLabel}
+                tone={activeMode === 'driver' ? getDriverStatusTone(driverStatus) : 'neutral'}
+              />
+            ) : null}
+            {activeMode === 'driver' ? (
+              <Button disabled={!canCreateTrips} onClick={() => router.push('/viajes/nuevo')}>
+                Crear viaje
+              </Button>
+            ) : null}
             <Button
               disabled={isRefreshingData}
               onClick={() => void refreshTripsData(true)}
@@ -1162,280 +1075,300 @@ export default function TripsPage() {
               {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
             </Button>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <div className={styles.liveBar}>
-        <div className={styles.livePills}>
-          <StatusPill
-            label={getDriverStatusLabel(driverStatus)}
-            tone={getDriverStatusTone(driverStatus)}
-          />
-          {trustSummary ? (
-            <StatusPill
-              label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
-              tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
-            />
-          ) : null}
-          {trustSummary ? (
-            <StatusPill
-              label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
-              tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
-            />
-          ) : null}
-          {activeFiltersCount > 0 ? (
-            <StatusPill label={`${activeFiltersCount} filtros`} tone="neutral" />
-          ) : null}
-        </div>
-
-        <div className={styles.liveActions}>
-          <Button disabled={!canCreateTrips} onClick={() => router.push('/viajes/nuevo')}>
-            Nuevo viaje
-          </Button>
-          <Button onClick={() => setActiveWorkspace('discover')} variant="ghost">
-            Buscar cupos
-          </Button>
-        </div>
-      </div>
-
-      <section className={styles.metricGrid}>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Operacion</span>
-          <strong className={styles.metricValue}>{activeMyTripsCount}</strong>
-          <p className={styles.metricText}>{myTrips.length} registrados</p>
-        </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Solicitudes</span>
-          <strong className={styles.metricValue}>{totalRequestsCount}</strong>
-          <p className={styles.metricText}>
-            {actionableIncomingRequestsCount} por atender
-          </p>
-        </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Explorar</span>
-          <strong className={styles.metricValue}>{visibleAvailableTrips.length}</strong>
-          <p className={styles.metricText}>{discoverableTripsWithSeatsCount} con cupos</p>
-        </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Preparacion</span>
-          <strong className={styles.metricValue}>{readinessCompletion}%</strong>
-          <p className={styles.metricText}>{readinessReadyCount} de {readinessItems.length} listos</p>
-        </article>
-      </section>
-
-      <section className={styles.mainGrid}>
-        <div className={styles.contentColumn}>
-          <article className={`${styles.workspaceNavCard} ${styles.revealSoft}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Espacios</p>
-                <h2>Navegacion principal</h2>
-              </div>
-              <StatusPill label={workspaceOptions.find((item) => item.id === activeWorkspace)?.metric ?? 'Activo'} tone="neutral" />
+        {(activeMode === 'driver' && (!canCreateTrips || driverLicenseAlertMessage || trustRestrictions.blocksDriver)) ||
+        (activeMode === 'passenger' && trustRestrictions.blocksPassenger) ? (
+          <article className={`${styles.noticeInline} ${styles.revealSoft}`}>
+            <div className={styles.noticeCopy}>
+              <strong>
+                {activeMode === 'driver'
+                  ? 'Revisa tu contexto de conductor'
+                  : 'Tu acceso como pasajero tiene una restriccion'}
+              </strong>
+              <p>
+                {activeMode === 'driver'
+                  ? trustRestrictions.blocksDriver
+                    ? trustRestrictions.message ?? 'Tu operacion como conductor tiene una restriccion activa.'
+                    : driverLicenseAlertMessage
+                      ? driverLicenseAlertMessage
+                      : activeVehicles.length === 0
+                        ? 'Necesitas al menos un vehiculo activo para publicar viajes.'
+                        : 'Tu perfil de conductor requiere revision.'
+                  : trustRestrictions.message ?? 'Existe una restriccion activa sobre tu operacion como pasajero.'}
+              </p>
             </div>
+            <div className={styles.noticeActions}>
+              {activeMode === 'driver' ? (
+                <>
+                  <Link className={styles.inlineLink} href="/conductor">
+                    Conductor
+                  </Link>
+                  <Link className={styles.inlineLink} href="/vehiculos">
+                    Vehiculos
+                  </Link>
+                </>
+              ) : (
+                <Link className={styles.inlineLink} href="/confianza">
+                  Confianza
+                </Link>
+              )}
+            </div>
+          </article>
+        ) : null}
 
-            <div className={styles.workspaceGrid}>
-              {workspaceOptions.map((workspace) => (
+        <section className={`${styles.workspaceLayout} ${styles.reveal}`}>
+          <aside className={styles.sidebar}>
+            {hasDriverMode ? (
+              <div className={styles.modeSwitch} aria-label="Cambiar modo de viajes">
                 <button
-                  key={workspace.id}
-                  aria-pressed={activeWorkspace === workspace.id}
                   className={[
-                    styles.workspaceButton,
-                    activeWorkspace === workspace.id ? styles.workspaceButtonActive : '',
+                    styles.modeButton,
+                    activeMode === 'passenger' ? styles.modeButtonActive : '',
                   ].join(' ')}
-                  onClick={() => setActiveWorkspace(workspace.id)}
+                  onClick={() => setActiveMode('passenger')}
                   type="button"
                 >
-                  <span className={styles.workspaceButtonTitle}>{workspace.label}</span>
-                  <strong className={styles.workspaceButtonMetric}>{workspace.metric}</strong>
-                  <span className={styles.workspaceButtonDescription}>{workspace.description}</span>
+                  Pasajero
                 </button>
-              ))}
-            </div>
-          </article>
-
-          <section className={`${styles.workspaceSurface} ${styles.reveal}`}>
-            <div className={styles.workspaceStage} key={activeWorkspace}>
-
-            {activeWorkspace === 'operation' ? (
-              <TripsOperationWorkspace
-                accessToken={authSession?.accessToken}
-                blocksDriver={trustRestrictions.blocksDriver}
-                canCreateTrips={canCreateTrips}
-                driverCaptureState={driverCaptureState}
-                incomingRequests={incomingRequests}
-                isMutatingRequestId={isMutatingRequestId}
-                isMutatingTripId={isMutatingTripId}
-                isRefreshingData={isRefreshingData}
-                licenseStatus={licenseStatus}
-                myTrips={myTrips}
-                onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
-                onNoShowNoteChange={handleNoShowNoteChange}
-                onOpenRequests={() => setActiveWorkspace('requests')}
-                onMarkPassengerBoarded={(requestId) => void handleMarkPassengerBoarded(requestId)}
-                onMarkPassengerDroppedOff={(requestId) =>
-                  void handleMarkPassengerDroppedOff(requestId)}
-                onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
-                onTripAction={(tripId, action, options) => void handleTripAction(tripId, action, options)}
-                onTripClosureNoteChange={handleTripClosureNoteChange}
-                noShowNotes={noShowNotes}
-                realtimeStatusLabel={realtimeStatusLabel}
-                realtimeStatusTone={realtimeStatusTone}
-                tripClosureNotes={tripClosureNotes}
-                trackingVersionByTripId={trackingVersionByTripId}
-              />
-            ) : null}
-
-            {activeWorkspace === 'requests' ? (
-              <TripsRequestsWorkspace
-                accessToken={authSession?.accessToken}
-                canAcceptIncomingRequest={canAcceptIncomingRequest}
-                canCancelOwnRequest={canCancelOwnRequest}
-                canMarkRequestAsNoShow={canMarkRequestAsNoShow}
-                canRejectIncomingRequest={canRejectIncomingRequest}
-                defaultNoShowNote={DEFAULT_NO_SHOW_NOTE}
-                incomingRequests={incomingRequests}
-                isMutatingPaymentId={isMutatingPaymentId}
-                isMutatingRequestId={isMutatingRequestId}
-                isRefreshingData={isRefreshingData}
-                myRequests={myRequests}
-                onConfirmCashPayment={(paymentId) => void handleConfirmCashPayment(paymentId)}
-                onCreatePaymentCheckout={(paymentId) => void handleCreatePaymentCheckout(paymentId)}
-                onReportCashPaymentIssue={(paymentId) =>
-                  void handleReportCashPaymentIssue(paymentId)}
-                noShowNotes={noShowNotes}
-                onCancelMyRequest={(requestId) => void handleCancelMyRequest(requestId)}
-                onExploreTrips={() => setActiveWorkspace('discover')}
-                onIncomingRequestAction={(requestId, action) =>
-                  void handleIncomingRequestAction(requestId, action)}
-                onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
-                onNoShowNoteChange={handleNoShowNoteChange}
-                onRefreshPaymentStatus={(paymentId) => void handleRefreshPaymentStatus(paymentId)}
-                realtimeStatusLabel={realtimeStatusLabel}
-                realtimeStatusTone={realtimeStatusTone}
-                trackingVersionByTripId={trackingVersionByTripId}
-              />
-            ) : null}
-
-            {activeWorkspace === 'discover' ? (
-              <TripsDiscoverWorkspace
-                activeFilterLabels={activeFilterLabels}
-                activeFiltersCount={activeFiltersCount}
-                canCreateRequestForTrip={canCreateRequestForTrip}
-                discoverableTripsWithSeatsCount={discoverableTripsWithSeatsCount}
-                filterFormValues={filterFormValues}
-                isFiltering={isFiltering}
-                isMutatingRequestId={isMutatingRequestId}
-                isPassengerOperationBlocked={trustRestrictions.blocksPassenger}
-                isRefreshingData={isRefreshingData}
-                myRequests={myRequests}
-                onApplyFilters={handleApplyFilters}
-                onCreateRequest={(trip) => void handleCreateRequest(trip)}
-                onFilterChange={handleFilterChange}
-                onOpenRequests={() => setActiveWorkspace('requests')}
-                onRequestDraftChange={handleRequestDraftChange}
-                onResetFilters={handleResetFilters}
-                requestDrafts={requestDrafts}
-                visibleAvailableTrips={visibleAvailableTrips}
-              />
-            ) : null}
-
-            </div>
-          </section>
-        </div>
-
-        <aside className={styles.sideColumn}>
-          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Preparacion</p>
-                <h2>Estado operativo</h2>
+                <button
+                  className={[
+                    styles.modeButton,
+                    activeMode === 'driver' ? styles.modeButtonActive : '',
+                  ].join(' ')}
+                  onClick={() => setActiveMode('driver')}
+                  type="button"
+                >
+                  Conductor
+                </button>
               </div>
-              <StatusPill label={`${readinessCompletion}% listo`} tone={readinessCompletion === 100 ? 'success' : 'warning'} />
-            </div>
+            ) : null}
 
-            <div className={styles.readinessList}>
-              {readinessItems.map((item) => (
-                <div className={styles.readinessItem} key={item.id}>
-                  <StatusPill
-                    label={item.tone === 'success' ? 'Listo' : 'Pendiente'}
-                    tone={item.tone === 'success' ? 'success' : 'warning'}
-                  />
-                  <div className={styles.readinessCopy}>
-                    <strong>{item.label}</strong>
-                    <span>{item.detail}</span>
-                  </div>
+            <nav className={styles.viewNav} aria-label="Vistas de viajes">
+              {activeMode === 'driver' ? (
+                <>
+                  <button
+                    className={[
+                      styles.viewNavButton,
+                      driverWorkspace === 'operation' ? styles.viewNavButtonActive : '',
+                    ].join(' ')}
+                    onClick={() => setDriverWorkspace('operation')}
+                    type="button"
+                  >
+                    Mis viajes
+                  </button>
+                  <button
+                    className={[
+                      styles.viewNavButton,
+                      driverWorkspace === 'requests' ? styles.viewNavButtonActive : '',
+                    ].join(' ')}
+                    onClick={() => setDriverWorkspace('requests')}
+                    type="button"
+                  >
+                    Solicitudes recibidas
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className={[
+                      styles.viewNavButton,
+                      passengerWorkspace === 'discover' ? styles.viewNavButtonActive : '',
+                    ].join(' ')}
+                    onClick={() => setPassengerWorkspace('discover')}
+                    type="button"
+                  >
+                    Ver viajes
+                  </button>
+                  <button
+                    className={[
+                      styles.viewNavButton,
+                      passengerWorkspace === 'requests' ? styles.viewNavButtonActive : '',
+                    ].join(' ')}
+                    onClick={() => setPassengerWorkspace('requests')}
+                    type="button"
+                  >
+                    Mis solicitudes
+                  </button>
+                </>
+              )}
+            </nav>
+
+            {shouldShowFiltersSidebar ? (
+              <div className={styles.filterSidebar}>
+                <div className={styles.filterSidebarHeader}>
+                  <strong>Filtros</strong>
+                  {activeFiltersCount > 0 ? (
+                    <button
+                      className={styles.filterResetLink}
+                      onClick={handleResetFilters}
+                      type="button"
+                    >
+                      Limpiar
+                    </button>
+                  ) : null}
                 </div>
-              ))}
-            </div>
 
-            {!canCreateTrips ? (
-              <div className={styles.sideLinks}>
-                <Link className={styles.inlineLink} href="/conductor">
-                  Revisar conductor
-                </Link>
-                <Link className={styles.inlineLink} href="/vehiculos">
-                  Gestionar vehiculos
-                </Link>
-              </div>
-            ) : null}
-          </article>
+                {activeFilterLabels.length ? (
+                  <div className={styles.filterPills}>
+                    {activeFilterLabels.map((label) => (
+                      <span key={label} className={styles.filterPill}>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
 
-          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Contexto</p>
-                <h2>Lectura rapida</h2>
-              </div>
-              <StatusPill label={realtimeStatusLabel} tone={realtimeStatusTone} />
-            </div>
-
-            <div className={styles.signalGrid}>
-              <article className={styles.signalTile}>
-                <span>Vehiculos activos</span>
-                <strong>{activeVehicles.length}</strong>
-              </article>
-              <article className={styles.signalTile}>
-                <span>Solicitudes propias</span>
-                <strong>{myRequests.length}</strong>
-              </article>
-              <article className={styles.signalTile}>
-                <span>Entrantes</span>
-                <strong>{incomingRequests.length}</strong>
-              </article>
-              <article className={styles.signalTile}>
-                <span>Licencia</span>
-                <strong>{licenseStatus === DriverLicenseStatus.Expired ? 'Vencida' : 'Vigente'}</strong>
-              </article>
-            </div>
-          </article>
-
-          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Filtros</p>
-                <h2>Busqueda actual</h2>
-              </div>
-              <StatusPill label={activeFiltersCount ? `${activeFiltersCount} activos` : 'Sin filtros'} tone="neutral" />
-            </div>
-
-            {activeFilterLabels.length ? (
-              <div className={styles.filterChips}>
-                {activeFilterLabels.map((label) => (
-                  <span className={styles.filterChip} key={label}>
-                    {label}
-                  </span>
-                ))}
+                <TripFiltersPanel
+                  isSubmitting={isFiltering}
+                  onApply={handleApplyFilters}
+                  onChange={handleFilterChange}
+                  onReset={handleResetFilters}
+                  values={filterFormValues}
+                />
               </div>
             ) : (
-              <div className={styles.emptyNote}>
-                <strong>Sin filtros aplicados</strong>
-                <span>Explora todos los viajes disponibles.</span>
+              <div className={styles.sidebarSupport}>
+                {activeMode === 'driver' ? (
+                  <>
+                    <strong>Conduccion</strong>
+                    <p>
+                      Gestiona tus viajes publicados, revisa solicitudes y abre nuevos trayectos
+                      solo cuando tu contexto este habilitado.
+                    </p>
+                    <div className={styles.sidebarSupportActions}>
+                      <Link className={styles.sidebarLink} href="/conductor">
+                        Conductor
+                      </Link>
+                      <Link className={styles.sidebarLink} href="/vehiculos">
+                        Vehiculos
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <strong>Solicitudes</strong>
+                    <p>
+                      Revisa el estado de tus reservas, pagos y cancelaciones desde una sola vista.
+                    </p>
+                  </>
+                )}
               </div>
             )}
-          </article>
-        </aside>
-      </section>
+          </aside>
+
+          <div className={styles.workspaceSurface}>
+            <div className={styles.workspaceStage}>
+            {activeMode === 'driver' ? (
+              <>
+                {driverWorkspace === 'operation' ? (
+                  <TripsOperationWorkspace
+                    blocksDriver={trustRestrictions.blocksDriver}
+                    canCreateTrips={canCreateTrips}
+                    incomingRequests={incomingRequests}
+                    isMutatingRequestId={isMutatingRequestId}
+                    isMutatingTripId={isMutatingTripId}
+                    isRefreshingData={isRefreshingData}
+                    licenseStatus={licenseStatus}
+                    myTrips={myTrips}
+                    onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
+                    onNoShowNoteChange={handleNoShowNoteChange}
+                    onOpenRequests={() => setDriverWorkspace('requests')}
+                    onMarkPassengerBoarded={(requestId) => void handleMarkPassengerBoarded(requestId)}
+                    onMarkPassengerDroppedOff={(requestId) =>
+                      void handleMarkPassengerDroppedOff(requestId)}
+                    onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
+                    onTripAction={(tripId, action, options) => void handleTripAction(tripId, action, options)}
+                    onTripClosureNoteChange={handleTripClosureNoteChange}
+                    noShowNotes={noShowNotes}
+                    tripClosureNotes={tripClosureNotes}
+                  />
+                ) : (
+                  <TripsRequestsWorkspace
+                    canAcceptIncomingRequest={canAcceptIncomingRequest}
+                    canCancelOwnRequest={canCancelOwnRequest}
+                    canMarkRequestAsNoShow={canMarkRequestAsNoShow}
+                    canRejectIncomingRequest={canRejectIncomingRequest}
+                    defaultNoShowNote={DEFAULT_NO_SHOW_NOTE}
+                    incomingRequests={incomingRequests}
+                    isMutatingPaymentId={isMutatingPaymentId}
+                    isMutatingRequestId={isMutatingRequestId}
+                    isRefreshingData={isRefreshingData}
+                    myRequests={[]}
+                    onConfirmCashPayment={(paymentId) => void handleConfirmCashPayment(paymentId)}
+                    onCreatePaymentCheckout={(paymentId) => void handleCreatePaymentCheckout(paymentId)}
+                    onReportCashPaymentIssue={(paymentId) =>
+                      void handleReportCashPaymentIssue(paymentId)}
+                    noShowNotes={noShowNotes}
+                    onCancelMyRequest={(requestId) => void handleCancelMyRequest(requestId)}
+                    onExploreTrips={() => setPassengerWorkspace('discover')}
+                    onIncomingRequestAction={(requestId, action) =>
+                      void handleIncomingRequestAction(requestId, action)}
+                    onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
+                    onNoShowNoteChange={handleNoShowNoteChange}
+                    onRefreshPaymentStatus={(paymentId) => void handleRefreshPaymentStatus(paymentId)}
+                    showActiveRidePanel={false}
+                    showIncomingRequestsSection
+                    showMyRequestsSection={false}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                {passengerWorkspace === 'discover' ? (
+                  <TripsDiscoverWorkspace
+                    activeFilterLabels={activeFilterLabels}
+                    activeFiltersCount={activeFiltersCount}
+                    canCreateRequestForTrip={canCreateRequestForTrip}
+                    filterFormValues={filterFormValues}
+                    isFiltering={isFiltering}
+                    isMutatingRequestId={isMutatingRequestId}
+                    isPassengerOperationBlocked={trustRestrictions.blocksPassenger}
+                    isRefreshingData={isRefreshingData}
+                    myRequests={myRequests}
+                    onApplyFilters={handleApplyFilters}
+                    onCreateRequest={(trip) => void handleCreateRequest(trip)}
+                    onFilterChange={handleFilterChange}
+                    onOpenRequests={() => setPassengerWorkspace('requests')}
+                    onRequestDraftChange={handleRequestDraftChange}
+                    onResetFilters={handleResetFilters}
+                    requestDrafts={requestDrafts}
+                    visibleAvailableTrips={visibleAvailableTrips}
+                  />
+                ) : (
+                  <TripsRequestsWorkspace
+                    canAcceptIncomingRequest={canAcceptIncomingRequest}
+                    canCancelOwnRequest={canCancelOwnRequest}
+                    canMarkRequestAsNoShow={canMarkRequestAsNoShow}
+                    canRejectIncomingRequest={canRejectIncomingRequest}
+                    defaultNoShowNote={DEFAULT_NO_SHOW_NOTE}
+                    incomingRequests={[]}
+                    isMutatingPaymentId={isMutatingPaymentId}
+                    isMutatingRequestId={isMutatingRequestId}
+                    isRefreshingData={isRefreshingData}
+                    myRequests={myRequests}
+                    onConfirmCashPayment={(paymentId) => void handleConfirmCashPayment(paymentId)}
+                    onCreatePaymentCheckout={(paymentId) => void handleCreatePaymentCheckout(paymentId)}
+                    onReportCashPaymentIssue={(paymentId) =>
+                      void handleReportCashPaymentIssue(paymentId)}
+                    noShowNotes={noShowNotes}
+                    onCancelMyRequest={(requestId) => void handleCancelMyRequest(requestId)}
+                    onExploreTrips={() => setPassengerWorkspace('discover')}
+                    onIncomingRequestAction={(requestId, action) =>
+                      void handleIncomingRequestAction(requestId, action)}
+                    onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
+                    onNoShowNoteChange={handleNoShowNoteChange}
+                    onRefreshPaymentStatus={(paymentId) => void handleRefreshPaymentStatus(paymentId)}
+                    showIncomingRequestsSection={false}
+                    showMyRequestsSection
+                  />
+                )}
+              </>
+            )}
+            </div>
+          </div>
+        </section>
+      </main>
     </section>
   );
 }

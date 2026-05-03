@@ -628,3 +628,79 @@
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   border-color: #115e59;
 }
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(6px);
+}
+
+.modalCard {
+  width: min(100%, 28rem);
+  display: grid;
+  gap: 1.2rem;
+  padding: 1.4rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+}
+
+.modalCopy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.modalEyebrow {
+  margin: 0;
+  color: #0f4c81;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.modalTitle {
+  margin: 0;
+  color: #14212d;
+  font-size: 1.5rem;
+  line-height: 1.08;
+}
+
+.modalText {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.modalPrimaryButton,
+.modalSecondaryButton {
+  min-height: 2.9rem;
+  padding: 0.75rem 1.1rem;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.modalPrimaryButton {
+  border: 0;
+  background: #14212d;
+  color: #ffffff;
+}
+
+.modalSecondaryButton {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  color: #14212d;
+}

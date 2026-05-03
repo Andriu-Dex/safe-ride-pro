@@ -23,19 +23,9 @@ import {
   getTripClosureIncidentTone,
   getTripClosureWindowCopy,
 } from '../lib/trip-closure';
-import {
-  TripClosureActionCenter,
-  type TripClosureActionItem,
-} from './trip-closure-action-center';
+import type { TripClosureActionItem } from './trip-closure-action-center';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
 import { TripExecutionCommandCenter } from './trip-execution-command-center';
-import {
-  TripLiveTrackingPanel,
-  type TripTrackingCandidate,
-} from './trip-live-tracking-panel';
-import {
-  type DriverTripLiveTrackingState,
-} from '../hooks/use-driver-trip-live-tracking';
 import { TripOverviewCard } from './trip-overview-card';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
 
@@ -64,11 +54,6 @@ type TripsOperationWorkspaceProps = {
   onMarkPassengerDroppedOff: (requestId: string) => void;
   onMarkNoShow: (requestId: string) => void;
   onTripClosureNoteChange: (tripId: string, value: string) => void;
-  accessToken?: string;
-  realtimeStatusLabel: string;
-  realtimeStatusTone: 'neutral' | 'success' | 'warning' | 'danger';
-  trackingVersionByTripId?: Record<string, number>;
-  driverCaptureState?: DriverTripLiveTrackingState | null;
 };
 
 export function TripsOperationWorkspace({
@@ -90,29 +75,12 @@ export function TripsOperationWorkspace({
   onMarkPassengerDroppedOff,
   onMarkNoShow,
   onTripClosureNoteChange,
-  accessToken,
-  realtimeStatusLabel,
-  realtimeStatusTone,
-  trackingVersionByTripId = {},
-  driverCaptureState = null,
 }: TripsOperationWorkspaceProps) {
-  const trackingCandidates = buildDriverTrackingCandidates(myTrips);
   const closureItems = buildDriverClosureItems(myTrips, incomingRequests);
 
   return (
     <section className="trips-workspace-grid trips-operation-stack">
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="operation" /> : null}
-
-      <TripLiveTrackingPanel
-        accessToken={accessToken}
-        candidates={trackingCandidates}
-        emptyTitle="Aun no tienes un trayecto para seguimiento activo"
-        realtimeStatusLabel={realtimeStatusLabel}
-        realtimeStatusTone={realtimeStatusTone}
-        trackingVersionByTripId={trackingVersionByTripId}
-        driverCaptureState={driverCaptureState}
-        title="Seguimiento operativo"
-      />
 
       <TripExecutionCommandCenter
         blocksDriver={blocksDriver}
@@ -130,12 +98,6 @@ export function TripsOperationWorkspace({
         onTripAction={onTripAction}
         onTripClosureNoteChange={onTripClosureNoteChange}
         tripClosureNotes={tripClosureNotes}
-      />
-
-      <TripClosureActionCenter
-        emptyTitle="No tienes cierres pendientes como conductor"
-        items={closureItems}
-        title="Cierre post-viaje del conductor"
       />
 
       <article className="panel panel-stack trips-stream-panel">
@@ -261,38 +223,43 @@ export function TripsOperationWorkspace({
           />
         )}
       </article>
+
+      {closureItems.length ? (
+        <article className="panel panel-stack trips-stream-panel">
+          <div className="section-heading">
+            <h2 className="panel-title">Pendientes post-viaje</h2>
+          </div>
+          <div className="list-stack">
+            {closureItems.map((item) => (
+              <div key={item.id} className="list-card">
+                <div className="list-card-header">
+                  <strong>{item.title}</strong>
+                  <StatusPill
+                    label={item.tripStatusLabel}
+                    tone={item.tripStatusTone}
+                  />
+                </div>
+                <p className="panel-text">{item.summary}</p>
+                <div className="button-row">
+                  {item.actions.map((action) => (
+                    <Button
+                      key={action.href}
+                      onClick={() => {
+                        window.location.href = action.href;
+                      }}
+                      variant={action.variant ?? 'secondary'}
+                    >
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+      ) : null}
     </section>
   );
-}
-
-function buildDriverTrackingCandidates(myTrips: TripRecord[]): TripTrackingCandidate[] {
-  return myTrips
-    .filter(
-      (trip) =>
-        trip.status === TripStatus.Published
-        || trip.status === TripStatus.Full
-        || trip.status === TripStatus.InProgress,
-    )
-    .sort((left, right) => {
-      const statusPriority = getTrackingPriority(left.status) - getTrackingPriority(right.status);
-
-      if (statusPriority !== 0) {
-        return statusPriority;
-      }
-
-      return new Date(left.departureAt).getTime() - new Date(right.departureAt).getTime();
-    })
-    .map((trip) => ({
-      id: trip.id,
-      tripId: trip.id,
-      title: `${trip.originLabel} -> ${trip.destinationLabel}`,
-      subtitle: `${trip.vehicleDisplayName}`,
-      status: trip.status,
-      departureAt: trip.departureAt,
-      estimatedArrivalAt: trip.estimatedArrivalAt,
-      availableSeats: trip.availableSeats,
-      seatCount: trip.seatCount,
-    }));
 }
 
 function buildDriverClosureItems(
@@ -390,19 +357,6 @@ function buildTrustClosureHref({
   });
 
   return `/confianza?${searchParams.toString()}`;
-}
-
-function getTrackingPriority(status: TripStatus): number {
-  switch (status) {
-    case TripStatus.InProgress:
-      return 0;
-    case TripStatus.Full:
-      return 1;
-    case TripStatus.Published:
-      return 2;
-    default:
-      return 3;
-  }
 }
 
 

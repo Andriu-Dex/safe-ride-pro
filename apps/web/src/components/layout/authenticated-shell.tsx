@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { canAccessAudit } from '../../modules/audit/lib/audit-access';
 import { useAuth } from '../../modules/auth/hooks/use-auth';
+import { canAccessDashboard, canAccessDriverTools } from '../../modules/auth/lib/app-access';
 import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
 import { NotificationBell } from '../../modules/notifications/components/notification-bell';
 import { getUserInitials } from '../../modules/users/lib/get-user-initials';
@@ -46,7 +47,7 @@ const NAV_ITEMS = [
     subtitle: 'Conducir',
     requiresOperationalMembership: true,
     icon: 'driver',
-    audience: 'all',
+    audience: 'driver',
   },
   {
     href: '/viajes/nuevo',
@@ -70,7 +71,7 @@ const NAV_ITEMS = [
     subtitle: 'Reportes',
     requiresOperationalMembership: true,
     icon: 'dashboard',
-    audience: 'all',
+    audience: 'dashboard',
   },
   {
     href: '/auditoria',
@@ -171,6 +172,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const { authSession, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isDriverPromptOpen, setIsDriverPromptOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
   const auditVisible = canAccessAudit(authSession?.user);
@@ -179,9 +181,13 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
   const userInitials = getUserInitials(authSession?.user.fullName);
   const displayName = getDisplayName(authSession?.user.fullName);
-  const isApprovedDriver =
-    currentMembership?.effectiveDriverVerificationStatus === DriverVerificationStatus.Approved ||
-    currentMembership?.driverVerificationStatus === DriverVerificationStatus.Approved;
+  const isApprovedDriver = canAccessDriverTools(authSession?.user);
+  const dashboardVisible = canAccessDashboard(authSession?.user);
+  const effectiveDriverStatus =
+    currentMembership?.effectiveDriverVerificationStatus
+    ?? currentMembership?.driverVerificationStatus
+    ?? DriverVerificationStatus.NotRequested;
+  const hasStartedDriverFlow = effectiveDriverStatus !== DriverVerificationStatus.NotRequested;
 
   const visibleNavItems = useMemo(
     () =>
@@ -194,16 +200,13 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           return isApprovedDriver;
         }
 
+        if (item.audience === 'dashboard') {
+          return dashboardVisible;
+        }
+
         return true;
-      }).map((item) =>
-        item.href === '/conductor'
-          ? {
-              ...item,
-              label: isApprovedDriver ? 'Conductor' : 'Ser conductor',
-            }
-          : item,
-      ),
-    [auditVisible, isApprovedDriver],
+      }),
+    [auditVisible, dashboardVisible, isApprovedDriver],
   );
 
   useEffect(() => {
@@ -234,6 +237,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsUserMenuOpen(false);
+        setIsDriverPromptOpen(false);
       }
     };
 
@@ -249,6 +253,18 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const handleSignOut = () => {
     signOut();
     router.replace('/login');
+  };
+
+  const handleDriverEntry = () => {
+    setIsUserMenuOpen(false);
+    setIsMobileMenuOpen(false);
+
+    if (isApprovedDriver || hasStartedDriverFlow) {
+      router.push('/conductor');
+      return;
+    }
+
+    setIsDriverPromptOpen(true);
   };
 
   const renderNavItem = (
@@ -406,6 +422,19 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                       </svg>
                       Mi perfil
                     </Link>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={handleDriverEntry}
+                      type="button"
+                    >
+                      <svg className={styles.dropdownIcon} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 15h14l-1.1-5H6.1L5 15Z" />
+                        <circle cx="8.5" cy="16.8" r="1.4" />
+                        <circle cx="15.5" cy="16.8" r="1.4" />
+                        <path d="M6.2 10 8 6.8h8L17.8 10" />
+                      </svg>
+                      Conductor
+                    </button>
                     <button 
                       className={styles.dropdownItemDanger}
                       onClick={handleSignOut} 
@@ -481,6 +510,26 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                 </div>
               </Link>
             </li>
+            <li>
+              <button
+                className="flex w-full items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-teal-700 border border-transparent"
+                onClick={handleDriverEntry}
+                type="button"
+              >
+                <svg className="w-5 h-5 stroke-current fill-none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M5 15h14l-1.1-5H6.1L5 15Z"></path>
+                  <circle cx="8.5" cy="16.8" r="1.4"></circle>
+                  <circle cx="15.5" cy="16.8" r="1.4"></circle>
+                  <path d="M6.2 10 8 6.8h8L17.8 10"></path>
+                </svg>
+                <div className="flex flex-col">
+                  <strong className="text-lg font-semibold">Conductor</strong>
+                  <span className="text-sm font-medium opacity-70">
+                    {isApprovedDriver || hasStartedDriverFlow ? 'Gestionar estado' : 'Iniciar proceso'}
+                  </span>
+                </div>
+              </button>
+            </li>
           </ul>
 
           {/* Alertas */}
@@ -517,6 +566,47 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       <main className="flex-1 w-full relative">
         {children}
       </main>
+
+      {isDriverPromptOpen ? (
+        <div className={styles.modalOverlay} role="presentation">
+          <div
+            aria-labelledby="driver-prompt-title"
+            aria-modal="true"
+            className={styles.modalCard}
+            role="dialog"
+          >
+            <div className={styles.modalCopy}>
+              <p className={styles.modalEyebrow}>Conductor</p>
+              <h2 id="driver-prompt-title" className={styles.modalTitle}>
+                Iniciar el proceso para ser conductor
+              </h2>
+              <p className={styles.modalText}>
+                Te llevaremos al formulario donde podras enviar tus datos y documentos para revision.
+              </p>
+            </div>
+
+            <div className={styles.modalActions}>
+              <button
+                className={styles.modalSecondaryButton}
+                onClick={() => setIsDriverPromptOpen(false)}
+                type="button"
+              >
+                Ahora no
+              </button>
+              <button
+                className={styles.modalPrimaryButton}
+                onClick={() => {
+                  setIsDriverPromptOpen(false);
+                  router.push('/conductor');
+                }}
+                type="button"
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

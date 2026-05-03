@@ -1,12 +1,345 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
-.pageBackground {
-  /* Fondo Corporativo Minimalista (Estilo "Studio Light") */
-  background-color: #f1f5f9; /* slate-100 base */
-  background-image: 
-    radial-gradient(circle at 50% 0%, #ffffff 0%, transparent 60%),
-    linear-gradient(to bottom, transparent 0%, #e2e8f0 100%);
+.pageShell {
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: #edf1f5;
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+}
 
-  /* Tipografía moderna y geométrica exclusiva para esta pantalla */
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+.surface {
+  display: grid;
+  gap: 1.25rem;
+  width: min(100%, 62rem);
+  margin: 0 auto;
+  padding: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+}
+
+.hero,
+.noticeBand,
+.actionPanel,
+.contextPanel,
+.loadingCard {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 22px;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1.4rem, 2.8vw, 2.2rem);
+  background: linear-gradient(160deg, #0d2f35, #12353d 72%);
+}
+
+.heroCopy {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 38rem;
+}
+
+.kicker {
+  margin: 0;
+  color: #8fb5cf;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.heroTitle,
+.loadingTitle {
+  margin: 0;
+}
+
+.heroTitle {
+  color: #f8fbff;
+  font-size: clamp(2.2rem, 4.6vw, 3.7rem);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+}
+
+.heroLead,
+.loadingText {
+  margin: 0;
+  color: rgba(229, 245, 243, 0.82);
+  line-height: 1.65;
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.primaryLink,
+.noticeLink,
+.secondaryButton,
+.inlineLink {
+  font: inherit;
+}
+
+.primaryLink,
+.noticeLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 14px;
+  text-decoration: none;
+  font-weight: 800;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primaryLink {
+  background: #f6fbfa;
+  color: #12353d;
+}
+
+.noticeLink {
+  background: #12353d;
+  color: #ffffff;
+}
+
+.primaryLink:hover,
+.noticeLink:hover,
+.secondaryButton:hover,
+.primaryLink:focus-visible,
+.noticeLink:focus-visible,
+.secondaryButton:focus-visible,
+.actionItem:hover,
+.actionItem:focus-visible {
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.secondaryButton {
+  min-height: 3rem;
+  border: 1px solid rgba(212, 241, 236, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.85rem 1.15rem;
+  color: #f8fbff;
+  font-weight: 800;
+}
+
+.secondaryButton:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.noticeBand,
+.actionPanel,
+.contextPanel {
+  padding: 1.1rem;
+  background: #ffffff;
+}
+
+.noticeBand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-color: rgba(180, 83, 9, 0.18);
+  background: #fff7ed;
+}
+
+.noticeCopy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.noticeCopy strong,
+.sectionHeader h2,
+.contextRow strong,
+.actionText strong {
+  color: #12353d;
+}
+
+.noticeCopy p,
+.actionText span,
+.contextRow span {
+  margin: 0;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sectionHeader h2 {
+  margin: 0.2rem 0 0;
+  font-size: 1.2rem;
+}
+
+.inlineLink {
+  color: #0f766e;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.inlineLink:hover,
+.inlineLink:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.85rem;
+}
+
+.actionItem {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: #f7fbfb;
+  text-decoration: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.actionItem:hover,
+.actionItem:focus-visible {
+  border-color: rgba(15, 118, 110, 0.18);
+  box-shadow: 0 16px 24px rgba(15, 23, 42, 0.06);
+}
+
+.actionText {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.actionIcon {
+  width: 2.85rem;
+  height: 2.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #12353d;
+  color: #ffffff;
+}
+
+.actionIcon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.contextGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.contextRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.loadingShell {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+.loadingCard {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  width: min(100%, 32rem);
+  padding: 2rem 1.4rem;
+  text-align: center;
+  background: #ffffff;
+}
+
+.loadingTitle {
+  color: #14212d;
+}
+
+.loadingText {
+  color: #475569;
+}
+
+.loadingPulse {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(15, 76, 129, 0.18), rgba(20, 33, 45, 0.3));
+  animation: pulse 1.15s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 860px) {
+  .hero,
+  .noticeBand,
+  .contextRow,
+  .sectionHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .primaryLink,
+  .secondaryButton,
+  .noticeLink {
+    width: 100%;
+  }
+
+  .contextGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .pageShell {
+    padding: 0.75rem;
+  }
+
+  .surface {
+    padding: 0.9rem;
+  }
+
+  .actionGrid {
+    grid-template-columns: 1fr 1fr;
+  }
 }

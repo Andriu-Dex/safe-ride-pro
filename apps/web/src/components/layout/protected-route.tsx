@@ -1,11 +1,14 @@
 'use client';
 
-import { DriverVerificationStatus } from '@saferidepro/shared-types';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 import { canAccessAudit } from '../../modules/audit/lib/audit-access';
 import { useAuth } from '../../modules/auth/hooks/use-auth';
+import {
+  canAccessDashboard,
+  canAccessDriverTools,
+} from '../../modules/auth/lib/app-access';
 import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
 
 type ProtectedRouteProps = Readonly<{
@@ -19,14 +22,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const requiresOnboarding = authSession?.user.requiresOnboarding ?? false;
   const isProfileRoute = pathname === '/perfil';
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
-  const currentMembership =
-    operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
-  const isApprovedDriver =
-    currentMembership?.effectiveDriverVerificationStatus === DriverVerificationStatus.Approved ||
-    currentMembership?.driverVerificationStatus === DriverVerificationStatus.Approved;
+  const canUseDriverRoutes = canAccessDriverTools(authSession?.user);
   const isDriverOnlyRoute = pathname === '/vehiculos' || pathname === '/viajes/nuevo';
+  const isDashboardRoute = pathname === '/dashboard';
   const isAdminOnlyRoute = pathname === '/auditoria';
   const canUseAdminRoutes = canAccessAudit(authSession?.user);
+  const canUseDashboard = canAccessDashboard(authSession?.user);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -43,8 +44,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       return;
     }
 
-    if (authSession && isDriverOnlyRoute && !isApprovedDriver) {
+    if (authSession && isDriverOnlyRoute && !canUseDriverRoutes) {
       router.replace('/conductor');
+      return;
+    }
+
+    if (authSession && isDashboardRoute && !canUseDashboard) {
+      router.replace('/inicio');
       return;
     }
 
@@ -54,8 +60,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [
     authSession,
     canUseAdminRoutes,
+    canUseDashboard,
+    canUseDriverRoutes,
     isAdminOnlyRoute,
-    isApprovedDriver,
+    isDashboardRoute,
     isDriverOnlyRoute,
     isHydrated,
     isProfileRoute,
@@ -68,7 +76,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     !isHydrated ||
     !authSession ||
     (requiresOnboarding && !isProfileRoute) ||
-    (isDriverOnlyRoute && !isApprovedDriver) ||
+    (isDriverOnlyRoute && !canUseDriverRoutes) ||
+    (isDashboardRoute && !canUseDashboard) ||
     (isAdminOnlyRoute && !canUseAdminRoutes)
   ) {
     return (

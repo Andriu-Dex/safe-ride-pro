@@ -5,14 +5,17 @@ import {
   InstitutionMembershipRole,
 } from '@saferidepro/shared-types';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '../../../components/ui/button';
 import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { canAccessAudit } from '../../../modules/audit/lib/audit-access';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import {
+  canAccessDashboard,
+  canAccessDriverTools,
+} from '../../../modules/auth/lib/app-access';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import {
   getDriverLicenseAlertMessage,
@@ -26,6 +29,13 @@ import {
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 import styles from './page.module.css';
+
+type HomeAction = {
+  title: string;
+  subtitle: string;
+  href: string;
+  icon: 'trip' | 'driver' | 'trust' | 'dashboard' | 'profile';
+};
 
 function getMembershipRoleLabel(role?: InstitutionMembershipRole): string {
   switch (role) {
@@ -50,10 +60,24 @@ function getPreferredDisplayName(fullName?: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
 }
 
-function getPrimaryAction(hasOperationalMembership: boolean, driverLicenseMessage: string | null, hasRestrictions: boolean) {
+function hasDriverProcess(status?: DriverVerificationStatus | null): boolean {
+  return status != null && status !== DriverVerificationStatus.NotRequested;
+}
+
+function getPrimaryAction({
+  hasOperationalMembership,
+  driverLicenseMessage,
+  hasRestrictions,
+  hasDriverTools,
+}: {
+  hasOperationalMembership: boolean;
+  driverLicenseMessage: string | null;
+  hasRestrictions: boolean;
+  hasDriverTools: boolean;
+}) {
   if (!hasOperationalMembership) {
     return {
-      title: 'Completa tu perfil',
+      title: 'Completa tu perfil para activar tu contexto institucional.',
       href: '/perfil',
       label: 'Completar perfil',
     };
@@ -61,80 +85,33 @@ function getPrimaryAction(hasOperationalMembership: boolean, driverLicenseMessag
 
   if (driverLicenseMessage) {
     return {
-      title: 'Revisa tu habilitacion',
+      title: 'Tu habilitacion de conductor necesita atencion.',
       href: '/conductor',
-      label: 'Abrir conductor',
+      label: 'Revisar conductor',
     };
   }
 
   if (hasRestrictions) {
     return {
-      title: 'Revisa tu estado',
+      title: 'Tu estado de confianza requiere revision.',
       href: '/confianza',
       label: 'Ver confianza',
     };
   }
 
+  if (hasDriverTools) {
+    return {
+      title: 'Todo listo para publicar o gestionar viajes.',
+      href: '/viajes',
+      label: 'Abrir viajes',
+    };
+  }
+
   return {
-    title: 'Todo listo',
+    title: 'Explora viajes y solicita tu proximo trayecto.',
     href: '/viajes',
-    label: 'Abrir viajes',
+    label: 'Ver viajes',
   };
-}
-
-function isApprovedDriver(status?: DriverVerificationStatus | null): boolean {
-  return status === DriverVerificationStatus.Approved;
-}
-
-function hasDriverProcess(status?: DriverVerificationStatus | null): boolean {
-  return status != null && status !== DriverVerificationStatus.NotRequested;
-}
-
-function getBadgeColor(val: string): string {
-  const v = val.toLowerCase();
-  if (v.includes('operativa') || v.includes('aprobado') || v.includes('vigente') || v.includes('sin riesgo')) return 'bg-emerald-100 text-emerald-800';
-  if (v.includes('pendiente') || v.includes('revisión') || v.includes('revision') || v.includes('observación') || v.includes('observacion')) return 'bg-amber-100 text-amber-800';
-  if (v.includes('rechazado') || v.includes('bloqueado') || v.includes('vencid') || v.includes('suspendido')) return 'bg-rose-100 text-rose-800';
-  return 'bg-slate-100 text-slate-700';
-}
-
-function getActionIcon(href: string) {
-  if (href.includes('viajes')) {
-    return (
-      <svg className="w-8 h-8 text-teal-500 mb-3 group-hover:scale-110 group-hover:text-teal-600 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-      </svg>
-    );
-  }
-  if (href.includes('conductor')) {
-    return (
-      <svg className="w-8 h-8 text-teal-500 mb-3 group-hover:scale-110 group-hover:text-teal-600 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 9h3m-3 3h3m-3 3h3m-6 1c-.306-.613-.933-1-1.618-1H7.618c-.685 0-1.312.387-1.618 1M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z" />
-      </svg>
-    );
-  }
-  if (href.includes('confianza')) {
-    return (
-      <svg className="w-8 h-8 text-teal-500 mb-3 group-hover:scale-110 group-hover:text-teal-600 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-      </svg>
-    );
-  }
-  if (href.includes('dashboard')) {
-    return (
-      <svg className="w-8 h-8 text-teal-500 mb-3 group-hover:scale-110 group-hover:text-teal-600 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-      </svg>
-    );
-  }
-  if (href.includes('perfil')) {
-    return (
-      <svg className="w-8 h-8 text-teal-500 mb-3 group-hover:scale-110 group-hover:text-teal-600 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-      </svg>
-    );
-  }
-  return null;
 }
 
 export default function HomePage() {
@@ -187,7 +164,7 @@ export default function HomePage() {
       await loadHome(authSession.accessToken);
 
       if (showSpinner) {
-        pushToast('Inicio actualizado', 'Listo.', 'success');
+        pushToast('Inicio actualizado', 'La informacion ya esta al dia.', 'success');
       }
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
@@ -280,37 +257,76 @@ export default function HomePage() {
     : null;
   const displayName = getPreferredDisplayName(authSession?.user.fullName);
   const auditVisible = canAccessAudit(authSession?.user);
+  const hasDriverTools = canAccessDriverTools(authSession?.user);
+  const dashboardVisible = canAccessDashboard(authSession?.user);
   const hasRestrictions =
     restrictions.blocksPassenger ||
     restrictions.blocksDriver ||
     Boolean(restrictions.message);
 
-  const primaryAction = getPrimaryAction(
-    operationalAccess.hasOperationalMembership,
+  const primaryAction = getPrimaryAction({
+    hasOperationalMembership: operationalAccess.hasOperationalMembership,
     driverLicenseMessage,
     hasRestrictions,
+    hasDriverTools,
+  });
+
+  const quickActions = useMemo<HomeAction[]>(
+    () => [
+      {
+        title: 'Viajes',
+        subtitle: hasDriverTools ? 'Movilidad' : 'Explorar',
+        href: '/viajes',
+        icon: 'trip',
+      },
+      ...(hasDriverTools
+        ? [
+            {
+              title: 'Conductor',
+              subtitle: 'Operacion',
+              href: '/conductor',
+              icon: 'driver' as const,
+            },
+          ]
+        : []),
+      {
+        title: 'Confianza',
+        subtitle: 'Estado',
+        href: '/confianza',
+        icon: 'trust',
+      },
+      ...(dashboardVisible
+        ? [
+            {
+              title: 'Dashboard',
+              subtitle: 'Resumen',
+              href: '/dashboard',
+              icon: 'dashboard' as const,
+            },
+          ]
+        : []),
+      {
+        title: 'Perfil',
+        subtitle: 'Cuenta',
+        href: '/perfil',
+        icon: 'profile',
+      },
+    ],
+    [dashboardVisible, hasDriverTools],
   );
 
-  const quickActions = [
-    { title: 'Viajes', href: '/viajes' },
+  const contextRows = [
     {
-      title: isApprovedDriver(
-        currentMembership?.effectiveDriverVerificationStatus ??
-          currentMembership?.driverVerificationStatus,
-      )
-        ? 'Conductor'
-        : 'Ser conductor',
-      href: '/conductor',
+      label: 'Institucion',
+      value: currentMembership?.institutionName ?? 'Pendiente',
     },
-    { title: 'Confianza', href: '/confianza' },
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Perfil', href: '/perfil' },
-  ];
-
-  const statusItems = [
     {
-      label: 'Cuenta',
-      value: operationalAccess.hasOperationalMembership ? 'Operativa' : 'Pendiente',
+      label: 'Rol',
+      value: getMembershipRoleLabel(currentMembership?.role),
+    },
+    {
+      label: 'Correo',
+      value: authSession?.user.email ?? 'Pendiente',
     },
     {
       label: 'Conductor',
@@ -332,39 +348,26 @@ export default function HomePage() {
     },
   ];
 
-  const spotlightItems = [
-    {
-      label: 'Institucion',
-      value: currentMembership?.institutionName ?? 'Pendiente',
-    },
-    {
-      label: 'Rol',
-      value: getMembershipRoleLabel(currentMembership?.role),
-    },
-    {
-      label: 'Correo',
-      value: authSession?.user.email ?? 'Pendiente',
-    },
-    {
-      label: 'Interacciones',
-      value: trustSummary ? String(trustSummary.completedInteractions) : '0',
-    },
-  ];
-
-  const activeIssue = restrictions.message
+  const activeNotice = restrictions.message
     ? {
-        title: restrictions.message,
+        title: 'Revisa tu estado de confianza',
+        description: restrictions.message,
         href: '/confianza',
+        label: 'Abrir confianza',
       }
     : !operationalAccess.hasOperationalMembership
       ? {
-          title: 'Activa tu contexto institucional.',
+          title: 'Tu cuenta aun no tiene contexto operativo',
+          description: operationalAccess.message ?? 'Completa tu perfil para continuar.',
           href: '/perfil',
+          label: 'Ir a perfil',
         }
       : driverLicenseMessage
         ? {
-            title: driverLicenseMessage,
+            title: 'Tu habilitacion de conductor requiere atencion',
+            description: driverLicenseMessage,
             href: '/conductor',
+            label: 'Revisar conductor',
           }
         : null;
 
@@ -372,12 +375,13 @@ export default function HomePage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-slate-500 font-medium">Cargando tu espacio...</p>
-          </div>
-        </div>
+        <section className={styles.loadingShell}>
+          <article className={styles.loadingCard}>
+            <div aria-hidden="true" className={styles.loadingPulse} />
+            <h1 className={styles.loadingTitle}>Cargando inicio</h1>
+            <p className={styles.loadingText}>Estamos preparando tu espacio principal.</p>
+          </article>
+        </section>
       </>
     );
   }
@@ -386,110 +390,131 @@ export default function HomePage() {
     <>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <div className={`min-h-screen pb-12 pt-4 sm:pt-8 transition-colors px-3 sm:px-6 lg:px-8 ${styles.pageBackground}`}>
-        {/* CONTENEDOR PRINCIPAL TIPO "LIENZO" */}
-        <main className="max-w-5xl mx-auto w-full bg-white/90 backdrop-blur-3xl rounded-3xl sm:rounded-4xl p-5 sm:p-8 md:p-10 flex flex-col gap-6 sm:gap-8 shadow-2xl shadow-slate-400/50 border border-white">
-
-          {/* TARJETA DE BIENVENIDA */}
-          <div className="bg-linear-to-br from-teal-950 via-teal-900 to-teal-800 p-6 sm:p-8 md:p-10 rounded-3xl sm:rounded-4xl flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 shadow-2xl shadow-teal-900/20 border border-teal-800/50">
-            <div className="flex items-center gap-5">
-              <div className="hidden sm:flex shrink-0 w-16 h-16 rounded-full bg-teal-800 items-center justify-center text-2xl font-bold text-teal-100 border-2 border-teal-700 shadow-inner">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <p className="text-teal-300 font-bold text-sm sm:text-base uppercase tracking-wider mb-2">Bienvenido de vuelta</p>
-                <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">Hola, {displayName}</h1>
-              </div>
+      <div className={styles.pageShell}>
+        <main className={styles.surface}>
+          <section className={styles.hero}>
+            <div className={styles.heroCopy}>
+              <p className={styles.kicker}>Inicio</p>
+              <h1 className={styles.heroTitle}>Hola, {displayName}</h1>
+              <p className={styles.heroLead}>
+                {hasDriverTools
+                  ? 'Gestiona tus viajes y revisa tu estado actual desde un solo panel.'
+                  : 'Accede a tus opciones principales y revisa tu estado actual.'}
+              </p>
             </div>
-            <button
-              disabled={isRefreshing}
-              onClick={() => void refreshHome(true)}
-              className="text-base font-bold text-teal-950 bg-teal-400 hover:bg-teal-300 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl shadow-lg shadow-teal-950/30 hover:shadow-teal-400/40 w-full sm:w-auto"
-            >
-              {isRefreshing ? 'Actualizando...' : 'Actualizar información'}
-            </button>
-          </div>
 
-          {/* BANNER DE ACCIÓN PRINCIPAL */}
-          {activeIssue ? (
-            <Link href={activeIssue.href} className="bg-linear-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 transition-all duration-300 text-white rounded-3xl sm:rounded-4xl p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 shadow-xl shadow-rose-500/20 hover:shadow-2xl hover:shadow-rose-600/30 group hover:-translate-y-0.5">
-              <div>
-                <p className="text-rose-100 text-sm sm:text-base font-bold uppercase tracking-wider mb-2">Acción Requerida</p>
-                <strong className="text-2xl sm:text-3xl font-extrabold">{activeIssue.title}</strong>
-              </div>
-              <span className="bg-white text-rose-600 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg whitespace-nowrap text-center group-hover:bg-rose-50 transition-colors shadow-md w-full sm:w-auto">
-                Revisar ahora
-              </span>
-            </Link>
-          ) : (
-            <div className="bg-linear-to-r from-teal-600 to-teal-500 text-white rounded-3xl sm:rounded-4xl p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5 sm:gap-6 shadow-xl shadow-teal-600/20 border border-teal-500/50">
-              <div>
-                <p className="text-teal-100 text-sm sm:text-base font-bold uppercase tracking-wider mb-2">Estado General</p>
-                <strong className="text-2xl sm:text-3xl font-extrabold">{primaryAction.title}</strong>
-              </div>
-              <Link href={primaryAction.href} className="bg-teal-950 text-white hover:bg-teal-900 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all shadow-lg hover:shadow-xl active:scale-95 whitespace-nowrap text-center w-full sm:w-auto">
+            <div className={styles.heroActions}>
+              <Link className={styles.primaryLink} href={primaryAction.href}>
                 {primaryAction.label}
               </Link>
+              <button
+                className={styles.secondaryButton}
+                disabled={isRefreshing}
+                onClick={() => void refreshHome(true)}
+                type="button"
+              >
+                {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+              </button>
             </div>
-          )}
+          </section>
 
-          {/* ACCESOS RÁPIDOS */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-            {quickActions.map((action) => (
-              <Link key={action.href} href={action.href} className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-100/80 shadow-md shadow-slate-200/40 hover:shadow-xl hover:shadow-teal-500/10 hover:border-teal-200 hover:-translate-y-1 transition-all duration-300 group flex flex-col justify-between min-h-30 sm:min-h-35">
-                <div>
-                  {getActionIcon(action.href)}
-                  <strong className="text-slate-800 text-sm sm:text-lg font-semibold group-hover:text-teal-700 transition-colors line-clamp-2">{action.title}</strong>
-                </div>
-                <div className="flex justify-end mt-3 sm:mt-4">
-                  <div className="bg-slate-50 group-hover:bg-teal-50 group-hover:shadow-sm p-2 rounded-xl transition-all">
-                    <svg className="w-5 h-5 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
+          {activeNotice ? (
+            <section className={styles.noticeBand}>
+              <div className={styles.noticeCopy}>
+                <strong>{activeNotice.title}</strong>
+                <p>{activeNotice.description}</p>
+              </div>
+              <Link className={styles.noticeLink} href={activeNotice.href}>
+                {activeNotice.label}
               </Link>
-            ))}
-          </div>
+            </section>
+          ) : null}
 
-          {/* PANELES DE DETALLE (2 COLUMNAS) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mt-2 sm:mt-4">
-             <section className="bg-white rounded-3xl border border-slate-100/80 shadow-xl shadow-slate-200/30 p-6 sm:p-8 hover:shadow-2xl hover:shadow-slate-200/40 transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-6 sm:mb-8">
-                  <h2 className="text-xl font-bold text-slate-800">Resumen de cuenta</h2>
-                  <Link href="/perfil" className="text-base font-semibold text-teal-600 hover:text-teal-700 transition-colors">Editar perfil</Link>
-                </div>
-                <div className="space-y-4 sm:space-y-5">
-                  {spotlightItems.map((item) => (
-                    <div key={item.label} className="flex justify-between items-center gap-4 pb-4 sm:pb-5 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-2 -mx-2 rounded-lg last:border-0 last:pb-2">
-                      <span className="text-slate-500 text-sm sm:text-base">{item.label}</span>
-                      <strong className="text-slate-800 text-sm sm:text-base font-semibold text-right wrap-break-word">{item.value}</strong>
-                    </div>
-                  ))}
-                </div>
-             </section>
+          <section className={styles.actionPanel}>
+            <div className={styles.actionGrid}>
+              {quickActions.map((action) => (
+                <Link className={styles.actionItem} href={action.href} key={action.href}>
+                  <span className={styles.actionIcon} aria-hidden="true">
+                    <ActionIcon name={action.icon} />
+                  </span>
+                  <div className={styles.actionText}>
+                    <strong>{action.title}</strong>
+                    <span>{action.subtitle}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
 
-             <section className="bg-white rounded-3xl border border-slate-100/80 shadow-xl shadow-slate-200/30 p-6 sm:p-8 hover:shadow-2xl hover:shadow-slate-200/40 transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-6 sm:mb-8">
-                  <h2 className="text-xl font-bold text-slate-800">Estado operativo</h2>
-                  {auditVisible && (
-                    <Link href="/auditoria" className="text-base font-semibold text-teal-600 hover:text-teal-700 transition-colors">Auditoría</Link>
-                  )}
+          <section className={styles.contextPanel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.kicker}>Contexto</p>
+                <h2>Tu estado actual</h2>
+              </div>
+              {auditVisible ? (
+                <Link className={styles.inlineLink} href="/auditoria">
+                  Ir a auditoria
+                </Link>
+              ) : null}
+            </div>
+
+            <div className={styles.contextGrid}>
+              {contextRows.map((item) => (
+                <div className={styles.contextRow} key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
                 </div>
-                <div className="space-y-4 sm:space-y-5">
-                  {statusItems.map((item) => (
-                    <div key={item.label} className="flex justify-between items-center gap-4 pb-4 sm:pb-5 border-b border-slate-50 hover:bg-slate-50/50 transition-colors px-2 -mx-2 rounded-lg last:border-0 last:pb-2">
-                      <span className="text-slate-500 text-sm sm:text-base">{item.label}</span>
-                      <span className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wide text-center shadow-sm ${getBadgeColor(item.value)}`}>
-                        {item.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-             </section>
-          </div>
+              ))}
+            </div>
+          </section>
         </main>
       </div>
     </>
   );
+}
+
+function ActionIcon({ name }: { name: HomeAction['icon'] }) {
+  switch (name) {
+    case 'trip':
+      return (
+        <svg fill="none" viewBox="0 0 24 24">
+          <path d="M9 20 4 17.5V6.5L9 9m0 11 6-3m-6 3V9m6 8 5 2.5V6.5L15 4m0 13V4m0 0L9 9" />
+        </svg>
+      );
+    case 'driver':
+      return (
+        <svg fill="none" viewBox="0 0 24 24">
+          <path d="M5 15h14l-1.1-5H6.1L5 15Z" />
+          <circle cx="8.5" cy="16.8" r="1.4" />
+          <circle cx="15.5" cy="16.8" r="1.4" />
+          <path d="M6.2 10 8 6.8h8L17.8 10" />
+        </svg>
+      );
+    case 'trust':
+      return (
+        <svg fill="none" viewBox="0 0 24 24">
+          <path d="M12 4 5 7v4.8c0 4.4 2.8 7.6 7 8.9 4.2-1.3 7-4.5 7-8.9V7l-7-3Z" />
+          <path d="m9 12.2 2 2 4-4" />
+        </svg>
+      );
+    case 'dashboard':
+      return (
+        <svg fill="none" viewBox="0 0 24 24">
+          <rect x="4" y="4" width="7" height="7" rx="1.2" />
+          <rect x="13" y="4" width="7" height="4.5" rx="1.2" />
+          <rect x="13" y="10.5" width="7" height="9.5" rx="1.2" />
+          <rect x="4" y="13" width="7" height="7" rx="1.2" />
+        </svg>
+      );
+    case 'profile':
+      return (
+        <svg fill="none" viewBox="0 0 24 24">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      );
+    default:
+      return null;
+  }
 }
