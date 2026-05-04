@@ -10,7 +10,7 @@ import {
 } from '../lib/geoapify';
 import type { PlaceSelection } from '../types/place-selection';
 
-type TripRouteMapSelectionMode = 'pickup' | 'dropoff';
+export type TripRouteMapSelectionMode = 'pickup' | 'dropoff' | 'origin' | 'destination';
 
 type TripRouteMapProps = {
   origin: PlaceSelection | null;
@@ -46,6 +46,7 @@ export function TripRouteMap({
   const mapRef = useRef<HTMLDivElement | null>(null);
   const bundleRef = useRef<MapBundle | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
     const mapElement = mapRef.current;
@@ -87,6 +88,7 @@ export function TripRouteMap({
           map,
           overlayGroup,
         };
+        setIsMapReady(true);
 
         syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff, livePosition, history);
         window.requestAnimationFrame(() => {
@@ -118,7 +120,7 @@ export function TripRouteMap({
   useEffect(() => {
     const bundle = bundleRef.current;
 
-    if (!bundle) {
+    if (!bundle || !isMapReady) {
       return;
     }
 
@@ -158,7 +160,7 @@ export function TripRouteMap({
     return () => {
       bundle.map.off('click', handleMapClick);
     };
-  }, [onMapSelect, selectionMode]);
+  }, [onMapSelect, selectionMode, isMapReady]);
 
   return (
     <>

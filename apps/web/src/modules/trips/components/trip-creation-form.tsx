@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { TripRouteMode } from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
@@ -29,6 +30,8 @@ type TripCreationFormProps = {
   onReset: () => void;
 };
 
+type SelectionTarget = 'origin' | 'destination';
+
 const ROUTE_MODES = [TripRouteMode.DirectRoute, TripRouteMode.PlannedDetour] as const;
 
 export function TripCreationForm({
@@ -42,6 +45,7 @@ export function TripCreationForm({
   onUseLatestRoute,
   onReset,
 }: TripCreationFormProps) {
+  const [activeTarget, setActiveTarget] = useState<SelectionTarget>('origin');
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
   const isMapsEnabled = isGeoapifyConfigured();
   const now = new Date();
@@ -68,6 +72,11 @@ export function TripCreationForm({
     : 0;
   const validationIssues: string[] = [];
   const validationWarnings: string[] = [];
+  const lastCalcTriggerRef = useRef({
+    departure: values.departureAt,
+    origLat: originLatitude,
+    destLat: destinationLatitude,
+  });
 
   if (!values.vehicleId) {
     validationIssues.push('Selecciona un vehiculo antes de crear el viaje.');
@@ -140,6 +149,71 @@ export function TripCreationForm({
       'El viaje es directo, por lo que el recargo por desvio no se utilizara aunque este cargado.',
     );
   }
+
+  const handleMapSelect = ({
+    latitude,
+    longitude,
+    target,
+  }: {
+    latitude: number;
+    longitude: number;
+    target: 'origin' | 'destination' | 'pickup' | 'dropoff';
+  }) => {
+    if (target === 'origin') {
+      onChange('originLatitude', latitude.toFixed(6));
+      onChange('originLongitude', longitude.toFixed(6));
+      onChange('originLabel', values.originLabel.trim() || 'Punto de origen en el mapa');
+      setActiveTarget('destination');
+      return;
+    }
+
+    onChange('destinationLatitude', latitude.toFixed(6));
+    onChange('destinationLongitude', longitude.toFixed(6));
+    onChange('destinationLabel', values.destinationLabel.trim() || 'Punto de destino en el mapa');
+  };
+
+  useEffect(() => {
+    if (
+      !values.departureAt ||
+      Number.isNaN(originLatitude) ||
+      Number.isNaN(destinationLatitude)
+    ) {
+      return;
+    }
+
+    const triggerChanged =
+      lastCalcTriggerRef.current.departure !== values.departureAt ||
+      lastCalcTriggerRef.current.origLat !== originLatitude ||
+      lastCalcTriggerRef.current.destLat !== destinationLatitude;
+
+    if (triggerChanged || !values.estimatedArrivalAt) {
+      const estimated = calculateEstimatedArrival(
+        originLatitude,
+        originLongitude,
+        destinationLatitude,
+        destinationLongitude,
+        values.departureAt,
+      );
+
+      lastCalcTriggerRef.current = {
+        departure: values.departureAt,
+        origLat: originLatitude,
+        destLat: destinationLatitude,
+      };
+
+      if (values.estimatedArrivalAt !== estimated) {
+        onChange('estimatedArrivalAt', estimated);
+      }
+    }
+  }, [
+    values.departureAt,
+    values.estimatedArrivalAt,
+    originLatitude,
+    originLongitude,
+    destinationLatitude,
+    destinationLongitude,
+    onChange,
+  ]);
 
   const canSubmit = !disabled && !isSubmitting && validationIssues.length === 0;
   const durationLabel = getDurationLabel(departureDate, estimatedArrivalDate);
@@ -348,8 +422,47 @@ export function TripCreationForm({
           {isMapsEnabled ? (
             <section className={styles.mapCard} aria-label="Mapa y coordenadas del viaje">
                 <div className={styles.mapBody}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <p style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0f766e', fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.85rem' }}>
+                      {activeTarget === 'origin' ? (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                          Haz clic en el mapa para marcar la salida
+                        </>
+                      ) : (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                          Haz clic en el mapa para marcar la llegada
+                        </>
+                      )}
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <Button
+                        disabled={disabled}
+                        onClick={() => setActiveTarget('origin')}
+                        type="button"
+                        variant={activeTarget === 'origin' ? 'primary' : 'secondary'}
+                      >
+                        Origen
+                      </Button>
+                      <Button
+                        disabled={disabled}
+                        onClick={() => setActiveTarget('destination')}
+                        type="button"
+                        variant={activeTarget === 'destination' ? 'primary' : 'secondary'}
+                      >
+                        Destino
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className={styles.mapFrame}>
-                    <TripRouteMap destination={destinationSelection} origin={originSelection} />
+                    <TripRouteMap 
+                      destination={destinationSelection} 
+                      onMapSelect={handleMapSelect}
+                      origin={originSelection} 
+                      selectionMode={activeTarget}
+                    />
                   </div>
 
                   <div className={styles.coordinateGrid}>
@@ -364,45 +477,6 @@ export function TripCreationForm({
                       label="Coordenadas de destino"
                       latitude={values.destinationLatitude}
                       longitude={values.destinationLongitude}
-                    />
-                  </div>
-
-                  <div className={styles.grid4}>
-                    <InputField
-                      disabled={disabled}
-                      label="Latitud origen"
-                      onChange={(event) => onChange('originLatitude', event.target.value)}
-                      placeholder="-1.2414"
-                      required
-                      type="number"
-                      value={values.originLatitude}
-                    />
-                    <InputField
-                      disabled={disabled}
-                      label="Longitud origen"
-                      onChange={(event) => onChange('originLongitude', event.target.value)}
-                      placeholder="-78.6278"
-                      required
-                      type="number"
-                      value={values.originLongitude}
-                    />
-                    <InputField
-                      disabled={disabled}
-                      label="Latitud destino"
-                      onChange={(event) => onChange('destinationLatitude', event.target.value)}
-                      placeholder="-1.2520"
-                      required
-                      type="number"
-                      value={values.destinationLatitude}
-                    />
-                    <InputField
-                      disabled={disabled}
-                      label="Longitud destino"
-                      onChange={(event) => onChange('destinationLongitude', event.target.value)}
-                      placeholder="-78.6160"
-                      required
-                      type="number"
-                      value={values.destinationLongitude}
                     />
                   </div>
                 </div>
@@ -491,6 +565,12 @@ export function TripCreationForm({
               disabled={disabled}
               label="Precio base"
               onChange={(event) => onChange('basePriceReference', event.target.value)}
+              onFocus={() => {
+                if (values.basePriceReference === '0' || values.basePriceReference === '0.00') {
+                  onChange('basePriceReference', '');
+                }
+              }}
+              placeholder="0.00"
               required
               step="0.01"
               type="number"
@@ -500,6 +580,12 @@ export function TripCreationForm({
               disabled={disabled || values.routeMode === TripRouteMode.DirectRoute}
               label="Recargo por desvio"
               onChange={(event) => onChange('detourSurchargeReference', event.target.value)}
+              onFocus={() => {
+                if (values.detourSurchargeReference === '0' || values.detourSurchargeReference === '0.00') {
+                  onChange('detourSurchargeReference', '');
+                }
+              }}
+              placeholder="0.00"
               step="0.01"
               type="number"
               value={values.detourSurchargeReference}
@@ -704,4 +790,34 @@ function formatCurrency(value: number): string {
   }
 
   return value.toFixed(2);
+}
+
+function calculateEstimatedArrival(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+  departureStr: string,
+): string {
+  const R = 6371; // Radio de la Tierra en km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distanceKm = R * c;
+
+  const urbanFactor = 1.4; // Ajuste por calles en lugar de línea recta
+  const avgSpeedKmh = 25; // Velocidad promedio urbana conservadora
+  const travelHours = (distanceKm * urbanFactor) / avgSpeedKmh;
+  const travelMinutes = Math.round(travelHours * 60) + 5; // 5 minutos base (tráfico/semáforos)
+
+  const depDate = new Date(departureStr);
+  depDate.setMinutes(depDate.getMinutes() + travelMinutes);
+
+  // Ajustar formato a YYYY-MM-DDTHH:mm preservando hora local
+  const tzOffset = depDate.getTimezoneOffset() * 60000;
+  return new Date(depDate.getTime() - tzOffset).toISOString().slice(0, 16);
 }
