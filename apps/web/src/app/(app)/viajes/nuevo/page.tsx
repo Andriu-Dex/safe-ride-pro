@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError } from '../../../../lib/api-client';
-import { Button } from '../../../../components/ui/button';
 import { persistToast } from '../../../../components/ui/flash-toast';
 import { OperationalAccessCard } from '../../../../components/ui/operational-access-card';
 import { StatusPill } from '../../../../components/ui/status-pill';
@@ -335,12 +334,21 @@ export default function NewTripPage() {
     }
   };
 
+  const getBadgeClass = (tone: string) => {
+    switch (tone) {
+      case 'success': return styles.heroBadgeSuccess;
+      case 'warning': return styles.heroBadgeWarning;
+      case 'danger': return styles.heroBadgeDanger;
+      default: return styles.heroBadgeNeutral;
+    }
+  };
+
   if (isLoading) {
     return (
-      <section className={styles.loadingShell}>
-        <article className={styles.loadingCard}>
+      <section className={styles.pageBackground}>
+        <article className={`${styles.canvas} ${styles.canvasSmall}`}>
           <div aria-hidden="true" className={styles.loadingPulse} />
-          <h1 className={styles.loadingTitle}>Preparando nuevo viaje</h1>
+          <h2 className={styles.loadingTitle}>Preparando nuevo viaje</h2>
           <p className={styles.loadingText}>
             Estamos cargando tu contexto operativo.
           </p>
@@ -353,8 +361,8 @@ export default function NewTripPage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.lockedShell}>
-          <article className={styles.lockedCard}>
+        <section className={styles.pageBackground}>
+          <article className={`${styles.canvas} ${styles.canvasSmall}`}>
             <div className={styles.lockedHeader}>
               <div>
                 <p className={styles.kicker}>Nuevo viaje</p>
@@ -388,16 +396,17 @@ export default function NewTripPage() {
           </div>
 
           <div className={styles.heroActions}>
-            <Button onClick={() => router.push('/viajes')} variant="secondary">
+            <button className={styles.heroBtnSecondary} onClick={() => router.push('/viajes')} type="button">
               Volver
-            </Button>
-            <Button
+            </button>
+            <button
+              className={styles.heroBtnGhost}
               disabled={isRefreshingContext}
               onClick={() => void refreshCreateContext(true)}
-              variant="ghost"
+              type="button"
             >
               {isRefreshingContext ? 'Actualizando...' : 'Actualizar'}
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -610,9 +619,9 @@ export default function NewTripPage() {
                   Ultimo uso: {formatDateTime(latestRouteTemplate.departureAt)}
                 </p>
                 <div className={styles.templateActions}>
-                  <Button disabled={!canCreateTrips} onClick={handleUseLatestRoute} type="button" variant="secondary">
+                  <button className={styles.actionBtnSecondary} disabled={!canCreateTrips} onClick={handleUseLatestRoute} type="button">
                     Cargar ruta
-                  </Button>
+                  </button>
                 </div>
               </div>
             ) : (
@@ -696,4 +705,3 @@ function getReferenceFare(
 
   return `$${basePrice.toFixed(2)}`;
 }
-
