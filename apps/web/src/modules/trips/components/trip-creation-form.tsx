@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { TripRouteMode } from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
@@ -67,15 +66,8 @@ export function TripCreationForm({
   const detourSurchargeReference = values.detourSurchargeReference
     ? Number.parseFloat(values.detourSurchargeReference)
     : 0;
-  const [isMapVisible, setIsMapVisible] = useState(Boolean(originSelection || destinationSelection));
   const validationIssues: string[] = [];
   const validationWarnings: string[] = [];
-
-  useEffect(() => {
-    if (originSelection || destinationSelection) {
-      setIsMapVisible(true);
-    }
-  }, [destinationSelection, originSelection]);
 
   if (!values.vehicleId) {
     validationIssues.push('Selecciona un vehiculo antes de crear el viaje.');
@@ -149,48 +141,6 @@ export function TripCreationForm({
     );
   }
 
-  const progress = [
-    {
-      label: 'Vehiculo',
-      complete: Boolean(values.vehicleId),
-      helper: selectedVehicle ? getVehicleLabel(selectedVehicle) : 'Elige el vehiculo que operara el trayecto.',
-    },
-    {
-      label: 'Ruta',
-      complete: Boolean(originSelection && destinationSelection),
-      helper:
-        originSelection && destinationSelection
-          ? `${originLabel} -> ${destinationLabel}`
-          : 'Define origen y destino con coordenadas validas.',
-    },
-    {
-      label: 'Horario',
-      complete:
-        Boolean(departureDate && estimatedArrivalDate) &&
-        validationIssues.every(
-          (issue) =>
-            issue !== 'Debes indicar una fecha de salida valida.' &&
-            issue !== 'La salida debe programarse en una fecha futura.' &&
-            issue !== 'Debes indicar una llegada estimada valida.' &&
-            issue !== 'La llegada estimada debe ser posterior a la salida.',
-        ),
-      helper:
-        departureDate && estimatedArrivalDate
-          ? `${formatDateTime(values.departureAt)} -> ${formatDateTime(values.estimatedArrivalAt)}`
-          : 'Programa salida y llegada estimada.',
-    },
-    {
-      label: 'Precio',
-      complete: !Number.isNaN(basePriceReference) && basePriceReference >= 0,
-      helper:
-        values.routeMode === TripRouteMode.PlannedDetour
-          ? `$${formatCurrency(basePriceReference)} base + $${formatCurrency(
-              detourSurchargeReference,
-            )} de desvio`
-          : `$${formatCurrency(basePriceReference)} referencial`,
-    },
-  ];
-  const completedSteps = progress.filter((step) => step.complete).length;
   const canSubmit = !disabled && !isSubmitting && validationIssues.length === 0;
   const durationLabel = getDurationLabel(departureDate, estimatedArrivalDate);
   const routeModeLabel = getTripRouteModeLabel(values.routeMode);
@@ -212,12 +162,6 @@ export function TripCreationForm({
 
         <div className={styles.headerStats}>
           <div className={styles.statCard}>
-            <span>Avance</span>
-            <strong>
-              {completedSteps}/{progress.length}
-            </strong>
-          </div>
-          <div className={styles.statCard}>
             <span>Duracion</span>
             <strong>{durationLabel}</strong>
           </div>
@@ -226,24 +170,6 @@ export function TripCreationForm({
             <strong>{referencePriceLabel}</strong>
           </div>
         </div>
-      </div>
-
-      <div className={styles.steps}>
-        {progress.map((step, index) => (
-          <div
-            key={step.label}
-            className={[
-              styles.stepCard,
-              step.complete ? styles.stepCardComplete : null,
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            <span className={styles.stepIndex}>0{index + 1}</span>
-            <strong className={styles.stepTitle}>{step.label}</strong>
-            <span className={styles.stepText}>{step.helper}</span>
-          </div>
-        ))}
       </div>
 
       {latestRouteTemplate ? (
@@ -421,25 +347,6 @@ export function TripCreationForm({
 
           {isMapsEnabled ? (
             <section className={styles.mapCard} aria-label="Mapa y coordenadas del viaje">
-              <div className={styles.toggleRow}>
-                <div className={styles.toggleMeta}>
-                  <strong>Mapa de confirmacion</strong>
-                  <span>
-                    {originSelection || destinationSelection
-                      ? 'Ubicaciones detectadas'
-                      : 'Agrega origen y destino para visualizar la ruta'}
-                  </span>
-                </div>
-                <Button
-                  onClick={() => setIsMapVisible((currentValue) => !currentValue)}
-                  type="button"
-                  variant="secondary"
-                >
-                  {isMapVisible ? 'Ocultar mapa' : 'Mostrar mapa'}
-                </Button>
-              </div>
-
-              {isMapVisible ? (
                 <div className={styles.mapBody}>
                   <div className={styles.mapFrame}>
                     <TripRouteMap destination={destinationSelection} origin={originSelection} />
@@ -499,7 +406,6 @@ export function TripCreationForm({
                     />
                   </div>
                 </div>
-              ) : null}
             </section>
           ) : (
             <>
@@ -641,28 +547,6 @@ export function TripCreationForm({
             value={values.notes}
           />
         </section>
-
-        {validationIssues.length ? (
-          <div className={styles.issuesCard}>
-            <strong>Revisa antes de publicar</strong>
-            <ul className={styles.issuesList}>
-              {validationIssues.map((issue) => (
-                <li key={issue}>{issue}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        {validationWarnings.length ? (
-          <div className={styles.warningCard}>
-            <strong>Advertencias utiles</strong>
-            <ul className={styles.warningList}>
-              {validationWarnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
 
         <div className={styles.actionBar}>
           <div className={styles.actionCopy}>
@@ -821,4 +705,3 @@ function formatCurrency(value: number): string {
 
   return value.toFixed(2);
 }
-
