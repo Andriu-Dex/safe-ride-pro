@@ -10,7 +10,6 @@ import {
 } from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
@@ -279,140 +278,185 @@ export default function DashboardPage() {
     [adminSummary],
   );
 
+  const getBadgeClass = (tone: string) => {
+    switch (tone) {
+      case 'success': return styles.heroBadgeSuccess;
+      case 'warning': return styles.heroBadgeWarning;
+      case 'danger': return styles.heroBadgeDanger;
+      default: return styles.heroBadgeNeutral;
+    }
+  };
+
   if (isLoading) {
     return (
-      <>
+      <section className={styles.pageBackground}>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.loadingShell}>
-          <article className={styles.stateCard}>
-            <div aria-hidden="true" className={styles.loadingPulse} />
-            <h1 className={styles.stateTitle}>Cargando dashboard</h1>
-            <p className={styles.stateText}>Preparando la vista principal.</p>
-          </article>
-        </section>
-      </>
+        <article className={`${styles.canvas} ${styles.canvasSmall}`}>
+          <div aria-hidden="true" className={styles.loadingPulse} />
+          <h2 className={styles.stateTitle}>Cargando dashboard</h2>
+          <p className={styles.stateText}>Preparando la vista principal.</p>
+        </article>
+      </section>
     );
   }
 
   return (
-    <section className={styles.page}>
+    <section className={styles.pageBackground}>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <p className={styles.kicker}>Dashboard</p>
-          <h1 className={styles.heroTitle}>
-            {isAdminWorkspace ? 'Centro administrativo' : 'Vista principal'}
-          </h1>
-          <p className={styles.heroLead}>
-            {isAdminWorkspace
-              ? 'Monitorea la carga de gestion y entra directo a la mesa que necesita decision.'
-              : 'Consulta tu contexto actual y entra rapido a lo que realmente necesitas usar.'}
-          </p>
-        </div>
+      <div className={`${styles.canvas} ${styles.revealSoft}`}>
+        <section className={styles.hero}>
+          <div className={styles.heroTop}>
+            <div className={styles.heroCopy}>
+              <p className={styles.kicker}>Dashboard</p>
+              <h1 className={styles.heroTitle}>
+                {isAdminWorkspace ? 'Centro administrativo' : 'Vista principal'}
+              </h1>
+              <p className={styles.heroLead}>
+                {isAdminWorkspace
+                  ? 'Monitorea la carga de gestion y entra directo a la mesa que necesita decision.'
+                  : 'Consulta tu contexto actual y entra rapido a lo que realmente necesitas usar.'}
+              </p>
+            </div>
 
-        <div className={styles.heroActions}>
-          <StatusPill label={roleLabel} tone="neutral" />
-          <Button
-            disabled={isRefreshing}
-            onClick={() => void refreshDashboard(true)}
-            variant="secondary"
-          >
-            {isRefreshing ? 'Actualizando...' : 'Actualizar'}
-          </Button>
-        </div>
-      </section>
+            <div className={styles.heroActions}>
+              <span className={`${styles.heroBadge} ${getBadgeClass('neutral')}`}>{roleLabel}</span>
+              <button
+                className={styles.heroBtnGhost}
+                disabled={isRefreshing}
+                onClick={() => void refreshDashboard(true)}
+                type="button"
+              >
+                {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+              </button>
+            </div>
+          </div>
+        </section>
 
-      {isAdminWorkspace ? (
-        <div className={styles.board}>
-          <aside className={styles.rail}>
-            <section className={styles.railSection}>
-              <p className={styles.railLabel}>Gestion</p>
-              <h2 className={styles.railTitle}>Accesos directos</h2>
-              <div className={styles.navList}>
-                <Link className={styles.navLink} href="/moderacion?section=driver">
-                  <strong>Conductores</strong>
-                  <span>Revisar nuevas solicitudes</span>
-                </Link>
-                <Link className={styles.navLink} href="/moderacion?section=reports">
-                  <strong>Reportes</strong>
-                  <span>Resolver incidentes</span>
-                </Link>
-                <Link className={styles.navLink} href="/usuarios">
-                  <strong>Usuarios</strong>
-                  <span>Gestionar cuentas</span>
-                </Link>
-                <Link className={styles.navLink} href="/auditoria">
-                  <strong>Auditoria</strong>
-                  <span>Ver trazabilidad</span>
-                </Link>
-              </div>
-            </section>
-          </aside>
-
-          <main className={styles.content}>
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <p className={styles.sectionKicker}>Bandejas</p>
-                  <h2 className={styles.sectionTitle}>Pendientes de hoy</h2>
+        {isAdminWorkspace ? (
+          <div className={styles.mainGrid}>
+            <div className={styles.contentColumn}>
+              <section className={styles.cardSection}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Resumen</p>
+                    <h2>Métricas operativas</h2>
+                  </div>
                 </div>
-                <StatusPill
-                  label={adminSummary?.highSeverityOpenReportsCount ? 'Atencion inmediata' : 'Flujo estable'}
-                  tone={adminSummary?.highSeverityOpenReportsCount ? 'warning' : 'success'}
-                />
-              </div>
+                <div className={styles.metricGrid}>
+                  <article className={styles.metricCard}>
+                    <span>Conductores</span>
+                    <strong>{adminSummary?.pendingDriverApplicationsCount ?? 0}</strong>
+                    <p className={adminSummary?.pendingDriverApplicationsCount ? styles.metricWarning : styles.metricSuccess}>Pendientes</p>
+                  </article>
+                  <article className={styles.metricCard}>
+                    <span>Reportes</span>
+                    <strong>{adminSummary?.openReportsCount ?? 0}</strong>
+                    <p className={adminSummary?.highSeverityOpenReportsCount ? styles.metricDanger : styles.metricSuccess}>
+                      {adminSummary?.highSeverityOpenReportsCount ?? 0} críticos
+                    </p>
+                  </article>
+                  <article className={styles.metricCard}>
+                    <span>Sanciones</span>
+                    <strong>{adminSummary?.activeSanctionsCount ?? 0}</strong>
+                    <p className={styles.metricNeutral}>Activas</p>
+                  </article>
+                  <article className={styles.metricCard}>
+                    <span>Apelaciones</span>
+                    <strong>{adminSummary?.pendingAppealsCount ?? 0}</strong>
+                    <p className={adminSummary?.pendingAppealsCount ? styles.metricWarning : styles.metricSuccess}>Por revisar</p>
+                  </article>
+                </div>
+              </section>
 
-              <div className={styles.queueList}>
-                {adminQueues.map((queue) => (
-                  <Link key={queue.title} className={styles.queueRow} href={queue.href}>
-                    <div>
+              <section className={styles.cardSection}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Bandejas</p>
+                    <h2>Pendientes de hoy</h2>
+                  </div>
+                  <StatusPill
+                    label={adminSummary?.highSeverityOpenReportsCount ? 'Atencion inmediata' : 'Flujo estable'}
+                    tone={adminSummary?.highSeverityOpenReportsCount ? 'warning' : 'success'}
+                  />
+                </div>
+
+                <div className={styles.actionGrid}>
+                  {adminQueues.map((queue) => (
+                    <Link key={queue.title} className={styles.quickLink} href={queue.href}>
                       <strong>{queue.title}</strong>
                       <span>{queue.note}</span>
-                    </div>
-                    <span className={styles.queueCount}>{queue.count}</span>
+                      <span className={styles.queueCount}>{queue.count}</span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+
+              <section className={styles.cardSection}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Sesion</p>
+                    <h2>Alcance actual</h2>
+                  </div>
+                </div>
+
+                <div className={styles.infoGrid}>
+                  <article className={styles.infoTile}>
+                    <span>Correo</span>
+                    <strong>{authSession?.user.email ?? 'No disponible'}</strong>
+                  </article>
+                  <article className={styles.infoTile}>
+                    <span>Institucion</span>
+                    <strong>{currentMembership?.institutionName ?? 'Sin institucion activa'}</strong>
+                  </article>
+                  <article className={styles.infoTile}>
+                    <span>Rol institucional</span>
+                    <strong>
+                      {currentMembership?.role === InstitutionMembershipRole.InstitutionAdmin
+                        ? 'Administrador institucional'
+                        : 'Sin rol administrativo institucional'}
+                    </strong>
+                  </article>
+                </div>
+              </section>
+            </div>
+
+            <aside className={styles.sideColumn}>
+              <section className={styles.cardSection}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <p className={styles.kicker}>Gestion</p>
+                    <h2>Accesos directos</h2>
+                  </div>
+                </div>
+                <div className={styles.quickGrid}>
+                  <Link className={styles.quickLink} href="/moderacion?section=driver">
+                    <strong>Conductores</strong>
+                    <span>Revisar nuevas solicitudes</span>
                   </Link>
-                ))}
-              </div>
-            </section>
-
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
+                  <Link className={styles.quickLink} href="/moderacion?section=reports">
+                    <strong>Reportes</strong>
+                    <span>Resolver incidentes</span>
+                  </Link>
+                  <Link className={styles.quickLink} href="/usuarios">
+                    <strong>Usuarios</strong>
+                    <span>Gestionar cuentas</span>
+                  </Link>
+                  <Link className={styles.quickLink} href="/auditoria">
+                    <strong>Auditoria</strong>
+                    <span>Ver trazabilidad</span>
+                  </Link>
+                </div>
+              </section>
+            </aside>
+          </div>
+        ) : (
+          <div className={styles.stackLayout}>
+            <section className={styles.cardSection}>
+              <div className={styles.cardHeader}>
                 <div>
-                  <p className={styles.sectionKicker}>Sesion</p>
-                  <h2 className={styles.sectionTitle}>Alcance actual</h2>
-                </div>
-              </div>
-
-              <div className={styles.detailList}>
-                <div className={styles.detailRow}>
-                  <span>Correo</span>
-                  <strong>{authSession?.user.email ?? 'No disponible'}</strong>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Institucion</span>
-                  <strong>{currentMembership?.institutionName ?? 'Sin institucion activa'}</strong>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Rol institucional</span>
-                  <strong>
-                    {currentMembership?.role === InstitutionMembershipRole.InstitutionAdmin
-                      ? 'Administrador institucional'
-                      : 'Sin rol administrativo institucional'}
-                  </strong>
-                </div>
-              </div>
-            </section>
-          </main>
-        </div>
-      ) : (
-        <div className={styles.board}>
-          <main className={styles.content}>
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <p className={styles.sectionKicker}>Estado</p>
-                  <h2 className={styles.sectionTitle}>Contexto actual</h2>
+                  <p className={styles.kicker}>Desempeño</p>
+                  <h2>Métricas de confianza</h2>
                 </div>
                 <StatusPill
                   label={
@@ -432,71 +476,69 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className={styles.detailList}>
-                <div className={styles.detailRow}>
-                  <span>Institucion</span>
-                  <strong>{currentMembership?.institutionName ?? 'Sin institucion activa'}</strong>
-                </div>
-                <div className={styles.detailRow}>
+              <div className={styles.metricGrid}>
+                <article className={`${styles.metricCard} ${styles.metricCardText}`}>
+                  <span>Nivel visible</span>
+                  <strong>{visibleTrustLabel}</strong>
+                  <p className={styles.metricNeutral}>Reputación</p>
+                </article>
+                <article className={`${styles.metricCard} ${styles.metricCardText}`}>
+                  <span>Riesgo admin.</span>
+                  <strong>{administrativeRiskLabel}</strong>
+                  <p className={styles.metricNeutral}>Evaluación</p>
+                </article>
+                <article className={`${styles.metricCard} ${styles.metricCardText}`}>
                   <span>Licencia</span>
                   <strong>
                     {currentMembership
                       ? getDriverLicenseStatusLabel(currentMembership.licenseStatus)
-                      : 'Sin informacion'}
+                      : 'N/A'}
                   </strong>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Confianza visible</span>
-                  <strong>{visibleTrustLabel}</strong>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Riesgo administrativo</span>
-                  <StatusPill
-                    label={administrativeRiskLabel}
-                    tone={trustSummary ? getAdministrativeRiskTone(trustSummary.administrativeRiskState) : 'neutral'}
-                  />
-                </div>
-                <div className={styles.detailRow}>
+                  <p className={styles.metricNeutral}>Documento</p>
+                </article>
+                <article className={`${styles.metricCard} ${styles.metricCardText}`}>
                   <span>Restricciones</span>
-                  <strong>{restrictions.message ?? 'Sin bloqueos activos'}</strong>
+                  <strong>{restrictions.message ? 'Activas' : 'Ninguna'}</strong>
+                  <p className={restrictions.message ? styles.metricWarning : styles.metricSuccess}>
+                    {restrictions.message ? 'Requiere atención' : 'Sin bloqueos'}
+                  </p>
+                </article>
+              </div>
+            </section>
+
+            <section className={styles.cardSection}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.kicker}>Estado</p>
+                  <h2>Contexto actual</h2>
                 </div>
               </div>
 
+              <div className={styles.infoGridHorizontal}>
+                <article className={styles.infoTile}>
+                  <span>Institucion</span>
+                  <strong>{currentMembership?.institutionName ?? 'Sin institucion activa'}</strong>
+                </article>
+                <article className={styles.infoTile}>
+                  <span>Correo asociado</span>
+                  <strong>{authSession?.user.email ?? 'No disponible'}</strong>
+                </article>
+                <article className={styles.infoTile}>
+                  <span>Restricciones</span>
+                  <strong>{restrictions.message ?? 'Sin bloqueos activos'}</strong>
+                </article>
+              </div>
+
               {driverLicenseMessage ? (
-                <div className={styles.notice}>
+                <div className={styles.noticeCard}>
                   <strong>Licencia</strong>
                   <span>{driverLicenseMessage}</span>
                 </div>
               ) : null}
             </section>
-          </main>
-
-          <aside className={styles.rail}>
-            <section className={styles.railSection}>
-              <p className={styles.railLabel}>Accesos</p>
-              <h2 className={styles.railTitle}>Siguiente paso</h2>
-              <div className={styles.navList}>
-                <Link className={styles.navLink} href="/viajes">
-                  <strong>Viajes</strong>
-                  <span>Reservas y trayectos</span>
-                </Link>
-                <Link className={styles.navLink} href="/perfil">
-                  <strong>Perfil</strong>
-                  <span>Datos personales</span>
-                </Link>
-                <Link className={styles.navLink} href="/conductor">
-                  <strong>Conductor</strong>
-                  <span>Habilitacion y documentos</span>
-                </Link>
-                <Link className={styles.navLink} href="/vehiculos">
-                  <strong>Vehiculos</strong>
-                  <span>Gestionar unidades</span>
-                </Link>
-              </div>
-            </section>
-          </aside>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
