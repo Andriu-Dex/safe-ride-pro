@@ -1,40 +1,57 @@
-.vehicleShell {
-  display: grid;
-  gap: 1.4rem;
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+
+.pageBackground {
+  min-height: 100vh;
+  padding: 2rem 1.5rem 4rem;
+  background-color: #f1f5f9;
+  background-image: 
+    radial-gradient(circle at 50% 0%, #ffffff 0%, transparent 60%),
+    linear-gradient(to bottom, transparent 0%, #e2e8f0 100%);
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.canvas {
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(40px);
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(148, 163, 184, 0.5);
+  border: 1px solid #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.canvasSmall {
+  max-width: 36rem;
+  margin: auto;
+  align-items: center;
+  text-align: center;
+  padding: 3rem 2rem;
+  gap: 1.5rem;
 }
 
 .reveal {
-  animation: vehicleRise 0.5s ease both;
+  animation: vehicleRise 0.45s ease both;
 }
 
 .revealSoft {
-  animation: vehicleFade 0.55s ease both;
+  animation: vehicleFade 0.48s ease both;
 }
 
 .hero {
   position: relative;
-  overflow: hidden;
-  display: grid;
-  gap: 1.1rem;
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 30px;
-  background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.14), transparent 30%),
-    linear-gradient(160deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.95));
-  padding: clamp(1.2rem, 2.5vw, 2rem);
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
-}
-
-.hero::after {
-  position: absolute;
-  inset: auto -1.6rem -2.4rem auto;
-  width: 12rem;
-  height: 12rem;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.46), transparent 68%);
-  content: '';
-  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2.5rem;
+  background: linear-gradient(135deg, #0f766e 0%, #042f2e 100%);
+  color: #ffffff;
 }
 
 .heroTop {
@@ -42,118 +59,145 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .heroCopy {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  max-width: 44rem;
+  max-width: 42rem;
 }
 
 .kicker {
-  margin: 0;
-  color: #0f766e;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  margin: 0 0 0.35rem 0;
+  color: #0d9488;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.hero .kicker {
+  color: #5eead4;
 }
 
 .heroTitle,
 .lockedTitle {
   margin: 0;
-  color: #16343d;
-  font-size: clamp(2rem, 3.8vw, 3.2rem);
-  line-height: 1;
+  font-size: clamp(2rem, 3.7vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.heroTitle {
+  color: #ffffff;
+}
+
+.lockedTitle {
+  color: #0f172a;
 }
 
 .heroLead,
-.lockedText {
+.lockedText,
+.emptyStateCard span,
+.noticeCard span {
   margin: 0;
-  color: #5d767c;
+  font-size: 1.05rem;
   line-height: 1.6;
 }
 
-.heroPills,
-.heroActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
+.heroLead {
+  color: #ccfbf1;
 }
 
-.metricGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.9rem;
+.lockedText,
+.emptyStateCard span,
+.noticeCard span {
+  color: #64748b;
 }
 
-.metricCard,
-.fleetCard,
-.sideCard,
-.lockedCard,
-.loadingCard {
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 26px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
-}
-
-.metricCard {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.95rem 1rem;
-}
-
-.metricLabel,
-.documentFileName,
-.vehicleSubline,
-.documentDescription {
-  color: #667f85;
-}
-
-.metricLabel {
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(12px);
   text-transform: uppercase;
 }
 
-.metricValue {
-  color: #16343d;
-  font-size: 1.15rem;
-  font-weight: 900;
-  line-height: 1.15;
+.heroBadgeSuccess {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #a7f3d0;
 }
 
-.metricNote,
-.documentFileName,
-.documentDescription {
-  font-size: 0.86rem;
-  line-height: 1.45;
+.heroBadgeWarning {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fde047;
+}
+
+.heroBadgeDanger {
+  background: rgba(225, 29, 72, 0.2);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fecdd3;
+}
+
+.heroBadgeNeutral {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.heroPills,
+.heroActions,
+.modalActions,
+.documentActions,
+.vehiclePills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 .mainGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.22fr) minmax(300px, 0.78fr);
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 3rem;
   align-items: start;
+  padding: 3rem 2.5rem;
 }
 
 .contentColumn,
 .sideColumn {
-  display: grid;
-  gap: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
 }
 
 .fleetCard,
-.sideCard,
-.lockedCard,
-.loadingCard {
-  padding: 1.2rem;
+.sideCard {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.contentColumn > *:not(:last-child),
+.sideColumn > *:not(:last-child) {
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .cardHeader,
-.lockedHeader,
-.formSectionHeader {
+.formSectionHeader,
+.lockedHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -161,168 +205,304 @@
 }
 
 .cardHeader h2,
-.formSectionHeader h3 {
+.formSectionHeader h3,
+.vehicleName {
   margin: 0;
-  color: #16343d;
+  color: #1e293b;
+  font-size: 1.25rem;
+  font-weight: 700;
 }
 
-.vehicleList,
-.noticeStack,
-.quickGrid {
-  display: grid;
-  gap: 0.9rem;
+.vehicleCardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
-.vehicleCard,
-.noticeCard,
-.emptyStateCard,
-.documentCard {
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 22px;
-  background: rgba(247, 251, 251, 0.86);
-}
-
-.vehicleCard {
-  display: grid;
-  gap: 0.95rem;
-  padding: 1rem;
-}
-
-.vehicleCardTop {
+.vehicleTitleGroup {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.9rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.vehicleName {
-  margin: 0;
-  color: #16343d;
-  font-size: 1.12rem;
-}
-
-.vehicleSubline {
-  margin: 0.22rem 0 0;
-  line-height: 1.45;
-}
-
-.vehiclePills,
-.vehicleActions,
-.modalActions,
-.documentActions {
+.vehicleTags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.vehicleTag,
+.vehicleTagPlate {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.vehicleTag {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.vehicleTagPlate {
+  background: #f0fdfa;
+  color: #0f766e;
+  border: 1px solid #ccfbf1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .vehicleDetails {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1.5rem;
+  padding: 1.25rem 0;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.infoTile,
-.noticeCard {
-  display: grid;
-  gap: 0.2rem;
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
-  padding: 0.9rem;
+/* =========================================
+   TARJETAS DE DATOS (INFO TILES)
+   ========================================= */
+.infoTile {
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .infoTile span {
-  color: #6b8389;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  display: block;
 }
 
-.infoTile strong,
-.noticeCard strong {
-  color: #16343d;
-  line-height: 1.4;
-}
-
-.noticeCard span,
-.emptyStateCard span {
-  color: #647d83;
-  line-height: 1.5;
-}
-
-.quickLink {
-  display: grid;
-  gap: 0.25rem;
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 18px;
-  background: rgba(247, 251, 251, 0.84);
-  padding: 0.95rem;
-  color: inherit;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.quickLink:hover,
-.quickLink:focus-visible {
-  border-color: rgba(15, 118, 110, 0.18);
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
-  outline: none;
-}
-
-.quickLink strong {
-  color: #16343d;
-}
-
-.quickLink span {
-  color: #647b81;
+.infoTile strong {
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 700;
   line-height: 1.45;
+  word-break: break-word;
 }
 
-.emptyStateCard {
-  display: grid;
-  gap: 0.25rem;
-  padding: 1rem;
-}
-
-.registrationModalCard {
-  display: grid;
+.vehicleDocumentRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 1rem;
-  max-height: min(92vh, 60rem);
+  background: #f8fafc;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.documentRowInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.documentRowLabel {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.documentRowActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* =========================================
+   TARJETAS DE NOTIFICACIÓN (ALERTAS)
+   ========================================= */
+.noticeCard {
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.noticeCard strong {
+  color: #0f766e;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.noticeCard span {
+  color: #115e59;
+}
+
+/* =========================================
+   PANEL VACÍO Y DOCUMENTOS
+   ========================================= */
+.emptyStateCard {
+  align-items: center;
+  text-align: center;
+  padding: 3rem 1.25rem;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.emptyStateCard strong {
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.vehicleList,
+.noticeStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.vehicleCard,
+.documentCard {
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.vehicleCard:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.025);
+}
+
+.documentFileName {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  color: #64748b;
+  font-size: 1rem;
+  margin-top: 0.25rem;
+}
+
+.documentDescription {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.vehicleActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+/* =========================================
+   MODAL DE SOLICITUD
+   ========================================= */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  animation: backdropFade 0.2s ease-out;
+}
+
+.modalCanvas {
+  width: 100%;
+  max-width: 56rem;
+  max-height: calc(100vh - 3rem);
+  background: #ffffff;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 2rem 2.5rem 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modalTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.modalText {
+  margin: 0.25rem 0 0 0;
+  color: #64748b;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .registrationForm {
   overflow-y: auto;
-  max-height: calc(92vh - 8rem);
-  padding-right: 0.2rem;
+  padding: 1.5rem 2.5rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
 }
 
 .formSection {
-  display: grid;
-  gap: 0.95rem;
-  padding-top: 1rem;
-  margin-top: 1rem;
-  border-top: 1px solid rgba(22, 47, 58, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.formSection:first-of-type {
-  padding-top: 0;
-  margin-top: 0;
-  border-top: 0;
+.formSection:last-of-type {
+  border-bottom: none;
 }
 
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
+  gap: 1.5rem;
 }
 
 .fieldPanel {
-  display: grid;
-  gap: 0.55rem;
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 18px;
-  background: rgba(247, 251, 251, 0.82);
-  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .fieldPanelHeader {
@@ -333,73 +513,54 @@
 }
 
 .fieldPanelLabel {
-  color: #16343d;
-  font-size: 0.92rem;
+  color: #0f172a;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
 .textAction {
   border: 0;
   background: transparent;
-  color: #0f766e;
+  color: #0d9488;
   cursor: pointer;
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-weight: 700;
   padding: 0;
+  transition: color 0.2s ease;
 }
-
-.textAction:hover,
-.textAction:focus-visible {
+.textAction:hover {
+  color: #115e59;
   text-decoration: underline;
-  outline: none;
 }
 
-.documentCard {
-  display: grid;
-  gap: 0.85rem;
-  padding: 1rem;
-}
-
-.documentDescription,
-.documentFileName {
-  display: block;
-  margin-top: 0.2rem;
-}
-
-.documentTrigger {
-  min-width: 0;
-}
-
-.lockedShell,
-.loadingShell {
-  display: grid;
-  place-items: center;
-  min-height: 60vh;
-}
-
-.loadingCard {
-  width: min(100%, 34rem);
-  justify-items: center;
-  text-align: center;
+.modalActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
 }
 
 .loadingPulse {
   width: 4rem;
   height: 4rem;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(14, 165, 233, 0.24));
+  background: linear-gradient(135deg, #ccfbf1, #99f6e4);
   animation: vehiclePulse 1.2s ease-in-out infinite;
+  margin-bottom: 1rem;
 }
 
 .loadingTitle {
-  margin: 0.9rem 0 0;
-  color: #16343d;
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .loadingText {
-  margin: 0.35rem 0 0;
-  color: #647b81;
+  margin: 0;
+  color: #64748b;
+  font-size: 1.05rem;
 }
 
 .srOnly {
@@ -451,15 +612,38 @@
   }
 }
 
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px) scale(0.98); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
 @media (max-width: 1180px) {
   .mainGrid {
     grid-template-columns: 1fr;
   }
+
+  .modalCanvas {
+    max-height: calc(100vh - 2rem);
+  }
+
+  .modalHeader,
+  .registrationForm {
+    padding: 1.5rem;
+  }
 }
 
 @media (max-width: 900px) {
-  .metricGrid,
-  .vehicleDetails,
   .formGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -467,15 +651,12 @@
   .heroTop,
   .cardHeader,
   .lockedHeader,
-  .formSectionHeader,
-  .vehicleCardTop {
+  .formSectionHeader {
     flex-direction: column;
   }
 }
 
 @media (max-width: 720px) {
-  .metricGrid,
-  .vehicleDetails,
   .formGrid {
     grid-template-columns: 1fr;
   }
@@ -488,8 +669,130 @@
     display: grid;
   }
 
-  .documentTrigger {
-    width: 100%;
-    text-align: center;
+  .hero {
+    padding: 1.5rem;
   }
+
+  .mainGrid {
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
+    gap: 2rem;
+  }
+
+  .canvasSmall {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/* =========================================
+   BOTONES DEL ENCABEZADO (HERO)
+   ========================================= */
+.heroBtnPrimary,
+.heroBtnSecondary,
+.heroBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 1.5rem;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 700;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+
+.heroBtnPrimary {
+  background: #5eead4; /* Mint/Cyan vibrante */
+  color: #042f2e; 
+  box-shadow: 0 4px 14px rgba(94, 234, 212, 0.25);
+}
+.heroBtnPrimary:hover {
+  background: #2dd4bf;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(94, 234, 212, 0.4);
+}
+
+.heroBtnSecondary {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.heroBtnSecondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.heroBtnGhost {
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+}
+.heroBtnGhost:hover {
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+/* =========================================
+   BOTONES DE ACCIÓN (INFERIORES)
+   ========================================= */
+.actionBtnPrimary,
+.actionBtnSecondary,
+.actionBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+  outline: none;
+}
+
+.actionBtnPrimary {
+  background: #0f766e;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.15);
+}
+.actionBtnPrimary:hover:not(:disabled) {
+  background: #115e59;
+  transform: translateY(-1px);
+}
+.actionBtnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.actionBtnSecondary {
+  background: #ffffff;
+  color: #334155;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.actionBtnSecondary:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+.actionBtnSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.actionBtnGhost {
+  background: transparent;
+  color: #64748b;
+}
+.actionBtnGhost:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+.actionBtnGhost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

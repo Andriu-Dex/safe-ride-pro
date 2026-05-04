@@ -783,6 +783,15 @@ export default function VehiclesPage() {
     });
   };
 
+  const getBadgeClass = (tone: string) => {
+    switch (tone) {
+      case 'success': return styles.heroBadgeSuccess;
+      case 'warning': return styles.heroBadgeWarning;
+      case 'danger': return styles.heroBadgeDanger;
+      default: return styles.heroBadgeNeutral;
+    }
+  };
+
   if (
     !isLoading &&
     !operationalAccess.hasOperationalMembership &&
@@ -792,8 +801,8 @@ export default function VehiclesPage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.lockedShell}>
-          <article className={styles.lockedCard}>
+        <section className={styles.pageBackground}>
+          <article className={`${styles.canvas} ${styles.canvasSmall}`}>
             <div className={styles.lockedHeader}>
               <div>
                 <p className={styles.kicker}>Vehiculos</p>
@@ -816,45 +825,44 @@ export default function VehiclesPage() {
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
       {isLoading ? (
-        <section className={styles.loadingShell}>
-          <article className={styles.loadingCard}>
+        <section className={styles.pageBackground}>
+          <article className={`${styles.canvas} ${styles.canvasSmall}`}>
             <div aria-hidden="true" className={styles.loadingPulse} />
             <h2 className={styles.loadingTitle}>Cargando vehiculos</h2>
             <p className={styles.loadingText}>Estamos consultando tu flota actual.</p>
           </article>
         </section>
       ) : (
-        <section className={styles.vehicleShell}>
-          <section className={`${styles.hero} ${styles.reveal}`}>
+        <section className={styles.pageBackground}>
+          <div className={`${styles.canvas} ${styles.revealSoft}`}>
+          <section className={styles.hero}>
             <div className={styles.heroTop}>
               <div className={styles.heroCopy}>
                 <p className={styles.kicker}>Vehiculos</p>
                 <h1 className={styles.heroTitle}>Gestiona tus vehiculos</h1>
                 <p className={styles.heroLead}>
-                  Registra unidades, valida su documentacion y decide cuales quedan listas para publicar viajes.
+                  Registra tus unidades y activalas para que queden listas para publicar viajes.
                 </p>
               </div>
 
               <div className={styles.heroPills}>
-                <StatusPill
-                  label={getDriverStatusLabel(currentStatus)}
-                  tone={getDriverStatusTone(currentStatus)}
-                />
-                <StatusPill
-                  label={vehicleManagementEnabled ? 'Gestion habilitada' : 'Gestion limitada'}
-                  tone={vehicleManagementEnabled ? 'success' : 'warning'}
-                />
+                <span className={`${styles.heroBadge} ${getBadgeClass(getDriverStatusTone(currentStatus))}`}>
+                  {getDriverStatusLabel(currentStatus)}
+                </span>
+                <span className={`${styles.heroBadge} ${getBadgeClass(vehicleManagementEnabled ? 'success' : 'warning')}`}>
+                  {vehicleManagementEnabled ? 'Gestion habilitada' : 'Gestion limitada'}
+                </span>
               </div>
             </div>
 
             <div className={styles.heroActions}>
-              <Button onClick={openRegistrationModal} variant="primary">
+              <button className={styles.heroBtnPrimary} onClick={openRegistrationModal} type="button">
                 Registrar vehiculo
-              </Button>
-              <Link className="button button-secondary" href="/conductor">
+              </button>
+              <Link className={styles.heroBtnSecondary} href="/conductor">
                 Ver conductor
               </Link>
-              <Link className="button button-ghost" href="/viajes">
+              <Link className={styles.heroBtnGhost} href="/viajes">
                 Ir a viajes
               </Link>
             </div>
@@ -882,15 +890,11 @@ export default function VehiclesPage() {
 
                       return (
                         <article className={styles.vehicleCard} key={vehicle.id}>
-                          <div className={styles.vehicleCardTop}>
-                            <div>
+                          <div className={styles.vehicleCardHeader}>
+                            <div className={styles.vehicleTitleGroup}>
                               <h3 className={styles.vehicleName}>
                                 {getVehicleDisplayName(vehicle)}
                               </h3>
-                              <p className={styles.vehicleSubline}>
-                                {vehicle.plate} | {vehicle.color} | {vehicle.year}
-                              </p>
-                            </div>
 
                             <div className={styles.vehiclePills}>
                               <StatusPill
@@ -901,6 +905,12 @@ export default function VehiclesPage() {
                                 <StatusPill label="En viaje" tone="warning" />
                               ) : null}
                             </div>
+                            </div>
+                            <p className={styles.vehicleTags}>
+                              <span className={styles.vehicleTagPlate}>{vehicle.plate}</span>
+                              <span className={styles.vehicleTag}>{vehicle.color}</span>
+                              <span className={styles.vehicleTag}>{vehicle.year}</span>
+                            </p>
                           </div>
 
                           <div className={styles.vehicleDetails}>
@@ -910,64 +920,69 @@ export default function VehiclesPage() {
                             </article>
                             <article className={styles.infoTile}>
                               <span>Cupos</span>
-                              <strong>{vehicle.seatCount}</strong>
+                              <strong>{vehicle.seatCount} asientos</strong>
                             </article>
                             <article className={styles.infoTile}>
                               <span>Equipaje</span>
                               <strong>{getLuggagePolicyLabel(vehicle.luggagePolicy)}</strong>
                             </article>
-                            <article className={styles.infoTile}>
-                              <span>Documento</span>
-                              <strong>{hasRegistrationDocument ? 'Registrado' : 'Pendiente'}</strong>
-                            </article>
+                          </div>
+
+                          <div className={styles.vehicleDocumentRow}>
+                            <div className={styles.documentRowInfo}>
+                              <span className={styles.documentRowLabel}>Matricula</span>
+                              <strong className={styles.documentName}>
+                                {hasRegistrationDocument ? 'Documento registrado' : 'Sin archivo'}
+                              </strong>
+                            </div>
+                            
+                            {hasRegistrationDocument ? (
+                              <div className={styles.documentRowActions}>
+                                <button
+                                  className={styles.actionBtnSecondary}
+                                  disabled={previewLoadingVehicleId === vehicle.id}
+                                  onClick={() => void handlePreviewStoredVehicleDocument(vehicle)}
+                                  type="button"
+                                >
+                                  {previewLoadingVehicleId === vehicle.id ? 'Abriendo...' : 'Ver'}
+                                </button>
+                                <button
+                                  className={styles.actionBtnGhost}
+                                  disabled={downloadingVehicleId === vehicle.id}
+                                  onClick={() => void handleDownloadStoredVehicleDocument(vehicle)}
+                                  type="button"
+                                >
+                                  {downloadingVehicleId === vehicle.id ? 'Descargando...' : 'Descargar'}
+                                </button>
+                              </div>
+                            ) : null}
                           </div>
 
                           <div className={styles.vehicleActions}>
-                            {hasRegistrationDocument ? (
-                              <>
-                                <Button
-                                  disabled={previewLoadingVehicleId === vehicle.id}
-                                  onClick={() => void handlePreviewStoredVehicleDocument(vehicle)}
-                                  variant="secondary"
-                                >
-                                  {previewLoadingVehicleId === vehicle.id
-                                    ? 'Abriendo...'
-                                    : 'Ver documento'}
-                                </Button>
-                                <Button
-                                  disabled={downloadingVehicleId === vehicle.id}
-                                  onClick={() => void handleDownloadStoredVehicleDocument(vehicle)}
-                                  variant="ghost"
-                                >
-                                  {downloadingVehicleId === vehicle.id
-                                    ? 'Descargando...'
-                                    : 'Descargar'}
-                                </Button>
-                              </>
-                            ) : null}
-
-                            <Button
+                            <button
+                              className={styles.actionBtnSecondary}
                               disabled={!vehicleManagementEnabled}
                               onClick={() => openEditVehicleModal(vehicle)}
-                              variant="primary"
+                              type="button"
                             >
                               Editar
-                            </Button>
-                            <Button
+                            </button>
+                            <button
+                              className={vehicle.isActive ? styles.actionBtnSecondary : styles.actionBtnPrimary}
                               disabled={
                                 !vehicleManagementEnabled ||
                                 isBusy ||
                                 (vehicle.isActive && isLockedByTrips)
                               }
                               onClick={() => void handleToggleVehicleStatus(vehicle)}
-                              variant="secondary"
+                              type="button"
                             >
                               {isBusy
                                 ? 'Actualizando...'
                                 : vehicle.isActive
                                   ? 'Desactivar'
                                   : 'Activar'}
-                            </Button>
+                            </button>
                           </div>
                         </article>
                       );
@@ -983,7 +998,7 @@ export default function VehiclesPage() {
             </div>
 
             <aside className={styles.sideColumn}>
-              <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+              <article className={`${styles.sideCard} ${styles.reveal}`}>
                 <div className={styles.cardHeader}>
                   <div>
                     <p className={styles.kicker}>Estado</p>
@@ -1012,6 +1027,7 @@ export default function VehiclesPage() {
               </article>
             </aside>
           </section>
+          </div>
         </section>
       )}
 
@@ -1019,34 +1035,35 @@ export default function VehiclesPage() {
         <div
           aria-labelledby="vehicle-registration-modal-title"
           aria-modal="true"
-          className="modal-backdrop"
+          className={styles.modalBackdrop}
           onClick={closeRegistrationModal}
           role="dialog"
         >
           <div
-            className={`modal-card modal-card-lg ${styles.registrationModalCard}`}
+            className={styles.modalCanvas}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="modal-header">
+            <div className={styles.modalHeader}>
               <div>
                 <p className={styles.kicker}>Vehiculo</p>
-                <h2 className="panel-title" id="vehicle-registration-modal-title">
+                <h2 className={styles.modalTitle} id="vehicle-registration-modal-title">
                   {editingVehicle ? 'Editar vehiculo' : 'Registrar vehiculo'}
                 </h2>
-                <p className="panel-text">
+                <p className={styles.modalText}>
                   Completa los datos y carga la matricula cuando corresponda.
                 </p>
               </div>
-              <Button
+              <button
+                className={styles.actionBtnSecondary}
                 disabled={isSubmitting}
                 onClick={closeRegistrationModal}
-                variant="secondary"
+                type="button"
               >
                 Cerrar
-              </Button>
+              </button>
             </div>
 
-            <form className={`form-stack ${styles.registrationForm}`} onSubmit={handleSubmit}>
+            <form className={styles.registrationForm} onSubmit={handleSubmit}>
               <section className={styles.formSection}>
                 <div className={styles.formSectionHeader}>
                   <div>
@@ -1244,7 +1261,7 @@ export default function VehiclesPage() {
 
                   <div className={styles.documentActions}>
                     <label
-                      className={['button', 'button-secondary', styles.documentTrigger].join(' ')}
+                      className={styles.actionBtnPrimary}
                       htmlFor={
                         isUploadingRegistrationDocument
                           ? undefined
@@ -1296,48 +1313,48 @@ export default function VehiclesPage() {
                       type="file"
                     />
 
-                    <Button
+                    <button
+                      className={styles.actionBtnSecondary}
                       disabled={
                         !formValues.registrationDocumentFileKey ||
                         isOpeningRegistrationDocumentPreview
                       }
                       onClick={() => void handlePreviewRegistrationDocument()}
                       type="button"
-                      variant="ghost"
                     >
                       {isOpeningRegistrationDocumentPreview ? 'Abriendo...' : 'Ver'}
-                    </Button>
-                    <Button
+                    </button>
+                    <button
+                      className={styles.actionBtnGhost}
                       disabled={
                         !formValues.registrationDocumentFileKey ||
                         isDownloadingRegistrationDocument
                       }
                       onClick={() => void handleDownloadRegistrationDocument()}
                       type="button"
-                      variant="ghost"
                     >
                       {isDownloadingRegistrationDocument ? 'Descargando...' : 'Descargar'}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </section>
 
               <div className={styles.modalActions}>
-                <Button disabled={isSubmitting} type="submit" variant="primary">
+                <button
+                  className={styles.actionBtnGhost}
+                  disabled={isSubmitting}
+                  onClick={closeRegistrationModal}
+                  type="button"
+                >
+                  Cancelar
+                </button>
+                <button className={styles.actionBtnPrimary} disabled={isSubmitting} type="submit">
                   {isSubmitting
                     ? 'Guardando...'
                     : editingVehicle
                       ? 'Guardar cambios'
                       : 'Registrar vehiculo'}
-                </Button>
-                <Button
-                  disabled={isSubmitting}
-                  onClick={closeRegistrationModal}
-                  type="button"
-                  variant="secondary"
-                >
-                  Cancelar
-                </Button>
+                </button>
               </div>
             </form>
           </div>
