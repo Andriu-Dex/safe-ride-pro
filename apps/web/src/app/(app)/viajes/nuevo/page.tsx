@@ -383,7 +383,7 @@ export default function NewTripPage() {
             <p className={styles.kicker}>Viajes</p>
             <h1 className={styles.heroTitle}>Nuevo viaje</h1>
             <p className={styles.heroLead}>
-              Prepara una salida clara, con ruta, horarios y cupos bien definidos.
+              Define ruta, horario y cupos antes de publicarlo.
             </p>
           </div>
 
@@ -424,52 +424,21 @@ export default function NewTripPage() {
           />
         </div>
 
-        <div className={styles.heroHighlights}>
-          <article className={styles.heroHighlight}>
-            <span>Vehiculos</span>
-            <strong>{activeVehicles.length}</strong>
-          </article>
+          <div className={styles.heroHighlights}>
+            <article className={styles.heroHighlight}>
+              <span>Vehiculos</span>
+              <strong>{activeVehicles.length}</strong>
+            </article>
           <article className={styles.heroHighlight}>
             <span>Ruta reciente</span>
             <strong>{latestRouteTemplate ? 'Disponible' : 'Sin historial'}</strong>
           </article>
-          <article className={styles.heroHighlight}>
-            <span>Preparacion</span>
-            <strong>{completedChecklistItems}/4</strong>
-          </article>
-        </div>
-      </section>
-
-      <section className={styles.metricGrid}>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Vehiculo activo</span>
-          <strong className={styles.metricValue}>
-            {selectedVehicle ? getVehicleLabel(selectedVehicle) : 'Pendiente'}
-          </strong>
-          <p className={styles.metricText}>{selectedVehicle ? selectedVehicle.plate : 'Elige uno para continuar'}</p>
-        </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Salida</span>
-          <strong className={styles.metricValue}>
-            {tripForm.departureAt ? formatDateTime(tripForm.departureAt) : 'Pendiente'}
-          </strong>
-          <p className={styles.metricText}>{estimatedDuration}</p>
-        </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Cupos</span>
-          <strong className={styles.metricValue}>{tripForm.seatCount || '0'}</strong>
-          <p className={styles.metricText}>Precio {referenceFare}</p>
-        </article>
-        <article className={styles.metricCard}>
-          <span className={styles.metricLabel}>Ruta</span>
-          <strong className={styles.metricValue}>{routeReady ? 'Lista' : 'Pendiente'}</strong>
-          <p className={styles.metricText}>
-            {tripForm.originLabel.trim() && tripForm.destinationLabel.trim()
-              ? `${tripForm.originLabel.trim()} -> ${tripForm.destinationLabel.trim()}`
-              : 'Agrega origen y destino'}
-          </p>
-        </article>
-      </section>
+            <article className={styles.heroHighlight}>
+              <span>Formulario</span>
+              <strong>{completedChecklistItems}/4</strong>
+            </article>
+          </div>
+        </section>
 
       <section className={styles.mainGrid}>
         <div className={styles.contentColumn}>
@@ -533,7 +502,7 @@ export default function NewTripPage() {
             <div className={styles.cardHeader}>
               <div>
                 <p className={styles.kicker}>Preparacion</p>
-                <h2>Estado operativo</h2>
+                <h2>Requisitos</h2>
               </div>
               <StatusPill
                 label={canCreateTrips ? 'Listo' : 'Pendiente'}
@@ -544,11 +513,11 @@ export default function NewTripPage() {
             <div className={styles.readinessList}>
               <div className={styles.readinessItem}>
                 <StatusPill label="Conductor" tone={driverStatus === DriverVerificationStatus.Approved ? 'success' : 'warning'} />
-                <div className={styles.readinessCopy}>
-                  <strong>Perfil operativo</strong>
-                  <span>{driverStatus === DriverVerificationStatus.Approved ? 'Aprobado' : 'Pendiente'}</span>
+                  <div className={styles.readinessCopy}>
+                    <strong>Perfil operativo</strong>
+                    <span>{driverStatus === DriverVerificationStatus.Approved ? 'Aprobado' : 'Pendiente'}</span>
+                  </div>
                 </div>
-              </div>
               <div className={styles.readinessItem}>
                 <StatusPill label="Licencia" tone={licenseStatus === DriverLicenseStatus.Expired ? 'warning' : 'success'} />
                 <div className={styles.readinessCopy}>
@@ -563,13 +532,13 @@ export default function NewTripPage() {
                   <span>{activeVehicles.length > 0 ? `${activeVehicles.length} disponible(s)` : 'Sin vehiculos activos'}</span>
                 </div>
               </div>
-              <div className={styles.readinessItem}>
-                <StatusPill label="Restricciones" tone={trustRestrictions.blocksDriver ? 'warning' : 'success'} />
-                <div className={styles.readinessCopy}>
-                  <strong>Permiso para conducir</strong>
-                  <span>{trustRestrictions.blocksDriver ? 'Con restriccion activa' : 'Sin bloqueos'}</span>
+                <div className={styles.readinessItem}>
+                  <StatusPill label="Permiso" tone={trustRestrictions.blocksDriver ? 'warning' : 'success'} />
+                  <div className={styles.readinessCopy}>
+                    <strong>Operacion</strong>
+                    <span>{trustRestrictions.blocksDriver ? 'Con restriccion activa' : 'Sin bloqueos'}</span>
+                  </div>
                 </div>
-              </div>
             </div>
 
             {!canCreateTrips ? (
@@ -588,7 +557,7 @@ export default function NewTripPage() {
             <div className={styles.cardHeader}>
               <div>
                 <p className={styles.kicker}>Contexto</p>
-                <h2>Lectura rapida</h2>
+                <h2>Resumen</h2>
               </div>
               <StatusPill
                 label={tripForm.routeMode === TripRouteMode.PlannedDetour ? 'Con desvio' : 'Directo'}
@@ -600,12 +569,12 @@ export default function NewTripPage() {
               <article className={styles.signalTile}>
                 <span className={styles.miniLabel}>Modo</span>
                 <strong className={styles.signalValue}>{tripForm.routeMode === TripRouteMode.PlannedDetour ? 'Desvio' : 'Directo'}</strong>
-                <p className={styles.signalCaption}>Configuracion actual</p>
+                <p className={styles.signalCaption}>Ruta seleccionada</p>
               </article>
               <article className={styles.signalTile}>
                 <span className={styles.miniLabel}>Tarifa</span>
                 <strong className={styles.signalValue}>{referenceFare}</strong>
-                <p className={styles.signalCaption}>Monto referencial</p>
+                <p className={styles.signalCaption}>Referencia actual</p>
               </article>
               <article className={styles.signalTile}>
                 <span className={styles.miniLabel}>Horario</span>
@@ -615,7 +584,7 @@ export default function NewTripPage() {
               <article className={styles.signalTile}>
                 <span className={styles.miniLabel}>Ruta</span>
                 <strong className={styles.signalValue}>{routeReady ? 'Lista' : 'Pendiente'}</strong>
-                <p className={styles.signalCaption}>Coordenadas activas</p>
+                <p className={styles.signalCaption}>Origen y destino</p>
               </article>
             </div>
           </article>
@@ -649,26 +618,10 @@ export default function NewTripPage() {
             ) : (
               <div className={styles.emptyNote}>
                 <strong>Aun no tienes una ruta reciente</strong>
-                <span>Tu proximo viaje aparecera aqui para reutilizarlo luego.</span>
+                <span>Cuando completes un viaje podras reutilizar su ruta.</span>
               </div>
             )}
           </article>
-
-          <section className={`${styles.mainSurface} ${styles.revealSoft}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Navegacion</p>
-                <h2>Volver al centro de viajes</h2>
-              </div>
-              <StatusPill label="Accion rapida" tone="neutral" />
-            </div>
-
-            <div>
-              <Button onClick={() => router.push('/viajes')} type="button" variant="secondary">
-                Volver a operacion
-              </Button>
-            </div>
-          </section>
         </aside>
       </section>
     </section>

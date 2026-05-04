@@ -1,0 +1,176 @@
+.card {
+  display: grid;
+  gap: 1rem;
+  padding-left: 1rem;
+  border-left: 3px solid rgba(208, 146, 24, 0.22);
+}
+
+.highlighted {
+  border-left-color: #d97706;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.identity {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.title {
+  color: #17353f;
+  font-weight: 800;
+}
+
+.meta {
+  margin: 0;
+  color: #5f787f;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.incidentSummary,
+.deadline,
+.helper,
+.uploadHint {
+  margin: 0;
+  color: #5f787f;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.closureNote {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid rgba(15, 118, 110, 0.2);
+  background: rgba(239, 248, 247, 0.7);
+}
+
+.closureNote span {
+  color: #0f766e;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.closureNote p {
+  margin: 0;
+  color: #17353f;
+  line-height: 1.55;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: end;
+}
+
+.uploadBlock {
+  display: grid;
+  gap: 0.8rem;
+  padding-top: 0.2rem;
+}
+
+.uploadHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.uploadHeader strong {
+  color: #17353f;
+}
+
+.uploadActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.uploadInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.uploadLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(22, 47, 58, 0.12);
+  border-radius: 999px;
+  background: #fff;
+  padding: 0.72rem 1rem;
+  color: #17353f;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.uploadLabel:hover,
+.uploadLabel:focus-visible {
+  border-color: rgba(15, 118, 110, 0.28);
+  box-shadow: 0 14px 28px rgba(19, 57, 52, 0.08);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.uploadLabelDisabled {
+  opacity: 0.6;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.preview {
+  width: min(100%, 240px);
+  overflow: hidden;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+}
+
+.preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+@media (max-width: 760px) {
+  .header,
+  .uploadHeader,
+  .grid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .badges {
+    justify-content: flex-start;
+  }
+}

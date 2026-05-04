@@ -12,6 +12,7 @@ import {
   REPORT_REASON_OPTIONS,
   getReportReasonLabel,
 } from '../lib/report-labels';
+import styles from './report-opportunity-card.module.css';
 
 export type ReportOpportunity = {
   id: string;
@@ -79,27 +80,25 @@ function ReportEvidenceUploadCard({
   const inputId = useId();
 
   return (
-    <div className="document-upload-card">
-      <div className="document-upload-card-copy">
+    <div className={styles.uploadBlock}>
+      <div>
         <strong>Evidencia del reporte</strong>
-        <p>
+        <p className={styles.uploadHint}>
           Adjunta una imagen o PDF legible para respaldar el caso. Se conservara junto al
           reporte para su revision administrativa.
         </p>
       </div>
-      <div className="document-upload-card-actions">
+      <div className={styles.uploadActions}>
         <StatusPill
           label={isUploaded ? 'Evidencia cargada' : 'Opcional'}
           tone={isUploaded ? 'success' : 'neutral'}
         />
 
-        <div className="document-upload-trigger-row">
+        <div className={styles.uploadActions}>
           <label
             className={[
-              'button',
-              'button-secondary',
-              'document-upload-trigger',
-              isUploading ? 'document-upload-trigger-disabled' : '',
+              styles.uploadLabel,
+              isUploading ? styles.uploadLabelDisabled : '',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -116,7 +115,7 @@ function ReportEvidenceUploadCard({
 
         <input
           accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp"
-          className="sr-only"
+          className={styles.uploadInput}
           disabled={isUploading}
           id={inputId}
           onChange={(event) => {
@@ -147,16 +146,12 @@ function ReportEvidenceUploadCard({
         />
 
         {uploadedFileName ? (
-          <p className="form-helper compact-helper">Archivo actual: {uploadedFileName}</p>
+          <p className={styles.uploadHint}>Archivo actual: {uploadedFileName}</p>
         ) : null}
 
         {previewUrl ? (
-          <div className="document-upload-preview">
-            <img
-              alt="Previsualizacion de evidencia"
-              className="document-upload-preview-image"
-              src={previewUrl}
-            />
+          <div className={styles.preview}>
+            <img alt="Previsualizacion de evidencia" src={previewUrl} />
           </div>
         ) : null}
       </div>
@@ -182,35 +177,37 @@ export function ReportOpportunityCard({
 }: ReportOpportunityCardProps) {
   return (
     <div
-      className={['list-card', highlighted ? 'closure-focus-card' : null]
+      className={[styles.card, highlighted ? styles.highlighted : null]
         .filter(Boolean)
         .join(' ')}
       id={elementId}
     >
-      <div className="list-card-header">
-        <strong>{opportunity.reportedFullName}</strong>
-        <div className="button-row">
+      <div className={styles.header}>
+        <div className={styles.identity}>
+          <strong className={styles.title}>{opportunity.reportedFullName}</strong>
+          <p className={styles.meta}>
+            {opportunity.tripOriginLabel} -&gt; {opportunity.tripDestinationLabel}
+          </p>
+          <p className={styles.meta}>Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
+        </div>
+        <div className={styles.badges}>
           <span className="topbar-badge">{opportunity.directionLabel}</span>
           <StatusPill label={opportunity.incidentLabel} tone={opportunity.incidentTone} />
         </div>
       </div>
 
-      <p className="panel-text">
-        Viaje: {opportunity.tripOriginLabel} -&gt; {opportunity.tripDestinationLabel}
-      </p>
-      <p className="panel-text">Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
-      <p className="form-helper compact-helper">{opportunity.incidentSummary}</p>
+      <p className={styles.incidentSummary}>{opportunity.incidentSummary}</p>
       {opportunity.tripClosureNote ? (
-        <div className="audit-note-banner audit-note-banner-muted">
+        <div className={styles.closureNote}>
           <span>Nota de cierre operativo</span>
           <p>{opportunity.tripClosureNote}</p>
         </div>
       ) : null}
-      <p className="form-helper compact-helper">
+      <p className={styles.deadline}>
         Disponible hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}.
       </p>
 
-      <div className="form-grid form-grid-2 compact-grid">
+      <div className={styles.grid}>
         <SelectField
           label="Motivo principal"
           onChange={(event) => onChange('reason', event.target.value)}
@@ -223,9 +220,9 @@ export function ReportOpportunityCard({
           ))}
         </SelectField>
 
-        <div className="form-helper compact-helper">
+        <p className={styles.helper}>
           Se registrara el motivo "{getReportReasonLabel(value.reason)}" en el historial del caso.
-        </div>
+        </p>
       </div>
 
       <TextareaField
@@ -245,7 +242,7 @@ export function ReportOpportunityCard({
         uploadedFileName={value.evidenceFileName}
       />
 
-      <div className="button-row">
+      <div className={styles.actions}>
         <Button disabled={isSubmitting} onClick={onSubmit} variant="secondary">
           Registrar reporte
         </Button>

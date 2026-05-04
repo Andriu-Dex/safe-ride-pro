@@ -962,26 +962,19 @@ export default function TrustPage() {
   }
 
   return (
-    <section className={styles.trustShell}>
-      <ToastStack onDismiss={dismissToast} toasts={toasts} />
+      <section className={styles.trustShell}>
+        <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <header className={`${styles.hero} ${styles.reveal}`}>
+        <header className={`${styles.hero} ${styles.reveal}`}>
         <div className={styles.heroTop}>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Confianza</p>
-            <h1 className={styles.heroTitle}>Reputacion y seguridad</h1>
-            <p className={styles.heroLead}>
-            Controla tus pendientes de calificacion, reportes y estado administrativo desde un solo lugar.
-            </p>
-          </div>
+            <div className={styles.heroCopy}>
+              <p className={styles.kicker}>Confianza</p>
+              <h1 className={styles.heroTitle}>Reputacion y seguridad</h1>
+              <p className={styles.heroLead}>
+                Resuelve pendientes, revisa restricciones y conserva un historial claro.
+              </p>
+            </div>
           <div className={styles.heroActions}>
-            <Button
-              disabled={isRefreshingData}
-              onClick={() => void refreshData(true)}
-              variant="secondary"
-            >
-              {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
-            </Button>
             <StatusPill
               label={`${totalPendingActions} pendientes`}
               tone={totalPendingActions ? 'warning' : 'success'}
@@ -992,532 +985,395 @@ export default function TrustPage() {
                 tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
               />
             ) : null}
-            {trustSummary ? (
-              <StatusPill
-                label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
-                tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
-              />
-            ) : null}
+            <Button
+              disabled={isRefreshingData}
+              onClick={() => void refreshData(true)}
+              variant="secondary"
+            >
+              {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
+            </Button>
           </div>
         </div>
       </header>
 
       {focusedKind && focusedTripId ? (
-        <article className={styles.focusBanner}>
-          <div>
-            <strong>{focusedKind === 'rating' ? 'Accion de calificacion abierta' : 'Accion de reporte abierta'}</strong>
-            <p>
-              Llegaste aqui desde el cierre post-viaje. La tarjeta correspondiente de este viaje se resaltara mas abajo.
-            </p>
-          </div>
-          <StatusPill
-            label={focusedKind === 'rating' ? 'Calificacion' : 'Reporte'}
+          <article className={styles.focusBanner}>
+            <div>
+              <strong>{focusedKind === 'rating' ? 'Calificacion resaltada' : 'Reporte resaltado'}</strong>
+              <p>La accion vinculada al cierre reciente esta marcada mas abajo.</p>
+            </div>
+            <StatusPill
+              label={focusedKind === 'rating' ? 'Calificacion' : 'Reporte'}
             tone={focusedKind === 'rating' ? 'success' : 'warning'}
           />
         </article>
       ) : null}
 
-      <section className={styles.metricGrid}>
-        <TrustKpiCard
-          label="Pendientes"
-          note="Acciones de cierre activas"
-          tone={totalPendingActions ? 'warning' : 'success'}
-          value={`${totalPendingActions}`}
-        />
-        <TrustKpiCard
-          label="Promedio"
-          note="Calificacion recibida"
-          tone="neutral"
-          value={formatAverageScore(trustSummary?.averageRatingReceived ?? null)}
-        />
-        <TrustKpiCard
-          label="Interacciones"
-          note="Trayectos cerrados"
-          tone="neutral"
-          value={`${trustSummary?.completedInteractions ?? 0}`}
-        />
-        <TrustKpiCard
-          label="Restricciones"
-          note="Vigentes ahora"
-          tone={activeSanctionsCount ? 'warning' : 'success'}
-          value={`${activeSanctionsCount}`}
-        />
-      </section>
-
-      <section className={styles.summaryGrid}>
-        {trustSummary ? (
-          <article className="trust-summary-card">
-            <div className="trust-summary-head">
-              <div>
-                <p className="section-label">Resumen</p>
-                <h2 className="panel-title">Estado reputacional</h2>
-              </div>
-              <div className="button-row">
+      <div className={styles.board}>
+        <main className={styles.primaryColumn}>
+          <section className={styles.sectionBlock}>
+            <div className={styles.sectionHeading}>
+                <div>
+                  <p className={styles.sectionKicker}>Cierre</p>
+                  <h2 className={styles.sectionTitle}>Pendientes</h2>
+                </div>
                 <StatusPill
-                  label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
-                  tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
-                />
-                <StatusPill
-                  label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
-                  tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
-                />
-              </div>
-            </div>
-
-            <div className="trust-mini-metric-grid">
-              <TrustMiniMetric
-                label="Calificaciones"
-                value={`${trustSummary.totalRatingsReceived}`}
-              />
-              <TrustMiniMetric
-                label="Riesgos"
-                value={`${riskSignalsCount}`}
-              />
-              <TrustMiniMetric
-                label="Reportes graves"
-                value={`${trustSummary.resolvedHighSeverityReportsReceived}`}
-              />
-              <TrustMiniMetric
-                label="Apelaciones"
-                value={`${sanctionAppeals.length}`}
+                  label={`${pendingRatingOpportunities.length + pendingReportOpportunities.length} activos`}
+                tone={totalPendingActions ? 'warning' : 'success'}
               />
             </div>
 
-            <div className="trust-signal-card">
-              <div className="list-card-header">
-                <strong>Senales actuales</strong>
-                <span className="section-heading-meta">{riskSignalsCount} detectadas</span>
-              </div>
-              {trustSummary.riskSignals.length ? (
-                <ul className="trust-signal-list">
-                  {trustSummary.riskSignals.map((signal) => (
-                    <li key={signal} className="trust-signal-item">
-                      {signal}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="panel-text">
-                  No se detectaron observaciones recientes en tu membresia activa.
-                </p>
-              )}
-            </div>
-          </article>
-        ) : null}
-
-        {trustSummary ? (
-          <article className="trust-summary-card trust-summary-card-muted">
-            <div className="trust-summary-head">
-              <div>
-                <p className="section-label">Marco operativo</p>
-                <h2 className="panel-title">Politicas vigentes</h2>
-              </div>
-            </div>
-
-            <div className="trust-policy-grid">
-              <TrustPolicyCard
-                label="Cancelacion tardia"
-                value={`${trustSummary.cancellationPolicy.lateWindowMinutes} min`}
-              />
-              <TrustPolicyCard
-                label="Rating bajo"
-                value={`${trustSummary.reputationPolicy.lowRatingThreshold.toFixed(1)}/5`}
-              />
-              <TrustPolicyCard
-                label="Minimo de ratings"
-                value={`${trustSummary.reputationPolicy.minimumRatingsForSignal}`}
-              />
-              <TrustPolicyCard
-                label="Interacciones minimas"
-                value={`${trustSummary.reputationPolicy.minimumCompletedInteractionsForSignal}`}
-              />
-              <TrustPolicyCard
-                label="Reincidencia"
-                value={`${trustSummary.reputationPolicy.recurrenceWindowDays} dias`}
-              />
-              <TrustPolicyCard
-                label="Ventana de reportes"
-                value={
-                  trustSummary.sanctionPolicy
-                    ? `${trustSummary.sanctionPolicy.reportsWindowDays} dias`
-                    : 'No definida'
-                }
-              />
-            </div>
-
-            <div className="trust-mini-metric-grid">
-              <TrustMiniMetric
-                label="Como conductor"
-                value={`${trustSummary.completedTripsAsDriver}`}
-              />
-              <TrustMiniMetric
-                label="Como pasajero"
-                value={`${trustSummary.completedTripsAsPassenger}`}
-              />
-              <TrustMiniMetric
-                label="Cancelaciones tardias"
-                value={`${trustSummary.lateDriverTripCancellations}`}
-              />
-              <TrustMiniMetric
-                label="No-show y cancelaciones"
-                value={`${recentOperationalRiskCount}`}
-              />
-            </div>
-          </article>
-        ) : null}
-      </section>
-
-      <section className={styles.sectionBlock}>
-        <div className={styles.sectionHeading}>
-          <div>
-            <h2 className="panel-title">Bandeja de cierre</h2>
-            <p className={styles.sectionMeta}>
-              {pendingRatingOpportunities.length} calificaciones y {pendingReportOpportunities.length} reportes pendientes
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.closureGrid}>
-          <article className="panel panel-stack">
-            <div className={styles.sectionHeading}>
-              <h3 className="panel-title">Calificaciones pendientes</h3>
-              <p className={styles.sectionMeta}>{pendingRatingOpportunities.length} disponibles</p>
-            </div>
-            {pendingRatingOpportunities.length ? (
-              <div className="list-stack">
-                {pendingRatingOpportunities.map((opportunity) => (
-                  <RatingOpportunityCard
-                    elementId={buildClosureOpportunityElementId('rating', opportunity.id)}
-                    highlighted={highlightedRatingOpportunityIds.has(opportunity.id)}
-                    key={opportunity.id}
-                    isSubmitting={isSubmittingRatingId === opportunity.id}
-                    onChange={(field, value) => handleRatingDraftChange(opportunity.id, field, value)}
-                    onSubmit={() => void handleCreateRating(opportunity)}
-                    opportunity={{
-                      id: opportunity.id,
-                      tripId: opportunity.tripId,
-                      targetMembershipId: opportunity.targetMembershipId,
-                      targetFullName: opportunity.targetFullName,
-                      tripOriginLabel: opportunity.tripOriginLabel,
-                      tripDestinationLabel: opportunity.tripDestinationLabel,
-                      tripDepartureAt: opportunity.tripDepartureAt,
-                      directionLabel: opportunity.ratingDirectionLabel,
-                      windowClosesAt: opportunity.windowClosesAt,
-                    } satisfies RatingOpportunity}
-                    value={ratingDrafts[opportunity.id] ?? EMPTY_RATING_DRAFT}
-                  />
-                ))}
-              </div>
-            ) : (
-              <TrustEmptyStateCopy message="No tienes calificaciones pendientes. Tu historial esta al dia con los viajes cerrados actuales." />
-            )}
-          </article>
-
-          <article className="panel panel-stack">
-            <div className={styles.sectionHeading}>
-              <h3 className="panel-title">Reportes pendientes</h3>
-              <p className={styles.sectionMeta}>{pendingReportOpportunities.length} disponibles</p>
-            </div>
-            {pendingReportOpportunities.length ? (
-              <div className="list-stack">
-                {pendingReportOpportunities.map((opportunity) => (
-                  <ReportOpportunityCard
-                    elementId={buildClosureOpportunityElementId('report', opportunity.id)}
-                    highlighted={highlightedReportOpportunityIds.has(opportunity.id)}
-                    key={opportunity.id}
-                    isSubmitting={isSubmittingReportId === opportunity.id}
-                    isUploadingEvidence={isUploadingReportEvidenceId === opportunity.id}
-                    onChange={(field, value) =>
-                      handleReportDraftChange(opportunity, opportunity.id, field, value)
-                    }
-                    onEvidenceValidationError={handleReportEvidenceValidationError}
-                    onUploadEvidence={(file) =>
-                      void handleUploadReportEvidence(opportunity, opportunity.id, file)
-                    }
-                    onSubmit={() => void handleCreateReport(opportunity)}
-                    opportunity={{
-                      id: opportunity.id,
-                      tripId: opportunity.tripId,
-                      reportedMembershipId: opportunity.targetMembershipId,
-                      reportedFullName: opportunity.targetFullName,
-                      tripOriginLabel: opportunity.tripOriginLabel,
-                      tripDestinationLabel: opportunity.tripDestinationLabel,
-                      tripDepartureAt: opportunity.tripDepartureAt,
-                      directionLabel: opportunity.reportDirectionLabel,
-                      incidentLabel: opportunity.incidentLabel,
-                      incidentTone: opportunity.incidentTone,
-                      incidentSummary: opportunity.incidentSummary,
-                      tripClosureNote: opportunity.tripClosureNote,
-                      windowClosesAt: opportunity.windowClosesAt,
-                    } satisfies ReportOpportunity}
-                    value={reportDrafts[opportunity.id] ?? getInitialReportDraft(opportunity)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <TrustEmptyStateCopy message="No tienes reportes pendientes. No se detectan cierres anomalos o incidentes disponibles para registrar." />
-            )}
-          </article>
-        </div>
-      </section>
-
-        {trustSummary?.activeSanctions?.length ? (
-          <article className="panel panel-stack">
-            <div className={styles.sectionHeading}>
-              <h2 className="panel-title">Restricciones activas</h2>
-              <p className={styles.sectionMeta}>
-                {trustSummary.activeSanctions.length} vigentes
-              </p>
-            </div>
-            <div className="list-stack">
-              {trustSummary.activeSanctions.map((sanction) => {
-                const linkedAppeal = sanctionAppealsBySanctionId.get(sanction.id);
-                const canAppeal = sanction.type !== OperationalSanctionType.Warning;
-                const appealDraft = sanctionAppealDrafts[sanction.id] ?? '';
-
-                return (
-                  <div key={sanction.id} className="list-card list-card-strong">
-                    <div className="list-card-header">
-                      <strong>{getOperationalSanctionTypeLabel(sanction.type)}</strong>
-                      <div className="button-row">
-                        <StatusPill
-                          label={getOperationalSanctionScopeLabel(sanction.scope)}
-                          tone={getOperationalSanctionTone(sanction.type)}
-                        />
-                        {linkedAppeal ? (
-                          <StatusPill
-                            label={getSanctionAppealStatusLabel(linkedAppeal.status)}
-                            tone={getSanctionAppealStatusTone(linkedAppeal.status)}
-                          />
-                        ) : null}
-                      </div>
+            <div className={styles.closureGrid}>
+                <article className={styles.surfaceCard}>
+                  <div className={styles.surfaceHeader}>
+                    <div>
+                      <h3 className={styles.surfaceTitle}>Calificaciones</h3>
+                      <p className={styles.sectionMeta}>{pendingRatingOpportunities.length} por resolver</p>
                     </div>
-                    <p className="panel-text">{sanction.reason}</p>
-                    <p className="panel-text">
-                      Inicio: {formatDateTime(sanction.startedAt)}
-                      {sanction.endsAt ? ` | Fin estimado: ${formatDateTime(sanction.endsAt)}` : ''}
-                    </p>
+                  </div>
+                {pendingRatingOpportunities.length ? (
+                  <div className={styles.stackList}>
+                    {pendingRatingOpportunities.map((opportunity) => (
+                      <RatingOpportunityCard
+                        elementId={buildClosureOpportunityElementId('rating', opportunity.id)}
+                        highlighted={highlightedRatingOpportunityIds.has(opportunity.id)}
+                        key={opportunity.id}
+                        isSubmitting={isSubmittingRatingId === opportunity.id}
+                        onChange={(field, value) => handleRatingDraftChange(opportunity.id, field, value)}
+                        onSubmit={() => void handleCreateRating(opportunity)}
+                        opportunity={{
+                          id: opportunity.id,
+                          tripId: opportunity.tripId,
+                          targetMembershipId: opportunity.targetMembershipId,
+                          targetFullName: opportunity.targetFullName,
+                          tripOriginLabel: opportunity.tripOriginLabel,
+                          tripDestinationLabel: opportunity.tripDestinationLabel,
+                          tripDepartureAt: opportunity.tripDepartureAt,
+                          directionLabel: opportunity.ratingDirectionLabel,
+                          windowClosesAt: opportunity.windowClosesAt,
+                        } satisfies RatingOpportunity}
+                        value={ratingDrafts[opportunity.id] ?? EMPTY_RATING_DRAFT}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <TrustEmptyStateCopy message="No tienes calificaciones pendientes." />
+                )}
+              </article>
 
-                    {linkedAppeal ? (
-                      <>
-                        <p className="panel-text">Apelacion: {linkedAppeal.reason}</p>
-                        <p className="panel-text">
-                          Estado actual: {getSanctionAppealStatusLabel(linkedAppeal.status)}
-                        </p>
-                        {linkedAppeal.reviewNote ? (
-                          <p className="panel-text">
-                            Revision administrativa: {linkedAppeal.reviewNote}
-                          </p>
-                        ) : null}
-                      </>
-                    ) : canAppeal ? (
-                      <>
-                        <TextareaField
-                          label="Motivo de apelacion"
-                          onChange={(event) =>
-                            handleSanctionAppealDraftChange(sanction.id, event.target.value)
-                          }
-                          placeholder="Explica por que consideras que la restriccion debe revisarse"
-                          rows={3}
-                          value={appealDraft}
-                        />
-                        <p className="form-helper">
-                          La apelacion debe tener al menos {SANCTION_APPEAL_REASON_MIN_LENGTH} caracteres.
-                        </p>
-                        <div className="button-row">
-                          <Button
-                            disabled={
-                              isSubmittingSanctionAppealId === sanction.id ||
-                              appealDraft.trim().length < SANCTION_APPEAL_REASON_MIN_LENGTH
-                            }
-                            onClick={() => void handleSubmitSanctionAppeal(sanction.id)}
-                          >
-                            {isSubmittingSanctionAppealId === sanction.id
-                              ? 'Enviando apelacion...'
-                              : 'Enviar apelacion'}
-                          </Button>
+                <article className={styles.surfaceCard}>
+                  <div className={styles.surfaceHeader}>
+                    <div>
+                      <h3 className={styles.surfaceTitle}>Reportes</h3>
+                      <p className={styles.sectionMeta}>{pendingReportOpportunities.length} por resolver</p>
+                    </div>
+                  </div>
+                {pendingReportOpportunities.length ? (
+                  <div className={styles.stackList}>
+                    {pendingReportOpportunities.map((opportunity) => (
+                      <ReportOpportunityCard
+                        elementId={buildClosureOpportunityElementId('report', opportunity.id)}
+                        highlighted={highlightedReportOpportunityIds.has(opportunity.id)}
+                        key={opportunity.id}
+                        isSubmitting={isSubmittingReportId === opportunity.id}
+                        isUploadingEvidence={isUploadingReportEvidenceId === opportunity.id}
+                        onChange={(field, value) =>
+                          handleReportDraftChange(opportunity, opportunity.id, field, value)
+                        }
+                        onEvidenceValidationError={handleReportEvidenceValidationError}
+                        onUploadEvidence={(file) =>
+                          void handleUploadReportEvidence(opportunity, opportunity.id, file)
+                        }
+                        onSubmit={() => void handleCreateReport(opportunity)}
+                        opportunity={{
+                          id: opportunity.id,
+                          tripId: opportunity.tripId,
+                          reportedMembershipId: opportunity.targetMembershipId,
+                          reportedFullName: opportunity.targetFullName,
+                          tripOriginLabel: opportunity.tripOriginLabel,
+                          tripDestinationLabel: opportunity.tripDestinationLabel,
+                          tripDepartureAt: opportunity.tripDepartureAt,
+                          directionLabel: opportunity.reportDirectionLabel,
+                          incidentLabel: opportunity.incidentLabel,
+                          incidentTone: opportunity.incidentTone,
+                          incidentSummary: opportunity.incidentSummary,
+                          tripClosureNote: opportunity.tripClosureNote,
+                          windowClosesAt: opportunity.windowClosesAt,
+                        } satisfies ReportOpportunity}
+                        value={reportDrafts[opportunity.id] ?? getInitialReportDraft(opportunity)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <TrustEmptyStateCopy message="No tienes reportes pendientes." />
+                )}
+              </article>
+            </div>
+          </section>
+
+          <section className={styles.sectionBlock}>
+            <div className={styles.sectionHeading}>
+                <div>
+                  <p className={styles.sectionKicker}>Historial</p>
+                  <h2 className={styles.sectionTitle}>Calificaciones</h2>
+                </div>
+              </div>
+
+            <div className={styles.historyGrid}>
+              <article className={styles.surfaceCard}>
+                <div className={styles.surfaceHeader}>
+                  <div>
+                    <h3 className={styles.surfaceTitle}>Calificaciones emitidas</h3>
+                    <p className={styles.sectionMeta}>{ratings.given.length} registradas</p>
+                  </div>
+                </div>
+                {ratings.given.length ? (
+                  <div className={styles.stackList}>
+                    {ratings.given.map((rating) => (
+                      <div key={rating.id} className={styles.recordCard}>
+                        <div className={styles.recordHeader}>
+                          <strong>{rating.targetFullName}</strong>
+                          <span className={styles.inlineStars}>{getRatingStars(rating.score)} {rating.score}/5</span>
                         </div>
-                      </>
-                    ) : (
-                      <p className="panel-text">
-                        Las advertencias activas no requieren apelacion administrativa en esta fase.
+                        <p className={styles.noteText}>{rating.tripOriginLabel} -&gt; {rating.tripDestinationLabel}</p>
+                        <p className={styles.noteText}>{formatDateTime(rating.tripDepartureAt)}</p>
+                        {rating.comment ? <p className={styles.noteText}>{rating.comment}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <TrustEmptyStateCopy message="Todavia no has emitido calificaciones." />
+                )}
+              </article>
+
+              <article className={styles.surfaceCard}>
+                <div className={styles.surfaceHeader}>
+                  <div>
+                    <h3 className={styles.surfaceTitle}>Calificaciones recibidas</h3>
+                    <p className={styles.sectionMeta}>{ratings.received.length} registradas</p>
+                  </div>
+                </div>
+                {ratings.received.length ? (
+                  <div className={styles.stackList}>
+                    {ratings.received.map((rating) => (
+                      <div key={rating.id} className={styles.recordCard}>
+                        <div className={styles.recordHeader}>
+                          <strong>{rating.authorFullName}</strong>
+                          <span className={styles.inlineStars}>{getRatingStars(rating.score)} {rating.score}/5</span>
+                        </div>
+                        <p className={styles.noteText}>{rating.tripOriginLabel} -&gt; {rating.tripDestinationLabel}</p>
+                        <p className={styles.noteText}>{formatDateTime(rating.tripDepartureAt)}</p>
+                        {rating.comment ? <p className={styles.noteText}>{rating.comment}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <TrustEmptyStateCopy message="Aun no has recibido calificaciones en la membresia activa." />
+                )}
+              </article>
+            </div>
+          </section>
+
+          <section className={styles.sectionBlock}>
+            <div className={styles.sectionHeading}>
+                <div>
+                  <p className={styles.sectionKicker}>Reportes</p>
+                  <h2 className={styles.sectionTitle}>Historial de reportes</h2>
+                </div>
+                <StatusPill label={`${reports.length} registrados`} tone="neutral" />
+              </div>
+            {reports.length ? (
+              <div className={styles.stackList}>
+                {reports.map((report) => (
+                  <div key={report.id} className={styles.recordCard}>
+                    <div className={styles.recordHeader}>
+                      <strong>{report.reportedFullName}</strong>
+                      <StatusPill
+                        label={getReportStatusLabel(report.status)}
+                        tone={getReportStatusTone(report.status)}
+                      />
+                    </div>
+                    <p className={styles.noteText}>{report.tripOriginLabel} -&gt; {report.tripDestinationLabel}</p>
+                    <div className={styles.badgeRow}>
+                      <StatusPill
+                        label={getReportSeverityLabel(report.reason)}
+                        tone={getReportSeverityTone(report.reason)}
+                      />
+                    </div>
+                    <p className={styles.noteText}>Motivo: {getReportReasonLabel(report.reason)}</p>
+                    <p className={styles.noteText}>Registrado: {formatDateTime(report.createdAt)}</p>
+                    {report.description ? <p className={styles.noteText}>{report.description}</p> : null}
+                    {report.reviewNote ? <p className={styles.noteText}>Revision: {report.reviewNote}</p> : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <TrustEmptyStateCopy message="Aun no has enviado reportes desde esta membresia." />
+            )}
+          </section>
+        </main>
+
+        <aside className={styles.sideColumn}>
+          {trustSummary ? (
+            <article className={styles.surfaceCard}>
+              <div className={styles.surfaceHeader}>
+                <div>
+                  <p className={styles.sectionKicker}>Resumen</p>
+                  <h3 className={styles.surfaceTitle}>Estado</h3>
+                </div>
+                <div className={styles.badgeRow}>
+                  <StatusPill
+                    label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+                    tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
+                  />
+                  <StatusPill
+                    label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
+                    tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.miniGrid}>
+                <TrustMiniMetric label="Promedio" value={formatAverageScore(trustSummary.averageRatingReceived ?? null)} />
+                <TrustMiniMetric label="Ratings" value={`${trustSummary.totalRatingsReceived}`} />
+                <TrustMiniMetric label="Interacciones" value={`${trustSummary.completedInteractions}`} />
+                <TrustMiniMetric label="Riesgos" value={`${riskSignalsCount}`} />
+                <TrustMiniMetric label="Restricciones" value={`${activeSanctionsCount}`} />
+                <TrustMiniMetric label="Apelaciones" value={`${sanctionAppeals.length}`} />
+              </div>
+
+              <div className={styles.signalCard}>
+                <div className={styles.recordHeader}>
+                  <strong>Senales actuales</strong>
+                  <span className={styles.noteText}>{riskSignalsCount} detectadas</span>
+                </div>
+                {trustSummary.riskSignals.length ? (
+                  <ul className={styles.signalList}>
+                    {trustSummary.riskSignals.map((signal) => (
+                      <li key={signal}>{signal}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.noteText}>No se detectaron observaciones recientes.</p>
+                )}
+              </div>
+            </article>
+          ) : null}
+
+          {trustSummary?.activeSanctions?.length ? (
+            <article className={styles.surfaceCard}>
+              <div className={styles.surfaceHeader}>
+                <div>
+                  <p className={styles.sectionKicker}>Restricciones</p>
+                  <h3 className={styles.surfaceTitle}>Restricciones activas</h3>
+                </div>
+                <StatusPill label={`${trustSummary.activeSanctions.length} vigentes`} tone="warning" />
+              </div>
+              <div className={styles.stackList}>
+                {trustSummary.activeSanctions.map((sanction) => {
+                  const linkedAppeal = sanctionAppealsBySanctionId.get(sanction.id);
+                  const canAppeal = sanction.type !== OperationalSanctionType.Warning;
+                  const appealDraft = sanctionAppealDrafts[sanction.id] ?? '';
+
+                  return (
+                    <div key={sanction.id} className={styles.recordCard}>
+                      <div className={styles.recordHeader}>
+                        <strong>{getOperationalSanctionTypeLabel(sanction.type)}</strong>
+                        <div className={styles.badgeRow}>
+                          <StatusPill
+                            label={getOperationalSanctionScopeLabel(sanction.scope)}
+                            tone={getOperationalSanctionTone(sanction.type)}
+                          />
+                          {linkedAppeal ? (
+                            <StatusPill
+                              label={getSanctionAppealStatusLabel(linkedAppeal.status)}
+                              tone={getSanctionAppealStatusTone(linkedAppeal.status)}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                      <p className={styles.noteText}>{sanction.reason}</p>
+                      <p className={styles.noteText}>
+                        Inicio: {formatDateTime(sanction.startedAt)}
+                        {sanction.endsAt ? ` | Fin: ${formatDateTime(sanction.endsAt)}` : ''}
                       </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </article>
-        ) : null}
 
-        {sanctionAppeals.length ? (
-          <article className="panel panel-stack">
-            <div className={styles.sectionHeading}>
-              <h2 className="panel-title">Historial de apelaciones</h2>
-              <p className={styles.sectionMeta}>{sanctionAppeals.length} registradas</p>
-            </div>
-            <div className="list-stack">
-              {sanctionAppeals.map((appeal) => (
-                <div key={appeal.id} className="list-card">
-                  <div className="list-card-header">
-                    <strong>{getOperationalSanctionTypeLabel(appeal.sanctionType)}</strong>
-                    <StatusPill
-                      label={getSanctionAppealStatusLabel(appeal.status)}
-                      tone={getSanctionAppealStatusTone(appeal.status)}
-                    />
-                  </div>
-                  <p className="panel-text">
-                    Alcance: {getOperationalSanctionScopeLabel(appeal.sanctionScope)} | Inicio de sancion: {formatDateTime(appeal.sanctionStartedAt)}
-                  </p>
-                  <p className="panel-text">Motivo de apelacion: {appeal.reason}</p>
-                  <p className="panel-text">Registrada: {formatDateTime(appeal.createdAt)}</p>
-                  {appeal.reviewNote ? (
-                    <p className="panel-text">Revision administrativa: {appeal.reviewNote}</p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </article>
-        ) : null}
-
-      <section className={styles.historyGrid}>
-          <article className="panel panel-stack">
-            <div className={styles.sectionHeading}>
-              <h2 className="panel-title">Calificaciones emitidas</h2>
-              <p className={styles.sectionMeta}>{ratings.given.length} registradas</p>
-            </div>
-            {ratings.given.length ? (
-              <div className="list-stack">
-                {ratings.given.map((rating) => (
-                  <div key={rating.id} className="list-card">
-                    <div className="list-card-header">
-                      <strong>{rating.targetFullName}</strong>
-                      <span className="stars-inline">{getRatingStars(rating.score)} {rating.score}/5</span>
+                      {linkedAppeal ? (
+                        <>
+                          <p className={styles.noteText}>Apelacion: {linkedAppeal.reason}</p>
+                          {linkedAppeal.reviewNote ? (
+                            <p className={styles.noteText}>Revision: {linkedAppeal.reviewNote}</p>
+                          ) : null}
+                        </>
+                      ) : canAppeal ? (
+                        <div className={styles.appealBlock}>
+                          <TextareaField
+                            label="Motivo de apelacion"
+                            onChange={(event) =>
+                              handleSanctionAppealDraftChange(sanction.id, event.target.value)
+                            }
+                            placeholder="Explica por que consideras que la restriccion debe revisarse"
+                            rows={3}
+                            value={appealDraft}
+                          />
+                          <p className={styles.helperText}>
+                            Minimo {SANCTION_APPEAL_REASON_MIN_LENGTH} caracteres.
+                          </p>
+                          <div className={styles.actionRow}>
+                            <Button
+                              disabled={
+                                isSubmittingSanctionAppealId === sanction.id ||
+                                appealDraft.trim().length < SANCTION_APPEAL_REASON_MIN_LENGTH
+                              }
+                              onClick={() => void handleSubmitSanctionAppeal(sanction.id)}
+                            >
+                              {isSubmittingSanctionAppealId === sanction.id
+                                ? 'Enviando apelacion...'
+                                : 'Enviar apelacion'}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className={styles.noteText}>Esta advertencia no requiere apelacion.</p>
+                      )}
                     </div>
-                    <p className="panel-text">
-                      Viaje: {rating.tripOriginLabel} -&gt; {rating.tripDestinationLabel}
-                    </p>
-                    <p className="panel-text">Salida: {formatDateTime(rating.tripDepartureAt)}</p>
-                    {rating.comment ? <p className="panel-text">Comentario: {rating.comment}</p> : null}
+                  );
+                })}
+              </div>
+            </article>
+          ) : null}
+
+          {sanctionAppeals.length ? (
+            <article className={styles.surfaceCard}>
+              <div className={styles.surfaceHeader}>
+                <div>
+                  <p className={styles.sectionKicker}>Apelaciones</p>
+                  <h3 className={styles.surfaceTitle}>Historial</h3>
+                </div>
+                <StatusPill label={`${sanctionAppeals.length} registradas`} tone="neutral" />
+              </div>
+              <div className={styles.stackList}>
+                {sanctionAppeals.map((appeal) => (
+                  <div key={appeal.id} className={styles.recordCard}>
+                    <div className={styles.recordHeader}>
+                      <strong>{getOperationalSanctionTypeLabel(appeal.sanctionType)}</strong>
+                      <StatusPill
+                        label={getSanctionAppealStatusLabel(appeal.status)}
+                        tone={getSanctionAppealStatusTone(appeal.status)}
+                      />
+                    </div>
+                    <p className={styles.noteText}>Motivo: {appeal.reason}</p>
+                    <p className={styles.noteText}>Registrada: {formatDateTime(appeal.createdAt)}</p>
+                    {appeal.reviewNote ? <p className={styles.noteText}>Revision: {appeal.reviewNote}</p> : null}
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="panel-text">Todavia no has emitido calificaciones.</p>
-            )}
-          </article>
+            </article>
+          ) : null}
 
-          <article className="panel panel-stack">
-            <div className={styles.sectionHeading}>
-              <h2 className="panel-title">Calificaciones recibidas</h2>
-              <p className={styles.sectionMeta}>{ratings.received.length} registradas</p>
-            </div>
-            {ratings.received.length ? (
-              <div className="list-stack">
-                {ratings.received.map((rating) => (
-                  <div key={rating.id} className="list-card">
-                    <div className="list-card-header">
-                      <strong>{rating.authorFullName}</strong>
-                      <span className="stars-inline">{getRatingStars(rating.score)} {rating.score}/5</span>
-                    </div>
-                    <p className="panel-text">
-                      Viaje: {rating.tripOriginLabel} -&gt; {rating.tripDestinationLabel}
-                    </p>
-                    <p className="panel-text">Salida: {formatDateTime(rating.tripDepartureAt)}</p>
-                    {rating.comment ? <p className="panel-text">Comentario: {rating.comment}</p> : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="panel-text">Aun no has recibido calificaciones en la membresia activa.</p>
-            )}
-          </article>
-      </section>
-
-        <article className="panel panel-stack">
-          <div className={styles.sectionHeading}>
-            <h2 className="panel-title">Mis reportes</h2>
-            <p className={styles.sectionMeta}>{reports.length} registrados</p>
-          </div>
-          {reports.length ? (
-            <div className="list-stack">
-              {reports.map((report) => (
-                <div key={report.id} className="list-card">
-                  <div className="list-card-header">
-                    <strong>{report.reportedFullName}</strong>
-                    <StatusPill
-                      label={getReportStatusLabel(report.status)}
-                      tone={getReportStatusTone(report.status)}
-                    />
-                  </div>
-                  <p className="panel-text">
-                    Viaje: {report.tripOriginLabel} -&gt; {report.tripDestinationLabel}
-                  </p>
-                  <p className="panel-text">Motivo: {getReportReasonLabel(report.reason)}</p>
-                  <div className="button-row">
-                    <StatusPill
-                      label={getReportSeverityLabel(report.reason)}
-                      tone={getReportSeverityTone(report.reason)}
-                    />
-                  </div>
-                  <p className="panel-text">Registrado: {formatDateTime(report.createdAt)}</p>
-                  {report.description ? (
-                    <p className="panel-text">Descripcion: {report.description}</p>
-                  ) : null}
-                  {report.reviewNote ? (
-                    <p className="panel-text">Revision administrativa: {report.reviewNote}</p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="panel-text">Aun no has enviado reportes desde esta membresia.</p>
-          )}
-        </article>
-
-      {trustSummary ? (
-        <div className={styles.footnote}>
-          Cancelacion tardia: {trustSummary.cancellationPolicy.lateWindowMinutes} minutos antes de la salida.
-          Ultimo calculo: {formatDateTime(trustSummary.cancellationPolicy.lastComputedAt)}.
-          {' '}
-          Rating bajo: {trustSummary.reputationPolicy.lowRatingThreshold.toFixed(1)}/5.
-          {' '}
-          Reincidencia: {trustSummary.reputationPolicy.recurrenceWindowDays} dias.
-          {trustSummary.sanctionPolicy
-            ? ` Ventanas administrativas: ${trustSummary.sanctionPolicy.operationalWindowDays} dias operativos y ${trustSummary.sanctionPolicy.reportsWindowDays} dias para reportes.`
-            : ''}
-        </div>
-      ) : null}
+        </aside>
+      </div>
     </section>
-  );
-}
-
-function TrustKpiCard({
-  label,
-  value,
-  note,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone?: 'neutral' | 'success' | 'warning';
-}) {
-  return (
-    <article
-      className={[
-        styles.kpiCard,
-        tone === 'success'
-          ? styles.kpiCardSuccess
-          : tone === 'warning'
-            ? styles.kpiCardWarning
-            : styles.kpiCardNeutral,
-      ].join(' ')}
-    >
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <p>{note}</p>
-    </article>
   );
 }
 
@@ -1536,21 +1392,6 @@ function TrustMiniMetric({
   );
 }
 
-function TrustPolicyCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className={styles.policyCard}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
 function TrustEmptyStateCopy({ message }: { message: string }) {
-  return <p className="panel-text">{message}</p>;
+  return <p className={styles.emptyCopy}>{message}</p>;
 }

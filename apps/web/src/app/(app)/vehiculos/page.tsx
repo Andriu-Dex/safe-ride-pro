@@ -7,7 +7,7 @@ import {
   LuggagePolicy,
   VehicleType,
 } from '@saferidepro/shared-types';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
@@ -423,37 +423,8 @@ export default function VehiclesPage() {
     isManualModel,
   );
   const totalVehicles = vehicleOverview?.vehicles.length ?? 0;
-  const activeVehicles =
-    vehicleOverview?.vehicles.filter((vehicle) => vehicle.isActive).length ?? 0;
-  const inactiveVehicles = totalVehicles - activeVehicles;
   const vehiclesWithTrips =
     vehicleOverview?.vehicles.filter((vehicle) => vehicle.operationalTripCount > 0).length ?? 0;
-
-  const metrics = useMemo(
-    () => [
-      {
-        label: 'Flota',
-        value: `${totalVehicles}`,
-        note: 'Vehiculos registrados.',
-      },
-      {
-        label: 'Activos',
-        value: `${activeVehicles}`,
-        note: 'Disponibles para operar.',
-      },
-      {
-        label: 'En pausa',
-        value: `${inactiveVehicles}`,
-        note: 'No visibles en operacion.',
-      },
-      {
-        label: 'Estado',
-        value: getDriverStatusLabel(currentStatus),
-        note: 'Condicion del conductor.',
-      },
-    ],
-    [activeVehicles, currentStatus, inactiveVehicles, totalVehicles],
-  );
 
   const openRegistrationModal = () => {
     if (!vehicleManagementEnabled) {
@@ -858,9 +829,9 @@ export default function VehiclesPage() {
             <div className={styles.heroTop}>
               <div className={styles.heroCopy}>
                 <p className={styles.kicker}>Vehiculos</p>
-                <h1 className={styles.heroTitle}>Tu flota operativa</h1>
+                <h1 className={styles.heroTitle}>Gestiona tus vehiculos</h1>
                 <p className={styles.heroLead}>
-                  Gestiona tus vehiculos, su estado y sus documentos.
+                  Registra unidades, valida su documentacion y decide cuales quedan listas para publicar viajes.
                 </p>
               </div>
 
@@ -887,16 +858,6 @@ export default function VehiclesPage() {
                 Ir a viajes
               </Link>
             </div>
-
-            <div className={styles.metricGrid}>
-              {metrics.map((metric) => (
-                <article className={styles.metricCard} key={metric.label}>
-                  <span className={styles.metricLabel}>{metric.label}</span>
-                  <strong className={styles.metricValue}>{metric.value}</strong>
-                  <span className={styles.metricNote}>{metric.note}</span>
-                </article>
-              ))}
-            </div>
           </section>
 
           <section className={styles.mainGrid}>
@@ -904,7 +865,7 @@ export default function VehiclesPage() {
               <article className={`${styles.fleetCard} ${styles.reveal}`}>
                 <div className={styles.cardHeader}>
                   <div>
-                    <p className={styles.kicker}>Flota</p>
+                    <p className={styles.kicker}>Listado</p>
                     <h2>Vehiculos registrados</h2>
                   </div>
                   <StatusPill label={`${totalVehicles} total`} tone="neutral" />
@@ -1025,8 +986,8 @@ export default function VehiclesPage() {
               <article className={`${styles.sideCard} ${styles.revealSoft}`}>
                 <div className={styles.cardHeader}>
                   <div>
-                    <p className={styles.kicker}>Resumen</p>
-                    <h2>Estado operativo</h2>
+                    <p className={styles.kicker}>Estado</p>
+                    <h2>Condicion actual</h2>
                   </div>
                   <StatusPill
                     label={licenseStatus === DriverLicenseStatus.Expired ? 'Atencion' : 'Actual'}
@@ -1044,34 +1005,9 @@ export default function VehiclesPage() {
                     <span>{licenseAlertMessage ?? 'Sin alertas activas.'}</span>
                   </div>
                   <div className={styles.noticeCard}>
-                    <strong>Viajes operativos</strong>
-                    <span>{vehiclesWithTrips} vehiculo(s) con movimiento actual.</span>
+                    <strong>Uso actual</strong>
+                    <span>{vehiclesWithTrips} vehiculo(s) con viajes en curso.</span>
                   </div>
-                </div>
-              </article>
-
-              <article className={`${styles.sideCard} ${styles.revealSoft}`}>
-                <div className={styles.cardHeader}>
-                  <div>
-                    <p className={styles.kicker}>Accesos</p>
-                    <h2>Siguiente paso</h2>
-                  </div>
-                  <StatusPill label="Rapido" tone="neutral" />
-                </div>
-
-                <div className={styles.quickGrid}>
-                  <Link className={styles.quickLink} href="/viajes">
-                    <strong>Viajes</strong>
-                    <span>Publica rutas usando un vehiculo activo.</span>
-                  </Link>
-                  <Link className={styles.quickLink} href="/conductor">
-                    <strong>Conductor</strong>
-                    <span>Revisa tu habilitacion y tu licencia.</span>
-                  </Link>
-                  <Link className={styles.quickLink} href="/perfil">
-                    <strong>Perfil</strong>
-                    <span>Actualiza tu informacion principal.</span>
-                  </Link>
                 </div>
               </article>
             </aside>

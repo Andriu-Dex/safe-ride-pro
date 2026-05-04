@@ -65,7 +65,8 @@ export class PaypalPaymentProvider implements PaymentProviderPort {
       },
     });
 
-    const checkoutUrl = findLink(response, 'approve');
+    const checkoutUrl =
+      findFirstLink(response, ['approve', 'payer-action', 'payment-approve']);
 
     if (!checkoutUrl) {
       throw new InternalServerErrorException(
@@ -213,22 +214,28 @@ function readDate(payload: unknown, path: string[]): Date | null {
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
 }
 
-function findLink(payload: unknown, rel: string): string | null {
+function findFirstLink(payload: unknown, rels: string[]): string | null {
   const links = readNestedValue(payload, ['links']);
 
   if (!Array.isArray(links)) {
     return null;
   }
 
-  const link = links.find(
-    (item) =>
-      item
-      && typeof item === 'object'
-      && (item as Record<string, unknown>).rel === rel
-      && typeof (item as Record<string, unknown>).href === 'string',
-  ) as Record<string, unknown> | undefined;
+  for (const rel of rels) {
+    const link = links.find(
+      (item) =>
+        item
+        && typeof item === 'object'
+        && (item as Record<string, unknown>).rel === rel
+        && typeof (item as Record<string, unknown>).href === 'string',
+    ) as Record<string, unknown> | undefined;
 
-  return typeof link?.href === 'string' ? link.href : null;
+    if (typeof link?.href === 'string' && link.href.trim().length > 0) {
+      return link.href;
+    }
+  }
+
+  return null;
 }
 
 function readNestedValue(payload: unknown, path: string[]): unknown {

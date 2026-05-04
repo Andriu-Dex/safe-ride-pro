@@ -10,7 +10,6 @@ import {
 } from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 
-import { listAuditEvents } from '../../../modules/audit/lib/audit-api';
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
@@ -18,8 +17,8 @@ import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { canAccessAudit } from '../../../modules/audit/lib/audit-access';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
-import { listReviewableDriverApplications } from '../../../modules/driver/lib/driver-api';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
+import { listReviewableDriverApplications } from '../../../modules/driver/lib/driver-api';
 import {
   getDriverLicenseAlertMessage,
   getDriverLicenseStatusLabel,
@@ -27,18 +26,17 @@ import {
   getDriverStatusTone,
 } from '../../../modules/driver/lib/driver-status';
 import { listReviewableReports } from '../../../modules/reports/lib/report-api';
+import { requiresDetailedReviewNote } from '../../../modules/reports/lib/report-labels';
 import {
   listReviewableActiveSanctions,
   listReviewableSanctionAppeals,
 } from '../../../modules/sanctions/lib/sanction-api';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
-import { requiresDetailedReviewNote } from '../../../modules/reports/lib/report-labels';
 import {
   getAdministrativeRiskStateLabel,
   getAdministrativeRiskTone,
   getTrustRestrictions,
   getVisibleReputationStateLabel,
-  getVisibleReputationTone,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 import styles from './page.module.css';
@@ -49,7 +47,6 @@ type AdminDashboardSummary = {
   highSeverityOpenReportsCount: number;
   activeSanctionsCount: number;
   pendingAppealsCount: number;
-  visibleEventsCount: number;
 };
 
 function getGlobalRoleLabel(role: GlobalUserRole): string {
@@ -60,17 +57,6 @@ function getGlobalRoleLabel(role: GlobalUserRole): string {
       return 'Usuario';
     default:
       return role;
-  }
-}
-
-function getMembershipRoleLabel(role?: InstitutionMembershipRole): string {
-  switch (role) {
-    case InstitutionMembershipRole.InstitutionAdmin:
-      return 'Administrador institucional';
-    case InstitutionMembershipRole.Student:
-      return 'Estudiante';
-    default:
-      return 'Sin rol institucional';
   }
 }
 
@@ -87,8 +73,9 @@ export default function DashboardPage() {
   const [adminSummary, setAdminSummary] = useState<AdminDashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const isAdminWorkspace = canAccessAudit(authSession?.user);
 
   const pushToast = (
     title: string,
@@ -113,19 +100,12 @@ export default function DashboardPage() {
   };
 
   const loadDashboard = async (accessToken: string) => {
-    if (canAccessAudit(authSession?.user)) {
-      const [
-        driverApplications,
-        reports,
-        sanctions,
-        appeals,
-        auditEvents,
-      ] = await Promise.all([
+    if (isAdminWorkspace) {
+      const [driverApplications, reports, sanctions, appeals] = await Promise.all([
         listReviewableDriverApplications(accessToken, { limit: 25 }),
         listReviewableReports(accessToken, { limit: 25 }),
         listReviewableActiveSanctions(accessToken, { limit: 25 }),
         listReviewableSanctionAppeals(accessToken, { limit: 25 }),
-        listAuditEvents(accessToken, { limit: '25' }),
       ]);
 
       setAdminSummary({
@@ -148,7 +128,6 @@ export default function DashboardPage() {
         pendingAppealsCount: appeals.filter(
           (appeal) => appeal.status === OperationalSanctionAppealStatus.Pending,
         ).length,
-        visibleEventsCount: auditEvents.length,
       });
       setTrustSummary(null);
       return;
@@ -178,15 +157,17 @@ export default function DashboardPage() {
       await loadDashboard(authSession.accessToken);
 
       if (showSpinner) {
-        pushToast('Dashboard actualizado', 'Los indicadores fueron sincronizados.', 'success');
+        pushToast('Dashboard actualizado', 'La vista principal ya esta al dia.', 'success');
       }
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      setErrorMessage(
+      pushToast(
+        'No se pudo actualizar',
         getApiErrorMessage(error, 'No fue posible sincronizar el dashboard.'),
+        'error',
       );
     } finally {
       if (showSpinner) {
@@ -209,7 +190,6 @@ export default function DashboardPage() {
 
     const initialize = async () => {
       setIsLoading(true);
-      setErrorMessage(null);
 
       try {
         await loadDashboard(authSession.accessToken);
@@ -222,8 +202,10 @@ export default function DashboardPage() {
           await refreshSession().catch(() => undefined);
         }
 
-        setErrorMessage(
+        pushToast(
+          'No se pudo cargar',
           getApiErrorMessage(error, 'No fue posible cargar el dashboard.'),
+          'error',
         );
       } finally {
         if (isMounted) {
@@ -237,7 +219,7 @@ export default function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [authSession, isHydrated, operationalAccess.hasOperationalMembership, refreshSession]);
+  }, [authSession, isAdminWorkspace, isHydrated, operationalAccess.hasOperationalMembership, refreshSession]);
 
   useAutoRefresh(
     async () => {
@@ -245,18 +227,9 @@ export default function DashboardPage() {
     },
     {
       enabled: Boolean(authSession),
-      intervalMs: 30000,
+      intervalMs: 30_000,
     },
   );
-
-  useEffect(() => {
-    if (!errorMessage) {
-      return;
-    }
-
-    pushToast('No se pudo cargar', errorMessage, 'error');
-    setErrorMessage(null);
-  }, [errorMessage]);
 
   const restrictions = getTrustRestrictions(trustSummary);
   const effectiveDriverStatus =
@@ -267,87 +240,40 @@ export default function DashboardPage() {
     currentMembership?.licenseExpiresInDays,
   );
   const roleLabel = getGlobalRoleLabel(authSession?.user.globalRole ?? GlobalUserRole.User);
-  const membershipRoleLabel = getMembershipRoleLabel(currentMembership?.role);
   const visibleTrustLabel = trustSummary
     ? getVisibleReputationStateLabel(trustSummary.visibleReputationState)
     : 'Pendiente';
   const administrativeRiskLabel = trustSummary
     ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
     : 'Pendiente';
-  const auditVisible = canAccessAudit(authSession?.user);
-  const isAdminWorkspace = auditVisible;
-  const isSyncing = isLoading || isRefreshing;
-  const hasRestrictions =
-    restrictions.blocksPassenger ||
-    restrictions.blocksDriver ||
-    Boolean(restrictions.message);
-  const restrictionTitle = restrictions.blocksPassenger && restrictions.blocksDriver
-    ? 'Movilidad limitada'
-    : restrictions.blocksDriver
-      ? 'Operacion de conductor limitada'
-      : restrictions.blocksPassenger
-        ? 'Operacion de pasajero limitada'
-        : restrictions.message
-          ? 'Observacion activa'
-          : 'Sin bloqueos';
 
-  const metrics = useMemo(
+  const adminQueues = useMemo(
     () => [
       {
-        label: 'Institucion',
-        value: currentMembership?.institutionName ?? 'Sin institucion',
-        note: membershipRoleLabel,
+        title: 'Conductores',
+        count: adminSummary?.pendingDriverApplicationsCount ?? 0,
+        href: '/moderacion?section=driver',
+        note: 'Solicitudes listas para revision',
       },
       {
-        label: 'Confianza visible',
-        value: visibleTrustLabel,
-        note: 'Estado reputacional actual.',
-      },
-      {
-        label: 'Riesgo',
-        value: administrativeRiskLabel,
-        note: 'Lectura administrativa.',
-      },
-      {
-        label: 'Restricciones',
-        value: hasRestrictions ? restrictionTitle : 'Sin bloqueos',
-        note: restrictions.message ?? 'Cuenta habilitada para operar.',
-      },
-    ],
-    [
-      administrativeRiskLabel,
-      currentMembership?.institutionName,
-      hasRestrictions,
-      membershipRoleLabel,
-      restrictionTitle,
-      restrictions.message,
-      visibleTrustLabel,
-    ],
-  );
-
-  const adminMetrics = useMemo(
-    () => [
-      {
-        label: 'Conductores pendientes',
-        value: adminSummary?.pendingDriverApplicationsCount ?? 0,
-        note: 'Solicitudes listas para revision.',
-      },
-      {
-        label: 'Reportes abiertos',
-        value: adminSummary?.openReportsCount ?? 0,
+        title: 'Reportes',
+        count: adminSummary?.openReportsCount ?? 0,
+        href: '/moderacion?section=reports',
         note: adminSummary?.highSeverityOpenReportsCount
-          ? `${adminSummary.highSeverityOpenReportsCount} de alta prioridad.`
-          : 'Sin alta prioridad abierta.',
+          ? `${adminSummary.highSeverityOpenReportsCount} requieren prioridad`
+          : 'Sin casos criticos abiertos',
       },
       {
-        label: 'Sanciones activas',
-        value: adminSummary?.activeSanctionsCount ?? 0,
-        note: 'Restricciones visibles para gestion.',
+        title: 'Sanciones',
+        count: adminSummary?.activeSanctionsCount ?? 0,
+        href: '/moderacion?section=sanctions',
+        note: 'Restricciones activas visibles',
       },
       {
-        label: 'Apelaciones pendientes',
-        value: adminSummary?.pendingAppealsCount ?? 0,
-        note: 'Casos que necesitan decision.',
+        title: 'Apelaciones',
+        count: adminSummary?.pendingAppealsCount ?? 0,
+        href: '/moderacion?section=appeals',
+        note: 'Casos pendientes de decision',
       },
     ],
     [adminSummary],
@@ -358,61 +284,78 @@ export default function DashboardPage() {
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
         <section className={styles.loadingShell}>
-          <article className={styles.loadingCard}>
+          <article className={styles.stateCard}>
             <div aria-hidden="true" className={styles.loadingPulse} />
-            <h1 className={styles.loadingTitle}>Cargando dashboard</h1>
-            <p className={styles.loadingText}>Estamos preparando los indicadores principales.</p>
+            <h1 className={styles.stateTitle}>Cargando dashboard</h1>
+            <p className={styles.stateText}>Preparando la vista principal.</p>
           </article>
         </section>
       </>
     );
   }
 
-  if (isAdminWorkspace) {
-    return (
-      <section className={styles.dashboardShell}>
-        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+  return (
+    <section className={styles.page}>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-        <section className={`${styles.hero} ${styles.reveal}`}>
-          <div className={styles.heroTop}>
-            <div className={styles.heroCopy}>
-              <p className={styles.kicker}>Dashboard</p>
-              <h1 className={styles.heroTitle}>Centro administrativo</h1>
-              <p className={styles.heroLead}>
-                Revisa el frente de aprobaciones, incidentes y trazabilidad sin mezclarlo con operacion de viaje.
-              </p>
-            </div>
+      <section className={styles.hero}>
+        <div className={styles.heroCopy}>
+          <p className={styles.kicker}>Dashboard</p>
+          <h1 className={styles.heroTitle}>
+            {isAdminWorkspace ? 'Centro administrativo' : 'Vista principal'}
+          </h1>
+          <p className={styles.heroLead}>
+            {isAdminWorkspace
+              ? 'Monitorea la carga de gestion y entra directo a la mesa que necesita decision.'
+              : 'Consulta tu contexto actual y entra rapido a lo que realmente necesitas usar.'}
+          </p>
+        </div>
 
-            <div className={styles.heroActions}>
-              <StatusPill label="Gestion activa" tone="success" />
-              <Button
-                disabled={isSyncing}
-                onClick={() => void refreshDashboard(true)}
-                variant="secondary"
-              >
-                {isRefreshing ? 'Actualizando...' : 'Sincronizar'}
-              </Button>
-            </div>
-          </div>
+        <div className={styles.heroActions}>
+          <StatusPill label={roleLabel} tone="neutral" />
+          <Button
+            disabled={isRefreshing}
+            onClick={() => void refreshDashboard(true)}
+            variant="secondary"
+          >
+            {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+          </Button>
+        </div>
+      </section>
 
-          <div className={styles.metricGrid}>
-            {adminMetrics.map((metric) => (
-              <article className={styles.metricCard} key={metric.label}>
-                <span className={styles.metricLabel}>{metric.label}</span>
-                <strong className={styles.metricValue}>{metric.value}</strong>
-                <span className={styles.metricNote}>{metric.note}</span>
-              </article>
-            ))}
-          </div>
-        </section>
+      {isAdminWorkspace ? (
+        <div className={styles.board}>
+          <aside className={styles.rail}>
+            <section className={styles.railSection}>
+              <p className={styles.railLabel}>Gestion</p>
+              <h2 className={styles.railTitle}>Accesos directos</h2>
+              <div className={styles.navList}>
+                <Link className={styles.navLink} href="/moderacion?section=driver">
+                  <strong>Conductores</strong>
+                  <span>Revisar nuevas solicitudes</span>
+                </Link>
+                <Link className={styles.navLink} href="/moderacion?section=reports">
+                  <strong>Reportes</strong>
+                  <span>Resolver incidentes</span>
+                </Link>
+                <Link className={styles.navLink} href="/usuarios">
+                  <strong>Usuarios</strong>
+                  <span>Gestionar cuentas</span>
+                </Link>
+                <Link className={styles.navLink} href="/auditoria">
+                  <strong>Auditoria</strong>
+                  <span>Ver trazabilidad</span>
+                </Link>
+              </div>
+            </section>
+          </aside>
 
-        <section className={styles.mainGrid}>
-          <div className={styles.contentColumn}>
-            <article className={`${styles.focusCard} ${styles.reveal}`}>
-              <div className={styles.cardHeader}>
+          <main className={styles.content}>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
                 <div>
-                  <p className={styles.kicker}>Gestion</p>
-                  <h2>Prioridades del dia</h2>
+                  <p className={styles.sectionKicker}>Bandejas</p>
+                  <h2 className={styles.sectionTitle}>Pendientes de hoy</h2>
                 </div>
                 <StatusPill
                   label={adminSummary?.highSeverityOpenReportsCount ? 'Atencion inmediata' : 'Flujo estable'}
@@ -420,290 +363,140 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className={styles.detailGrid}>
-                <article className={styles.infoTile}>
-                  <span>Conductores</span>
-                  <strong>{adminSummary?.pendingDriverApplicationsCount ?? 0} por revisar</strong>
-                </article>
-                <article className={styles.infoTile}>
-                  <span>Reportes</span>
-                  <strong>{adminSummary?.openReportsCount ?? 0} abiertos</strong>
-                </article>
-                <article className={styles.infoTile}>
-                  <span>Sanciones</span>
-                  <strong>{adminSummary?.activeSanctionsCount ?? 0} activas</strong>
-                </article>
-                <article className={styles.infoTile}>
-                  <span>Eventos</span>
-                  <strong>{adminSummary?.visibleEventsCount ?? 0} visibles</strong>
-                </article>
+              <div className={styles.queueList}>
+                {adminQueues.map((queue) => (
+                  <Link key={queue.title} className={styles.queueRow} href={queue.href}>
+                    <div>
+                      <strong>{queue.title}</strong>
+                      <span>{queue.note}</span>
+                    </div>
+                    <span className={styles.queueCount}>{queue.count}</span>
+                  </Link>
+                ))}
               </div>
-            </article>
+            </section>
 
-            <article className={`${styles.analyticsCard} ${styles.revealSoft}`}>
-              <div className={styles.cardHeader}>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
                 <div>
-                  <p className={styles.kicker}>Accesos</p>
-                  <h2>Mesas de trabajo</h2>
+                  <p className={styles.sectionKicker}>Sesion</p>
+                  <h2 className={styles.sectionTitle}>Alcance actual</h2>
                 </div>
-                <StatusPill label="Administracion" tone="neutral" />
               </div>
 
-              <div className={styles.quickGrid}>
-                <Link className={styles.quickLink} href="/moderacion?section=driver">
-                  <strong>Conductores</strong>
-                  <span>Aprueba solicitudes y revisa documentacion.</span>
-                </Link>
-                <Link className={styles.quickLink} href="/moderacion?section=reports">
-                  <strong>Reportes</strong>
-                  <span>Prioriza incidentes y documenta decisiones.</span>
-                </Link>
-                <Link className={styles.quickLink} href="/moderacion?section=sanctions">
-                  <strong>Sanciones</strong>
-                  <span>Administra restricciones activas y levantamientos.</span>
-                </Link>
-                <Link className={styles.quickLink} href="/moderacion?section=appeals">
-                  <strong>Apelaciones</strong>
-                  <span>Resuelve revisiones disciplinarias pendientes.</span>
-                </Link>
+              <div className={styles.detailList}>
+                <div className={styles.detailRow}>
+                  <span>Correo</span>
+                  <strong>{authSession?.user.email ?? 'No disponible'}</strong>
+                </div>
+                <div className={styles.detailRow}>
+                  <span>Institucion</span>
+                  <strong>{currentMembership?.institutionName ?? 'Sin institucion activa'}</strong>
+                </div>
+                <div className={styles.detailRow}>
+                  <span>Rol institucional</span>
+                  <strong>
+                    {currentMembership?.role === InstitutionMembershipRole.InstitutionAdmin
+                      ? 'Administrador institucional'
+                      : 'Sin rol administrativo institucional'}
+                  </strong>
+                </div>
               </div>
-            </article>
-          </div>
-
-          <aside className={styles.sideColumn}>
-            <article className={`${styles.sideCard} ${styles.revealSoft}`}>
-              <div className={styles.cardHeader}>
+            </section>
+          </main>
+        </div>
+      ) : (
+        <div className={styles.board}>
+          <main className={styles.content}>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
                 <div>
-                  <p className={styles.kicker}>Alcance</p>
-                  <h2>Sesion actual</h2>
+                  <p className={styles.sectionKicker}>Estado</p>
+                  <h2 className={styles.sectionTitle}>Contexto actual</h2>
                 </div>
-                <StatusPill label={roleLabel} tone="neutral" />
+                <StatusPill
+                  label={
+                    currentMembership
+                      ? getDriverStatusLabel(
+                          effectiveDriverStatus ?? currentMembership.driverVerificationStatus,
+                        )
+                      : 'Sin membresia'
+                  }
+                  tone={
+                    currentMembership
+                      ? getDriverStatusTone(
+                          effectiveDriverStatus ?? currentMembership.driverVerificationStatus,
+                        )
+                      : 'neutral'
+                  }
+                />
               </div>
 
-              <div className={styles.noticeStack}>
-                <div className={styles.noticeCard}>
-                  <strong>Correo</strong>
-                  <span>{authSession?.user.email ?? 'No disponible'}</span>
+              <div className={styles.detailList}>
+                <div className={styles.detailRow}>
+                  <span>Institucion</span>
+                  <strong>{currentMembership?.institutionName ?? 'Sin institucion activa'}</strong>
                 </div>
-                <div className={styles.noticeCard}>
-                  <strong>Institucion principal</strong>
-                  <span>{currentMembership?.institutionName ?? 'Sin institucion activa'}</span>
+                <div className={styles.detailRow}>
+                  <span>Licencia</span>
+                  <strong>
+                    {currentMembership
+                      ? getDriverLicenseStatusLabel(currentMembership.licenseStatus)
+                      : 'Sin informacion'}
+                  </strong>
                 </div>
-                <div className={styles.noticeCard}>
-                  <strong>Rol institucional</strong>
-                  <span>{membershipRoleLabel}</span>
+                <div className={styles.detailRow}>
+                  <span>Confianza visible</span>
+                  <strong>{visibleTrustLabel}</strong>
+                </div>
+                <div className={styles.detailRow}>
+                  <span>Riesgo administrativo</span>
+                  <StatusPill
+                    label={administrativeRiskLabel}
+                    tone={trustSummary ? getAdministrativeRiskTone(trustSummary.administrativeRiskState) : 'neutral'}
+                  />
+                </div>
+                <div className={styles.detailRow}>
+                  <span>Restricciones</span>
+                  <strong>{restrictions.message ?? 'Sin bloqueos activos'}</strong>
                 </div>
               </div>
-            </article>
-          </aside>
-        </section>
-      </section>
-    );
-  }
 
-  return (
-    <section className={styles.dashboardShell}>
-      <ToastStack onDismiss={dismissToast} toasts={toasts} />
-
-      <section className={`${styles.hero} ${styles.reveal}`}>
-        <div className={styles.heroTop}>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Dashboard</p>
-            <h1 className={styles.heroTitle}>Lectura ejecutiva</h1>
-            <p className={styles.heroLead}>
-              Supervisa contexto, riesgo y restricciones desde una vista resumida.
-            </p>
-          </div>
-
-          <div className={styles.heroActions}>
-            <StatusPill
-              label={operationalAccess.hasOperationalMembership ? 'Contexto listo' : 'Contexto limitado'}
-              tone={operationalAccess.hasOperationalMembership ? 'success' : 'warning'}
-            />
-            <StatusPill
-              label={currentMembership
-                ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
-                : 'Sin membresia'}
-              tone={currentMembership
-                ? getDriverStatusTone(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
-                : 'neutral'}
-            />
-            <Button
-              disabled={isSyncing}
-              onClick={() => void refreshDashboard(true)}
-              variant="secondary"
-            >
-              {isRefreshing ? 'Actualizando...' : 'Sincronizar'}
-            </Button>
-          </div>
-        </div>
-
-        <div className={styles.metricGrid}>
-          {metrics.map((metric) => (
-            <article className={styles.metricCard} key={metric.label}>
-              <span className={styles.metricLabel}>{metric.label}</span>
-              <strong className={styles.metricValue}>{metric.value}</strong>
-              <span className={styles.metricNote}>{metric.note}</span>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.mainGrid}>
-        <div className={styles.contentColumn}>
-          <article className={`${styles.focusCard} ${styles.reveal}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Operacion</p>
-                <h2>Estado actual</h2>
-              </div>
-              <StatusPill
-                label={currentMembership
-                  ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
-                  : 'Sin membresia'}
-                tone={currentMembership
-                  ? getDriverStatusTone(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
-                  : 'neutral'}
-              />
-            </div>
-
-            <div className={styles.detailGrid}>
-              <article className={styles.infoTile}>
-                <span>Rol global</span>
-                <strong>{roleLabel}</strong>
-              </article>
-              <article className={styles.infoTile}>
-                <span>Membresia</span>
-                <strong>{currentMembership?.membershipStatus ?? 'Sin membresia'}</strong>
-              </article>
-              <article className={styles.infoTile}>
-                <span>Licencia</span>
-                <strong>
-                  {currentMembership
-                    ? getDriverLicenseStatusLabel(currentMembership.licenseStatus)
-                    : 'Sin informacion'}
-                </strong>
-              </article>
-              <article className={styles.infoTile}>
-                <span>Bloqueos</span>
-                <strong>{hasRestrictions ? restrictionTitle : 'Sin bloqueos'}</strong>
-              </article>
-            </div>
-
-            {driverLicenseMessage ? (
-              <div className={styles.alertCard}>
-                <strong>Licencia</strong>
-                <span>{driverLicenseMessage}</span>
-              </div>
-            ) : null}
-          </article>
-
-          <article className={`${styles.analyticsCard} ${styles.revealSoft}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Lectura</p>
-                <h2>Indicadores clave</h2>
-              </div>
-              <StatusPill
-                label={trustSummary ? 'Actual' : 'Pendiente'}
-                tone={trustSummary ? getAdministrativeRiskTone(trustSummary.administrativeRiskState) : 'neutral'}
-              />
-            </div>
-
-            <div className={styles.analyticsGrid}>
-              <article className={styles.signalTile}>
-                <span>Confianza visible</span>
-                <strong>{visibleTrustLabel}</strong>
-              </article>
-              <article className={styles.signalTile}>
-                <span>Riesgo administrativo</span>
-                <strong>{administrativeRiskLabel}</strong>
-              </article>
-              <article className={styles.signalTile}>
-                <span>Pasajero</span>
-                <strong>{restrictions.blocksPassenger ? 'Restringido' : 'Habilitado'}</strong>
-              </article>
-              <article className={styles.signalTile}>
-                <span>Conductor</span>
-                <strong>{restrictions.blocksDriver ? 'Restringido' : 'Habilitado'}</strong>
-              </article>
-            </div>
-          </article>
-        </div>
-
-        <aside className={styles.sideColumn}>
-          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Accesos</p>
-                <h2>Rutas rapidas</h2>
-              </div>
-              <StatusPill label="Prioridades" tone="success" />
-            </div>
-
-            <div className={styles.quickGrid}>
-              <Link className={styles.quickLink} href="/viajes">
-                <strong>Viajes</strong>
-                <span>Operacion diaria de movilidad.</span>
-              </Link>
-              <Link className={styles.quickLink} href="/conductor">
-                <strong>Conductor</strong>
-                <span>Estado de habilitacion y documentos.</span>
-              </Link>
-              <Link className={styles.quickLink} href="/vehiculos">
-                <strong>Vehiculos</strong>
-                <span>Disponibilidad y consistencia de flota.</span>
-              </Link>
-              <Link className={styles.quickLink} href="/confianza">
-                <strong>Confianza</strong>
-                <span>Reputacion, sanciones y apelaciones.</span>
-              </Link>
-              {auditVisible ? (
-                <Link className={styles.quickLink} href="/auditoria">
-                  <strong>Auditoria</strong>
-                  <span>Eventos y trazabilidad administrativa.</span>
-                </Link>
+              {driverLicenseMessage ? (
+                <div className={styles.notice}>
+                  <strong>Licencia</strong>
+                  <span>{driverLicenseMessage}</span>
+                </div>
               ) : null}
-            </div>
-          </article>
+            </section>
+          </main>
 
-          <article className={`${styles.sideCard} ${styles.revealSoft}`}>
-            <div className={styles.cardHeader}>
-              <div>
-                <p className={styles.kicker}>Alertas</p>
-                <h2>Atencion inmediata</h2>
+          <aside className={styles.rail}>
+            <section className={styles.railSection}>
+              <p className={styles.railLabel}>Accesos</p>
+              <h2 className={styles.railTitle}>Siguiente paso</h2>
+              <div className={styles.navList}>
+                <Link className={styles.navLink} href="/viajes">
+                  <strong>Viajes</strong>
+                  <span>Reservas y trayectos</span>
+                </Link>
+                <Link className={styles.navLink} href="/perfil">
+                  <strong>Perfil</strong>
+                  <span>Datos personales</span>
+                </Link>
+                <Link className={styles.navLink} href="/conductor">
+                  <strong>Conductor</strong>
+                  <span>Habilitacion y documentos</span>
+                </Link>
+                <Link className={styles.navLink} href="/vehiculos">
+                  <strong>Vehiculos</strong>
+                  <span>Gestionar unidades</span>
+                </Link>
               </div>
-              <StatusPill
-                label={hasRestrictions ? 'Revisar' : 'Estable'}
-                tone={hasRestrictions ? 'warning' : 'success'}
-              />
-            </div>
-
-            <div className={styles.noticeStack}>
-              <div className={styles.noticeCard}>
-                <strong>Contexto institucional</strong>
-                <span>
-                  {currentMembership
-                    ? `Operando en ${currentMembership.institutionName} como ${membershipRoleLabel.toLowerCase()}.`
-                    : 'No hay membresia operativa activa en esta sesion.'}
-                </span>
-              </div>
-              <div className={styles.noticeCard}>
-                <strong>Restricciones</strong>
-                <span>{restrictions.message ?? 'No se detectan bloqueos operativos activos.'}</span>
-              </div>
-              <div className={styles.noticeCard}>
-                <strong>Confianza</strong>
-                <span>
-                  {trustSummary
-                    ? `Visible: ${visibleTrustLabel.toLowerCase()} | Riesgo: ${administrativeRiskLabel.toLowerCase()}.`
-                    : 'Aun no hay resumen disponible.'}
-                </span>
-              </div>
-            </div>
-          </article>
-        </aside>
-      </section>
+            </section>
+          </aside>
+        </div>
+      )}
     </section>
   );
 }

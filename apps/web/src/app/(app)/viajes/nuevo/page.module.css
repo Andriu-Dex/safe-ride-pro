@@ -1,6 +1,8 @@
 .pageShell {
   display: grid;
-  gap: 1.4rem;
+  gap: 1.2rem;
+  max-width: 1160px;
+  margin: 0 auto;
 }
 
 .reveal {
@@ -16,14 +18,14 @@
   overflow: hidden;
   display: grid;
   gap: 1.1rem;
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 30px;
+  border: 1px solid rgba(19, 58, 52, 0.12);
+  border-radius: 28px;
   background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.14), transparent 30%),
-    linear-gradient(160deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.95));
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.14), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(19, 78, 74, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(244, 249, 248, 0.98), rgba(235, 243, 241, 0.96));
   padding: clamp(1.2rem, 2.5vw, 2rem);
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 24px 46px rgba(10, 31, 36, 0.08);
 }
 
 .hero::after {
@@ -93,14 +95,11 @@
   display: grid;
   gap: 0.18rem;
   min-width: 9rem;
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-  padding: 0.85rem 0.95rem;
+  padding-left: 0.9rem;
+  border-left: 3px solid rgba(15, 118, 110, 0.18);
 }
 
 .heroHighlight span,
-.metricLabel,
 .miniLabel,
 .previewMetric span {
   color: #6a8389;
@@ -110,39 +109,20 @@
 }
 
 .heroHighlight strong,
-.metricValue,
 .previewMetric strong,
 .signalValue {
   color: #16343d;
   font-weight: 900;
 }
 
-.metricGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.9rem;
-}
-
-.metricCard,
 .mainSurface,
 .sideCard,
 .lockedCard,
 .loadingCard {
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 26px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
-}
-
-.metricCard {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.95rem 1rem;
-}
-
-.metricValue {
-  font-size: 1.18rem;
-  line-height: 1.15;
+  border: 1px solid rgba(19, 58, 52, 0.1);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 18px 34px rgba(14, 29, 34, 0.06);
 }
 
 .metricText,
@@ -158,7 +138,7 @@
 
 .mainGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+  grid-template-columns: minmax(0, 1.16fr) minmax(320px, 0.84fr);
   gap: 1.25rem;
   align-items: start;
 }
@@ -203,9 +183,9 @@
   align-items: center;
   justify-content: center;
   min-width: 7.4rem;
-  border: 1px solid rgba(15, 118, 110, 0.15);
+  border: 1px solid rgba(15, 118, 110, 0.16);
   border-radius: 999px;
-  background: rgba(227, 249, 246, 0.9);
+  background: rgba(228, 247, 243, 0.92);
   padding: 0.5rem 0.8rem;
   color: #0f766e;
   font-size: 0.84rem;
@@ -223,15 +203,14 @@
 .signalTile,
 .templateTile,
 .emptyNote {
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 20px;
-  background: rgba(247, 251, 251, 0.86);
+  border-left: 3px solid rgba(15, 118, 110, 0.14);
+  background: rgba(245, 249, 248, 0.86);
 }
 
 .previewMetric {
   display: grid;
   gap: 0.2rem;
-  padding: 0.9rem;
+  padding: 0.9rem 0 0.9rem 0.95rem;
 }
 
 .readinessList,
@@ -245,7 +224,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
-  padding: 0.95rem;
+  padding: 0.95rem 0 0.95rem 0.95rem;
 }
 
 .readinessCopy {
@@ -267,13 +246,13 @@
 .signalTile {
   display: grid;
   gap: 0.22rem;
-  padding: 0.95rem;
+  padding: 0.95rem 0 0.95rem 0.95rem;
 }
 
 .templateTile {
   display: grid;
   gap: 0.28rem;
-  padding: 1rem;
+  padding: 1rem 0 1rem 1rem;
 }
 
 .templateActions {
@@ -285,7 +264,7 @@
 .emptyNote {
   display: grid;
   gap: 0.28rem;
-  padding: 1rem;
+  padding: 1rem 0 1rem 1rem;
 }
 
 .inlineLink {
@@ -378,7 +357,6 @@
 }
 
 @media (max-width: 900px) {
-  .metricGrid,
   .signalGrid,
   .previewMetrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -392,7 +370,6 @@
 }
 
 @media (max-width: 720px) {
-  .metricGrid,
   .signalGrid,
   .previewMetrics {
     grid-template-columns: 1fr;

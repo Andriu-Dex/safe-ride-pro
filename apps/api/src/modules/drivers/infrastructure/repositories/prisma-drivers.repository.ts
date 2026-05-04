@@ -88,6 +88,7 @@ export class PrismaDriversRepository implements DriversRepository {
           institutionId: filters.institutionIds
             ? { in: filters.institutionIds }
             : undefined,
+          role: InstitutionMembershipRole.Student,
           driverVerificationStatus: filters.status,
           membershipStatus: 'ACTIVE',
         },

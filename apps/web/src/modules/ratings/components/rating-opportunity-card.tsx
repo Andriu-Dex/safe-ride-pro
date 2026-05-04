@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/button';
 import { SelectField } from '../../../components/ui/select-field';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import { formatTripClosureDeadline } from '../../trips/lib/trip-closure';
+import styles from './rating-opportunity-card.module.css';
 
 export type RatingOpportunity = {
   id: string;
@@ -48,28 +49,29 @@ export function RatingOpportunityCard({
   return (
     <div
       className={[
-        'list-card',
-        'list-card-strong',
-        highlighted ? 'closure-focus-card' : null,
+        styles.card,
+        highlighted ? styles.highlighted : null,
       ]
         .filter(Boolean)
         .join(' ')}
       id={elementId}
     >
-      <div className="list-card-header">
-        <strong>{opportunity.targetFullName}</strong>
+      <div className={styles.header}>
+        <div className={styles.identity}>
+          <strong className={styles.title}>{opportunity.targetFullName}</strong>
+          <p className={styles.meta}>
+            {opportunity.tripOriginLabel} -&gt; {opportunity.tripDestinationLabel}
+          </p>
+          <p className={styles.meta}>Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
+        </div>
         <span className="topbar-badge">{opportunity.directionLabel}</span>
       </div>
 
-      <p className="panel-text">
-        Viaje: {opportunity.tripOriginLabel} -&gt; {opportunity.tripDestinationLabel}
-      </p>
-      <p className="panel-text">Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
-      <p className="form-helper compact-helper">
+      <p className={styles.deadline}>
         Disponible hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}.
       </p>
 
-      <div className="form-grid form-grid-2 compact-grid">
+      <div className={styles.grid}>
         <SelectField
           label="Puntaje"
           onChange={(event) => onChange('score', event.target.value)}
@@ -82,9 +84,7 @@ export function RatingOpportunityCard({
           <option value="1">1 - Deficiente</option>
         </SelectField>
 
-        <div className="form-helper compact-helper">
-          Usa comentarios concretos para dejar un historial util a futuros pasajeros y conductores.
-        </div>
+        <p className={styles.helper}>Deja una observacion breve si aporta contexto real.</p>
       </div>
 
       <TextareaField
@@ -95,7 +95,7 @@ export function RatingOpportunityCard({
         value={value.comment}
       />
 
-      <div className="button-row">
+      <div className={styles.actions}>
         <Button disabled={isSubmitting} onClick={onSubmit}>
           Registrar calificacion
         </Button>

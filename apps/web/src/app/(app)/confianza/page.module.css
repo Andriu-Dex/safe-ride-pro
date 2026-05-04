@@ -1,40 +1,46 @@
 .trustShell {
   display: grid;
-  gap: 1.4rem;
+  gap: 1.2rem;
+  max-width: 1180px;
+  margin: 0 auto;
 }
 
 .reveal {
-  animation: trustRise 0.5s ease both;
+  animation: trustRise 0.45s ease both;
 }
 
 .hero {
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 1.1rem;
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 30px;
+  gap: 1rem;
+  border: 1px solid rgba(19, 58, 52, 0.12);
+  border-radius: 28px;
   background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.14), transparent 30%),
-    linear-gradient(160deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.95));
-  padding: clamp(1.2rem, 2.5vw, 2rem);
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.14), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(18, 76, 70, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(244, 249, 248, 0.98), rgba(235, 243, 241, 0.96));
+  padding: clamp(1.2rem, 2.4vw, 1.9rem);
+  box-shadow: 0 24px 46px rgba(12, 31, 36, 0.08);
 }
 
 .hero::after {
   position: absolute;
-  inset: auto -1.6rem -2.4rem auto;
+  inset: auto -1.8rem -2.8rem auto;
   width: 12rem;
   height: 12rem;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.46), transparent 68%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.48), transparent 68%);
   content: '';
   pointer-events: none;
 }
 
 .heroTop,
-.lockedHeader {
+.lockedHeader,
+.surfaceHeader,
+.sectionHeading,
+.focusBanner,
+.recordHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -43,172 +49,165 @@
 
 .heroCopy {
   display: grid;
-  gap: 0.5rem;
-  max-width: 44rem;
+  gap: 0.45rem;
+  max-width: 42rem;
 }
 
-.kicker {
+.kicker,
+.sectionKicker {
   margin: 0;
   color: #0f766e;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .heroTitle,
-.lockedTitle,
-.loadingTitle {
+.lockedTitle {
   margin: 0;
-  color: #16343d;
-  font-size: clamp(2rem, 3.8vw, 3.2rem);
+  color: #15353d;
+  font-size: clamp(2rem, 3.8vw, 3rem);
   line-height: 1;
 }
 
 .heroLead,
-.loadingText {
+.loadingText,
+.lockedText,
+.sectionMeta,
+.noteText,
+.helperText,
+.emptyCopy {
   margin: 0;
-  color: #5d767c;
-  line-height: 1.6;
+  color: #5f787f;
+  line-height: 1.55;
 }
 
-.heroActions {
+.heroActions,
+.badgeRow,
+.actionRow {
   display: flex;
   flex-wrap: wrap;
   gap: 0.7rem;
 }
 
 .focusBanner {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.12);
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(236, 253, 245, 0.92), rgba(240, 253, 250, 0.94));
-  padding: 1rem 1.1rem;
+  padding-left: 1rem;
+  border-left: 3px solid rgba(15, 118, 110, 0.22);
 }
 
 .focusBanner strong {
-  color: #16343d;
+  color: #15353d;
 }
 
 .focusBanner p {
   margin: 0.28rem 0 0;
-  color: #567176;
-  line-height: 1.5;
+  color: #5f787f;
 }
 
-.metricGrid {
+.board {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.9rem;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  gap: 1.25rem;
+  align-items: start;
 }
 
-.kpiCard {
+.primaryColumn,
+.sideColumn,
+.sectionBlock,
+.stackList {
   display: grid;
-  gap: 0.25rem;
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.78);
-  padding: 0.95rem 1rem;
+  gap: 1rem;
 }
 
-.kpiCard span {
-  color: #5c767d;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.kpiCard strong {
-  color: #16343d;
-  font-size: 1.2rem;
-  font-weight: 900;
-  line-height: 1.15;
-}
-
-.kpiCard p {
+.sectionTitle,
+.surfaceTitle {
   margin: 0;
-  color: #6a8388;
-  font-size: 0.84rem;
-  line-height: 1.45;
+  color: #17353f;
 }
 
-.kpiCardNeutral {
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
-}
-
-.kpiCardSuccess {
-  border-color: rgba(46, 168, 106, 0.18);
-  box-shadow: 0 14px 26px rgba(46, 168, 106, 0.08);
-}
-
-.kpiCardWarning {
-  border-color: rgba(245, 158, 11, 0.18);
-  box-shadow: 0 14px 26px rgba(245, 158, 11, 0.08);
-}
-
-.summaryGrid,
 .closureGrid,
 .historyGrid {
   display: grid;
   gap: 1rem;
 }
 
-.summaryGrid,
+.closureGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .historyGrid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.sectionBlock {
-  display: grid;
-  gap: 1rem;
+.surfaceCard,
+.lockedCard,
+.loadingCard {
+  border: 1px solid rgba(19, 58, 52, 0.1);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 18px 34px rgba(14, 29, 34, 0.06);
+  padding: 1.15rem;
 }
 
-.sectionHeading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+.miniGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.8rem;
 }
 
-.sectionMeta {
-  margin: 0.2rem 0 0;
-  color: #647b81;
-  line-height: 1.45;
-}
-
-.miniMetric,
-.policyCard {
+.miniMetric {
   display: grid;
-  gap: 0.2rem;
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 18px;
-  background: rgba(247, 251, 251, 0.84);
-  padding: 0.9rem;
+  gap: 0.18rem;
+  padding-left: 0.9rem;
+  border-left: 3px solid rgba(15, 118, 110, 0.16);
 }
 
-.miniMetric span,
-.policyCard span {
-  color: #6b8389;
+.miniMetric span {
+  color: #6a8389;
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.miniMetric strong,
-.policyCard strong {
-  color: #16343d;
+.miniMetric strong {
+  color: #17353f;
 }
 
-.footnote {
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 20px;
-  background: rgba(247, 251, 251, 0.84);
-  padding: 1rem 1.1rem;
-  color: #647b81;
-  line-height: 1.6;
+.signalCard {
+  display: grid;
+  gap: 0.7rem;
+  padding-top: 0.4rem;
+}
+
+.signalList {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 1rem;
+  color: #17353f;
+}
+
+.recordCard {
+  display: grid;
+  gap: 0.45rem;
+  padding-left: 1rem;
+  border-left: 3px solid rgba(15, 118, 110, 0.14);
+}
+
+.inlineStars {
+  color: #0f766e;
+  font-weight: 800;
+}
+
+.appealBlock {
+  display: grid;
+  gap: 0.7rem;
+  padding-top: 0.35rem;
+}
+
+.emptyCopy {
+  padding: 1rem 0;
 }
 
 .lockedShell,
@@ -221,11 +220,6 @@
 .lockedCard,
 .loadingCard {
   width: min(100%, 52rem);
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 26px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
-  padding: 1.2rem;
 }
 
 .lockedBody {
@@ -241,8 +235,13 @@
   width: 4rem;
   height: 4rem;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(14, 165, 233, 0.24));
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(18, 76, 70, 0.24));
   animation: trustPulse 1.2s ease-in-out infinite;
+}
+
+.loadingTitle {
+  margin: 0.9rem 0 0;
+  color: #15353d;
 }
 
 @keyframes trustRise {
@@ -271,33 +270,30 @@
 }
 
 @media (max-width: 1100px) {
-  .summaryGrid,
+  .board,
+  .closureGrid,
   .historyGrid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 900px) {
-  .metricGrid,
-  .closureGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+@media (max-width: 760px) {
   .heroTop,
   .lockedHeader,
+  .surfaceHeader,
   .sectionHeading,
-  .focusBanner {
+  .focusBanner,
+  .recordHeader {
     flex-direction: column;
   }
-}
 
-@media (max-width: 720px) {
-  .metricGrid,
-  .closureGrid {
-    grid-template-columns: 1fr;
+  .heroActions,
+  .badgeRow,
+  .actionRow {
+    display: grid;
   }
 
-  .heroActions {
-    display: grid;
+  .miniGrid {
+    grid-template-columns: 1fr;
   }
 }

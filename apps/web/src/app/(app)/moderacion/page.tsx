@@ -6,25 +6,37 @@ import {
   InstitutionMembershipRole,
   isOperationalMembership,
   OperationalSanctionAppealStatus,
-  OperationalSanctionScope,
   OperationalSanctionTrigger,
-  OperationalSanctionType,
   ReportStatus,
 } from '@saferidepro/shared-types';
-import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { listAuditEvents } from '../../../modules/audit/lib/audit-api';
-import { getAuditActionLabel, getAuditEntityTypeLabel } from '../../../modules/audit/lib/audit-labels';
-import {
-  AUDIT_ACTIONS,
-  AUDIT_ENTITY_TYPES,
-  type AuditEventRecord,
-  type AuditFilters,
-} from '../../../modules/audit/types/audit';
-import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import { Button } from '../../../components/ui/button';
+import { InputField } from '../../../components/ui/input-field';
+import { SelectField } from '../../../components/ui/select-field';
+import { StatusPill } from '../../../components/ui/status-pill';
+import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
+import { downloadBlobFile, getFileExtensionFromMimeType } from '../../../lib/blob-file';
+import { ApiError } from '../../../lib/api-client';
+import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import {
+  downloadDriverApplicationDocument,
+  listReviewableDriverApplications,
+  reviewDriverApplication,
+} from '../../../modules/driver/lib/driver-api';
+import { buildDriverDocumentFileName } from '../../../modules/driver/lib/driver-document-file';
+import {
+  getDriverLicenseStatusLabel,
+  getDriverLicenseStatusTone,
+  getDriverStatusLabel,
+  getDriverStatusTone,
+} from '../../../modules/driver/lib/driver-status';
+import type {
+  DriverDocumentType,
+  ReviewableDriverApplicationRecord,
+} from '../../../modules/driver/types/driver';
 import {
   downloadReportEvidence,
   listReviewableReports,
@@ -41,19 +53,6 @@ import {
 } from '../../../modules/reports/lib/report-labels';
 import type { ReportRecord } from '../../../modules/reports/types/report';
 import {
-  downloadDriverApplicationDocument,
-  listReviewableDriverApplications,
-  reviewDriverApplication,
-} from '../../../modules/driver/lib/driver-api';
-import { buildDriverDocumentFileName } from '../../../modules/driver/lib/driver-document-file';
-import {
-  getDriverLicenseStatusLabel,
-  getDriverLicenseStatusTone,
-  getDriverStatusLabel,
-  getDriverStatusTone,
-} from '../../../modules/driver/lib/driver-status';
-import type { ReviewableDriverApplicationRecord } from '../../../modules/driver/types/driver';
-import {
   liftOperationalSanction,
   listReviewableActiveSanctions,
   listReviewableSanctionAppeals,
@@ -69,43 +68,43 @@ import type {
   OperationalSanctionAppealRecord,
   ReviewableOperationalSanctionRecord,
 } from '../../../modules/sanctions/types/sanction';
-import { Button } from '../../../components/ui/button';
-import { FilePreviewModal } from '../../../components/ui/file-preview-modal';
-import { InputField } from '../../../components/ui/input-field';
-import { SelectField } from '../../../components/ui/select-field';
-import { StatusPill } from '../../../components/ui/status-pill';
-import { TextareaField } from '../../../components/ui/textarea-field';
-import { downloadBlobFile, getFileExtensionFromMimeType } from '../../../lib/blob-file';
-import { ApiError } from '../../../lib/api-client';
 import {
   getOperationalSanctionScopeLabel,
   getOperationalSanctionTone,
   getOperationalSanctionTypeLabel,
 } from '../../../modules/users/lib/trust-labels';
-import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
+import {
+  DriverDocumentPreviewState,
+  ModerationModals,
+  ReportEvidencePreviewState,
+} from './components/moderation-modals';
+import {
+  getWorkspaceHeadline,
+  InlineIcon,
+  ModerationWorkspaceSection,
+  PaginationBar,
+  StatChip,
+} from './components/moderation-support';
 import styles from './page.module.css';
 
-const EMPTY_AUDIT_FILTERS: AuditFilters = {
-  institutionId: undefined,
-  action: undefined,
-  entityType: undefined,
-  from: undefined,
-  to: undefined,
-  limit: '50',
+const INITIAL_PAGES: Record<ModerationWorkspaceSection, number> = {
+  driver: 1,
+  reports: 1,
+  sanctions: 1,
+  appeals: 1,
 };
 
-function toIsoDateTime(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
+const PAGE_SIZES: Record<ModerationWorkspaceSection, number> = {
+  driver: 6,
+  reports: 5,
+  sanctions: 5,
+  appeals: 5,
+};
 
-  const parsedDate = new Date(value);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return undefined;
-  }
-
-  return parsedDate.toISOString();
+function isModerationWorkspaceSection(
+  value: string | null,
+): value is ModerationWorkspaceSection {
+  return value === 'driver' || value === 'reports' || value === 'sanctions' || value === 'appeals';
 }
 
 function formatDateTime(value: string): string {
@@ -134,8 +133,7 @@ function formatRelativeElapsed(value: string): string {
     return `${elapsedHours} h`;
   }
 
-  const elapsedDays = Math.floor(elapsedHours / 24);
-  return `${elapsedDays} d`;
+  return `${Math.floor(elapsedHours / 24)} d`;
 }
 
 function getOperationalSanctionTriggerLabel(trigger: OperationalSanctionTrigger): string {
@@ -153,341 +151,6 @@ function getOperationalSanctionTriggerLabel(trigger: OperationalSanctionTrigger)
   }
 }
 
-type AuditOutcomeTone = 'neutral' | 'warning' | 'danger' | 'success';
-
-type AuditOutcomeSummary = {
-  label: string;
-  note: string;
-  tone: AuditOutcomeTone;
-};
-
-function deriveReportOutcomeSummary(input: {
-  report: ReportRecord;
-  reportTriggeredSanctionsCount: number;
-  pendingAppealsCount: number;
-  totalRelatedSanctionsCount: number;
-}): AuditOutcomeSummary {
-  if (input.report.status === ReportStatus.Pending) {
-    return {
-      label: 'Sin decision aun',
-      note: 'El caso todavia no genera una consecuencia operativa final.',
-      tone: 'neutral',
-    };
-  }
-
-  if (input.report.status === ReportStatus.UnderReview) {
-    return {
-      label: 'Decision en curso',
-      note: 'La consecuencia operativa final depende del cierre administrativo.',
-      tone: 'warning',
-    };
-  }
-
-  if (input.report.status === ReportStatus.Dismissed) {
-    return {
-      label: 'Sin impacto disciplinario',
-      note: 'El reporte fue cerrado sin sostener una accion disciplinaria visible.',
-      tone: 'success',
-    };
-  }
-
-  if (input.pendingAppealsCount > 0) {
-    return {
-      label: 'Frente de apelacion abierto',
-      note: 'La resolucion ya derivo en sancion y hoy tiene revision pendiente.',
-      tone: 'warning',
-    };
-  }
-
-  if (input.reportTriggeredSanctionsCount > 0) {
-    return {
-      label: 'Sancion activa derivada',
-      note: 'El cierre del reporte ya se refleja en restricciones operativas activas.',
-      tone: 'danger',
-    };
-  }
-
-  if (input.totalRelatedSanctionsCount > 0) {
-    return {
-      label: 'Impacto disciplinario visible',
-      note: 'Existen sanciones activas sobre la misma persona dentro de la vista actual.',
-      tone: 'warning',
-    };
-  }
-
-  return {
-    label: 'Resuelto sin sancion visible',
-    note: 'El caso quedo cerrado y no muestra una restriccion activa en esta bandeja.',
-    tone: 'success',
-  };
-}
-
-function deriveSanctionOutcomeSummary(
-  sanction: ReviewableOperationalSanctionRecord,
-  pendingAppealsCount: number,
-): AuditOutcomeSummary {
-  if (pendingAppealsCount > 0) {
-    return {
-      label: 'Sancion bajo apelacion',
-      note: 'La restriccion sigue vigente mientras exista una apelacion pendiente.',
-      tone: 'warning',
-    };
-  }
-
-  if (sanction.type === OperationalSanctionType.Warning) {
-    return {
-      label: 'Observacion activa',
-      note: 'Genera antecedente visible sin bloquear operacion completa.',
-      tone: 'neutral',
-    };
-  }
-
-  if (sanction.scope === OperationalSanctionScope.All) {
-    return {
-      label: 'Bloqueo de movilidad',
-      note: 'Impacta tanto la operacion como pasajero y como conductor.',
-      tone: 'danger',
-    };
-  }
-
-  if (sanction.scope === OperationalSanctionScope.Driver) {
-    return {
-      label: 'Restriccion de conductor',
-      note: 'Afecta la publicacion y ejecucion de viajes como conductor.',
-      tone: 'danger',
-    };
-  }
-
-  return {
-    label: 'Restriccion de pasajero',
-    note: 'Afecta solicitudes y operacion desde el rol de pasajero.',
-    tone: 'warning',
-  };
-}
-
-function deriveAppealOutcomeSummary(
-  appeal: OperationalSanctionAppealRecord,
-): AuditOutcomeSummary {
-  if (appeal.status === OperationalSanctionAppealStatus.Pending) {
-    return {
-      label: 'Sancion sigue vigente',
-      note: 'La apelacion aun no cambia el efecto operativo actual.',
-      tone: 'warning',
-    };
-  }
-
-  if (appeal.status === OperationalSanctionAppealStatus.Approved) {
-    return {
-      label: 'Revision favorable',
-      note: 'Confirma el caso a favor del usuario; revisa el estado final de la sancion.',
-      tone: 'success',
-    };
-  }
-
-  return {
-    label: 'Sancion confirmada',
-    note: 'La revision administrativa mantiene el frente disciplinario original.',
-    tone: 'danger',
-  };
-}
-
-type MetadataEntry = {
-  key: string;
-  value: string;
-};
-
-function formatMetadataValue(value: unknown): string {
-  if (value === null || value === undefined) {
-    return 'No disponible';
-  }
-
-  if (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    typeof value === 'bigint'
-  ) {
-    return String(value);
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return 'Sin elementos';
-    }
-
-    const preview = value
-      .slice(0, 3)
-      .map((item) => formatMetadataValue(item))
-      .join(', ');
-
-    return value.length > 3 ? `${preview} (+${value.length - 3})` : preview;
-  }
-
-  if (typeof value === 'object') {
-    const keys = Object.keys(value as Record<string, unknown>);
-    return keys.length ? `Objeto con ${keys.length} campos` : 'Objeto vacio';
-  }
-
-  return String(value);
-}
-
-function extractMetadataEntries(metadata: Record<string, unknown> | null): MetadataEntry[] {
-  if (!metadata) {
-    return [];
-  }
-
-  const entries: MetadataEntry[] = [];
-
-  const walkObject = (
-    objectValue: Record<string, unknown>,
-    parentKey = '',
-    depth = 0,
-  ) => {
-    Object.entries(objectValue).forEach(([key, value]) => {
-      const fullKey = parentKey ? `${parentKey}.${key}` : key;
-      const canWalkNestedObject =
-        value !== null &&
-        typeof value === 'object' &&
-        !Array.isArray(value) &&
-        depth < 1;
-
-      if (canWalkNestedObject) {
-        walkObject(value as Record<string, unknown>, fullKey, depth + 1);
-        return;
-      }
-
-      entries.push({
-        key: fullKey,
-        value: formatMetadataValue(value),
-      });
-    });
-  };
-
-  walkObject(metadata);
-  return entries;
-}
-
-type DriverDocumentPreviewState = {
-  membershipId: string;
-  documentType: 'identity' | 'license';
-  fileName: string;
-  fileUrl: string;
-  mimeType: string;
-  title: string;
-};
-
-type ReportEvidencePreviewState = {
-  reportId: string;
-  fileName: string;
-  fileUrl: string;
-  mimeType: string;
-  title: string;
-};
-
-type AuditWorkspaceSection =
-  | 'driver'
-  | 'events'
-  | 'reports'
-  | 'sanctions'
-  | 'appeals';
-
-function isAuditWorkspaceSection(value: string | null): value is AuditWorkspaceSection {
-  return value === 'driver' ||
-    value === 'events' ||
-    value === 'reports' ||
-    value === 'sanctions' ||
-    value === 'appeals';
-}
-
-function getWorkspaceHeadline(workspace: AuditWorkspaceSection): {
-  title: string;
-  subtitle: string;
-} {
-  switch (workspace) {
-    case 'driver':
-      return {
-        title: 'Aprobacion de conductores',
-        subtitle: 'Revisa documentos, valida habilitaciones y toma decisiones administrativas sin mezclarlo con operacion diaria.',
-      };
-    case 'reports':
-      return {
-        title: 'Bandeja de reportes',
-        subtitle: 'Prioriza incidentes, registra el criterio administrativo y deja trazabilidad clara en cada cierre.',
-      };
-    case 'sanctions':
-      return {
-        title: 'Sanciones activas',
-        subtitle: 'Controla restricciones vigentes y documenta levantamientos cuando correspondan.',
-      };
-    case 'appeals':
-      return {
-        title: 'Apelaciones pendientes',
-        subtitle: 'Resuelve revisiones disciplinarias con contexto suficiente y criterio consistente.',
-      };
-    case 'events':
-      return {
-        title: 'Trazabilidad y eventos',
-        subtitle: 'Consulta los movimientos administrativos y del sistema dentro del alcance institucional actual.',
-      };
-    default:
-      return {
-        title: 'Centro de moderacion',
-        subtitle: 'Gestion administrativa de conductores, reportes, sanciones y apelaciones.',
-      };
-  }
-}
-
-type AuditWorkspaceHeroProps = {
-  title: string;
-  subtitle: string;
-  actions?: ReactNode;
-};
-
-function AuditWorkspaceHero({
-  title,
-  subtitle,
-  actions,
-}: AuditWorkspaceHeroProps) {
-  return (
-    <section className="audit-section-command">
-      <div className="audit-section-copy">
-        <h2 className="audit-section-title">{title}</h2>
-        <p className="audit-section-subtitle">{subtitle}</p>
-      </div>
-      {actions ? <div className="audit-section-actions">{actions}</div> : null}
-    </section>
-  );
-}
-
-type AuditMiniStatProps = {
-  label: string;
-  value: string | number;
-  note: string;
-  tone?: 'neutral' | 'warning' | 'danger' | 'success';
-};
-
-function AuditMiniStat({
-  label,
-  value,
-  note,
-  tone = 'neutral',
-}: AuditMiniStatProps) {
-  return (
-    <article
-      className={[
-        'audit-mini-stat',
-        tone !== 'neutral' ? `audit-mini-stat-${tone}` : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
-    >
-      <span className="audit-mini-stat-label">{label}</span>
-      <strong className="audit-mini-stat-value">{value}</strong>
-      <p className="audit-mini-stat-note">{note}</p>
-    </article>
-  );
-}
-
 function buildReportEvidenceFileName(report: ReportRecord, mimeType: string): string {
   const safeName = report.reportedFullName
     .toLowerCase()
@@ -497,9 +160,7 @@ function buildReportEvidenceFileName(report: ReportRecord, mimeType: string): st
     .replace(/^-+|-+$/g, '')
     .slice(0, 40);
 
-  const extension = getFileExtensionFromMimeType(mimeType);
-
-  return `reporte-${safeName || 'evidencia'}-${report.id.slice(0, 8)}.${extension}`;
+  return `reporte-${safeName || 'evidencia'}-${report.id.slice(0, 8)}.${getFileExtensionFromMimeType(mimeType)}`;
 }
 
 function getReportPriorityRank(report: ReportRecord): number {
@@ -528,11 +189,11 @@ function getReportPriorityRank(report: ReportRecord): number {
   return 5;
 }
 
-export default function AuditPage() {
+export default function ModerationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { authSession, isHydrated, refreshSession } = useAuth();
-  const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
+
   const [reviewableReports, setReviewableReports] = useState<ReportRecord[]>([]);
   const [reviewableDriverApplications, setReviewableDriverApplications] = useState<
     ReviewableDriverApplicationRecord[]
@@ -543,44 +204,50 @@ export default function AuditPage() {
   const [reviewableAppeals, setReviewableAppeals] = useState<
     OperationalSanctionAppealRecord[]
   >([]);
-  const [auditFilterValues, setAuditFilterValues] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
-  const [appliedAuditFilters, setAppliedAuditFilters] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
-  const [reportStatusFilter, setReportStatusFilter] = useState<string>('');
-  const [driverApplicationStatusFilter, setDriverApplicationStatusFilter] = useState<string>('');
+  const [institutionId, setInstitutionId] = useState('');
+  const [reportStatusFilter, setReportStatusFilter] = useState('');
+  const [driverApplicationStatusFilter, setDriverApplicationStatusFilter] = useState('');
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [driverReviewNotes, setDriverReviewNotes] = useState<Record<string, string>>({});
   const [appealReviewNotes, setAppealReviewNotes] = useState<Record<string, string>>({});
   const [sanctionLiftNotes, setSanctionLiftNotes] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [isReviewingReportId, setIsReviewingReportId] = useState<string | null>(null);
-  const [isReviewingDriverMembershipId, setIsReviewingDriverMembershipId] = useState<string | null>(null);
-  const [isDownloadingDriverDocumentKey, setIsDownloadingDriverDocumentKey] = useState<string | null>(null);
-  const [isOpeningDriverDocumentKey, setIsOpeningDriverDocumentKey] = useState<string | null>(null);
+  const [isReviewingDriverMembershipId, setIsReviewingDriverMembershipId] =
+    useState<string | null>(null);
+  const [isDownloadingDriverDocumentKey, setIsDownloadingDriverDocumentKey] =
+    useState<string | null>(null);
+  const [isOpeningDriverDocumentKey, setIsOpeningDriverDocumentKey] =
+    useState<string | null>(null);
   const [isReviewingAppealId, setIsReviewingAppealId] = useState<string | null>(null);
   const [isLiftingSanctionId, setIsLiftingSanctionId] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [driverDocumentPreview, setDriverDocumentPreview] =
     useState<DriverDocumentPreviewState | null>(null);
-  const [driverDocumentPreviewError, setDriverDocumentPreviewError] = useState<string | null>(
-    null,
-  );
+  const [driverDocumentPreviewError, setDriverDocumentPreviewError] =
+    useState<string | null>(null);
   const [reportEvidencePreview, setReportEvidencePreview] =
     useState<ReportEvidencePreviewState | null>(null);
-  const [reportEvidencePreviewError, setReportEvidencePreviewError] = useState<string | null>(
-    null,
-  );
-  const [isOpeningReportEvidenceId, setIsOpeningReportEvidenceId] = useState<string | null>(null);
+  const [reportEvidencePreviewError, setReportEvidencePreviewError] =
+    useState<string | null>(null);
+  const [isOpeningReportEvidenceId, setIsOpeningReportEvidenceId] =
+    useState<string | null>(null);
   const [isDownloadingReportEvidenceId, setIsDownloadingReportEvidenceId] =
     useState<string | null>(null);
   const [highlightedReportId, setHighlightedReportId] = useState<string | null>(null);
   const [highlightedMembershipId, setHighlightedMembershipId] = useState<string | null>(null);
   const [highlightedSanctionId, setHighlightedSanctionId] = useState<string | null>(null);
   const [activeWorkspace, setActiveWorkspace] =
-    useState<AuditWorkspaceSection>('driver');
-  const [expandedAuditEventIds, setExpandedAuditEventIds] = useState<Record<string, boolean>>({});
+    useState<ModerationWorkspaceSection>('driver');
+  const [pageByWorkspace, setPageByWorkspace] =
+    useState<Record<ModerationWorkspaceSection, number>>(INITIAL_PAGES);
+  const [activeDriverApplication, setActiveDriverApplication] =
+    useState<ReviewableDriverApplicationRecord | null>(null);
+  const [activeReport, setActiveReport] = useState<ReportRecord | null>(null);
+  const [activeSanction, setActiveSanction] =
+    useState<ReviewableOperationalSanctionRecord | null>(null);
+  const [activeAppeal, setActiveAppeal] =
+    useState<OperationalSanctionAppealRecord | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const adminMemberships = useMemo(
@@ -595,11 +262,14 @@ export default function AuditPage() {
 
   const canAccessAdminView = Boolean(
     authSession &&
-      (
-        authSession.user.globalRole === GlobalUserRole.SuperAdmin ||
-        adminMemberships.length > 0
-      ),
+      (authSession.user.globalRole === GlobalUserRole.SuperAdmin ||
+        adminMemberships.length > 0),
   );
+
+  const institutionOptions = adminMemberships.map((membership) => ({
+    id: membership.institutionId,
+    name: membership.institutionName,
+  }));
 
   const pushToast = (
     title: string,
@@ -609,7 +279,7 @@ export default function AuditPage() {
     setToasts((currentToasts) => [
       ...currentToasts,
       {
-        id: `audit-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        id: `moderation-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         title,
         description,
         tone,
@@ -621,35 +291,29 @@ export default function AuditPage() {
     setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== toastId));
   };
 
-  const loadData = async (
-    accessToken: string,
-    filters: AuditFilters,
-    nextReportStatusFilter: string,
-    nextDriverApplicationStatusFilter: string,
-  ) => {
-    const [auditItems, reportItems, driverApplicationItems, sanctionItems, appealItems] = await Promise.all([
-      listAuditEvents(accessToken, filters),
-      listReviewableReports(accessToken, {
-        institutionId: filters.institutionId,
-        status: nextReportStatusFilter ? nextReportStatusFilter as ReportStatus : undefined,
-        limit: 25,
-      }),
-      listReviewableDriverApplications(accessToken, {
-        institutionId: filters.institutionId,
-        status: nextDriverApplicationStatusFilter,
-        limit: 25,
-      }),
-      listReviewableActiveSanctions(accessToken, {
-        institutionId: filters.institutionId,
-        limit: 25,
-      }),
-      listReviewableSanctionAppeals(accessToken, {
-        institutionId: filters.institutionId,
-        limit: 25,
-      }),
-    ]);
+  const loadData = async (accessToken: string) => {
+    const [reportItems, driverApplicationItems, sanctionItems, appealItems] =
+      await Promise.all([
+        listReviewableReports(accessToken, {
+          institutionId: institutionId || undefined,
+          status: reportStatusFilter ? (reportStatusFilter as ReportStatus) : undefined,
+          limit: 40,
+        }),
+        listReviewableDriverApplications(accessToken, {
+          institutionId: institutionId || undefined,
+          status: driverApplicationStatusFilter || undefined,
+          limit: 40,
+        }),
+        listReviewableActiveSanctions(accessToken, {
+          institutionId: institutionId || undefined,
+          limit: 40,
+        }),
+        listReviewableSanctionAppeals(accessToken, {
+          institutionId: institutionId || undefined,
+          limit: 40,
+        }),
+      ]);
 
-    setAuditEvents(auditItems);
     setReviewableReports(reportItems);
     setReviewableDriverApplications(driverApplicationItems);
     setReviewableSanctions(sanctionItems);
@@ -666,19 +330,20 @@ export default function AuditPage() {
     }
 
     try {
-      await loadData(
-        authSession.accessToken,
-        appliedAuditFilters,
-        reportStatusFilter,
-        driverApplicationStatusFilter,
-      );
+      await loadData(authSession.accessToken);
+
+      if (showSpinner) {
+        pushToast('Moderacion actualizada', 'Las bandejas administrativas ya estan al dia.', 'success');
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      setErrorMessage(
-        getApiErrorMessage(error, 'No fue posible sincronizar la bandeja de moderacion.'),
+      pushToast(
+        'No se pudo actualizar',
+        getApiErrorMessage(error, 'No fue posible sincronizar la moderacion.'),
+        'error',
       );
     } finally {
       if (showSpinner) {
@@ -692,11 +357,7 @@ export default function AuditPage() {
       return;
     }
 
-    if (!authSession) {
-      return;
-    }
-
-    if (!canAccessAdminView) {
+    if (!authSession || !canAccessAdminView) {
       setIsLoading(false);
       return;
     }
@@ -705,15 +366,9 @@ export default function AuditPage() {
 
     const initialize = async () => {
       setIsLoading(true);
-      setErrorMessage(null);
 
       try {
-        await loadData(
-          authSession.accessToken,
-          appliedAuditFilters,
-          reportStatusFilter,
-          driverApplicationStatusFilter,
-        );
+        await loadData(authSession.accessToken);
       } catch (error) {
         if (!isMounted) {
           return;
@@ -723,10 +378,10 @@ export default function AuditPage() {
           await refreshSession().catch(() => undefined);
         }
 
-        setErrorMessage(
-          error instanceof ApiError
-            ? error.message
-            : 'No fue posible cargar la bandeja de moderacion.',
+        pushToast(
+          'No se pudo cargar',
+          getApiErrorMessage(error, 'No fue posible cargar las bandejas de moderacion.'),
+          'error',
         );
       } finally {
         if (isMounted) {
@@ -741,11 +396,12 @@ export default function AuditPage() {
       isMounted = false;
     };
   }, [
-    appliedAuditFilters,
     authSession,
     canAccessAdminView,
     driverApplicationStatusFilter,
+    institutionId,
     isHydrated,
+    refreshSession,
     reportStatusFilter,
   ]);
 
@@ -755,112 +411,71 @@ export default function AuditPage() {
     },
     {
       enabled: Boolean(authSession && isHydrated && canAccessAdminView),
-      intervalMs: 20_000,
+      intervalMs: 25_000,
     },
   );
 
   useEffect(() => {
     const requestedSection = searchParams.get('section');
+    const membershipId = searchParams.get('membershipId');
+    const reportId = searchParams.get('reportId');
+    const sanctionId = searchParams.get('sanctionId');
 
-    if (!isAuditWorkspaceSection(requestedSection) || requestedSection === activeWorkspace) {
-      return;
+    if (isModerationWorkspaceSection(requestedSection)) {
+      setActiveWorkspace(requestedSection);
     }
 
-    setActiveWorkspace(requestedSection);
-  }, [activeWorkspace, searchParams]);
-
-  useEffect(() => {
-    if (!errorMessage) {
-      return;
-    }
-
-    pushToast('No se pudo completar la accion', errorMessage, 'error');
-    setErrorMessage(null);
-  }, [errorMessage]);
-
-  useEffect(() => {
-    if (!successMessage) {
-      return;
-    }
-
-    pushToast('Accion completada', successMessage, 'success');
-    setSuccessMessage(null);
-  }, [successMessage]);
+    setHighlightedMembershipId(membershipId);
+    setHighlightedReportId(reportId);
+    setHighlightedSanctionId(sanctionId);
+  }, [searchParams]);
 
   useEffect(() => {
     return () => {
       if (driverDocumentPreview?.fileUrl) {
         URL.revokeObjectURL(driverDocumentPreview.fileUrl);
       }
+      if (reportEvidencePreview?.fileUrl) {
+        URL.revokeObjectURL(reportEvidencePreview.fileUrl);
+      }
     };
-  }, [driverDocumentPreview]);
+  }, [driverDocumentPreview, reportEvidencePreview]);
 
-  const handleFilterChange = (field: keyof AuditFilters, value: string) => {
-    setAuditFilterValues((currentFilters) => ({
-      ...currentFilters,
-      [field]: value === '' ? undefined : value,
-    }));
-  };
+  const openWorkspace = (workspace: ModerationWorkspaceSection, extras?: Record<string, string>) => {
+    setActiveWorkspace(workspace);
+    setPageByWorkspace((current) => ({ ...current, [workspace]: 1 }));
 
-  const handleApplyFilters = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsApplyingFilters(true);
-    setErrorMessage(null);
+    const params = new URLSearchParams();
+    params.set('section', workspace);
 
-    try {
-      setAppliedAuditFilters({
-        institutionId: auditFilterValues.institutionId,
-        action: auditFilterValues.action,
-        entityType: auditFilterValues.entityType,
-        from: toIsoDateTime(auditFilterValues.from),
-        to: toIsoDateTime(auditFilterValues.to),
-        limit: auditFilterValues.limit ?? '50',
-      });
-    } finally {
-      setIsApplyingFilters(false);
+    if (extras) {
+      Object.entries(extras).forEach(([key, value]) => params.set(key, value));
     }
+
+    router.replace(`/moderacion?${params.toString()}`, { scroll: false });
   };
 
   const handleResetFilters = () => {
-    setAuditFilterValues(EMPTY_AUDIT_FILTERS);
-    setAppliedAuditFilters(EMPTY_AUDIT_FILTERS);
+    setInstitutionId('');
     setReportStatusFilter('');
     setDriverApplicationStatusFilter('');
+    setPageByWorkspace(INITIAL_PAGES);
   };
 
   const handleReviewNoteChange = (reportId: string, value: string) => {
-    setReviewNotes((currentNotes) => ({
-      ...currentNotes,
-      [reportId]: value,
-    }));
-  };
-
-  const handleAppealReviewNoteChange = (appealId: string, value: string) => {
-    setAppealReviewNotes((currentNotes) => ({
-      ...currentNotes,
-      [appealId]: value,
-    }));
-  };
-
-  const handleSanctionLiftNoteChange = (sanctionId: string, value: string) => {
-    setSanctionLiftNotes((currentNotes) => ({
-      ...currentNotes,
-      [sanctionId]: value,
-    }));
+    setReviewNotes((current) => ({ ...current, [reportId]: value }));
   };
 
   const handleDriverReviewNoteChange = (membershipId: string, value: string) => {
-    setDriverReviewNotes((currentNotes) => ({
-      ...currentNotes,
-      [membershipId]: value,
-    }));
+    setDriverReviewNotes((current) => ({ ...current, [membershipId]: value }));
   };
 
-  const toggleAuditEventExpanded = (eventId: string) => {
-    setExpandedAuditEventIds((currentMap) => ({
-      ...currentMap,
-      [eventId]: !currentMap[eventId],
-    }));
+  const handleAppealReviewNoteChange = (appealId: string, value: string) => {
+    setAppealReviewNotes((current) => ({ ...current, [appealId]: value }));
+  };
+
+  const handleSanctionLiftNoteChange = (sanctionId: string, value: string) => {
+    setSanctionLiftNotes((current) => ({ ...current, [sanctionId]: value }));
   };
 
   const handleReviewReport = async (reportId: string, status: ReportStatus) => {
@@ -868,44 +483,34 @@ export default function AuditPage() {
       return;
     }
 
-    const reviewNote = reviewNotes[reportId]?.trim();
+    const note = reviewNotes[reportId]?.trim();
 
-    if (
-      (status === ReportStatus.Resolved || status === ReportStatus.Dismissed) &&
-      !reviewNote
-    ) {
-      setErrorMessage('Debes indicar una nota administrativa antes de cerrar el reporte.');
+    if (status !== ReportStatus.UnderReview && !note) {
+      pushToast('Falta una nota', 'Debes indicar una nota administrativa antes de cerrar el reporte.', 'info');
       return;
     }
 
     setIsReviewingReportId(reportId);
-    setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
       const response = await reviewReport(authSession.accessToken, reportId, {
         status,
-        reviewNote,
+        reviewNote: note || undefined,
       });
 
-      await loadData(
-        authSession.accessToken,
-        appliedAuditFilters,
-        reportStatusFilter,
-        driverApplicationStatusFilter,
-      );
-      setSuccessMessage(response.message);
-      setReviewNotes((currentNotes) => ({
-        ...currentNotes,
-        [reportId]: '',
-      }));
+      await loadData(authSession.accessToken);
+      pushToast('Reporte actualizado', response.message, 'success');
+      setActiveReport((current) => (current?.id === reportId ? null : current));
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      setErrorMessage(getApiErrorMessage(error, 'No fue posible actualizar el reporte.'));
-      await refreshData();
+      pushToast(
+        'No se pudo actualizar',
+        getApiErrorMessage(error, 'No fue posible actualizar el reporte.'),
+        'error',
+      );
     } finally {
       setIsReviewingReportId(null);
     }
@@ -919,248 +524,36 @@ export default function AuditPage() {
       return;
     }
 
-    const reviewNote = driverReviewNotes[membershipId]?.trim();
+    const reviewNotes = driverReviewNotes[membershipId]?.trim();
 
-    if (decision === DriverVerificationStatus.Rejected && !reviewNote) {
-      setErrorMessage(
-        'Debes indicar una nota administrativa antes de rechazar la solicitud de conductor.',
-      );
+    if (decision === DriverVerificationStatus.Rejected && !reviewNotes) {
+      pushToast('Falta una nota', 'Debes indicar la razon del rechazo.', 'info');
       return;
     }
 
     setIsReviewingDriverMembershipId(membershipId);
-    setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
-      const response = await reviewDriverApplication(
-        authSession.accessToken,
-        membershipId,
-        {
-          decision,
-          reviewNotes: reviewNote,
-        },
-      );
+      const response = await reviewDriverApplication(authSession.accessToken, membershipId, {
+        decision,
+        reviewNotes: reviewNotes || undefined,
+      });
 
-      await loadData(
-        authSession.accessToken,
-        appliedAuditFilters,
-        reportStatusFilter,
-        driverApplicationStatusFilter,
-      );
-      setSuccessMessage(response.message);
-      setDriverReviewNotes((currentNotes) => ({
-        ...currentNotes,
-        [membershipId]: '',
-      }));
+      await loadData(authSession.accessToken);
+      pushToast('Solicitud actualizada', response.message, 'success');
+      setActiveDriverApplication((current) => (current?.membershipId === membershipId ? null : current));
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      setErrorMessage(
-        getApiErrorMessage(error, 'No fue posible revisar la solicitud de conductor.'),
+      pushToast(
+        'No se pudo revisar',
+        getApiErrorMessage(error, 'No fue posible revisar la solicitud.'),
+        'error',
       );
-      await refreshData();
     } finally {
       setIsReviewingDriverMembershipId(null);
-    }
-  };
-
-  const resetDriverDocumentPreview = () => {
-    setDriverDocumentPreviewError(null);
-    setDriverDocumentPreview((currentPreview) => {
-      if (currentPreview?.fileUrl) {
-        URL.revokeObjectURL(currentPreview.fileUrl);
-      }
-
-      return null;
-    });
-  };
-
-  const fetchDriverDocument = async (
-    membershipId: string,
-    documentType: 'identity' | 'license',
-    userFullName: string,
-  ) => {
-    if (!authSession) {
-      throw new ApiError('No fue posible autenticar la descarga del documento.', 401);
-    }
-
-    const blob = await downloadDriverApplicationDocument(
-      authSession.accessToken,
-      membershipId,
-      documentType,
-    );
-
-    return {
-      blob,
-      fileName: buildDriverDocumentFileName(documentType, userFullName, blob.type),
-      title:
-        documentType === 'identity'
-          ? 'Documento de identidad'
-          : 'Documento de licencia',
-    };
-  };
-
-  const handleOpenDriverDocumentPreview = async (
-    membershipId: string,
-    documentType: 'identity' | 'license',
-    userFullName: string,
-  ) => {
-    if (!authSession) {
-      return;
-    }
-
-    const previewKey = `${membershipId}-${documentType}`;
-    setIsOpeningDriverDocumentKey(previewKey);
-    setErrorMessage(null);
-    setDriverDocumentPreviewError(null);
-
-    try {
-      const { blob, fileName, title } = await fetchDriverDocument(
-        membershipId,
-        documentType,
-        userFullName,
-      );
-      const objectUrl = URL.createObjectURL(blob);
-
-      setDriverDocumentPreview((currentPreview) => {
-        if (currentPreview?.fileUrl) {
-          URL.revokeObjectURL(currentPreview.fileUrl);
-        }
-
-        return {
-          membershipId,
-          documentType,
-          fileName,
-          fileUrl: objectUrl,
-          mimeType: blob.type,
-          title,
-        };
-      });
-    } catch (error) {
-      setDriverDocumentPreviewError(
-        getApiErrorMessage(
-          error,
-          'No fue posible abrir la previsualizacion del documento del conductor.',
-        ),
-      );
-    } finally {
-      setIsOpeningDriverDocumentKey(null);
-    }
-  };
-
-  const handleDownloadDriverDocument = async (
-    membershipId: string,
-    documentType: 'identity' | 'license',
-    userFullName: string,
-  ) => {
-    if (!authSession) {
-      return;
-    }
-
-    const downloadKey = `${membershipId}-${documentType}`;
-    setIsDownloadingDriverDocumentKey(downloadKey);
-    setErrorMessage(null);
-
-    try {
-      const { blob, fileName } = await fetchDriverDocument(
-        membershipId,
-        documentType,
-        userFullName,
-      );
-
-      downloadBlobFile(blob, fileName);
-    } catch (error) {
-      setErrorMessage(
-        getApiErrorMessage(error, 'No fue posible descargar el documento del conductor.'),
-      );
-    } finally {
-      setIsDownloadingDriverDocumentKey(null);
-    }
-  };
-
-  const resetReportEvidencePreview = () => {
-    setReportEvidencePreviewError(null);
-    setReportEvidencePreview((currentPreview) => {
-      if (currentPreview?.fileUrl) {
-        URL.revokeObjectURL(currentPreview.fileUrl);
-      }
-
-      return null;
-    });
-  };
-
-  const fetchReportEvidence = async (report: ReportRecord) => {
-    if (!authSession) {
-      throw new ApiError('No fue posible autenticar la descarga de la evidencia.', 401);
-    }
-
-    const blob = await downloadReportEvidence(authSession.accessToken, report.id);
-
-    return {
-      blob,
-      fileName: buildReportEvidenceFileName(report, blob.type),
-      title: `Evidencia del reporte de ${report.reportedFullName}`,
-    };
-  };
-
-  const handleOpenReportEvidencePreview = async (report: ReportRecord) => {
-    if (!authSession || !report.evidenceFileKey) {
-      return;
-    }
-
-    setIsOpeningReportEvidenceId(report.id);
-    setErrorMessage(null);
-    setReportEvidencePreviewError(null);
-
-    try {
-      const { blob, fileName, title } = await fetchReportEvidence(report);
-      const objectUrl = URL.createObjectURL(blob);
-
-      setReportEvidencePreview((currentPreview) => {
-        if (currentPreview?.fileUrl) {
-          URL.revokeObjectURL(currentPreview.fileUrl);
-        }
-
-        return {
-          reportId: report.id,
-          fileName,
-          fileUrl: objectUrl,
-          mimeType: blob.type,
-          title,
-        };
-      });
-    } catch (error) {
-      setReportEvidencePreviewError(
-        getApiErrorMessage(
-          error,
-          'No fue posible abrir la previsualizacion de la evidencia del reporte.',
-        ),
-      );
-    } finally {
-      setIsOpeningReportEvidenceId(null);
-    }
-  };
-
-  const handleDownloadReportEvidence = async (report: ReportRecord) => {
-    if (!authSession || !report.evidenceFileKey) {
-      return;
-    }
-
-    setIsDownloadingReportEvidenceId(report.id);
-    setErrorMessage(null);
-
-    try {
-      const { blob, fileName } = await fetchReportEvidence(report);
-      downloadBlobFile(blob, fileName);
-    } catch (error) {
-      setErrorMessage(
-        getApiErrorMessage(error, 'No fue posible descargar la evidencia del reporte.'),
-      );
-    } finally {
-      setIsDownloadingReportEvidenceId(null);
     }
   };
 
@@ -1174,19 +567,16 @@ export default function AuditPage() {
 
     const reviewNote = appealReviewNotes[appealId]?.trim();
 
-    if (
-      !reviewNote ||
-      reviewNote.length < SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
-    ) {
-      setErrorMessage(
-        `Debes indicar una nota administrativa de al menos ${SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH} caracteres para revisar la apelacion.`,
+    if ((reviewNote?.length ?? 0) < SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH) {
+      pushToast(
+        'Falta una nota',
+        `La nota debe tener al menos ${SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH} caracteres.`,
+        'info',
       );
       return;
     }
 
     setIsReviewingAppealId(appealId);
-    setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
       const response = await reviewSanctionAppeal(authSession.accessToken, appealId, {
@@ -1194,24 +584,19 @@ export default function AuditPage() {
         reviewNote,
       });
 
-      await loadData(
-        authSession.accessToken,
-        appliedAuditFilters,
-        reportStatusFilter,
-        driverApplicationStatusFilter,
-      );
-      setSuccessMessage(response.message);
-      setAppealReviewNotes((currentNotes) => ({
-        ...currentNotes,
-        [appealId]: '',
-      }));
+      await loadData(authSession.accessToken);
+      pushToast('Apelacion actualizada', response.message, 'success');
+      setActiveAppeal((current) => (current?.id === appealId ? null : current));
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      setErrorMessage(getApiErrorMessage(error, 'No fue posible revisar la apelacion.'));
-      await refreshData();
+      pushToast(
+        'No se pudo revisar',
+        getApiErrorMessage(error, 'No fue posible revisar la apelacion.'),
+        'error',
+      );
     } finally {
       setIsReviewingAppealId(null);
     }
@@ -1224,187 +609,278 @@ export default function AuditPage() {
 
     const reviewNote = sanctionLiftNotes[sanctionId]?.trim();
 
-    if (
-      !reviewNote ||
-      reviewNote.length < MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH
-    ) {
-      setErrorMessage(
-        `Debes indicar una nota administrativa de al menos ${MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH} caracteres para levantar la sancion.`,
+    if ((reviewNote?.length ?? 0) < MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH) {
+      pushToast(
+        'Falta una nota',
+        `La nota debe tener al menos ${MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH} caracteres.`,
+        'info',
       );
       return;
     }
 
     setIsLiftingSanctionId(sanctionId);
-    setErrorMessage(null);
-    setSuccessMessage(null);
 
     try {
       const response = await liftOperationalSanction(authSession.accessToken, sanctionId, {
         reviewNote,
       });
 
-      await loadData(
-        authSession.accessToken,
-        appliedAuditFilters,
-        reportStatusFilter,
-        driverApplicationStatusFilter,
-      );
-      setSuccessMessage(response.message);
-      setSanctionLiftNotes((currentNotes) => ({
-        ...currentNotes,
-        [sanctionId]: '',
-      }));
+      await loadData(authSession.accessToken);
+      pushToast('Sancion levantada', response.message, 'success');
+      setActiveSanction((current) => (current?.id === sanctionId ? null : current));
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
 
-      setErrorMessage(getApiErrorMessage(error, 'No fue posible levantar la sancion.'));
-      await refreshData();
+      pushToast(
+        'No se pudo levantar',
+        getApiErrorMessage(error, 'No fue posible levantar la sancion.'),
+        'error',
+      );
     } finally {
       setIsLiftingSanctionId(null);
     }
   };
 
-  const openAuditWorkspace = (input: {
-    workspace: AuditWorkspaceSection;
-    reportId?: string | null;
-    membershipId?: string | null;
-    sanctionId?: string | null;
-  }) => {
-    setActiveWorkspace(input.workspace);
-    setHighlightedReportId(input.reportId ?? null);
-    setHighlightedMembershipId(input.membershipId ?? null);
-    setHighlightedSanctionId(input.sanctionId ?? null);
+  const handleOpenDriverDocumentPreview = async (
+    membershipId: string,
+    documentType: DriverDocumentType,
+    userFullName: string,
+  ) => {
+    if (!authSession) {
+      return;
+    }
 
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-    nextSearchParams.set('section', input.workspace);
-    router.replace(`/moderacion?${nextSearchParams.toString()}`, { scroll: false });
+    const documentKey = `${membershipId}-${documentType}`;
+    setIsOpeningDriverDocumentKey(documentKey);
+    setDriverDocumentPreviewError(null);
+
+    try {
+      const blob = await downloadDriverApplicationDocument(
+        authSession.accessToken,
+        membershipId,
+        documentType,
+      );
+
+      setDriverDocumentPreview((current) => {
+        if (current?.fileUrl) {
+          URL.revokeObjectURL(current.fileUrl);
+        }
+
+        return {
+          membershipId,
+          documentType,
+          fileName: buildDriverDocumentFileName(documentType, userFullName, blob.type),
+          fileUrl: URL.createObjectURL(blob),
+          mimeType: blob.type,
+          title: documentType === 'identity' ? 'Cedula del conductor' : 'Licencia del conductor',
+        };
+      });
+    } catch (error) {
+      setDriverDocumentPreviewError(
+        getApiErrorMessage(error, 'No fue posible abrir el documento del conductor.'),
+      );
+    } finally {
+      setIsOpeningDriverDocumentKey(null);
+    }
   };
 
-  const openReportsCount = reviewableReports.filter(
-    (report) => report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview,
-  ).length;
+  const handleDownloadDriverDocument = async (
+    membershipId: string,
+    documentType: DriverDocumentType,
+    userFullName: string,
+  ) => {
+    if (!authSession) {
+      return;
+    }
+
+    const documentKey = `${membershipId}-${documentType}`;
+    setIsDownloadingDriverDocumentKey(documentKey);
+
+    try {
+      const blob = await downloadDriverApplicationDocument(
+        authSession.accessToken,
+        membershipId,
+        documentType,
+      );
+
+      downloadBlobFile(
+        blob,
+        buildDriverDocumentFileName(documentType, userFullName, blob.type),
+      );
+    } catch (error) {
+      pushToast(
+        'No se pudo descargar',
+        getApiErrorMessage(error, 'No fue posible descargar el documento del conductor.'),
+        'error',
+      );
+    } finally {
+      setIsDownloadingDriverDocumentKey(null);
+    }
+  };
+
+  const handleOpenReportEvidencePreview = async (report: ReportRecord) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsOpeningReportEvidenceId(report.id);
+    setReportEvidencePreviewError(null);
+
+    try {
+      const blob = await downloadReportEvidence(authSession.accessToken, report.id);
+
+      setReportEvidencePreview((current) => {
+        if (current?.fileUrl) {
+          URL.revokeObjectURL(current.fileUrl);
+        }
+
+        return {
+          reportId: report.id,
+          fileName: buildReportEvidenceFileName(report, blob.type),
+          fileUrl: URL.createObjectURL(blob),
+          mimeType: blob.type,
+          title: 'Evidencia del reporte',
+        };
+      });
+    } catch (error) {
+      setReportEvidencePreviewError(
+        getApiErrorMessage(error, 'No fue posible abrir la evidencia del reporte.'),
+      );
+    } finally {
+      setIsOpeningReportEvidenceId(null);
+    }
+  };
+
+  const handleDownloadReportEvidence = async (report: ReportRecord) => {
+    if (!authSession) {
+      return;
+    }
+
+    setIsDownloadingReportEvidenceId(report.id);
+
+    try {
+      const blob = await downloadReportEvidence(authSession.accessToken, report.id);
+      downloadBlobFile(blob, buildReportEvidenceFileName(report, blob.type));
+    } catch (error) {
+      pushToast(
+        'No se pudo descargar',
+        getApiErrorMessage(error, 'No fue posible descargar la evidencia del reporte.'),
+        'error',
+      );
+    } finally {
+      setIsDownloadingReportEvidenceId(null);
+    }
+  };
+
+  const resetDriverDocumentPreview = () => {
+    setDriverDocumentPreview((current) => {
+      if (current?.fileUrl) {
+        URL.revokeObjectURL(current.fileUrl);
+      }
+      return null;
+    });
+    setDriverDocumentPreviewError(null);
+  };
+
+  const resetReportEvidencePreview = () => {
+    setReportEvidencePreview((current) => {
+      if (current?.fileUrl) {
+        URL.revokeObjectURL(current.fileUrl);
+      }
+      return null;
+    });
+    setReportEvidencePreviewError(null);
+  };
+
+  const activeFiltersCount = [institutionId, reportStatusFilter, driverApplicationStatusFilter].filter(Boolean).length;
+  const workspaceHeadline = getWorkspaceHeadline(activeWorkspace);
+  const orderedReviewableReports = useMemo(
+    () => [...reviewableReports].sort((left, right) => getReportPriorityRank(left) - getReportPriorityRank(right)),
+    [reviewableReports],
+  );
+  const sanctionsWithPendingAppeals = useMemo(
+    () =>
+      new Set(
+        reviewableAppeals
+          .filter((appeal) => appeal.status === OperationalSanctionAppealStatus.Pending)
+          .map((appeal) => appeal.sanctionId),
+      ),
+    [reviewableAppeals],
+  );
+
   const pendingDriverApplicationsCount = reviewableDriverApplications.filter(
     (application) =>
-      application.driverVerificationStatus ===
-      DriverVerificationStatus.PendingVerification,
+      application.driverVerificationStatus === DriverVerificationStatus.PendingVerification,
+  ).length;
+  const openReportsCount = reviewableReports.filter(
+    (report) => report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview,
   ).length;
   const pendingAppealsCount = reviewableAppeals.filter(
     (appeal) => appeal.status === OperationalSanctionAppealStatus.Pending,
   ).length;
-  const reportsPendingCount = reviewableReports.filter(
-    (report) => report.status === ReportStatus.Pending,
-  ).length;
-  const reportsUnderReviewCount = reviewableReports.filter(
-    (report) => report.status === ReportStatus.UnderReview,
-  ).length;
-  const closedReportsCount = reviewableReports.filter(
-    (report) =>
-      report.status === ReportStatus.Resolved || report.status === ReportStatus.Dismissed,
-  ).length;
-  const highSeverityOpenReportsCount = reviewableReports.filter(
-    (report) =>
-      requiresDetailedReviewNote(report.reason) &&
-      (report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview),
-  ).length;
-  const reportsWithEvidenceCount = reviewableReports.filter(
-    (report) => Boolean(report.evidenceFileKey),
-  ).length;
-  const staleOpenReportsCount = reviewableReports.filter((report) => {
-    const isOpenReport =
-      report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview;
 
-    return isOpenReport && getElapsedHours(report.createdAt) >= 24;
-  }).length;
-  const readyForDecisionReportsCount = reviewableReports.filter(
-    (report) => report.status === ReportStatus.UnderReview,
-  ).length;
-  const orderedReviewableReports = useMemo(
-    () =>
-      [...reviewableReports].sort((left, right) => {
-        const rankDifference = getReportPriorityRank(left) - getReportPriorityRank(right);
+  const driverStats = [
+    { label: 'Pendientes', value: pendingDriverApplicationsCount, tone: pendingDriverApplicationsCount ? 'warning' : 'success' as const },
+    { label: 'Aprobadas', value: reviewableDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Approved).length, tone: 'neutral' as const },
+    { label: 'Rechazadas', value: reviewableDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Rejected).length, tone: 'danger' as const },
+  ] as const;
 
-        if (rankDifference !== 0) {
-          return rankDifference;
-        }
+  const reportStats = [
+    { label: 'Abiertos', value: openReportsCount, tone: openReportsCount ? 'warning' : 'success' as const },
+    { label: 'Alta severidad', value: reviewableReports.filter((item) => requiresDetailedReviewNote(item.reason) && (item.status === ReportStatus.Pending || item.status === ReportStatus.UnderReview)).length, tone: 'danger' as const },
+    { label: 'Resueltos', value: reviewableReports.filter((item) => item.status === ReportStatus.Resolved).length, tone: 'success' as const },
+  ] as const;
 
-        return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
-      }),
-    [reviewableReports],
+  const sanctionStats = [
+    { label: 'Activas', value: reviewableSanctions.length, tone: reviewableSanctions.length ? 'warning' : 'success' as const },
+    { label: 'Apeladas', value: sanctionsWithPendingAppeals.size, tone: sanctionsWithPendingAppeals.size ? 'warning' : 'neutral' as const },
+    { label: 'Manuales', value: reviewableSanctions.filter((item) => !item.isAutomatic).length, tone: 'neutral' as const },
+  ] as const;
+
+  const appealStats = [
+    { label: 'Pendientes', value: pendingAppealsCount, tone: pendingAppealsCount ? 'warning' : 'success' as const },
+    { label: 'Aprobadas', value: reviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Approved).length, tone: 'success' as const },
+    { label: 'Rechazadas', value: reviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Rejected).length, tone: 'danger' as const },
+  ] as const;
+
+  const driverPageCount = Math.max(1, Math.ceil(reviewableDriverApplications.length / PAGE_SIZES.driver));
+  const reportPageCount = Math.max(1, Math.ceil(orderedReviewableReports.length / PAGE_SIZES.reports));
+  const sanctionPageCount = Math.max(1, Math.ceil(reviewableSanctions.length / PAGE_SIZES.sanctions));
+  const appealPageCount = Math.max(1, Math.ceil(reviewableAppeals.length / PAGE_SIZES.appeals));
+
+  const driverPage = Math.min(pageByWorkspace.driver, driverPageCount);
+  const reportPage = Math.min(pageByWorkspace.reports, reportPageCount);
+  const sanctionPage = Math.min(pageByWorkspace.sanctions, sanctionPageCount);
+  const appealPage = Math.min(pageByWorkspace.appeals, appealPageCount);
+
+  const paginatedDriverApplications = reviewableDriverApplications.slice(
+    (driverPage - 1) * PAGE_SIZES.driver,
+    driverPage * PAGE_SIZES.driver,
   );
-  const nextPriorityReport = orderedReviewableReports.find(
-    (report) =>
-      report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview,
+  const paginatedReports = orderedReviewableReports.slice(
+    (reportPage - 1) * PAGE_SIZES.reports,
+    reportPage * PAGE_SIZES.reports,
   );
-  const sanctionsByMembershipId = useMemo(() => {
-    const groupedSanctions = new Map<string, ReviewableOperationalSanctionRecord[]>();
-
-    reviewableSanctions.forEach((sanction) => {
-      const currentItems = groupedSanctions.get(sanction.membershipId) ?? [];
-      groupedSanctions.set(sanction.membershipId, [...currentItems, sanction]);
-    });
-
-    return groupedSanctions;
-  }, [reviewableSanctions]);
-  const appealsByMembershipId = useMemo(() => {
-    const groupedAppeals = new Map<string, OperationalSanctionAppealRecord[]>();
-
-    reviewableAppeals.forEach((appeal) => {
-      const currentItems = groupedAppeals.get(appeal.membershipId) ?? [];
-      groupedAppeals.set(appeal.membershipId, [...currentItems, appeal]);
-    });
-
-    return groupedAppeals;
-  }, [reviewableAppeals]);
-  const appealsBySanctionId = useMemo(() => {
-    const groupedAppeals = new Map<string, OperationalSanctionAppealRecord[]>();
-
-    reviewableAppeals.forEach((appeal) => {
-      const currentItems = groupedAppeals.get(appeal.sanctionId) ?? [];
-      groupedAppeals.set(appeal.sanctionId, [...currentItems, appeal]);
-    });
-
-    return groupedAppeals;
-  }, [reviewableAppeals]);
-  const automaticSanctionsCount = reviewableSanctions.filter((sanction) => sanction.isAutomatic).length;
-  const temporarySanctionsCount = reviewableSanctions.filter((sanction) => sanction.endsAt).length;
-  const indefiniteSanctionsCount = reviewableSanctions.filter((sanction) => !sanction.endsAt).length;
-  const approvedAppealsCount = reviewableAppeals.filter(
-    (appeal) => appeal.status === OperationalSanctionAppealStatus.Approved,
-  ).length;
-  const rejectedAppealsCount = reviewableAppeals.filter(
-    (appeal) => appeal.status === OperationalSanctionAppealStatus.Rejected,
-  ).length;
-  const sanctionsWithPendingAppeals = new Set(
-    reviewableAppeals
-      .filter((appeal) => appeal.status === OperationalSanctionAppealStatus.Pending)
-      .map((appeal) => appeal.sanctionId),
+  const paginatedSanctions = reviewableSanctions.slice(
+    (sanctionPage - 1) * PAGE_SIZES.sanctions,
+    sanctionPage * PAGE_SIZES.sanctions,
   );
-  const activeAuditFiltersCount = [
-    appliedAuditFilters.institutionId,
-    appliedAuditFilters.action,
-    appliedAuditFilters.entityType,
-    appliedAuditFilters.from,
-    appliedAuditFilters.to,
-  ].filter(Boolean).length;
-  const institutionOptions = adminMemberships.map((membership) => ({
-    id: membership.institutionId,
-    name: membership.institutionName,
-  }));
-  const workspaceHeadline = getWorkspaceHeadline(activeWorkspace);
+  const paginatedAppeals = reviewableAppeals.slice(
+    (appealPage - 1) * PAGE_SIZES.appeals,
+    appealPage * PAGE_SIZES.appeals,
+  );
 
   if (isLoading) {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
         <section className={styles.loadingShell}>
-          <article className={styles.loadingCard}>
+          <article className={styles.stateCard}>
             <div aria-hidden="true" className={styles.loadingPulse} />
-            <h1 className={styles.loadingTitle}>Cargando moderacion</h1>
-            <p className={styles.loadingText}>
-              Estamos preparando las mesas de gestion administrativa.
-            </p>
+            <h1 className={styles.stateTitle}>Cargando moderacion</h1>
+            <p className={styles.stateText}>Preparando las bandejas administrativas.</p>
           </article>
         </section>
       </>
@@ -1415,23 +891,16 @@ export default function AuditPage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.auditShell}>
+        <section className={styles.page}>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
               <p className={styles.kicker}>Moderacion</p>
-              <h1 className={styles.heroTitle}>Centro de moderacion</h1>
+              <h1 className={styles.heroTitle}>Centro de control</h1>
               <p className={styles.heroLead}>
                 Esta vista solo esta disponible para administradores institucionales y superadministracion.
               </p>
             </div>
             <StatusPill label="Acceso restringido" tone="warning" />
-          </section>
-
-          <section className={styles.emptyState}>
-            <h2 className={styles.emptyTitle}>Permisos insuficientes</h2>
-            <p className={styles.emptyText}>
-              Tu sesion actual no tiene permisos administrativos para gestionar conductores, reportes o sanciones institucionales.
-            </p>
           </section>
         </section>
       </>
@@ -1442,95 +911,123 @@ export default function AuditPage() {
     <>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <section className={styles.auditShell}>
+      <section className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.kicker}>Moderacion</p>
-            <h1 className={styles.heroTitle}>Centro de moderacion</h1>
+            <h1 className={styles.heroTitle}>Centro de control</h1>
             <p className={styles.heroLead}>
-              Gestiona conductores, reportes, sanciones y apelaciones desde una mesa separada de la operacion diaria.
+              Trabaja solo con decisiones de gestion: conductores, reportes, sanciones y apelaciones.
             </p>
           </div>
 
           <div className={styles.heroActions}>
-            <StatusPill
-              label={pendingDriverApplicationsCount ? `${pendingDriverApplicationsCount} conductores pendientes` : 'Conductores al dia'}
-              tone={pendingDriverApplicationsCount ? 'warning' : 'success'}
-            />
-            <StatusPill
-              label={openReportsCount ? `${openReportsCount} reportes abiertos` : 'Reportes al dia'}
-              tone={openReportsCount ? 'warning' : 'success'}
-            />
+            <div className={styles.heroChips}>
+              <span className={styles.heroChip}>{pendingDriverApplicationsCount} conductores pendientes</span>
+              <span className={styles.heroChip}>{openReportsCount} reportes abiertos</span>
+            </div>
             <Button
               disabled={isRefreshingData}
               onClick={() => void refreshData(true)}
               variant="secondary"
             >
+              <span className={styles.buttonIcon}>
+                <InlineIcon className={styles.iconSmall} name="refresh" />
+              </span>
               {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
             </Button>
           </div>
         </section>
 
-        <div className={styles.auditLayout}>
-          <aside className={styles.sidebar}>
-            <section className={styles.sidebarSection}>
-              <p className={styles.sidebarKicker}>Mesas</p>
-              <div className={styles.workspaceList}>
+        <div className={styles.board}>
+          <aside className={styles.rail}>
+            <section className={styles.railSection}>
+              <div className={styles.railHeader}>
+                <div>
+                  <p className={styles.railLabel}>Mesas</p>
+                  <h2 className={styles.railTitle}>Flujo activo</h2>
+                </div>
+              </div>
+
+              <div className={styles.tabList}>
                 <button
                   aria-pressed={activeWorkspace === 'driver'}
-                  className={`${styles.workspaceButton} ${activeWorkspace === 'driver' ? styles.workspaceButtonActive : ''}`}
-                  onClick={() => openAuditWorkspace({ workspace: 'driver' })}
+                  className={[styles.tabButton, activeWorkspace === 'driver' ? styles.tabButtonActive : ''].filter(Boolean).join(' ')}
+                  onClick={() => openWorkspace('driver')}
                   type="button"
                 >
-                  <span>Conductores</span>
-                  <small>{pendingDriverApplicationsCount} pendientes</small>
+                  <span className={styles.tabIcon}>
+                    <InlineIcon className={styles.iconSmall} name="driver" />
+                  </span>
+                  <span className={styles.tabBody}>
+                    <span className={styles.tabLabel}>Conductores</span>
+                    <span className={styles.tabMeta}>{pendingDriverApplicationsCount} pendientes</span>
+                  </span>
                 </button>
+
                 <button
                   aria-pressed={activeWorkspace === 'reports'}
-                  className={`${styles.workspaceButton} ${activeWorkspace === 'reports' ? styles.workspaceButtonActive : ''}`}
-                  onClick={() => openAuditWorkspace({ workspace: 'reports' })}
+                  className={[styles.tabButton, activeWorkspace === 'reports' ? styles.tabButtonActive : ''].filter(Boolean).join(' ')}
+                  onClick={() => openWorkspace('reports')}
                   type="button"
                 >
-                  <span>Reportes</span>
-                  <small>{openReportsCount} abiertos</small>
+                  <span className={styles.tabIcon}>
+                    <InlineIcon className={styles.iconSmall} name="report" />
+                  </span>
+                  <span className={styles.tabBody}>
+                    <span className={styles.tabLabel}>Reportes</span>
+                    <span className={styles.tabMeta}>{openReportsCount} abiertos</span>
+                  </span>
                 </button>
+
                 <button
                   aria-pressed={activeWorkspace === 'sanctions'}
-                  className={`${styles.workspaceButton} ${activeWorkspace === 'sanctions' ? styles.workspaceButtonActive : ''}`}
-                  onClick={() => openAuditWorkspace({ workspace: 'sanctions' })}
+                  className={[styles.tabButton, activeWorkspace === 'sanctions' ? styles.tabButtonActive : ''].filter(Boolean).join(' ')}
+                  onClick={() => openWorkspace('sanctions')}
                   type="button"
                 >
-                  <span>Sanciones</span>
-                  <small>{reviewableSanctions.length} activas</small>
+                  <span className={styles.tabIcon}>
+                    <InlineIcon className={styles.iconSmall} name="sanction" />
+                  </span>
+                  <span className={styles.tabBody}>
+                    <span className={styles.tabLabel}>Sanciones</span>
+                    <span className={styles.tabMeta}>{reviewableSanctions.length} activas</span>
+                  </span>
                 </button>
+
                 <button
                   aria-pressed={activeWorkspace === 'appeals'}
-                  className={`${styles.workspaceButton} ${activeWorkspace === 'appeals' ? styles.workspaceButtonActive : ''}`}
-                  onClick={() => openAuditWorkspace({ workspace: 'appeals' })}
+                  className={[styles.tabButton, activeWorkspace === 'appeals' ? styles.tabButtonActive : ''].filter(Boolean).join(' ')}
+                  onClick={() => openWorkspace('appeals')}
                   type="button"
                 >
-                  <span>Apelaciones</span>
-                  <small>{pendingAppealsCount} pendientes</small>
+                  <span className={styles.tabIcon}>
+                    <InlineIcon className={styles.iconSmall} name="appeal" />
+                  </span>
+                  <span className={styles.tabBody}>
+                    <span className={styles.tabLabel}>Apelaciones</span>
+                    <span className={styles.tabMeta}>{pendingAppealsCount} pendientes</span>
+                  </span>
                 </button>
               </div>
             </section>
 
-            <section className={styles.sidebarSection}>
-              <div className={styles.sidebarSectionHeader}>
+            <section className={styles.railSection}>
+              <div className={styles.railHeader}>
                 <div>
-                  <p className={styles.sidebarKicker}>Filtros</p>
-                  <h2 className={styles.sidebarTitle}>Consulta actual</h2>
+                  <p className={styles.railLabel}>Filtros</p>
+                  <h2 className={styles.railTitle}>Consulta</h2>
                 </div>
-                {activeAuditFiltersCount ? (
-                  <span className={styles.filterBadge}>{activeAuditFiltersCount} activos</span>
+                {activeFiltersCount ? (
+                  <span className={styles.filterBadge}>{activeFiltersCount}</span>
                 ) : null}
               </div>
 
-              <form className={styles.filterForm} onSubmit={handleApplyFilters}>
+              <div className={styles.filterForm}>
                 <SelectField
                   label="Institucion"
-                  onChange={(event) => handleFilterChange('institutionId', event.target.value)}
-                  value={auditFilterValues.institutionId ?? ''}
+                  onChange={(event) => setInstitutionId(event.target.value)}
+                  value={institutionId}
                 >
                   <option value="">Todas las accesibles</option>
                   {institutionOptions.map((option) => (
@@ -1568,1346 +1065,408 @@ export default function AuditPage() {
                   </SelectField>
                 ) : null}
 
-                {activeWorkspace === 'events' ? (
-                  <>
-                    <SelectField
-                      label="Accion"
-                      onChange={(event) => handleFilterChange('action', event.target.value)}
-                      value={auditFilterValues.action ?? ''}
-                    >
-                      <option value="">Todas</option>
-                      {AUDIT_ACTIONS.map((action) => (
-                        <option key={action} value={action}>
-                          {getAuditActionLabel(action)}
-                        </option>
-                      ))}
-                    </SelectField>
-
-                    <SelectField
-                      label="Entidad"
-                      onChange={(event) => handleFilterChange('entityType', event.target.value)}
-                      value={auditFilterValues.entityType ?? ''}
-                    >
-                      <option value="">Todas</option>
-                      {AUDIT_ENTITY_TYPES.map((entityType) => (
-                        <option key={entityType} value={entityType}>
-                          {getAuditEntityTypeLabel(entityType)}
-                        </option>
-                      ))}
-                    </SelectField>
-
-                    <InputField
-                      label="Desde"
-                      onChange={(event) => handleFilterChange('from', event.target.value)}
-                      type="datetime-local"
-                      value={auditFilterValues.from ?? ''}
-                    />
-
-                    <InputField
-                      label="Hasta"
-                      onChange={(event) => handleFilterChange('to', event.target.value)}
-                      type="datetime-local"
-                      value={auditFilterValues.to ?? ''}
-                    />
-
-                    <SelectField
-                      label="Limite"
-                      onChange={(event) => handleFilterChange('limit', event.target.value)}
-                      value={auditFilterValues.limit ?? '50'}
-                    >
-                      <option value="25">25 eventos</option>
-                      <option value="50">50 eventos</option>
-                      <option value="100">100 eventos</option>
-                    </SelectField>
-                  </>
-                ) : null}
-
                 <div className={styles.filterActions}>
-                  <Button disabled={isApplyingFilters} type="submit">
-                    Aplicar filtros
-                  </Button>
-                  <Button
-                    disabled={isApplyingFilters}
-                    onClick={handleResetFilters}
-                    type="button"
-                    variant="ghost"
-                  >
+                  <Button onClick={() => void refreshData(true)}>Aplicar filtros</Button>
+                  <Button onClick={handleResetFilters} type="button" variant="ghost">
                     Limpiar
                   </Button>
                 </div>
-              </form>
+              </div>
             </section>
           </aside>
 
-          <div className={styles.contentShell}>
-            <section className={styles.sectionHeader}>
+          <main className={styles.content}>
+            <header className={styles.contentHeader}>
               <div>
-                <p className={styles.sectionKicker}>Mesa activa</p>
-                <h2 className={styles.sectionTitle}>{workspaceHeadline.title}</h2>
-                <p className={styles.sectionSubtitle}>{workspaceHeadline.subtitle}</p>
+                <p className={styles.contentKicker}>Mesa activa</p>
+                <h2 className={styles.contentTitle}>{workspaceHeadline.title}</h2>
+                <p className={styles.contentSubtitle}>{workspaceHeadline.subtitle}</p>
               </div>
-            </section>
+              <div className={styles.contentActions}>
+                {activeWorkspace === 'driver' ? (
+                  <StatusPill
+                    label={`${pendingDriverApplicationsCount} pendientes`}
+                    tone={pendingDriverApplicationsCount ? 'warning' : 'success'}
+                  />
+                ) : null}
+                {activeWorkspace === 'reports' ? (
+                  <StatusPill
+                    label={`${openReportsCount} abiertos`}
+                    tone={openReportsCount ? 'warning' : 'success'}
+                  />
+                ) : null}
+                {activeWorkspace === 'sanctions' ? (
+                  <StatusPill
+                    label={`${reviewableSanctions.length} activas`}
+                    tone={reviewableSanctions.length ? 'warning' : 'success'}
+                  />
+                ) : null}
+                {activeWorkspace === 'appeals' ? (
+                  <StatusPill
+                    label={`${pendingAppealsCount} pendientes`}
+                    tone={pendingAppealsCount ? 'warning' : 'success'}
+                  />
+                ) : null}
+              </div>
+            </header>
 
-            <div className={styles.workspaceSurface}>
-              <div className="page-grid page-grid-wide audit-main-grid">
-          {activeWorkspace === 'driver' ? (
-          <article className="panel panel-stack">
-            <div className="section-heading">
-              <h2 className="panel-title">Solicitudes de conductor</h2>
-              <p className="section-heading-meta">{reviewableDriverApplications.length} resultados</p>
-            </div>
+            {activeWorkspace === 'driver' ? (
+              <section className={styles.section}>
+                <div className={styles.sectionTop}>
+                  <div>
+                    <h3 className={styles.sectionTitle}>Solicitudes</h3>
+                    <p className={styles.sectionMeta}>{reviewableDriverApplications.length} resultados</p>
+                  </div>
+                </div>
 
-            {reviewableDriverApplications.length ? (
-              <div className="list-stack">
-                {reviewableDriverApplications.map((application) => {
-                  const identityDocumentDownloadKey = `${application.membershipId}-identity`;
-                  const licenseDocumentDownloadKey = `${application.membershipId}-license`;
+                <div className={styles.statsRow}>
+                  {driverStats.map((stat) => (
+                    <StatChip key={stat.label} label={stat.label} tone={stat.tone} value={stat.value} />
+                  ))}
+                </div>
 
-                  return (
-                    <div key={application.membershipId} className="list-card">
-                      <div className="list-card-header">
-                        <strong>{application.userFullName}</strong>
-                        <div className="button-row">
-                          <StatusPill
-                            label={getDriverStatusLabel(application.driverVerificationStatus)}
-                            tone={getDriverStatusTone(application.driverVerificationStatus)}
-                          />
-                          <StatusPill
-                            label={getDriverLicenseStatusLabel(application.licenseStatus)}
-                            tone={getDriverLicenseStatusTone(application.licenseStatus)}
-                          />
-                        </div>
-                      </div>
-                      <p className="panel-text">
-                        Correo: {application.userEmail} | Institucion: {application.institutionName}
-                      </p>
-                      <p className="panel-text">
-                        Licencia: {application.licenseType.code} - {application.licenseType.name}
-                      </p>
-                      <p className="panel-text">
-                        Expira: {formatDateTime(application.licenseExpiresAt)} | Enviada: {formatDateTime(application.submittedAt)}
-                      </p>
-                      {application.reviewNotes ? (
-                        <p className="panel-text">Nota de revision: {application.reviewNotes}</p>
-                      ) : null}
+                {paginatedDriverApplications.length ? (
+                  <div className={styles.list}>
+                    {paginatedDriverApplications.map((application, index) => {
+                      const isHighlighted = highlightedMembershipId === application.membershipId;
 
-                      <div className="button-row">
-                        <Button
-                          disabled={
-                            !application.identityDocumentFileKey ||
-                            isOpeningDriverDocumentKey === identityDocumentDownloadKey
-                          }
-                          onClick={() =>
-                            void handleOpenDriverDocumentPreview(
-                              application.membershipId,
-                              'identity',
-                              application.userFullName,
-                            )
-                          }
-                          variant="secondary"
+                      return (
+                        <div
+                          key={application.membershipId}
+                          className={[styles.listRow, isHighlighted ? styles.rowHighlight : ''].filter(Boolean).join(' ')}
+                          style={{ animationDelay: `${index * 0.04}s` }}
                         >
-                          {isOpeningDriverDocumentKey === identityDocumentDownloadKey
-                            ? 'Abriendo...'
-                            : 'Ver cédula'}
-                        </Button>
-                        <Button
-                          disabled={
-                            !application.identityDocumentFileKey ||
-                            isDownloadingDriverDocumentKey === identityDocumentDownloadKey
-                          }
-                          onClick={() =>
-                            void handleDownloadDriverDocument(
-                              application.membershipId,
-                              'identity',
-                              application.userFullName,
-                            )
-                          }
-                          variant="secondary"
-                        >
-                          {isDownloadingDriverDocumentKey === identityDocumentDownloadKey
-                            ? 'Descargando...'
-                            : 'Descargar cédula'}
-                        </Button>
-                        <Button
-                          disabled={
-                            !application.licenseDocumentFileKey ||
-                            isOpeningDriverDocumentKey === licenseDocumentDownloadKey
-                          }
-                          onClick={() =>
-                            void handleOpenDriverDocumentPreview(
-                              application.membershipId,
-                              'license',
-                              application.userFullName,
-                            )
-                          }
-                          variant="secondary"
-                        >
-                          {isOpeningDriverDocumentKey === licenseDocumentDownloadKey
-                            ? 'Abriendo...'
-                            : 'Ver licencia'}
-                        </Button>
-                        <Button
-                          disabled={
-                            !application.licenseDocumentFileKey ||
-                            isDownloadingDriverDocumentKey === licenseDocumentDownloadKey
-                          }
-                          onClick={() =>
-                            void handleDownloadDriverDocument(
-                              application.membershipId,
-                              'license',
-                              application.userFullName,
-                            )
-                          }
-                          variant="secondary"
-                        >
-                          {isDownloadingDriverDocumentKey === licenseDocumentDownloadKey
-                            ? 'Descargando...'
-                            : 'Descargar licencia'}
-                        </Button>
-                      </div>
-
-                      {application.driverVerificationStatus !== DriverVerificationStatus.Approved ? (
-                        <details className="audit-action-details">
-                          <summary>Revisar solicitud</summary>
-                          <div className="audit-action-body">
-                            <TextareaField
-                              label="Nota administrativa"
-                              onChange={(event) =>
-                                handleDriverReviewNoteChange(
-                                  application.membershipId,
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="Motivo de aprobacion, correcciones solicitadas o motivo del rechazo"
-                              rows={3}
-                              value={driverReviewNotes[application.membershipId] ?? ''}
-                            />
-                            <div className="button-row">
-                              <Button
-                                disabled={
-                                  isReviewingDriverMembershipId === application.membershipId
-                                }
-                                onClick={() =>
-                                  void handleReviewDriverApplication(
-                                    application.membershipId,
-                                    DriverVerificationStatus.Approved,
-                                  )
-                                }
-                              >
-                                Aprobar solicitud
-                              </Button>
-                              <Button
-                                disabled={
-                                  isReviewingDriverMembershipId === application.membershipId ||
-                                  !(driverReviewNotes[application.membershipId]?.trim())
-                                }
-                                onClick={() =>
-                                  void handleReviewDriverApplication(
-                                    application.membershipId,
-                                    DriverVerificationStatus.Rejected,
-                                  )
-                                }
-                                variant="ghost"
-                              >
-                                Rechazar solicitud
-                              </Button>
+                          <div className={styles.rowMain}>
+                            <div className={styles.rowTitle}>{application.userFullName}</div>
+                            <div className={styles.rowMeta}>
+                              {application.userEmail} | {application.institutionName}
                             </div>
                           </div>
-                        </details>
-                      ) : (
-                        <p className="panel-text">
-                          Esta solicitud ya fue aprobada y el usuario ya puede operar como conductor.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="panel-text">
-                No hay solicitudes de conductor dentro del alcance actual.
-              </p>
-            )}
-          </article>
-          ) : null}
-
-          {activeWorkspace === 'events' ? (
-          <article className="panel panel-stack">
-            <div className="section-heading">
-              <h2 className="panel-title">Eventos registrados</h2>
-              <p className="section-heading-meta">{auditEvents.length} resultados</p>
-            </div>
-            {auditEvents.length ? (
-              <div className="list-stack">
-                {auditEvents.map((event) => {
-                  const metadataEntries = extractMetadataEntries(event.metadata);
-                  const isEventExpanded = Boolean(expandedAuditEventIds[event.id]);
-
-                  return (
-                    <div key={event.id} className="list-card">
-                      <div className="list-card-header">
-                        <strong>{getAuditActionLabel(event.action)}</strong>
-                        <div className="button-row">
-                          <StatusPill label={getAuditEntityTypeLabel(event.entityType)} tone="neutral" />
-                          <Button
-                            onClick={() => toggleAuditEventExpanded(event.id)}
-                            variant="ghost"
-                          >
-                            {isEventExpanded ? 'Ocultar detalle' : 'Ver detalle'}
-                          </Button>
+                          <div className={styles.rowBadges}>
+                            <StatusPill
+                              label={getDriverStatusLabel(application.driverVerificationStatus)}
+                              tone={getDriverStatusTone(application.driverVerificationStatus)}
+                            />
+                            <StatusPill
+                              label={getDriverLicenseStatusLabel(application.licenseStatus)}
+                              tone={getDriverLicenseStatusTone(application.licenseStatus)}
+                            />
+                          </div>
+                          <div className={styles.rowInfo}>
+                            <span>Expira {formatDateTime(application.licenseExpiresAt)}</span>
+                            <span>Enviada {formatDateTime(application.submittedAt)}</span>
+                          </div>
+                          <div className={styles.rowActions}>
+                            <Button onClick={() => setActiveDriverApplication(application)} variant="secondary">
+                              <span className={styles.buttonIcon}>
+                                <InlineIcon className={styles.iconSmall} name="review" />
+                              </span>
+                              Revisar
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      <p className="panel-text">
-                        Actor: {event.actorFullName ?? 'Sistema'} | Fecha: {formatDateTime(event.createdAt)}
-                      </p>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <section className={styles.emptyState}>
+                    <h2 className={styles.emptyTitle}>Sin solicitudes</h2>
+                    <p className={styles.emptyText}>No hay solicitudes dentro del alcance actual.</p>
+                  </section>
+                )}
 
-                      {isEventExpanded ? (
-                        <>
-                          <p className="panel-text">
-                            Institucion: {event.institutionName ?? 'No aplica'} | Entidad: {event.entityId ?? 'Sin referencia'}
-                          </p>
+                <PaginationBar
+                  onNext={() => setPageByWorkspace((current) => ({ ...current, driver: Math.min(driverPageCount, driverPage + 1) }))}
+                  onPrev={() => setPageByWorkspace((current) => ({ ...current, driver: Math.max(1, driverPage - 1) }))}
+                  page={driverPage}
+                  pageSize={PAGE_SIZES.driver}
+                  totalItems={reviewableDriverApplications.length}
+                  totalPages={driverPageCount}
+                />
+              </section>
+            ) : null}
 
-                          {metadataEntries.length ? (
-                            <div className="audit-metadata-grid">
-                              {metadataEntries.slice(0, 6).map((entry, index) => (
-                                <div key={`${event.id}-${entry.key}-${index}`} className="audit-metadata-item">
-                                  <span>{entry.key}</span>
-                                  <strong>{entry.value}</strong>
-                                </div>
-                              ))}
-                              {metadataEntries.length > 6 ? (
-                                <p className="panel-text">
-                                  +{metadataEntries.length - 6} campos adicionales en metadatos.
-                                </p>
-                              ) : null}
+            {activeWorkspace === 'reports' ? (
+              <section className={styles.section}>
+                <div className={styles.sectionTop}>
+                  <div>
+                    <h3 className={styles.sectionTitle}>Reportes</h3>
+                    <p className={styles.sectionMeta}>{reviewableReports.length} casos en bandeja</p>
+                  </div>
+                </div>
+
+                <div className={styles.statsRow}>
+                  {reportStats.map((stat) => (
+                    <StatChip key={stat.label} label={stat.label} tone={stat.tone} value={stat.value} />
+                  ))}
+                </div>
+
+                {paginatedReports.length ? (
+                  <div className={styles.list}>
+                    {paginatedReports.map((report, index) => {
+                      const isHighSeverity = requiresDetailedReviewNote(report.reason);
+                      const isHighlighted =
+                        highlightedReportId === report.id ||
+                        highlightedMembershipId === report.reportedMembershipId;
+
+                      return (
+                        <div
+                          key={report.id}
+                          className={[styles.listRow, isHighlighted ? styles.rowHighlight : ''].filter(Boolean).join(' ')}
+                          style={{ animationDelay: `${index * 0.04}s` }}
+                        >
+                          <div className={styles.rowMain}>
+                            <div className={styles.rowTitle}>{report.reportedFullName}</div>
+                            <div className={styles.rowMeta}>
+                              {getReportReasonLabel(report.reason)} | {report.reporterFullName}
                             </div>
-                          ) : (
-                            <p className="panel-text">Este evento no incluye metadatos adicionales.</p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="panel-text">Detalle contraido para una lectura mas rapida.</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="panel-text">
-                No hay eventos para los filtros actuales. Ajusta la fecha, la accion o la institucion para ampliar la consulta.
-              </p>
-            )}
-          </article>
-          ) : null}
-
-          {activeWorkspace === 'reports' ? (
-          <article className="panel panel-stack">
-            <AuditWorkspaceHero
-              actions={
-                <>
-                  <StatusPill
-                    label={
-                      highSeverityOpenReportsCount
-                        ? `${highSeverityOpenReportsCount} alta severidad`
-                        : 'Sin alta severidad'
-                    }
-                    tone={highSeverityOpenReportsCount ? 'danger' : 'success'}
-                  />
-                  <StatusPill
-                    label={`${reviewableReports.length} visibles`}
-                    tone="neutral"
-                  />
-                </>
-              }
-              subtitle="Prioriza incidentes abiertos, mueve a revision los casos delicados y cierra cada decision con trazabilidad."
-              title="Bandeja de reportes"
-            />
-
-            <div className="audit-mini-grid">
-              <AuditMiniStat
-                label="Pendientes"
-                note="Listos para primer analisis."
-                tone={reportsPendingCount ? 'warning' : 'neutral'}
-                value={reportsPendingCount}
-              />
-              <AuditMiniStat
-                label="En revision"
-                note="Casos que ya requieren decision."
-                tone={reportsUnderReviewCount ? 'neutral' : 'neutral'}
-                value={reportsUnderReviewCount}
-              />
-              <AuditMiniStat
-                label="Alta severidad"
-                note="Exigen nota amplia antes del cierre."
-                tone={highSeverityOpenReportsCount ? 'danger' : 'success'}
-                value={highSeverityOpenReportsCount}
-              />
-              <AuditMiniStat
-                label="Cerrados"
-                note="Resueltos o desestimados."
-                tone={closedReportsCount ? 'success' : 'neutral'}
-                value={closedReportsCount}
-              />
-            </div>
-
-            <div className="audit-report-focus-grid">
-              <article className="audit-report-focus-card audit-report-focus-card-danger">
-                <span className="audit-report-focus-label">Atencion inmediata</span>
-                <strong className="audit-report-focus-value">{highSeverityOpenReportsCount}</strong>
-                <p className="audit-report-focus-note">
-                  Alta severidad abierta.
-                  {nextPriorityReport
-                    ? ` Siguiente caso: ${nextPriorityReport.reportedFullName}.`
-                    : ' Sin casos abiertos.'}
-                </p>
-              </article>
-              <article className="audit-report-focus-card audit-report-focus-card-neutral">
-                <span className="audit-report-focus-label">Listos para decision</span>
-                <strong className="audit-report-focus-value">{readyForDecisionReportsCount}</strong>
-                <p className="audit-report-focus-note">
-                  Casos ya en revision que pueden cerrarse hoy.
-                </p>
-              </article>
-              <article className="audit-report-focus-card audit-report-focus-card-warning">
-                <span className="audit-report-focus-label">Abiertos por mas tiempo</span>
-                <strong className="audit-report-focus-value">{staleOpenReportsCount}</strong>
-                <p className="audit-report-focus-note">
-                  Reportes abiertos por 24 h o mas.
-                </p>
-              </article>
-              <article className="audit-report-focus-card audit-report-focus-card-success">
-                <span className="audit-report-focus-label">Con evidencia</span>
-                <strong className="audit-report-focus-value">{reportsWithEvidenceCount}</strong>
-                <p className="audit-report-focus-note">
-                  Casos con respaldo adjunto para revisar.
-                </p>
-              </article>
-            </div>
-
-            {reviewableReports.length ? (
-              <div className="list-stack">
-                {orderedReviewableReports.map((report) => {
-                  const isHighSeverity = requiresDetailedReviewNote(report.reason);
-                  const isOpenReport =
-                    report.status === ReportStatus.Pending ||
-                    report.status === ReportStatus.UnderReview;
-                  const relatedSanctions =
-                    sanctionsByMembershipId.get(report.reportedMembershipId) ?? [];
-                  const relatedAppeals =
-                    appealsByMembershipId.get(report.reportedMembershipId) ?? [];
-                  const pendingRelatedAppeals = relatedAppeals.filter(
-                    (appeal) => appeal.status === OperationalSanctionAppealStatus.Pending,
-                  );
-                  const reportTriggeredSanctions = relatedSanctions.filter(
-                    (sanction) => sanction.trigger === OperationalSanctionTrigger.ResolvedReports,
-                  );
-                  const reportOutcomeSummary = deriveReportOutcomeSummary({
-                    report,
-                    reportTriggeredSanctionsCount: reportTriggeredSanctions.length,
-                    pendingAppealsCount: pendingRelatedAppeals.length,
-                    totalRelatedSanctionsCount: relatedSanctions.length,
-                  });
-                  const isHighlightedReport =
-                    highlightedReportId === report.id ||
-                    highlightedMembershipId === report.reportedMembershipId;
-                  const noteLength = reviewNotes[report.id]?.trim().length ?? 0;
-                  const requiresReviewTransition =
-                    isHighSeverity && report.status === ReportStatus.Pending;
-                  const meetsDetailedNoteRequirement =
-                    noteLength >= HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH;
-                  const canCloseReport =
-                    Boolean(reviewNotes[report.id]?.trim()) &&
-                    !requiresReviewTransition &&
-                    (!isHighSeverity || meetsDetailedNoteRequirement);
-
-                  return (
-                    <div
-                      key={report.id}
-                      className={[
-                        'list-card',
-                        'audit-review-card',
-                        isHighSeverity ? 'audit-review-card-danger' : '',
-                        report.status === ReportStatus.UnderReview
-                          ? 'audit-review-card-neutral'
-                          : '',
-                        report.status === ReportStatus.Resolved
-                          ? 'audit-review-card-success'
-                          : '',
-                        isHighlightedReport ? 'audit-review-card-spotlight' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                    >
-                      <div className="audit-review-head">
-                        <div className="audit-review-copy">
-                          <strong>{report.reportedFullName}</strong>
-                          <p className="audit-review-subline">
-                            Reporta {report.reporterFullName} en {report.institutionName}
-                          </p>
-                        </div>
-                        <div className="button-row">
-                          <StatusPill
-                            label={getReportStatusLabel(report.status)}
-                            tone={getReportStatusTone(report.status)}
-                          />
-                          <StatusPill
-                            label={getReportSeverityLabel(report.reason)}
-                            tone={getReportSeverityTone(report.reason)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="audit-review-facts">
-                        <div className="audit-review-fact">
-                          <span>Motivo</span>
-                          <strong>{getReportReasonLabel(report.reason)}</strong>
-                        </div>
-                        <div className="audit-review-fact">
-                          <span>Fecha</span>
-                          <strong>{formatDateTime(report.createdAt)}</strong>
-                        </div>
-                        <div className="audit-review-fact">
-                          <span>Antiguedad</span>
-                          <strong>{formatRelativeElapsed(report.createdAt)}</strong>
-                        </div>
-                        <div className="audit-review-fact audit-review-fact-wide">
-                          <span>Ruta</span>
-                          <strong>
-                            {report.tripOriginLabel} -&gt; {report.tripDestinationLabel}
-                          </strong>
-                        </div>
-                      </div>
-
-                      {report.description ? (
-                        <div className="audit-note-banner">
-                          <span>Descripcion</span>
-                          <p>{report.description}</p>
-                        </div>
-                      ) : null}
-
-                      {report.tripClosureNote ? (
-                        <div className="audit-note-banner audit-note-banner-muted">
-                          <span>Nota de cierre operativo</span>
-                          <p>{report.tripClosureNote}</p>
-                        </div>
-                      ) : null}
-
-                      <div className="audit-link-grid">
-                        <article className="audit-link-card">
-                          <span className="audit-link-card-label">Impacto disciplinario</span>
-                          <strong className="audit-link-card-value">
-                            {relatedSanctions.length
-                              ? `${relatedSanctions.length} sancion(es)`
-                              : 'Sin sancion activa'}
-                          </strong>
-                          <p className="audit-link-card-note">
-                            {reportTriggeredSanctions.length
-                              ? `${reportTriggeredSanctions.length} vinculada(s) a reportes resueltos.`
-                              : 'Aun no hay sancion activa visible para esta persona.'}
-                          </p>
-                          {relatedSanctions.length ? (
-                            <Button
-                              onClick={() =>
-                                openAuditWorkspace({
-                                  workspace: 'sanctions',
-                                  membershipId: report.reportedMembershipId,
-                                })
-                              }
-                              variant="secondary"
-                            >
-                              Ver sanciones
-                            </Button>
-                          ) : null}
-                        </article>
-                        <article className="audit-link-card">
-                          <span className="audit-link-card-label">Estado de apelacion</span>
-                          <strong className="audit-link-card-value">
-                            {pendingRelatedAppeals.length
-                              ? `${pendingRelatedAppeals.length} pendiente(s)`
-                              : relatedAppeals.length
-                                ? `${relatedAppeals.length} cerrada(s)`
-                                : 'Sin apelaciones'}
-                          </strong>
-                          <p className="audit-link-card-note">
-                            {pendingRelatedAppeals.length
-                              ? 'Hay revision disciplinaria abierta sobre esta persona.'
-                              : 'No hay apelaciones pendientes asociadas a sus sanciones activas.'}
-                          </p>
-                          {relatedAppeals.length ? (
-                            <Button
-                              onClick={() =>
-                                openAuditWorkspace({
-                                  workspace: 'appeals',
-                                  membershipId: report.reportedMembershipId,
-                                  sanctionId: pendingRelatedAppeals[0]?.sanctionId ?? relatedAppeals[0]?.sanctionId ?? null,
-                                })
-                              }
-                              variant="ghost"
-                            >
-                              Ver apelaciones
-                            </Button>
-                          ) : null}
-                        </article>
-                      </div>
-
-                      <div
-                        className={[
-                          'audit-outcome-card',
-                          `audit-outcome-card-${reportOutcomeSummary.tone}`,
-                        ].join(' ')}
-                      >
-                        <span className="audit-outcome-label">Efecto operativo actual</span>
-                        <strong className="audit-outcome-value">{reportOutcomeSummary.label}</strong>
-                        <p className="audit-outcome-note">{reportOutcomeSummary.note}</p>
-                      </div>
-
-                      <div className="audit-inline-list">
-                        {report.evidenceFileKey ? (
-                          <>
-                            <span className="audit-inline-chip">
-                              Evidencia adjunta
-                            </span>
-                            <div className="button-row">
+                          </div>
+                          <div className={styles.rowBadges}>
+                            <StatusPill label={getReportStatusLabel(report.status)} tone={getReportStatusTone(report.status)} />
+                            <StatusPill label={getReportSeverityLabel(report.reason)} tone={getReportSeverityTone(report.reason)} />
+                            {isHighSeverity ? <span className={styles.rowTag}>Alta severidad</span> : null}
+                          </div>
+                          <div className={styles.rowInfo}>
+                            <span>{formatRelativeElapsed(report.createdAt)}</span>
+                            <span>{report.tripOriginLabel} -&gt; {report.tripDestinationLabel}</span>
+                          </div>
+                          <div className={styles.rowActions}>
+                            {report.evidenceFileKey ? (
                               <Button
                                 disabled={isOpeningReportEvidenceId === report.id}
                                 onClick={() => void handleOpenReportEvidencePreview(report)}
-                                variant="secondary"
-                              >
-                                {isOpeningReportEvidenceId === report.id
-                                  ? 'Abriendo...'
-                                  : 'Ver evidencia'}
-                              </Button>
-                              <Button
-                                disabled={isDownloadingReportEvidenceId === report.id}
-                                onClick={() => void handleDownloadReportEvidence(report)}
                                 variant="ghost"
                               >
-                                {isDownloadingReportEvidenceId === report.id
-                                  ? 'Descargando...'
-                                  : 'Descargar'}
+                                <span className={styles.buttonIcon}>
+                                  <InlineIcon className={styles.iconSmall} name="file" />
+                                </span>
+                                Evidencia
                               </Button>
-                            </div>
-                          </>
-                        ) : (
-                          <span className="audit-inline-chip audit-inline-chip-muted">
-                            Sin evidencia adjunta
-                          </span>
-                        )}
-                        {report.reviewNote ? (
-                          <span className="audit-inline-chip">
-                            Nota previa registrada
-                          </span>
-                        ) : null}
-                        {report.status === ReportStatus.UnderReview ? (
-                          <span className="audit-inline-chip audit-inline-chip-accent">
-                            Listo para decidir
-                          </span>
-                        ) : null}
-                        {isOpenReport && getElapsedHours(report.createdAt) >= 24 ? (
-                          <span className="audit-inline-chip audit-inline-chip-warning">
-                            Abierto por mas de 24 h
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {report.reviewNote ? (
-                        <div className="audit-note-banner audit-note-banner-muted">
-                          <span>Nota de revision</span>
-                          <p>{report.reviewNote}</p>
-                        </div>
-                      ) : null}
-
-                      {isHighSeverity ? (
-                        <div className="audit-priority-banner">
-                          Requiere paso previo por revision y una nota minima de{' '}
-                          {HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH} caracteres antes del cierre.
-                        </div>
-                      ) : null}
-
-                      {isOpenReport ? (
-                        <details className="audit-action-details">
-                          <summary>Gestionar reporte</summary>
-                          <div className="audit-action-body">
-                            <TextareaField
-                              label="Nota administrativa"
-                              onChange={(event) => handleReviewNoteChange(report.id, event.target.value)}
-                              placeholder="Comentario interno o motivo de la decision"
-                              rows={3}
-                              value={reviewNotes[report.id] ?? ''}
-                            />
-                            <div className="audit-note-progress">
-                              <div className="audit-note-progress-copy">
-                                <span>{noteLength} caracteres</span>
-                                <strong>
-                                  {requiresReviewTransition
-                                    ? 'Debe pasar primero a revision'
-                                    : isHighSeverity
-                                      ? meetsDetailedNoteRequirement
-                                        ? 'Lista para cierre'
-                                        : `Minimo ${HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH}`
-                                      : noteLength > 0
-                                        ? 'Lista para cierre'
-                                        : 'Agrega una nota para decidir'}
-                                </strong>
-                              </div>
-                              <div className="audit-note-progress-bar">
-                                <span
-                                  className={[
-                                    'audit-note-progress-fill',
-                                    canCloseReport
-                                      ? 'audit-note-progress-fill-success'
-                                      : requiresReviewTransition
-                                        ? 'audit-note-progress-fill-warning'
-                                        : 'audit-note-progress-fill-neutral',
-                                  ]
-                                    .filter(Boolean)
-                                    .join(' ')}
-                                  style={{
-                                    width: `${Math.min(
-                                      100,
-                                      isHighSeverity
-                                        ? (noteLength / HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH) *
-                                            100
-                                        : noteLength > 0
-                                          ? 100
-                                          : 0,
-                                    )}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                            <div className="button-row">
-                              {report.status === ReportStatus.Pending ? (
-                                <Button
-                                  disabled={isReviewingReportId === report.id}
-                                  onClick={() => void handleReviewReport(report.id, ReportStatus.UnderReview)}
-                                  variant="secondary"
-                                >
-                                  Marcar en revision
-                                </Button>
-                              ) : null}
-                              <Button
-                                disabled={
-                                  isReviewingReportId === report.id ||
-                                  !canCloseReport
-                                }
-                                onClick={() => void handleReviewReport(report.id, ReportStatus.Resolved)}
-                              >
-                                Resolver
-                              </Button>
-                              <Button
-                                disabled={
-                                  isReviewingReportId === report.id ||
-                                  !canCloseReport
-                                }
-                                onClick={() => void handleReviewReport(report.id, ReportStatus.Dismissed)}
-                                variant="ghost"
-                              >
-                                Desestimar
-                              </Button>
-                            </div>
-                          </div>
-                        </details>
-                      ) : (
-                        <div className="audit-resolution-note">
-                          Cerrado por {report.reviewedByFullName ?? 'administracion'}.
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="panel-text">
-                No hay reportes administrativos para el filtro actual.
-              </p>
-            )}
-          </article>
-          ) : null}
-
-          {activeWorkspace === 'sanctions' ? (
-          <article className="panel panel-stack">
-            <AuditWorkspaceHero
-              actions={
-                <>
-                  <StatusPill
-                    label={
-                      sanctionsWithPendingAppeals.size
-                        ? `${sanctionsWithPendingAppeals.size} con apelacion`
-                        : 'Sin apelaciones activas'
-                    }
-                    tone={sanctionsWithPendingAppeals.size ? 'warning' : 'success'}
-                  />
-                  <StatusPill
-                    label={`${reviewableSanctions.length} activas`}
-                    tone="neutral"
-                  />
-                </>
-              }
-              subtitle="Controla sanciones vigentes, distingue las automaticas y registra con nota cualquier levantamiento manual."
-              title="Sanciones activas"
-            />
-
-            <div className="audit-mini-grid">
-              <AuditMiniStat
-                label="Automaticas"
-                note="Generadas por reglas operativas."
-                tone={automaticSanctionsCount ? 'warning' : 'neutral'}
-                value={automaticSanctionsCount}
-              />
-              <AuditMiniStat
-                label="Temporales"
-                note="Con fecha estimada de cierre."
-                tone={temporarySanctionsCount ? 'neutral' : 'neutral'}
-                value={temporarySanctionsCount}
-              />
-              <AuditMiniStat
-                label="Indefinidas"
-                note="Requieren seguimiento manual."
-                tone={indefiniteSanctionsCount ? 'danger' : 'success'}
-                value={indefiniteSanctionsCount}
-              />
-              <AuditMiniStat
-                label="Con apelacion"
-                note="Sanciones que hoy ya tienen revision pendiente."
-                tone={sanctionsWithPendingAppeals.size ? 'warning' : 'success'}
-                value={sanctionsWithPendingAppeals.size}
-              />
-            </div>
-
-            {reviewableSanctions.length ? (
-              <div className="list-stack">
-                {reviewableSanctions.map((sanction) => {
-                  const hasPendingAppeal = sanctionsWithPendingAppeals.has(sanction.id);
-                  const relatedAppealsForSanction = appealsBySanctionId.get(sanction.id) ?? [];
-                  const sanctionOutcomeSummary = deriveSanctionOutcomeSummary(
-                    sanction,
-                    relatedAppealsForSanction.filter(
-                      (appeal) => appeal.status === OperationalSanctionAppealStatus.Pending,
-                    ).length,
-                  );
-                  const sanctionThreshold =
-                    typeof sanction.metadata?.threshold === 'number'
-                      ? sanction.metadata.threshold
-                      : null;
-                  const sanctionEventCount =
-                    typeof sanction.metadata?.eventCount === 'number'
-                      ? sanction.metadata.eventCount
-                      : null;
-                  const isHighlightedSanction =
-                    highlightedSanctionId === sanction.id ||
-                    highlightedMembershipId === sanction.membershipId;
-
-                  return (
-                    <div
-                      key={sanction.id}
-                      className={[
-                        'list-card',
-                        'audit-review-card',
-                        hasPendingAppeal ? 'audit-review-card-warning' : '',
-                        !sanction.endsAt ? 'audit-review-card-danger' : '',
-                        isHighlightedSanction ? 'audit-review-card-spotlight' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                    >
-                      <div className="audit-review-head">
-                        <div className="audit-review-copy">
-                          <strong>{sanction.membershipUserFullName}</strong>
-                          <p className="audit-review-subline">{sanction.institutionName}</p>
-                        </div>
-                        <div className="button-row">
-                          <StatusPill
-                            label={getOperationalSanctionTypeLabel(sanction.type)}
-                            tone={getOperationalSanctionTone(sanction.type)}
-                          />
-                          <StatusPill
-                            label={getOperationalSanctionScopeLabel(sanction.scope)}
-                            tone="neutral"
-                          />
-                          {hasPendingAppeal ? (
-                            <StatusPill label="Apelacion pendiente" tone="warning" />
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="audit-review-facts">
-                        <div className="audit-review-fact">
-                          <span>Inicio</span>
-                          <strong>{formatDateTime(sanction.startedAt)}</strong>
-                        </div>
-                        <div className="audit-review-fact">
-                          <span>Fin</span>
-                          <strong>
-                            {sanction.endsAt ? formatDateTime(sanction.endsAt) : 'Indefinida'}
-                          </strong>
-                        </div>
-                        <div className="audit-review-fact">
-                          <span>Origen</span>
-                          <strong>{sanction.isAutomatic ? 'Automatica' : 'Manual'}</strong>
-                        </div>
-                        <div className="audit-review-fact audit-review-fact-wide">
-                          <span>Disparador</span>
-                          <strong>{getOperationalSanctionTriggerLabel(sanction.trigger)}</strong>
-                        </div>
-                      </div>
-
-                      <div className="audit-note-banner">
-                        <span>Motivo</span>
-                        <p>{sanction.reason}</p>
-                      </div>
-
-                      <div className="audit-link-grid">
-                        <article className="audit-link-card">
-                          <span className="audit-link-card-label">Consecuencia operativa</span>
-                          <strong className="audit-link-card-value">
-                            {getOperationalSanctionTypeLabel(sanction.type)}
-                          </strong>
-                          <p className="audit-link-card-note">
-                            Afecta el alcance {getOperationalSanctionScopeLabel(sanction.scope).toLowerCase()}.
-                          </p>
-                        </article>
-                        <article className="audit-link-card">
-                          <span className="audit-link-card-label">Rastros del caso</span>
-                          <strong className="audit-link-card-value">
-                            {sanctionEventCount !== null
-                              ? `${sanctionEventCount} evento(s)`
-                              : 'Sin detalle numerico'}
-                          </strong>
-                          <p className="audit-link-card-note">
-                            {sanctionThreshold !== null
-                              ? `Umbral aplicado: ${sanctionThreshold}.`
-                              : 'No hay umbral registrado en metadatos.'}
-                          </p>
-                        </article>
-                      </div>
-
-                      <div className="audit-inline-list">
-                        {sanction.trigger === OperationalSanctionTrigger.ResolvedReports ? (
-                          <span className="audit-inline-chip audit-inline-chip-danger">
-                            Derivada de reportes resueltos
-                          </span>
-                        ) : null}
-                        {relatedAppealsForSanction.length ? (
-                          <span className="audit-inline-chip audit-inline-chip-warning">
-                            {relatedAppealsForSanction.length} apelacion(es) vinculada(s)
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="button-row">
-                        {sanction.trigger === OperationalSanctionTrigger.ResolvedReports ? (
-                          <Button
-                            onClick={() =>
-                              openAuditWorkspace({
-                                workspace: 'reports',
-                                membershipId: sanction.membershipId,
-                              })
-                            }
-                            variant="secondary"
-                          >
-                            Ver reportes vinculados
-                          </Button>
-                        ) : null}
-                        {relatedAppealsForSanction.length ? (
-                          <Button
-                            onClick={() =>
-                              openAuditWorkspace({
-                                workspace: 'appeals',
-                                membershipId: sanction.membershipId,
-                                sanctionId: sanction.id,
-                              })
-                            }
-                            variant="ghost"
-                          >
-                            Ver apelaciones
-                          </Button>
-                        ) : null}
-                      </div>
-
-                      <div
-                        className={[
-                          'audit-outcome-card',
-                          `audit-outcome-card-${sanctionOutcomeSummary.tone}`,
-                        ].join(' ')}
-                      >
-                        <span className="audit-outcome-label">Efecto operativo actual</span>
-                        <strong className="audit-outcome-value">{sanctionOutcomeSummary.label}</strong>
-                        <p className="audit-outcome-note">{sanctionOutcomeSummary.note}</p>
-                      </div>
-
-                      <details className="audit-action-details">
-                        <summary>Levantar sancion</summary>
-                        <div className="audit-action-body">
-                          <TextareaField
-                            label="Nota administrativa para levantar"
-                            onChange={(event) =>
-                              handleSanctionLiftNoteChange(sanction.id, event.target.value)
-                            }
-                            placeholder="Justifica por que corresponde levantar manualmente esta sancion"
-                            rows={3}
-                            value={sanctionLiftNotes[sanction.id] ?? ''}
-                          />
-                          <div className="button-row">
-                            <Button
-                              disabled={
-                                isLiftingSanctionId === sanction.id ||
-                                (sanctionLiftNotes[sanction.id]?.trim().length ?? 0) <
-                                  MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH
-                              }
-                              onClick={() => void handleLiftSanction(sanction.id)}
-                            >
-                              {isLiftingSanctionId === sanction.id
-                                ? 'Levantando...'
-                                : 'Levantar manualmente'}
+                            ) : (
+                              <span className={styles.rowTagMuted}>Sin evidencia</span>
+                            )}
+                            <Button onClick={() => setActiveReport(report)} variant="secondary">
+                              <span className={styles.buttonIcon}>
+                                <InlineIcon className={styles.iconSmall} name="review" />
+                              </span>
+                              Revisar
                             </Button>
                           </div>
                         </div>
-                      </details>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="panel-text">
-                No hay sanciones activas dentro del alcance administrativo actual.
-              </p>
-            )}
-          </article>
-          ) : null}
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <section className={styles.emptyState}>
+                    <h2 className={styles.emptyTitle}>Sin reportes</h2>
+                    <p className={styles.emptyText}>No hay reportes para el filtro actual.</p>
+                  </section>
+                )}
 
-          {activeWorkspace === 'appeals' ? (
-          <article className="panel panel-stack">
-            <AuditWorkspaceHero
-              actions={
-                <>
-                  <StatusPill
-                    label={
-                      pendingAppealsCount
-                        ? `${pendingAppealsCount} pendientes`
-                        : 'Sin pendientes'
-                    }
-                    tone={pendingAppealsCount ? 'warning' : 'success'}
-                  />
-                  <StatusPill
-                    label={`${reviewableAppeals.length} visibles`}
-                    tone="neutral"
-                  />
-                </>
-              }
-              subtitle="Resuelve solicitudes de revision con criterio consistente y una nota administrativa clara para cada decision."
-              title="Apelaciones de sanciones"
-            />
+                <PaginationBar
+                  onNext={() => setPageByWorkspace((current) => ({ ...current, reports: Math.min(reportPageCount, reportPage + 1) }))}
+                  onPrev={() => setPageByWorkspace((current) => ({ ...current, reports: Math.max(1, reportPage - 1) }))}
+                  page={reportPage}
+                  pageSize={PAGE_SIZES.reports}
+                  totalItems={orderedReviewableReports.length}
+                  totalPages={reportPageCount}
+                />
+              </section>
+            ) : null}
 
-            <div className="audit-mini-grid">
-              <AuditMiniStat
-                label="Pendientes"
-                note="Necesitan revision administrativa."
-                tone={pendingAppealsCount ? 'warning' : 'success'}
-                value={pendingAppealsCount}
-              />
-              <AuditMiniStat
-                label="Aprobadas"
-                note="Apelaciones aceptadas."
-                tone={approvedAppealsCount ? 'success' : 'neutral'}
-                value={approvedAppealsCount}
-              />
-              <AuditMiniStat
-                label="Rechazadas"
-                note="Casos ya cerrados en contra."
-                tone={rejectedAppealsCount ? 'danger' : 'neutral'}
-                value={rejectedAppealsCount}
-              />
-              <AuditMiniStat
-                label="Sanciones activas"
-                note="Contexto del frente disciplinario."
-                tone={reviewableSanctions.length ? 'neutral' : 'neutral'}
-                value={reviewableSanctions.length}
-              />
-            </div>
+            {activeWorkspace === 'sanctions' ? (
+              <section className={styles.section}>
+                <div className={styles.sectionTop}>
+                  <div>
+                    <h3 className={styles.sectionTitle}>Sanciones activas</h3>
+                    <p className={styles.sectionMeta}>{reviewableSanctions.length} sanciones visibles</p>
+                  </div>
+                </div>
 
-            {reviewableAppeals.length ? (
-              <div className="list-stack">
-                {reviewableAppeals.map((appeal) => {
-                  const isPending = appeal.status === OperationalSanctionAppealStatus.Pending;
-                  const appealOutcomeSummary = deriveAppealOutcomeSummary(appeal);
-                  const isHighlightedAppeal =
-                    highlightedSanctionId === appeal.sanctionId ||
-                    highlightedMembershipId === appeal.membershipId;
+                <div className={styles.statsRow}>
+                  {sanctionStats.map((stat) => (
+                    <StatChip key={stat.label} label={stat.label} tone={stat.tone} value={stat.value} />
+                  ))}
+                </div>
 
-                  return (
-                    <div
-                      key={appeal.id}
-                      className={[
-                        'list-card',
-                        'audit-review-card',
-                        isPending ? 'audit-review-card-warning' : '',
-                        appeal.status === OperationalSanctionAppealStatus.Approved
-                          ? 'audit-review-card-success'
-                          : '',
-                        isHighlightedAppeal ? 'audit-review-card-spotlight' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                    >
-                      <div className="audit-review-head">
-                        <div className="audit-review-copy">
-                          <strong>{appeal.affectedFullName}</strong>
-                          <p className="audit-review-subline">
-                            Solicita revision {appeal.requestedByFullName}
-                          </p>
-                        </div>
-                        <div className="button-row">
-                          <StatusPill
-                            label={getSanctionAppealStatusLabel(appeal.status)}
-                            tone={getSanctionAppealStatusTone(appeal.status)}
-                          />
-                          <StatusPill
-                            label={getOperationalSanctionTypeLabel(appeal.sanctionType)}
-                            tone={getOperationalSanctionTone(appeal.sanctionType)}
-                          />
-                        </div>
-                      </div>
+                {paginatedSanctions.length ? (
+                  <div className={styles.list}>
+                    {paginatedSanctions.map((sanction, index) => {
+                      const hasPendingAppeal = sanctionsWithPendingAppeals.has(sanction.id);
+                      const isHighlighted =
+                        highlightedSanctionId === sanction.id ||
+                        highlightedMembershipId === sanction.membershipId;
 
-                      <div className="audit-review-facts">
-                        <div className="audit-review-fact">
-                          <span>Institucion</span>
-                          <strong>{appeal.institutionName}</strong>
-                        </div>
-                        <div className="audit-review-fact">
-                          <span>Alcance</span>
-                          <strong>{getOperationalSanctionScopeLabel(appeal.sanctionScope)}</strong>
-                        </div>
-                        <div className="audit-review-fact">
-                          <span>Sancion</span>
-                          <strong>
-                            {appeal.sanctionEndsAt
-                              ? `Hasta ${formatDateTime(appeal.sanctionEndsAt)}`
-                              : 'Indefinida'}
-                          </strong>
-                        </div>
-                        <div className="audit-review-fact audit-review-fact-wide">
-                          <span>Disparador</span>
-                          <strong>{getOperationalSanctionTriggerLabel(appeal.sanctionTrigger)}</strong>
-                        </div>
-                      </div>
-
-                      <div className="audit-note-banner">
-                        <span>Apelacion</span>
-                        <p>{appeal.reason}</p>
-                      </div>
-
-                      <div className="audit-note-banner audit-note-banner-muted">
-                        <span>Sancion original</span>
-                        <p>{appeal.sanctionReason}</p>
-                      </div>
-
-                      <div className="audit-link-grid">
-                        <article className="audit-link-card">
-                          <span className="audit-link-card-label">Frente disciplinario</span>
-                          <strong className="audit-link-card-value">
-                            {getOperationalSanctionTypeLabel(appeal.sanctionType)}
-                          </strong>
-                          <p className="audit-link-card-note">
-                            Impacta el alcance {getOperationalSanctionScopeLabel(appeal.sanctionScope).toLowerCase()}.
-                          </p>
-                        </article>
-                        <article className="audit-link-card">
-                          <span className="audit-link-card-label">Origen de la sancion</span>
-                          <strong className="audit-link-card-value">
-                            {getOperationalSanctionTriggerLabel(appeal.sanctionTrigger)}
-                          </strong>
-                          <p className="audit-link-card-note">
-                            {appeal.sanctionTrigger === OperationalSanctionTrigger.ResolvedReports
-                              ? 'Proviene de reportes administrativos ya resueltos.'
-                              : 'Proviene de reglas operativas automáticas.'}
-                          </p>
-                        </article>
-                      </div>
-
-                      <div className="button-row">
-                        <Button
-                          onClick={() =>
-                            openAuditWorkspace({
-                              workspace: 'sanctions',
-                              membershipId: appeal.membershipId,
-                              sanctionId: appeal.sanctionId,
-                            })
-                          }
-                          variant="secondary"
+                      return (
+                        <div
+                          key={sanction.id}
+                          className={[styles.listRow, isHighlighted ? styles.rowHighlight : ''].filter(Boolean).join(' ')}
+                          style={{ animationDelay: `${index * 0.04}s` }}
                         >
-                          Ver sancion
-                        </Button>
-                        {appeal.sanctionTrigger === OperationalSanctionTrigger.ResolvedReports ? (
-                          <Button
-                            onClick={() =>
-                              openAuditWorkspace({
-                                workspace: 'reports',
-                                membershipId: appeal.membershipId,
-                              })
-                            }
-                            variant="ghost"
-                          >
-                            Ver reportes relacionados
-                          </Button>
-                        ) : null}
-                      </div>
-
-                      <div
-                        className={[
-                          'audit-outcome-card',
-                          `audit-outcome-card-${appealOutcomeSummary.tone}`,
-                        ].join(' ')}
-                      >
-                        <span className="audit-outcome-label">Efecto operativo actual</span>
-                        <strong className="audit-outcome-value">{appealOutcomeSummary.label}</strong>
-                        <p className="audit-outcome-note">{appealOutcomeSummary.note}</p>
-                      </div>
-
-                      {appeal.reviewNote ? (
-                        <div className="audit-note-banner audit-note-banner-muted">
-                          <span>Nota de revision</span>
-                          <p>{appeal.reviewNote}</p>
-                        </div>
-                      ) : null}
-
-                      {isPending ? (
-                        <details className="audit-action-details">
-                          <summary>Revisar apelacion</summary>
-                          <div className="audit-action-body">
-                            <TextareaField
-                              label="Nota administrativa"
-                              onChange={(event) =>
-                                handleAppealReviewNoteChange(appeal.id, event.target.value)
-                              }
-                              placeholder="Explica la decision administrativa sobre la apelacion"
-                              rows={3}
-                              value={appealReviewNotes[appeal.id] ?? ''}
-                            />
-                            <div className="button-row">
-                              <Button
-                                disabled={
-                                  isReviewingAppealId === appeal.id ||
-                                  (appealReviewNotes[appeal.id]?.trim().length ?? 0) <
-                                    SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
-                                }
-                                onClick={() =>
-                                  void handleReviewAppeal(
-                                    appeal.id,
-                                    OperationalSanctionAppealStatus.Approved,
-                                  )
-                                }
-                              >
-                                Aprobar apelacion
-                              </Button>
-                              <Button
-                                disabled={
-                                  isReviewingAppealId === appeal.id ||
-                                  (appealReviewNotes[appeal.id]?.trim().length ?? 0) <
-                                    SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH
-                                }
-                                onClick={() =>
-                                  void handleReviewAppeal(
-                                    appeal.id,
-                                    OperationalSanctionAppealStatus.Rejected,
-                                  )
-                                }
-                                variant="ghost"
-                              >
-                                Rechazar apelacion
-                              </Button>
-                            </div>
+                          <div className={styles.rowMain}>
+                            <div className={styles.rowTitle}>{sanction.membershipUserFullName}</div>
+                            <div className={styles.rowMeta}>{sanction.institutionName}</div>
                           </div>
-                        </details>
-                      ) : (
-                        <div className="audit-resolution-note">
-                          Cerrada por {appeal.reviewedByFullName ?? 'administracion'}.
+                          <div className={styles.rowBadges}>
+                            <StatusPill label={getOperationalSanctionTypeLabel(sanction.type)} tone={getOperationalSanctionTone(sanction.type)} />
+                            <StatusPill label={getOperationalSanctionScopeLabel(sanction.scope)} tone="neutral" />
+                            {hasPendingAppeal ? <span className={styles.rowTag}>Apelacion</span> : null}
+                          </div>
+                          <div className={styles.rowInfo}>
+                            <span>{getOperationalSanctionTriggerLabel(sanction.trigger)}</span>
+                            <span>{sanction.endsAt ? formatDateTime(sanction.endsAt) : 'Indefinida'}</span>
+                          </div>
+                          <div className={styles.rowActions}>
+                            <Button onClick={() => setActiveSanction(sanction)} variant="secondary">
+                              <span className={styles.buttonIcon}>
+                                <InlineIcon className={styles.iconSmall} name="detail" />
+                              </span>
+                              Detalle
+                            </Button>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="panel-text">
-                No hay apelaciones de sanciones dentro del alcance actual.
-              </p>
-            )}
-          </article>
-          ) : null}
-        </div>
-            </div>
-          </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <section className={styles.emptyState}>
+                    <h2 className={styles.emptyTitle}>Sin sanciones</h2>
+                    <p className={styles.emptyText}>No hay sanciones activas en este momento.</p>
+                  </section>
+                )}
+
+                <PaginationBar
+                  onNext={() => setPageByWorkspace((current) => ({ ...current, sanctions: Math.min(sanctionPageCount, sanctionPage + 1) }))}
+                  onPrev={() => setPageByWorkspace((current) => ({ ...current, sanctions: Math.max(1, sanctionPage - 1) }))}
+                  page={sanctionPage}
+                  pageSize={PAGE_SIZES.sanctions}
+                  totalItems={reviewableSanctions.length}
+                  totalPages={sanctionPageCount}
+                />
+              </section>
+            ) : null}
+
+            {activeWorkspace === 'appeals' ? (
+              <section className={styles.section}>
+                <div className={styles.sectionTop}>
+                  <div>
+                    <h3 className={styles.sectionTitle}>Apelaciones</h3>
+                    <p className={styles.sectionMeta}>{reviewableAppeals.length} visibles</p>
+                  </div>
+                </div>
+
+                <div className={styles.statsRow}>
+                  {appealStats.map((stat) => (
+                    <StatChip key={stat.label} label={stat.label} tone={stat.tone} value={stat.value} />
+                  ))}
+                </div>
+
+                {paginatedAppeals.length ? (
+                  <div className={styles.list}>
+                    {paginatedAppeals.map((appeal, index) => {
+                      const isHighlighted =
+                        highlightedSanctionId === appeal.sanctionId ||
+                        highlightedMembershipId === appeal.membershipId;
+
+                      return (
+                        <div
+                          key={appeal.id}
+                          className={[styles.listRow, isHighlighted ? styles.rowHighlight : ''].filter(Boolean).join(' ')}
+                          style={{ animationDelay: `${index * 0.04}s` }}
+                        >
+                          <div className={styles.rowMain}>
+                            <div className={styles.rowTitle}>{appeal.affectedFullName}</div>
+                            <div className={styles.rowMeta}>Solicita {appeal.requestedByFullName}</div>
+                          </div>
+                          <div className={styles.rowBadges}>
+                            <StatusPill label={getSanctionAppealStatusLabel(appeal.status)} tone={getSanctionAppealStatusTone(appeal.status)} />
+                            <StatusPill label={getOperationalSanctionTypeLabel(appeal.sanctionType)} tone={getOperationalSanctionTone(appeal.sanctionType)} />
+                          </div>
+                          <div className={styles.rowInfo}>
+                            <span>{getOperationalSanctionTriggerLabel(appeal.sanctionTrigger)}</span>
+                            <span>{formatDateTime(appeal.createdAt)}</span>
+                          </div>
+                          <div className={styles.rowActions}>
+                            <Button onClick={() => setActiveAppeal(appeal)} variant="secondary">
+                              <span className={styles.buttonIcon}>
+                                <InlineIcon className={styles.iconSmall} name="review" />
+                              </span>
+                              Revisar
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <section className={styles.emptyState}>
+                    <h2 className={styles.emptyTitle}>Sin apelaciones</h2>
+                    <p className={styles.emptyText}>No hay apelaciones en este momento.</p>
+                  </section>
+                )}
+
+                <PaginationBar
+                  onNext={() => setPageByWorkspace((current) => ({ ...current, appeals: Math.min(appealPageCount, appealPage + 1) }))}
+                  onPrev={() => setPageByWorkspace((current) => ({ ...current, appeals: Math.max(1, appealPage - 1) }))}
+                  page={appealPage}
+                  pageSize={PAGE_SIZES.appeals}
+                  totalItems={reviewableAppeals.length}
+                  totalPages={appealPageCount}
+                />
+              </section>
+            ) : null}
+          </main>
         </div>
       </section>
 
-      <FilePreviewModal
-        description={
-          driverDocumentPreview?.mimeType?.startsWith('image/')
-            ? 'Pasa el puntero sobre la imagen para ampliar los detalles del documento.'
-            : 'Revisa el archivo antes de descargarlo o continuar con la revision administrativa.'
+      <ModerationModals
+        activeAppeal={activeAppeal}
+        activeDriverApplication={activeDriverApplication}
+        activeReport={activeReport}
+        activeSanction={activeSanction}
+        appealReviewNotes={appealReviewNotes}
+        driverDocumentPreview={driverDocumentPreview}
+        driverDocumentPreviewError={driverDocumentPreviewError}
+        driverReviewNotes={driverReviewNotes}
+        formatDateTime={formatDateTime}
+        formatRelativeElapsed={formatRelativeElapsed}
+        getDriverPreviewUserName={(membershipId) =>
+          reviewableDriverApplications.find((application) => application.membershipId === membershipId)?.userFullName ?? 'usuario'
         }
-        errorMessage={driverDocumentPreviewError}
-        fileName={driverDocumentPreview?.fileName ?? null}
-        fileUrl={driverDocumentPreview?.fileUrl ?? null}
-        isDownloading={
-          driverDocumentPreview
-            ? isDownloadingDriverDocumentKey ===
-              `${driverDocumentPreview.membershipId}-${driverDocumentPreview.documentType}`
-            : false
+        getOperationalSanctionTriggerLabel={(value) =>
+          getOperationalSanctionTriggerLabel(value as OperationalSanctionTrigger)
         }
-        isLoading={Boolean(isOpeningDriverDocumentKey)}
-        isOpen={Boolean(driverDocumentPreview) || Boolean(driverDocumentPreviewError)}
-        mimeType={driverDocumentPreview?.mimeType ?? null}
-        onClose={resetDriverDocumentPreview}
-        onDownload={
-          driverDocumentPreview
-            ? () =>
-                void handleDownloadDriverDocument(
-                  driverDocumentPreview.membershipId,
-                  driverDocumentPreview.documentType,
-                  reviewableDriverApplications.find(
-                    (application) =>
-                      application.membershipId === driverDocumentPreview.membershipId,
-                  )?.userFullName ?? 'usuario',
-                )
-            : undefined
-        }
-        title={driverDocumentPreview?.title ?? 'Documento del conductor'}
-      />
-
-      <FilePreviewModal
-        description={
-          reportEvidencePreview?.mimeType?.startsWith('image/')
-            ? 'Inspecciona la imagen antes de tomar una decision administrativa sobre el caso.'
-            : 'Revisa el archivo adjunto antes de cerrar o escalar el reporte.'
-        }
-        errorMessage={reportEvidencePreviewError}
-        fileName={reportEvidencePreview?.fileName ?? null}
-        fileUrl={reportEvidencePreview?.fileUrl ?? null}
-        isDownloading={
-          reportEvidencePreview
-            ? isDownloadingReportEvidenceId === reportEvidencePreview.reportId
-            : false
-        }
-        isLoading={Boolean(isOpeningReportEvidenceId)}
-        isOpen={Boolean(reportEvidencePreview) || Boolean(reportEvidencePreviewError)}
-        mimeType={reportEvidencePreview?.mimeType ?? null}
-        onClose={resetReportEvidencePreview}
-        onDownload={
-          reportEvidencePreview
-            ? () => {
-                const report = reviewableReports.find(
-                  (item) => item.id === reportEvidencePreview.reportId,
-                );
-
-                if (report) {
-                  void handleDownloadReportEvidence(report);
-                }
-              }
-            : undefined
-        }
-        title={reportEvidencePreview?.title ?? 'Evidencia del reporte'}
+        getReportPreviewRecord={(reportId) => reviewableReports.find((item) => item.id === reportId)}
+        isDownloadingDriverDocumentKey={isDownloadingDriverDocumentKey}
+        isDownloadingReportEvidenceId={isDownloadingReportEvidenceId}
+        isLiftingSanctionId={isLiftingSanctionId}
+        isOpeningDriverDocumentKey={isOpeningDriverDocumentKey}
+        isOpeningReportEvidenceId={isOpeningReportEvidenceId}
+        isReviewingAppealId={isReviewingAppealId}
+        isReviewingDriverMembershipId={isReviewingDriverMembershipId}
+        isReviewingReportId={isReviewingReportId}
+        onAppealReviewNoteChange={handleAppealReviewNoteChange}
+        onCloseAppeal={() => setActiveAppeal(null)}
+        onCloseDriverApplication={() => setActiveDriverApplication(null)}
+        onCloseReport={() => setActiveReport(null)}
+        onCloseSanction={() => setActiveSanction(null)}
+        onDownloadDriverDocument={handleDownloadDriverDocument}
+        onDownloadReportEvidence={handleDownloadReportEvidence}
+        onDriverReviewNoteChange={handleDriverReviewNoteChange}
+        onLiftSanction={handleLiftSanction}
+        onOpenDriverDocumentPreview={handleOpenDriverDocumentPreview}
+        onOpenReportEvidencePreview={handleOpenReportEvidencePreview}
+        onReviewAppeal={handleReviewAppeal}
+        onReviewDriverApplication={handleReviewDriverApplication}
+        onReviewNoteChange={handleReviewNoteChange}
+        onReviewReport={handleReviewReport}
+        onSanctionLiftNoteChange={handleSanctionLiftNoteChange}
+        reportEvidencePreview={reportEvidencePreview}
+        reportEvidencePreviewError={reportEvidencePreviewError}
+        resetDriverDocumentPreview={resetDriverDocumentPreview}
+        resetReportEvidencePreview={resetReportEvidencePreview}
+        reviewNotes={reviewNotes}
+        sanctionLiftNotes={sanctionLiftNotes}
       />
     </>
   );

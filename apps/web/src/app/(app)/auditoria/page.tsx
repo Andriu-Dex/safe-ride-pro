@@ -34,6 +34,8 @@ const EMPTY_FILTERS: AuditFilters = {
   limit: '50',
 };
 
+const PAGE_SIZE = 10;
+
 function toIsoDateTime(value: string | undefined): string | undefined {
   if (!value) {
     return undefined;
@@ -88,15 +90,131 @@ function extractMetadataEntries(metadata: Record<string, unknown> | null) {
   }));
 }
 
+type IconName = 'event' | 'refresh' | 'detail' | 'filter';
+
+function InlineIcon({ name, className }: { name: IconName; className?: string }) {
+  const iconProps = {
+    className: className ?? styles.icon,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+
+  switch (name) {
+    case 'event':
+      return (
+        <svg {...iconProps}>
+          <path d="M4 12h4l2-4 4 8 2-4h4" />
+        </svg>
+      );
+    case 'refresh':
+      return (
+        <svg {...iconProps}>
+          <path d="M20 6v6h-6" />
+          <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+        </svg>
+      );
+    case 'detail':
+      return (
+        <svg {...iconProps}>
+          <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z" />
+          <circle cx="12" cy="12" r="2" />
+        </svg>
+      );
+    case 'filter':
+      return (
+        <svg {...iconProps}>
+          <path d="M4 5h16l-6 7v6l-4 2v-8z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+type StatTone = 'neutral' | 'warning' | 'danger' | 'success';
+
+const STAT_TONE_CLASSES: Record<StatTone, string> = {
+  neutral: '',
+  warning: styles.statChipWarning,
+  danger: styles.statChipDanger,
+  success: styles.statChipSuccess,
+};
+
+function StatChip({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string | number;
+  tone?: StatTone;
+}) {
+  return (
+    <div className={[styles.statChip, STAT_TONE_CLASSES[tone]].filter(Boolean).join(' ')}>
+      <span className={styles.statLabel}>{label}</span>
+      <strong className={styles.statValue}>{value}</strong>
+    </div>
+  );
+}
+
+type PaginationProps = {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  onPrev: () => void;
+  onNext: () => void;
+};
+
+function PaginationBar({
+  page,
+  totalPages,
+  totalItems,
+  pageSize,
+  onPrev,
+  onNext,
+}: PaginationProps) {
+  if (totalItems <= pageSize) {
+    return null;
+  }
+
+  const start = Math.min(totalItems, (page - 1) * pageSize + 1);
+  const end = Math.min(totalItems, page * pageSize);
+
+  return (
+    <div className={styles.pagination}>
+      <span className={styles.paginationInfo}>
+        Mostrando {start}-{end} de {totalItems}
+      </span>
+      <div className={styles.paginationActions}>
+        <Button disabled={page <= 1} onClick={onPrev} variant="ghost">
+          Anterior
+        </Button>
+        <span className={styles.paginationLabel}>
+          {page}/{totalPages}
+        </span>
+        <Button disabled={page >= totalPages} onClick={onNext} variant="ghost">
+          Siguiente
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function AuditPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
   const [filterValues, setFilterValues] = useState<AuditFilters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<AuditFilters>(EMPTY_FILTERS);
-  const [expandedEventIds, setExpandedEventIds] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [activeEvent, setActiveEvent] = useState<AuditEventRecord | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const adminMemberships = useMemo(
@@ -249,6 +367,7 @@ export default function AuditPage() {
   const handleApplyFilters = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsApplyingFilters(true);
+    setPage(1);
 
     setAppliedFilters({
       institutionId: filterValues.institutionId,
@@ -265,13 +384,7 @@ export default function AuditPage() {
   const handleResetFilters = () => {
     setFilterValues(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
-  };
-
-  const toggleEventExpanded = (eventId: string) => {
-    setExpandedEventIds((current) => ({
-      ...current,
-      [eventId]: !current[eventId],
-    }));
+    setPage(1);
   };
 
   const activeFiltersCount = [
@@ -282,17 +395,49 @@ export default function AuditPage() {
     appliedFilters.to,
   ].filter(Boolean).length;
 
+  const uniqueActionCount = new Set(auditEvents.map((event) => event.action)).size;
+  const uniqueActorCount = new Set(
+    auditEvents.map((event) => event.actorFullName ?? 'Sistema'),
+  ).size;
+  const pageCount = Math.max(1, Math.ceil(auditEvents.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const paginatedEvents = auditEvents.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  const eventStats = [
+    {
+      label: 'Eventos',
+      value: auditEvents.length,
+      tone: auditEvents.length ? 'neutral' : 'neutral',
+    },
+    {
+      label: 'Acciones',
+      value: uniqueActionCount,
+      tone: uniqueActionCount ? 'neutral' : 'neutral',
+    },
+    {
+      label: 'Actores',
+      value: uniqueActorCount,
+      tone: uniqueActorCount ? 'neutral' : 'neutral',
+    },
+    {
+      label: 'Filtros',
+      value: activeFiltersCount,
+      tone: activeFiltersCount ? 'warning' : 'neutral',
+    },
+  ] as const;
+
   if (isLoading) {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
         <section className={styles.loadingShell}>
-          <article className={styles.loadingCard}>
+          <article className={styles.stateCard}>
             <div aria-hidden="true" className={styles.loadingPulse} />
-            <h1 className={styles.loadingTitle}>Cargando auditoria</h1>
-            <p className={styles.loadingText}>
-              Estamos preparando la trazabilidad institucional.
-            </p>
+            <h1 className={styles.stateTitle}>Cargando auditoria</h1>
+            <p className={styles.stateText}>Preparando la trazabilidad institucional.</p>
           </article>
         </section>
       </>
@@ -303,7 +448,7 @@ export default function AuditPage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.auditShell}>
+        <section className={styles.page}>
           <section className={styles.hero}>
             <div className={styles.heroCopy}>
               <p className={styles.kicker}>Auditoria</p>
@@ -330,41 +475,46 @@ export default function AuditPage() {
     <>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <section className={styles.auditShell}>
+      <section className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <p className={styles.kicker}>Auditoria</p>
             <h1 className={styles.heroTitle}>Trazabilidad institucional</h1>
             <p className={styles.heroLead}>
-              Consulta eventos administrativos y del sistema para entender que ocurrio, quien lo hizo y en que contexto.
+              Consulta eventos administrativos y del sistema con filtros claros y un detalle rapido.
             </p>
           </div>
 
           <div className={styles.heroActions}>
-            <StatusPill
-              label={auditEvents.length ? `${auditEvents.length} eventos visibles` : 'Sin eventos'}
-              tone={auditEvents.length ? 'neutral' : 'success'}
-            />
+            <div className={styles.heroChips}>
+              <span className={styles.heroChip}>
+                <InlineIcon className={styles.iconSmall} name="event" />
+                {auditEvents.length} eventos
+              </span>
+            </div>
             <Button
               disabled={isRefreshing}
               onClick={() => void refreshEvents(true)}
               variant="secondary"
             >
+              <span className={styles.buttonIcon}>
+                <InlineIcon className={styles.iconSmall} name="refresh" />
+              </span>
               {isRefreshing ? 'Actualizando...' : 'Actualizar'}
             </Button>
           </div>
         </section>
 
-        <div className={styles.auditLayout}>
-          <aside className={styles.sidebar}>
-            <section className={styles.sidebarSection}>
-              <div className={styles.sidebarSectionHeader}>
+        <div className={styles.board}>
+          <aside className={styles.rail}>
+            <section className={styles.railSection}>
+              <div className={styles.railHeader}>
                 <div>
-                  <p className={styles.sidebarKicker}>Filtros</p>
-                  <h2 className={styles.sidebarTitle}>Consulta actual</h2>
+                  <p className={styles.railLabel}>Filtros</p>
+                  <h2 className={styles.railTitle}>Consulta</h2>
                 </div>
                 {activeFiltersCount ? (
-                  <span className={styles.filterBadge}>{activeFiltersCount} activos</span>
+                  <span className={styles.filterBadge}>{activeFiltersCount}</span>
                 ) : null}
               </div>
 
@@ -444,76 +594,148 @@ export default function AuditPage() {
             </section>
           </aside>
 
-          <div className={styles.contentShell}>
-            <section className={styles.sectionHeader}>
+          <main className={styles.content}>
+            <header className={styles.contentHeader}>
               <div>
-                <p className={styles.sectionKicker}>Eventos</p>
-                <h2 className={styles.sectionTitle}>Historial visible</h2>
+                <p className={styles.contentKicker}>Eventos</p>
+                <h2 className={styles.contentTitle}>Historial visible</h2>
+                <p className={styles.contentSubtitle}>Revisa la actividad administrativa mas reciente.</p>
               </div>
-            </section>
+            </header>
 
-            <div className={styles.workspaceSurface}>
-              {auditEvents.length ? (
-                <div className="list-stack">
-                  {auditEvents.map((event) => {
-                    const isExpanded = Boolean(expandedEventIds[event.id]);
-                    const metadataEntries = extractMetadataEntries(event.metadata);
+            <div className={styles.statsRow}>
+              {eventStats.map((stat) => (
+                <StatChip
+                  key={stat.label}
+                  label={stat.label}
+                  tone={stat.tone}
+                  value={stat.value}
+                />
+              ))}
+            </div>
 
-                    return (
-                      <article key={event.id} className="list-card">
-                        <div className="list-card-header">
-                          <strong>{getAuditActionLabel(event.action)}</strong>
-                          <div className="button-row">
-                            <StatusPill
-                              label={getAuditEntityTypeLabel(event.entityType)}
-                              tone="neutral"
-                            />
-                            <Button onClick={() => toggleEventExpanded(event.id)} variant="ghost">
-                              {isExpanded ? 'Ocultar detalle' : 'Ver detalle'}
-                            </Button>
-                          </div>
-                        </div>
+            {paginatedEvents.length ? (
+              <div className={styles.list}>
+                {paginatedEvents.map((event, index) => (
+                  <div
+                    key={event.id}
+                    className={styles.listRow}
+                    style={{ animationDelay: `${index * 0.04}s` }}
+                  >
+                    <div className={styles.rowMain}>
+                      <div className={styles.rowTitle}>{getAuditActionLabel(event.action)}</div>
+                      <div className={styles.rowMeta}>
+                        {event.actorFullName ?? 'Sistema'} | {formatDateTime(event.createdAt)}
+                      </div>
+                    </div>
+                    <div className={styles.rowBadges}>
+                      <StatusPill
+                        label={getAuditEntityTypeLabel(event.entityType)}
+                        tone="neutral"
+                      />
+                    </div>
+                    <div className={styles.rowInfo}>
+                      <span>{event.institutionName ?? 'No aplica'}</span>
+                      <span>{event.entityId ?? 'Sin referencia'}</span>
+                    </div>
+                    <div className={styles.rowActions}>
+                      <Button onClick={() => setActiveEvent(event)} variant="secondary">
+                        <span className={styles.buttonIcon}>
+                          <InlineIcon className={styles.iconSmall} name="detail" />
+                        </span>
+                        Detalle
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <section className={styles.emptyState}>
+                <h2 className={styles.emptyTitle}>Sin resultados</h2>
+                <p className={styles.emptyText}>
+                  No hay eventos para los filtros actuales. Ajusta la fecha o la accion para ampliar la consulta.
+                </p>
+              </section>
+            )}
 
-                        <p className="panel-text">
-                          Actor: {event.actorFullName ?? 'Sistema'} | Fecha: {formatDateTime(event.createdAt)}
-                        </p>
+            <PaginationBar
+              onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
+              onPrev={() => setPage((current) => Math.max(1, current - 1))}
+              page={safePage}
+              pageSize={PAGE_SIZE}
+              totalItems={auditEvents.length}
+              totalPages={pageCount}
+            />
+          </main>
+        </div>
+      </section>
 
-                        <p className="panel-text">
-                          Institucion: {event.institutionName ?? 'No aplica'} | Entidad: {event.entityId ?? 'Sin referencia'}
-                        </p>
+      {activeEvent ? (
+        <div
+          aria-labelledby="audit-event-modal-title"
+          aria-modal="true"
+          className="modal-backdrop"
+          onClick={() => setActiveEvent(null)}
+          role="dialog"
+        >
+          <div
+            className={`modal-card modal-card-lg ${styles.modalCard}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <div>
+                <p className={styles.modalKicker}>Evento</p>
+                <h2 className={styles.modalTitle} id="audit-event-modal-title">
+                  {getAuditActionLabel(activeEvent.action)}
+                </h2>
+                <p className={styles.modalSubtitle}>
+                  {activeEvent.actorFullName ?? 'Sistema'} | {formatDateTime(activeEvent.createdAt)}
+                </p>
+              </div>
+              <Button onClick={() => setActiveEvent(null)} variant="ghost">
+                Cerrar
+              </Button>
+            </div>
 
-                        {isExpanded ? (
-                          metadataEntries.length ? (
-                            <div className="audit-metadata-grid">
-                              {metadataEntries.map((entry) => (
-                                <div key={`${event.id}-${entry.key}`} className="audit-metadata-item">
-                                  <span>{entry.key}</span>
-                                  <strong>{entry.value}</strong>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="panel-text">Este evento no incluye metadatos adicionales.</p>
-                          )
-                        ) : (
-                          <p className="panel-text">Abre el detalle solo cuando necesites mas contexto.</p>
-                        )}
-                      </article>
-                    );
-                  })}
+            <div className={styles.modalBadgeRow}>
+              <StatusPill
+                label={getAuditEntityTypeLabel(activeEvent.entityType)}
+                tone="neutral"
+              />
+            </div>
+
+            <div className={styles.modalGrid}>
+              <div className={styles.modalField}>
+                <span className={styles.modalFieldLabel}>Institucion</span>
+                <strong className={styles.modalFieldValue}>
+                  {activeEvent.institutionName ?? 'No aplica'}
+                </strong>
+              </div>
+              <div className={styles.modalField}>
+                <span className={styles.modalFieldLabel}>Entidad</span>
+                <strong className={styles.modalFieldValue}>
+                  {activeEvent.entityId ?? 'Sin referencia'}
+                </strong>
+              </div>
+            </div>
+
+            <div className={styles.modalStack}>
+              {extractMetadataEntries(activeEvent.metadata).length ? (
+                <div className={styles.modalGrid}>
+                  {extractMetadataEntries(activeEvent.metadata).map((entry) => (
+                    <div key={`${activeEvent.id}-${entry.key}`} className={styles.modalField}>
+                      <span className={styles.modalFieldLabel}>{entry.key}</span>
+                      <strong className={styles.modalFieldValue}>{entry.value}</strong>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <section className={styles.emptyState}>
-                  <h2 className={styles.emptyTitle}>Sin resultados</h2>
-                  <p className={styles.emptyText}>
-                    No hay eventos para los filtros actuales. Ajusta la fecha, la accion o la institucion para ampliar la consulta.
-                  </p>
-                </section>
+                <p className={styles.modalNoteMuted}>Sin metadatos adicionales.</p>
               )}
             </div>
           </div>
         </div>
-      </section>
+      ) : null}
     </>
   );
 }

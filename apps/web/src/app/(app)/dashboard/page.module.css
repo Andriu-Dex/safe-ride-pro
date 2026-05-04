@@ -1,231 +1,205 @@
-.dashboardShell {
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+.page {
   display: grid;
   gap: 1.4rem;
-}
-
-.reveal {
-  animation: dashboardRise 0.5s ease both;
-}
-
-.revealSoft {
-  animation: dashboardFade 0.55s ease both;
+  width: min(100%, 92rem);
+  margin: 0 auto;
+  padding: 1.4rem;
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
 }
 
 .hero {
-  position: relative;
-  overflow: hidden;
-  display: grid;
-  gap: 1.1rem;
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 30px;
-  background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.14), transparent 30%),
-    linear-gradient(160deg, rgba(247, 251, 251, 0.98), rgba(238, 245, 244, 0.95));
-  padding: clamp(1.2rem, 2.5vw, 2rem);
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
-}
-
-.hero::after {
-  position: absolute;
-  inset: auto -1.6rem -2.4rem auto;
-  width: 12rem;
-  height: 12rem;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.46), transparent 68%);
-  content: '';
-  pointer-events: none;
-}
-
-.heroTop,
-.cardHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
+  padding: clamp(1.4rem, 2.8vw, 2.3rem);
+  border-radius: 28px;
+  background: linear-gradient(145deg, #0d3f3d, #0f5b56 58%, #16756c);
+  box-shadow: 0 22px 50px rgba(7, 17, 20, 0.16);
+  color: #f7fffd;
 }
 
 .heroCopy {
   display: grid;
-  gap: 0.5rem;
-  max-width: 44rem;
+  gap: 0.55rem;
+  max-width: 46rem;
 }
 
-.kicker {
+.kicker,
+.sectionKicker,
+.railLabel {
   margin: 0;
-  color: #0f766e;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
+.kicker {
+  color: rgba(210, 250, 242, 0.78);
+}
+
 .heroTitle,
-.loadingTitle {
+.stateTitle,
+.sectionTitle,
+.railTitle {
   margin: 0;
-  color: #16343d;
-  font-size: clamp(2rem, 3.8vw, 3.2rem);
+  color: inherit;
+}
+
+.heroTitle {
+  font-size: clamp(2.1rem, 4vw, 3.3rem);
   line-height: 1;
 }
 
 .heroLead,
-.loadingText {
+.stateText {
   margin: 0;
-  color: #5d767c;
   line-height: 1.6;
+}
+
+.heroLead {
+  color: rgba(236, 250, 248, 0.82);
 }
 
 .heroActions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.7rem;
 }
 
-.metricGrid {
+.board {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.9rem;
-}
-
-.metricCard,
-.focusCard,
-.analyticsCard,
-.sideCard,
-.loadingCard {
-  border: 1px solid rgba(22, 47, 58, 0.1);
-  border-radius: 26px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 251, 0.92));
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
-}
-
-.metricCard {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.95rem 1rem;
-}
-
-.metricLabel,
-.signalTile span,
-.infoTile span {
-  color: #5c767d;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.metricValue {
-  color: #16343d;
-  font-size: 1.2rem;
-  font-weight: 900;
-  line-height: 1.15;
-}
-
-.metricNote {
-  color: #6a8388;
-  font-size: 0.84rem;
-  line-height: 1.45;
-}
-
-.mainGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.16fr) minmax(320px, 0.84fr);
-  gap: 1.25rem;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 1.15rem;
   align-items: start;
 }
 
-.contentColumn,
-.sideColumn {
+.content,
+.rail {
   display: grid;
   gap: 1rem;
 }
 
-.focusCard,
-.analyticsCard,
-.sideCard,
-.loadingCard {
-  padding: 1.2rem;
+.section,
+.railSection,
+.stateCard {
+  border: 1px solid rgba(16, 50, 51, 0.1);
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
 }
 
-.cardHeader h2 {
-  margin: 0;
-  color: #16343d;
+.section,
+.railSection {
+  padding: 1rem;
+  border-radius: 24px;
 }
 
-.detailGrid,
-.analyticsGrid,
-.quickGrid {
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(16, 50, 51, 0.08);
+}
+
+.sectionKicker,
+.railLabel {
+  color: #117268;
+}
+
+.sectionTitle {
+  margin-top: 0.2rem;
+  color: #143036;
+  font-size: clamp(1.35rem, 2.6vw, 1.95rem);
+}
+
+.railTitle {
+  margin-top: 0.2rem;
+  color: #143036;
+  font-size: 1.05rem;
+}
+
+.queueList,
+.navList,
+.detailList {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
+  gap: 0;
 }
 
-.infoTile,
-.signalTile,
-.noticeCard {
-  display: grid;
-  gap: 0.2rem;
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 18px;
-  background: rgba(247, 251, 251, 0.84);
-  padding: 0.95rem;
+.queueRow,
+.navLink,
+.detailRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid rgba(16, 50, 51, 0.08);
 }
 
-.infoTile strong,
-.signalTile strong,
-.noticeCard strong {
-  color: #16343d;
+.queueRow:last-child,
+.navLink:last-child,
+.detailRow:last-child {
+  border-bottom: none;
 }
 
-.alertCard {
-  display: grid;
-  gap: 0.25rem;
-  border: 1px solid rgba(181, 71, 62, 0.14);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 247, 237, 0.95), rgba(254, 242, 242, 0.95));
-  padding: 0.95rem 1rem;
-}
-
-.alertCard strong {
-  color: #16343d;
-}
-
-.alertCard span,
-.noticeCard span,
-.quickLink span {
-  color: #647d83;
-  line-height: 1.5;
-}
-
-.quickGrid {
-  grid-template-columns: 1fr;
-}
-
-.quickLink {
-  display: grid;
-  gap: 0.25rem;
-  border: 1px solid rgba(22, 47, 58, 0.08);
-  border-radius: 18px;
-  background: rgba(247, 251, 251, 0.84);
-  padding: 0.95rem;
+.queueRow,
+.navLink {
   color: inherit;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.quickLink:hover,
-.quickLink:focus-visible {
-  border-color: rgba(15, 118, 110, 0.18);
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+.queueRow strong,
+.navLink strong,
+.detailRow strong {
+  color: #17353a;
+}
+
+.queueRow span,
+.navLink span,
+.detailRow span {
+  color: #61787d;
+  line-height: 1.45;
+}
+
+.queueRow > div,
+.navLink {
+  min-width: 0;
+}
+
+.queueRow:hover,
+.queueRow:focus-visible,
+.navLink:hover,
+.navLink:focus-visible {
+  color: inherit;
   outline: none;
 }
 
-.quickLink strong {
-  color: #16343d;
+.queueCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 
-.noticeStack {
+.notice {
   display: grid;
-  gap: 0.8rem;
+  gap: 0.2rem;
+  padding: 0.9rem 1rem;
+  border-left: 4px solid #0f766e;
+  background: #f4f8f7;
+  color: #496168;
 }
 
 .loadingShell {
@@ -234,42 +208,31 @@
   min-height: 60vh;
 }
 
-.loadingCard {
+.stateCard {
   width: min(100%, 34rem);
   justify-items: center;
+  gap: 0.65rem;
+  padding: 2rem 1.4rem;
+  border-radius: 24px;
   text-align: center;
+}
+
+.stateTitle {
+  color: #16343d;
+  font-size: 1.25rem;
+}
+
+.stateText {
+  color: #61797f;
+  max-width: 28rem;
 }
 
 .loadingPulse {
   width: 4rem;
   height: 4rem;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(14, 165, 233, 0.24));
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.2), rgba(15, 118, 110, 0.06));
   animation: dashboardPulse 1.2s ease-in-out infinite;
-}
-
-@keyframes dashboardRise {
-  0% {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes dashboardFade {
-  0% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 @keyframes dashboardPulse {
@@ -285,33 +248,36 @@
   }
 }
 
-@media (max-width: 1180px) {
-  .mainGrid {
+@media (max-width: 1040px) {
+  .board {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 900px) {
-  .metricGrid,
-  .detailGrid,
-  .analyticsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 760px) {
+  .page {
+    padding: 1rem;
   }
 
-  .heroTop,
-  .cardHeader {
+  .hero,
+  .sectionHeader,
+  .detailRow,
+  .queueRow,
+  .navLink {
     flex-direction: column;
-  }
-}
-
-@media (max-width: 720px) {
-  .metricGrid,
-  .detailGrid,
-  .analyticsGrid {
-    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .heroActions {
-    display: grid;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .heroActions :global(*) {
+    width: 100%;
+  }
+
+  .queueCount {
+    align-self: flex-start;
   }
 }

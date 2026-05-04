@@ -3,7 +3,7 @@
 .pageShell {
   display: grid;
   gap: 1.25rem;
-  width: min(100%, 86rem);
+  width: min(100%, 88rem);
   margin: 0 auto;
   padding: 1.5rem;
   font-family: 'Manrope', system-ui, -apple-system, sans-serif;
@@ -28,7 +28,8 @@
 
 .kicker,
 .sidebarKicker,
-.sectionKicker {
+.sectionKicker,
+.modalKicker {
   margin: 0;
   font-size: 0.76rem;
   font-weight: 800;
@@ -44,7 +45,8 @@
 .loadingTitle,
 .emptyTitle,
 .sectionTitle,
-.sidebarTitle {
+.sidebarTitle,
+.modalTitle {
   margin: 0;
 }
 
@@ -57,8 +59,7 @@
 
 .heroLead,
 .loadingText,
-.emptyText,
-.sectionSubtitle {
+.emptyText {
   margin: 0;
   line-height: 1.65;
 }
@@ -76,15 +77,16 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
-  gap: 1.2rem;
+  grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+  gap: 1.15rem;
   align-items: start;
 }
 
 .sidebar,
 .content,
 .emptyState,
-.loadingCard {
+.loadingCard,
+.modalCard {
   border: 1px solid rgba(18, 53, 61, 0.1);
   background: #ffffff;
   box-shadow: 0 20px 42px rgba(15, 23, 42, 0.08);
@@ -100,7 +102,8 @@
 }
 
 .sidebarHeader,
-.sectionHeader {
+.sectionHeader,
+.modalHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -108,14 +111,21 @@
 }
 
 .sidebarKicker,
-.sectionKicker {
+.sectionKicker,
+.modalKicker {
   color: #0f766e;
 }
 
-.sidebarTitle {
+.sidebarTitle,
+.sectionTitle,
+.modalTitle {
   margin-top: 0.2rem;
   color: #16343d;
-  font-size: 1.05rem;
+}
+
+.sectionTitle {
+  font-size: clamp(1.45rem, 2.8vw, 2.1rem);
+  letter-spacing: -0.03em;
 }
 
 .filterBadge {
@@ -152,57 +162,61 @@
   border-bottom: 1px solid rgba(18, 53, 61, 0.08);
 }
 
-.sectionTitle {
-  margin-top: 0.2rem;
-  color: #16343d;
-  font-size: clamp(1.45rem, 2.8vw, 2.1rem);
-  letter-spacing: -0.03em;
-}
-
-.sectionSubtitle {
-  max-width: 48rem;
-  color: #61797f;
-}
-
-.userList {
+.directoryTable {
   display: grid;
-  gap: 0.95rem;
+  gap: 0;
 }
 
-.userCard {
+.tableHead,
+.tableRow {
   display: grid;
-  gap: 1rem;
-  padding: 1rem 0;
+  grid-template-columns: minmax(260px, 1.6fr) minmax(180px, 1fr) minmax(180px, 1fr) minmax(160px, 0.9fr) 112px;
+  gap: 0.85rem;
+  align-items: center;
 }
 
-.userCard + .userCard {
-  border-top: 1px solid rgba(18, 53, 61, 0.08);
+.tableHead {
+  padding: 0 0 0.85rem;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(18, 53, 61, 0.08);
 }
 
-.userHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+.tableBody {
+  display: grid;
+}
+
+.tableRow {
+  padding: 0.95rem 0;
+  border-bottom: 1px solid rgba(18, 53, 61, 0.08);
+}
+
+.tableRow:last-child {
+  border-bottom: none;
 }
 
 .userIdentity {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.85rem;
+  min-width: 0;
 }
 
 .avatar {
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 16px;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 14px;
   display: grid;
   place-items: center;
   background: linear-gradient(160deg, #159d91, #0d5c56);
   color: #ffffff;
   font-weight: 800;
-  box-shadow: 0 14px 28px rgba(11, 93, 85, 0.18);
+  box-shadow: 0 12px 24px rgba(11, 93, 85, 0.18);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .avatarImage {
@@ -211,74 +225,177 @@
   object-fit: cover;
 }
 
-.userMeta {
+.userMeta,
+.compactField {
   display: grid;
-  gap: 0.18rem;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
 .userMeta strong,
-.factItem strong,
-.membershipMain strong {
+.compactField strong,
+.modalFact strong,
+.modalMembershipMain strong {
   color: #16343d;
 }
 
 .userMeta span,
 .userMeta small,
-.factItem span,
-.membershipMain span,
-.membershipMetrics span {
+.compactField span,
+.signalGroup span,
+.modalFact span,
+.modalMembershipMain span,
+.modalMembershipMetrics span {
   color: #61797f;
 }
 
-.userStatus {
+.userMeta span,
+.userMeta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusGroup,
+.iconActions,
+.modalMembershipSignals,
+.modalActions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 0.55rem;
 }
 
-.userFacts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-.factItem {
-  display: grid;
+.signalGroup {
+  display: flex;
+  flex-direction: column;
   gap: 0.2rem;
-  padding: 0.85rem 0;
-  border-top: 1px solid rgba(18, 53, 61, 0.08);
 }
 
-.membershipList {
+.actionsHeader {
+  text-align: right;
+}
+
+.iconActions {
+  justify-content: flex-end;
+}
+
+.iconButton,
+.modalClose {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid rgba(18, 53, 61, 0.12);
+  background: #ffffff;
+  color: #16343d;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.iconButton:hover,
+.iconButton:focus-visible,
+.modalClose:hover,
+.modalClose:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(15, 118, 110, 0.25);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
+.iconButtonDanger {
+  color: #b42318;
+}
+
+.icon {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.4rem;
+}
+
+.paginationInfo,
+.paginationLabel {
+  color: #61797f;
+}
+
+.paginationActions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
   display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(6, 14, 16, 0.55);
+  backdrop-filter: blur(8px);
+}
+
+.modalCard {
+  width: min(100%, 52rem);
+  border-radius: 24px;
+  padding: 1.15rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.modalClose {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.modalFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
-.membershipRow {
+.modalFact {
+  display: grid;
+  gap: 0.18rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(18, 53, 61, 0.08);
+}
+
+.modalSection {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.modalSectionTitle {
+  margin: 0;
+  color: #16343d;
+  font-size: 1rem;
+}
+
+.modalMembershipList {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.modalMembershipRow {
   display: grid;
   gap: 0.45rem;
   padding: 0.9rem 0;
   border-top: 1px solid rgba(18, 53, 61, 0.08);
 }
 
-.membershipMain,
-.membershipMetrics {
+.modalMembershipMain,
+.modalMembershipMetrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem 1rem;
-}
-
-.membershipSignals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.userActions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 0.5rem;
+  gap: 0.45rem 1rem;
 }
 
 .emptyState,
@@ -333,13 +450,26 @@
   }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1120px) {
   .layout {
     grid-template-columns: 1fr;
   }
 
   .sidebar {
     position: static;
+  }
+
+  .tableHead {
+    display: none;
+  }
+
+  .tableRow {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .iconActions {
+    justify-content: flex-start;
   }
 }
 
@@ -349,25 +479,26 @@
   }
 
   .hero,
-  .sectionHeader,
   .sidebarHeader,
-  .userHeader {
+  .sectionHeader,
+  .modalHeader,
+  .pagination {
     flex-direction: column;
     align-items: stretch;
   }
 
   .heroActions,
-  .userStatus,
-  .userActions {
+  .modalActions {
     justify-content: stretch;
   }
 
   .heroActions :global(*),
-  .userActions :global(*) {
+  .modalActions :global(*),
+  .paginationActions {
     width: 100%;
   }
 
-  .userFacts {
+  .modalFacts {
     grid-template-columns: 1fr;
   }
 }
