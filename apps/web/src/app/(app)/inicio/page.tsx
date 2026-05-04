@@ -65,16 +65,26 @@ function hasDriverProcess(status?: DriverVerificationStatus | null): boolean {
 }
 
 function getPrimaryAction({
+  isAdminWorkspace,
   hasOperationalMembership,
   driverLicenseMessage,
   hasRestrictions,
   hasDriverTools,
 }: {
+  isAdminWorkspace: boolean;
   hasOperationalMembership: boolean;
   driverLicenseMessage: string | null;
   hasRestrictions: boolean;
   hasDriverTools: boolean;
 }) {
+  if (isAdminWorkspace) {
+    return {
+      title: 'Supervisa aprobaciones, reportes y trazabilidad administrativa.',
+      href: '/auditoria',
+      label: 'Abrir auditoria',
+    };
+  }
+
   if (!hasOperationalMembership) {
     return {
       title: 'Completa tu perfil para activar tu contexto institucional.',
@@ -116,6 +126,7 @@ function getPrimaryAction({
 
 export default function HomePage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
+  const auditVisible = canAccessAudit(authSession?.user);
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const currentMembership =
     operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
@@ -126,7 +137,7 @@ export default function HomePage() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const loadHome = async (accessToken: string) => {
-    if (!operationalAccess.hasOperationalMembership) {
+    if (auditVisible || !operationalAccess.hasOperationalMembership) {
       setTrustSummary(null);
       return;
     }
@@ -223,7 +234,7 @@ export default function HomePage() {
     return () => {
       isMounted = false;
     };
-  }, [authSession, isHydrated, operationalAccess.hasOperationalMembership, refreshSession]);
+  }, [auditVisible, authSession, isHydrated, operationalAccess.hasOperationalMembership, refreshSession]);
 
   useAutoRefresh(
     async () => {
@@ -256,15 +267,16 @@ export default function HomePage() {
       )
     : null;
   const displayName = getPreferredDisplayName(authSession?.user.fullName);
-  const auditVisible = canAccessAudit(authSession?.user);
   const hasDriverTools = canAccessDriverTools(authSession?.user);
   const dashboardVisible = canAccessDashboard(authSession?.user);
+  const isAdminWorkspace = auditVisible;
   const hasRestrictions =
     restrictions.blocksPassenger ||
     restrictions.blocksDriver ||
     Boolean(restrictions.message);
 
   const primaryAction = getPrimaryAction({
+    isAdminWorkspace,
     hasOperationalMembership: operationalAccess.hasOperationalMembership,
     driverLicenseMessage,
     hasRestrictions,
@@ -272,83 +284,139 @@ export default function HomePage() {
   });
 
   const quickActions = useMemo<HomeAction[]>(
-    () => [
-      {
-        title: 'Viajes',
-        subtitle: hasDriverTools ? 'Movilidad' : 'Explorar',
-        href: '/viajes',
-        icon: 'trip',
-      },
-      ...(hasDriverTools
-        ? [
-            {
-              title: 'Conductor',
-              subtitle: 'Operacion',
-              href: '/conductor',
-              icon: 'driver' as const,
-            },
-          ]
-        : []),
-      {
-        title: 'Confianza',
-        subtitle: 'Estado',
-        href: '/confianza',
-        icon: 'trust',
-      },
-      ...(dashboardVisible
-        ? [
-            {
-              title: 'Dashboard',
-              subtitle: 'Resumen',
-              href: '/dashboard',
-              icon: 'dashboard' as const,
-            },
-          ]
-        : []),
-      {
-        title: 'Perfil',
-        subtitle: 'Cuenta',
-        href: '/perfil',
-        icon: 'profile',
-      },
-    ],
-    [dashboardVisible, hasDriverTools],
+    () => {
+      if (isAdminWorkspace) {
+        return [
+          {
+            title: 'Moderacion',
+            subtitle: 'Gestion',
+            href: '/moderacion',
+            icon: 'dashboard',
+          },
+          {
+            title: 'Dashboard',
+            subtitle: 'Control',
+            href: '/dashboard',
+            icon: 'trust',
+          },
+          {
+            title: 'Usuarios',
+            subtitle: 'Cuentas',
+            href: '/usuarios',
+            icon: 'profile',
+          },
+          {
+            title: 'Perfil',
+            subtitle: 'Cuenta',
+            href: '/perfil',
+            icon: 'profile',
+          },
+        ];
+      }
+
+      return [
+        {
+          title: 'Viajes',
+          subtitle: hasDriverTools ? 'Movilidad' : 'Explorar',
+          href: '/viajes',
+          icon: 'trip',
+        },
+        ...(hasDriverTools
+          ? [
+              {
+                title: 'Conductor',
+                subtitle: 'Operacion',
+                href: '/conductor',
+                icon: 'driver' as const,
+              },
+            ]
+          : []),
+        {
+          title: 'Confianza',
+          subtitle: 'Estado',
+          href: '/confianza',
+          icon: 'trust',
+        },
+        ...(dashboardVisible
+          ? [
+              {
+                title: 'Dashboard',
+                subtitle: 'Resumen',
+                href: '/dashboard',
+                icon: 'dashboard' as const,
+              },
+            ]
+          : []),
+        {
+          title: 'Perfil',
+          subtitle: 'Cuenta',
+          href: '/perfil',
+          icon: 'profile',
+        },
+      ];
+    },
+    [dashboardVisible, hasDriverTools, isAdminWorkspace],
   );
 
-  const contextRows = [
-    {
-      label: 'Institucion',
-      value: currentMembership?.institutionName ?? 'Pendiente',
-    },
-    {
-      label: 'Rol',
-      value: getMembershipRoleLabel(currentMembership?.role),
-    },
-    {
-      label: 'Correo',
-      value: authSession?.user.email ?? 'Pendiente',
-    },
-    {
-      label: 'Conductor',
-      value: currentMembership
-        ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
-        : 'Pendiente',
-    },
-    {
-      label: 'Licencia',
-      value: isDriverFlowActive
-        ? getDriverLicenseStatusLabel(currentMembership?.licenseStatus)
-        : 'No aplica',
-    },
-    {
-      label: 'Confianza',
-      value: trustSummary
-        ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
-        : 'Pendiente',
-    },
-  ];
+  const contextRows = isAdminWorkspace
+    ? [
+        {
+          label: 'Acceso',
+          value: 'Administrativo',
+        },
+        {
+          label: 'Instituciones',
+          value: String(
+            authSession?.user.memberships.filter(
+              (membership) => membership.role === InstitutionMembershipRole.InstitutionAdmin,
+            ).length ?? 0,
+          ),
+        },
+        {
+          label: 'Correo',
+          value: authSession?.user.email ?? 'Pendiente',
+        },
+        {
+          label: 'Rol',
+          value: getMembershipRoleLabel(currentMembership?.role),
+        },
+      ]
+    : [
+        {
+          label: 'Institucion',
+          value: currentMembership?.institutionName ?? 'Pendiente',
+        },
+        {
+          label: 'Rol',
+          value: getMembershipRoleLabel(currentMembership?.role),
+        },
+        {
+          label: 'Correo',
+          value: authSession?.user.email ?? 'Pendiente',
+        },
+        {
+          label: 'Conductor',
+          value: currentMembership
+            ? getDriverStatusLabel(effectiveDriverStatus ?? currentMembership.driverVerificationStatus)
+            : 'Pendiente',
+        },
+        {
+          label: 'Licencia',
+          value: isDriverFlowActive
+            ? getDriverLicenseStatusLabel(currentMembership?.licenseStatus)
+            : 'No aplica',
+        },
+        {
+          label: 'Confianza',
+          value: trustSummary
+            ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
+            : 'Pendiente',
+        },
+      ];
 
-  const activeNotice = restrictions.message
+  const activeNotice = isAdminWorkspace
+    ? null
+    : restrictions.message
     ? {
         title: 'Revisa tu estado de confianza',
         description: restrictions.message,
@@ -397,9 +465,11 @@ export default function HomePage() {
               <p className={styles.kicker}>Inicio</p>
               <h1 className={styles.heroTitle}>Hola, {displayName}</h1>
               <p className={styles.heroLead}>
-                {hasDriverTools
-                  ? 'Gestiona tus viajes y revisa tu estado actual desde un solo panel.'
-                  : 'Accede a tus opciones principales y revisa tu estado actual.'}
+                {isAdminWorkspace
+                  ? 'Accede a tus herramientas de gestion y mantén el control institucional desde una sola vista.'
+                  : hasDriverTools
+                    ? 'Gestiona tus viajes y revisa tu estado actual desde un solo panel.'
+                    : 'Accede a tus opciones principales y revisa tu estado actual.'}
               </p>
             </div>
 
@@ -450,7 +520,7 @@ export default function HomePage() {
             <div className={styles.sectionHeader}>
               <div>
                 <p className={styles.kicker}>Contexto</p>
-                <h2>Tu estado actual</h2>
+                <h2>{isAdminWorkspace ? 'Alcance administrativo' : 'Tu estado actual'}</h2>
               </div>
               {auditVisible ? (
                 <Link className={styles.inlineLink} href="/auditoria">

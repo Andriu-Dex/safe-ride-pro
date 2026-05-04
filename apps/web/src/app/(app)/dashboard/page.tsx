@@ -2,11 +2,15 @@
 
 import Link from 'next/link';
 import {
+  DriverVerificationStatus,
   GlobalUserRole,
   InstitutionMembershipRole,
+  OperationalSanctionAppealStatus,
+  ReportStatus,
 } from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 
+import { listAuditEvents } from '../../../modules/audit/lib/audit-api';
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
 import { ToastItem, ToastStack } from '../../../components/ui/toast-stack';
@@ -14,6 +18,7 @@ import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { ApiError } from '../../../lib/api-client';
 import { canAccessAudit } from '../../../modules/audit/lib/audit-access';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
+import { listReviewableDriverApplications } from '../../../modules/driver/lib/driver-api';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import {
   getDriverLicenseAlertMessage,
@@ -21,7 +26,13 @@ import {
   getDriverStatusLabel,
   getDriverStatusTone,
 } from '../../../modules/driver/lib/driver-status';
+import { listReviewableReports } from '../../../modules/reports/lib/report-api';
+import {
+  listReviewableActiveSanctions,
+  listReviewableSanctionAppeals,
+} from '../../../modules/sanctions/lib/sanction-api';
 import { getCurrentUserTrustSummary } from '../../../modules/users/lib/user-api';
+import { requiresDetailedReviewNote } from '../../../modules/reports/lib/report-labels';
 import {
   getAdministrativeRiskStateLabel,
   getAdministrativeRiskTone,
@@ -31,6 +42,15 @@ import {
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 import styles from './page.module.css';
+
+type AdminDashboardSummary = {
+  pendingDriverApplicationsCount: number;
+  openReportsCount: number;
+  highSeverityOpenReportsCount: number;
+  activeSanctionsCount: number;
+  pendingAppealsCount: number;
+  visibleEventsCount: number;
+};
 
 function getGlobalRoleLabel(role: GlobalUserRole): string {
   switch (role) {
@@ -64,6 +84,7 @@ export default function DashboardPage() {
   const currentMembership =
     operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
+  const [adminSummary, setAdminSummary] = useState<AdminDashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -92,6 +113,49 @@ export default function DashboardPage() {
   };
 
   const loadDashboard = async (accessToken: string) => {
+    if (canAccessAudit(authSession?.user)) {
+      const [
+        driverApplications,
+        reports,
+        sanctions,
+        appeals,
+        auditEvents,
+      ] = await Promise.all([
+        listReviewableDriverApplications(accessToken, { limit: 25 }),
+        listReviewableReports(accessToken, { limit: 25 }),
+        listReviewableActiveSanctions(accessToken, { limit: 25 }),
+        listReviewableSanctionAppeals(accessToken, { limit: 25 }),
+        listAuditEvents(accessToken, { limit: '25' }),
+      ]);
+
+      setAdminSummary({
+        pendingDriverApplicationsCount: driverApplications.filter(
+          (application) =>
+            application.driverVerificationStatus === DriverVerificationStatus.PendingVerification,
+        ).length,
+        openReportsCount: reports.filter(
+          (report) =>
+            report.status === ReportStatus.Pending ||
+            report.status === ReportStatus.UnderReview,
+        ).length,
+        highSeverityOpenReportsCount: reports.filter(
+          (report) =>
+            (report.status === ReportStatus.Pending ||
+              report.status === ReportStatus.UnderReview) &&
+            requiresDetailedReviewNote(report.reason),
+        ).length,
+        activeSanctionsCount: sanctions.length,
+        pendingAppealsCount: appeals.filter(
+          (appeal) => appeal.status === OperationalSanctionAppealStatus.Pending,
+        ).length,
+        visibleEventsCount: auditEvents.length,
+      });
+      setTrustSummary(null);
+      return;
+    }
+
+    setAdminSummary(null);
+
     if (!operationalAccess.hasOperationalMembership) {
       setTrustSummary(null);
       return;
@@ -211,6 +275,7 @@ export default function DashboardPage() {
     ? getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)
     : 'Pendiente';
   const auditVisible = canAccessAudit(authSession?.user);
+  const isAdminWorkspace = auditVisible;
   const isSyncing = isLoading || isRefreshing;
   const hasRestrictions =
     restrictions.blocksPassenger ||
@@ -260,6 +325,34 @@ export default function DashboardPage() {
     ],
   );
 
+  const adminMetrics = useMemo(
+    () => [
+      {
+        label: 'Conductores pendientes',
+        value: adminSummary?.pendingDriverApplicationsCount ?? 0,
+        note: 'Solicitudes listas para revision.',
+      },
+      {
+        label: 'Reportes abiertos',
+        value: adminSummary?.openReportsCount ?? 0,
+        note: adminSummary?.highSeverityOpenReportsCount
+          ? `${adminSummary.highSeverityOpenReportsCount} de alta prioridad.`
+          : 'Sin alta prioridad abierta.',
+      },
+      {
+        label: 'Sanciones activas',
+        value: adminSummary?.activeSanctionsCount ?? 0,
+        note: 'Restricciones visibles para gestion.',
+      },
+      {
+        label: 'Apelaciones pendientes',
+        value: adminSummary?.pendingAppealsCount ?? 0,
+        note: 'Casos que necesitan decision.',
+      },
+    ],
+    [adminSummary],
+  );
+
   if (isLoading) {
     return (
       <>
@@ -272,6 +365,139 @@ export default function DashboardPage() {
           </article>
         </section>
       </>
+    );
+  }
+
+  if (isAdminWorkspace) {
+    return (
+      <section className={styles.dashboardShell}>
+        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+
+        <section className={`${styles.hero} ${styles.reveal}`}>
+          <div className={styles.heroTop}>
+            <div className={styles.heroCopy}>
+              <p className={styles.kicker}>Dashboard</p>
+              <h1 className={styles.heroTitle}>Centro administrativo</h1>
+              <p className={styles.heroLead}>
+                Revisa el frente de aprobaciones, incidentes y trazabilidad sin mezclarlo con operacion de viaje.
+              </p>
+            </div>
+
+            <div className={styles.heroActions}>
+              <StatusPill label="Gestion activa" tone="success" />
+              <Button
+                disabled={isSyncing}
+                onClick={() => void refreshDashboard(true)}
+                variant="secondary"
+              >
+                {isRefreshing ? 'Actualizando...' : 'Sincronizar'}
+              </Button>
+            </div>
+          </div>
+
+          <div className={styles.metricGrid}>
+            {adminMetrics.map((metric) => (
+              <article className={styles.metricCard} key={metric.label}>
+                <span className={styles.metricLabel}>{metric.label}</span>
+                <strong className={styles.metricValue}>{metric.value}</strong>
+                <span className={styles.metricNote}>{metric.note}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.mainGrid}>
+          <div className={styles.contentColumn}>
+            <article className={`${styles.focusCard} ${styles.reveal}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.kicker}>Gestion</p>
+                  <h2>Prioridades del dia</h2>
+                </div>
+                <StatusPill
+                  label={adminSummary?.highSeverityOpenReportsCount ? 'Atencion inmediata' : 'Flujo estable'}
+                  tone={adminSummary?.highSeverityOpenReportsCount ? 'warning' : 'success'}
+                />
+              </div>
+
+              <div className={styles.detailGrid}>
+                <article className={styles.infoTile}>
+                  <span>Conductores</span>
+                  <strong>{adminSummary?.pendingDriverApplicationsCount ?? 0} por revisar</strong>
+                </article>
+                <article className={styles.infoTile}>
+                  <span>Reportes</span>
+                  <strong>{adminSummary?.openReportsCount ?? 0} abiertos</strong>
+                </article>
+                <article className={styles.infoTile}>
+                  <span>Sanciones</span>
+                  <strong>{adminSummary?.activeSanctionsCount ?? 0} activas</strong>
+                </article>
+                <article className={styles.infoTile}>
+                  <span>Eventos</span>
+                  <strong>{adminSummary?.visibleEventsCount ?? 0} visibles</strong>
+                </article>
+              </div>
+            </article>
+
+            <article className={`${styles.analyticsCard} ${styles.revealSoft}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.kicker}>Accesos</p>
+                  <h2>Mesas de trabajo</h2>
+                </div>
+                <StatusPill label="Administracion" tone="neutral" />
+              </div>
+
+              <div className={styles.quickGrid}>
+                <Link className={styles.quickLink} href="/moderacion?section=driver">
+                  <strong>Conductores</strong>
+                  <span>Aprueba solicitudes y revisa documentacion.</span>
+                </Link>
+                <Link className={styles.quickLink} href="/moderacion?section=reports">
+                  <strong>Reportes</strong>
+                  <span>Prioriza incidentes y documenta decisiones.</span>
+                </Link>
+                <Link className={styles.quickLink} href="/moderacion?section=sanctions">
+                  <strong>Sanciones</strong>
+                  <span>Administra restricciones activas y levantamientos.</span>
+                </Link>
+                <Link className={styles.quickLink} href="/moderacion?section=appeals">
+                  <strong>Apelaciones</strong>
+                  <span>Resuelve revisiones disciplinarias pendientes.</span>
+                </Link>
+              </div>
+            </article>
+          </div>
+
+          <aside className={styles.sideColumn}>
+            <article className={`${styles.sideCard} ${styles.revealSoft}`}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <p className={styles.kicker}>Alcance</p>
+                  <h2>Sesion actual</h2>
+                </div>
+                <StatusPill label={roleLabel} tone="neutral" />
+              </div>
+
+              <div className={styles.noticeStack}>
+                <div className={styles.noticeCard}>
+                  <strong>Correo</strong>
+                  <span>{authSession?.user.email ?? 'No disponible'}</span>
+                </div>
+                <div className={styles.noticeCard}>
+                  <strong>Institucion principal</strong>
+                  <span>{currentMembership?.institutionName ?? 'Sin institucion activa'}</span>
+                </div>
+                <div className={styles.noticeCard}>
+                  <strong>Rol institucional</strong>
+                  <span>{membershipRoleLabel}</span>
+                </div>
+              </div>
+            </article>
+          </aside>
+        </section>
+      </section>
     );
   }
 

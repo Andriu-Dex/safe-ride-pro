@@ -1,5 +1,6 @@
 import { API_BASE_URL, apiRequest } from '../../../lib/api-client';
 import type { AuthUser } from '../../auth/types/auth-session';
+import type { AdminUserDirectoryRecord } from '../types/admin-user-directory';
 import type { TrustSummary } from '../types/trust-summary';
 
 export type UpdateCurrentUserProfileInput = {
@@ -11,6 +12,15 @@ export type UpdateCurrentUserProfileInput = {
   acceptTerms?: boolean;
   acceptPrivacy?: boolean;
   acceptSafetyRules?: boolean;
+};
+
+type AdminDirectoryResponse = {
+  items: AdminUserDirectoryRecord[];
+};
+
+type AdminUserStatusMutationResponse = {
+  message: string;
+  user: AuthUser;
 };
 
 export async function getCurrentUserTrustSummary(accessToken: string): Promise<TrustSummary> {
@@ -27,6 +37,44 @@ export async function updateCurrentUserProfile(
     method: 'PATCH',
     accessToken,
     body: input,
+  });
+}
+
+export async function listAdminUserDirectory(
+  accessToken: string,
+  filters: {
+    institutionId?: string;
+    query?: string;
+    accountStatus?: string;
+    driverVerificationStatus?: string;
+    limit?: number;
+  } = {},
+): Promise<AdminUserDirectoryRecord[]> {
+  const response = await apiRequest<AdminDirectoryResponse>('/users/admin/directory', {
+    accessToken,
+    searchParams: {
+      institutionId: filters.institutionId,
+      query: filters.query,
+      accountStatus: filters.accountStatus,
+      driverVerificationStatus: filters.driverVerificationStatus,
+      limit: filters.limit ? String(filters.limit) : undefined,
+    },
+  });
+
+  return response.items;
+}
+
+export async function updateAdminUserAccountStatus(
+  accessToken: string,
+  userId: string,
+  accountStatus: string,
+): Promise<AdminUserStatusMutationResponse> {
+  return apiRequest<AdminUserStatusMutationResponse>(`/users/admin/${userId}/account-status`, {
+    method: 'PATCH',
+    accessToken,
+    body: {
+      accountStatus,
+    },
   });
 }
 

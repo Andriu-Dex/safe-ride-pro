@@ -136,10 +136,47 @@ export const DEFAULT_REPUTATION_POLICY = {
   recurrenceWindowDays: SANCTION_RECURRENCE_WINDOW_DAYS,
 } as const;
 
+export type AdminUserDirectoryRecord = {
+  userId: string;
+  email: string;
+  fullName: string;
+  profilePhotoUrl?: string | null;
+  globalRole: GlobalUserRole;
+  accountStatus: AccountStatus;
+  createdAt: Date;
+  emailVerifiedAt: Date | null;
+  memberships: {
+    id: string;
+    institutionId: string;
+    institutionName: string;
+    role: InstitutionMembershipRole;
+    membershipStatus: MembershipStatus;
+    studentCode: string;
+    isDefault: boolean;
+    driverVerificationStatus: DriverVerificationStatus;
+    effectiveDriverVerificationStatus?: DriverVerificationStatus;
+    licenseExpiresAt?: Date | null;
+    licenseStatus?: DriverLicenseStatus;
+    licenseExpiresInDays?: number | null;
+    activeSanctionsCount: number;
+    activeBlockingSanctionsCount: number;
+    resolvedReportsReceivedCount: number;
+  }[];
+};
+
+export type ListAdminUserDirectoryInput = {
+  institutionIds?: string[];
+  query?: string;
+  accountStatus?: AccountStatus;
+  driverVerificationStatus?: DriverVerificationStatus;
+  limit?: number;
+};
+
 export interface UsersRepository {
   findById(userId: string): Promise<UserProfile | null>;
   findProfilePhotoRecordById(userId: string): Promise<UserProfilePhotoRecord | null>;
   updateProfile(userId: string, input: UpdateUserProfileInput): Promise<UserProfile>;
+  updateAccountStatus(userId: string, accountStatus: AccountStatus): Promise<UserProfile>;
   updateProfilePhoto(
     userId: string,
     input: {
@@ -149,4 +186,5 @@ export interface UsersRepository {
     },
   ): Promise<UserProfile>;
   getTrustSummary(membershipId: string): Promise<TrustSummaryMetrics>;
+  listAdminUserDirectory(input: ListAdminUserDirectoryInput): Promise<AdminUserDirectoryRecord[]>;
 }

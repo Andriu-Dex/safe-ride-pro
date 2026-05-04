@@ -25,7 +25,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const canUseDriverRoutes = canAccessDriverTools(authSession?.user);
   const isDriverOnlyRoute = pathname === '/vehiculos' || pathname === '/viajes/nuevo';
   const isDashboardRoute = pathname === '/dashboard';
-  const isAdminOnlyRoute = pathname === '/auditoria';
+  const isAdminOnlyRoute =
+    pathname === '/auditoria' ||
+    pathname === '/moderacion' ||
+    pathname === '/usuarios';
   const canUseAdminRoutes = canAccessAudit(authSession?.user);
   const canUseDashboard = canAccessDashboard(authSession?.user);
 

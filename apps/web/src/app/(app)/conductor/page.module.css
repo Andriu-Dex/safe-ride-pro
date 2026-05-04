@@ -354,6 +354,20 @@
   flex-wrap: wrap;
 }
 
+.documentInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.documentName,
+.documentFileName {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 /* =========================================
    ACCESOS RÁPIDOS (QUICK LINKS)
    ========================================= */

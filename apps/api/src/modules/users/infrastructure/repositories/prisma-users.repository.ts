@@ -29,6 +29,8 @@ import {
 
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import {
+  AdminUserDirectoryRecord,
+  ListAdminUserDirectoryInput,
   TrustSummaryMetrics,
   UpdateUserProfileInput,
   UserProfile,
@@ -105,6 +107,37 @@ export class PrismaUsersRepository implements UsersRepository {
           input.onboardingCompletedAt === undefined
             ? undefined
             : input.onboardingCompletedAt,
+      },
+      include: {
+        memberships: {
+          include: {
+            institution: true,
+            driverProfile: {
+              select: {
+                licenseExpiresAt: true,
+              },
+            },
+          },
+          orderBy: [{ isDefault: 'desc' }, { joinedAt: 'asc' }],
+        },
+      },
+    }).catch(() => null);
+
+    if (!user) {
+      throw new NotFoundException('El usuario solicitado no existe.');
+    }
+
+    return this.mapUser(user);
+  }
+
+  async updateAccountStatus(
+    userId: string,
+    accountStatus: SharedAccountStatus,
+  ): Promise<UserProfile> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        accountStatus: accountStatus as unknown as AccountStatus,
       },
       include: {
         memberships: {
@@ -414,5 +447,127 @@ export class PrismaUsersRepository implements UsersRepository {
         ),
       })),
     };
+  }
+
+  async listAdminUserDirectory(
+    input: ListAdminUserDirectoryInput,
+  ): Promise<AdminUserDirectoryRecord[]> {
+    const normalizedQuery = input.query?.trim();
+
+    const memberships = await this.prisma.userInstitutionMembership.findMany({
+      where: {
+        institutionId: input.institutionIds?.length
+          ? { in: input.institutionIds }
+          : undefined,
+        driverVerificationStatus: input.driverVerificationStatus
+          ? input.driverVerificationStatus as unknown as DriverVerificationStatus
+          : undefined,
+        user: {
+          accountStatus: input.accountStatus
+            ? input.accountStatus as unknown as AccountStatus
+            : undefined,
+          OR: normalizedQuery
+            ? [
+                { fullName: { contains: normalizedQuery, mode: 'insensitive' } },
+                { email: { contains: normalizedQuery, mode: 'insensitive' } },
+                { documentNumber: { contains: normalizedQuery, mode: 'insensitive' } },
+              ]
+            : undefined,
+        },
+      },
+      include: {
+        institution: true,
+        driverProfile: {
+          select: {
+            licenseExpiresAt: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            profilePhotoUrl: true,
+            globalRole: true,
+            accountStatus: true,
+            createdAt: true,
+            emailVerifiedAt: true,
+          },
+        },
+        operationalSanctions: {
+          where: {
+            status: 'ACTIVE',
+          },
+          select: {
+            id: true,
+            scope: true,
+          },
+        },
+        reportsReceived: {
+          where: {
+            status: 'RESOLVED',
+          },
+          select: {
+            id: true,
+          },
+        },
+      },
+      orderBy: [
+        { user: { fullName: 'asc' } },
+        { isDefault: 'desc' },
+        { joinedAt: 'asc' },
+      ],
+      take: input.limit,
+    });
+
+    const groupedUsers = new Map<string, AdminUserDirectoryRecord>();
+
+    memberships.forEach((membership) => {
+      const existingRecord = groupedUsers.get(membership.user.id);
+      const mappedMembership = {
+        id: membership.id,
+        institutionId: membership.institutionId,
+        institutionName: membership.institution.name,
+        role: membership.role as unknown as InstitutionMembershipRole,
+        membershipStatus: membership.membershipStatus as unknown as SharedMembershipStatus,
+        studentCode: membership.studentCode,
+        isDefault: membership.isDefault,
+        driverVerificationStatus:
+          membership.driverVerificationStatus as unknown as SharedDriverVerificationStatus,
+        effectiveDriverVerificationStatus: getEffectiveDriverVerificationStatus(
+          membership.driverVerificationStatus as unknown as SharedDriverVerificationStatus,
+          membership.driverProfile?.licenseExpiresAt ?? null,
+        ) as SharedDriverVerificationStatus,
+        licenseExpiresAt: membership.driverProfile?.licenseExpiresAt ?? null,
+        licenseStatus: getDriverLicenseStatus(membership.driverProfile?.licenseExpiresAt ?? null),
+        licenseExpiresInDays: getDaysUntilDriverLicenseExpiration(
+          membership.driverProfile?.licenseExpiresAt ?? null,
+        ),
+        activeSanctionsCount: membership.operationalSanctions.length,
+        activeBlockingSanctionsCount: membership.operationalSanctions.filter(
+          (sanction) => sanction.scope === 'DRIVER' || sanction.scope === 'ALL',
+        ).length,
+        resolvedReportsReceivedCount: membership.reportsReceived.length,
+      };
+
+      if (!existingRecord) {
+        groupedUsers.set(membership.user.id, {
+          userId: membership.user.id,
+          email: membership.user.email,
+          fullName: membership.user.fullName,
+          profilePhotoUrl: membership.user.profilePhotoUrl,
+          globalRole: membership.user.globalRole as unknown as SharedGlobalUserRole,
+          accountStatus: membership.user.accountStatus as unknown as SharedAccountStatus,
+          createdAt: membership.user.createdAt,
+          emailVerifiedAt: membership.user.emailVerifiedAt,
+          memberships: [mappedMembership],
+        });
+        return;
+      }
+
+      existingRecord.memberships.push(mappedMembership);
+    });
+
+    return [...groupedUsers.values()];
   }
 }

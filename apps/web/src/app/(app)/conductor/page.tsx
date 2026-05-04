@@ -139,10 +139,7 @@ type DocumentCardProps = {
   fileName: string | null;
   hasFile: boolean;
   isBusy: boolean;
-  isDownloading: boolean;
   onFileSelect: (documentType: DriverDocumentType, file: File) => void;
-  onPreview: (documentType: DriverDocumentType) => void;
-  onDownload: (documentType: DriverDocumentType) => void;
   onValidationError: (message: string) => void;
 };
 
@@ -151,10 +148,7 @@ function DocumentCard({
   fileName,
   hasFile,
   isBusy,
-  isDownloading,
   onFileSelect,
-  onPreview,
-  onDownload,
   onValidationError,
 }: DocumentCardProps) {
   const inputId = `driver-document-${documentType}`;
@@ -172,7 +166,7 @@ function DocumentCard({
         />
       </div>
 
-      <p className={styles.documentFileName}>
+      <p className={styles.documentFileName} title={fileName ?? 'Sin archivo cargado'}>
         {fileName ?? 'Sin archivo cargado'}
       </p>
 
@@ -218,23 +212,6 @@ function DocumentCard({
           }}
           type="file"
         />
-
-        <button
-          className={styles.actionBtnSecondary}
-          disabled={!hasFile || isBusy}
-          onClick={() => onPreview(documentType)}
-          type="button"
-        >
-          Ver
-        </button>
-        <button
-          className={styles.actionBtnGhost}
-          disabled={!hasFile || isDownloading}
-          onClick={() => onDownload(documentType)}
-          type="button"
-        >
-          {isDownloading ? 'Descargando...' : 'Descargar'}
-        </button>
       </div>
     </article>
   );
@@ -789,9 +766,9 @@ export default function DriverPage() {
 
                 <div className={styles.documentList}>
                   <article className={styles.documentRow}>
-                    <div>
+                    <div className={styles.documentInfo}>
                       <span className={styles.documentRowLabel}>Documento de identidad</span>
-                      <strong>{identityFileName ?? 'Sin archivo registrado'}</strong>
+                      <strong className={styles.documentName} title={identityFileName ?? 'Sin archivo registrado'}>{identityFileName ?? 'Sin archivo registrado'}</strong>
                     </div>
                     <div className={styles.documentRowActions}>
                       <Button
@@ -812,9 +789,9 @@ export default function DriverPage() {
                   </article>
 
                   <article className={styles.documentRow}>
-                    <div>
+                    <div className={styles.documentInfo}>
                       <span className={styles.documentRowLabel}>Documento de licencia</span>
-                      <strong>{licenseFileName ?? 'Sin archivo registrado'}</strong>
+                      <strong className={styles.documentName} title={licenseFileName ?? 'Sin archivo registrado'}>{licenseFileName ?? 'Sin archivo registrado'}</strong>
                     </div>
                     <div className={styles.documentRowActions}>
                       <Button
@@ -984,10 +961,7 @@ export default function DriverPage() {
                     fileName={identityFileName}
                     hasFile={Boolean(formValues.identityDocumentFileKey)}
                     isBusy={isUploadingIdentityDocument}
-                    isDownloading={isDownloadingIdentityDocument}
-                    onDownload={handleDownloadDocument}
                     onFileSelect={handleUploadDocument}
-                    onPreview={handlePreviewDocument}
                     onValidationError={(message) =>
                       pushToast('Archivo no valido', message, 'info')
                     }
@@ -997,10 +971,7 @@ export default function DriverPage() {
                     fileName={licenseFileName}
                     hasFile={Boolean(formValues.licenseDocumentFileKey)}
                     isBusy={isUploadingLicenseDocument}
-                    isDownloading={isDownloadingLicenseDocument}
-                    onDownload={handleDownloadDocument}
                     onFileSelect={handleUploadDocument}
-                    onPreview={handlePreviewDocument}
                     onValidationError={(message) =>
                       pushToast('Archivo no valido', message, 'info')
                     }

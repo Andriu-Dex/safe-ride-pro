@@ -74,6 +74,22 @@ const NAV_ITEMS = [
     audience: 'dashboard',
   },
   {
+    href: '/moderacion',
+    label: 'Moderacion',
+    subtitle: 'Gestion',
+    requiresOperationalMembership: false,
+    icon: 'driver',
+    audience: 'admin',
+  },
+  {
+    href: '/usuarios',
+    label: 'Usuarios',
+    subtitle: 'Cuentas',
+    requiresOperationalMembership: false,
+    icon: 'profile',
+    audience: 'admin',
+  },
+  {
     href: '/auditoria',
     label: 'Auditoria',
     subtitle: 'Control interno',
@@ -153,6 +169,13 @@ function NavIcon({ name }: { name: NavIconName }) {
           <path d="M8.5 11.5h7M8.5 15h4.5" />
         </svg>
       );
+    case 'profile':
+      return (
+        <svg aria-hidden="true" className={iconClass} {...strokeProps} viewBox="0 0 24 24">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -183,6 +206,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const displayName = getDisplayName(authSession?.user.fullName);
   const isApprovedDriver = canAccessDriverTools(authSession?.user);
   const dashboardVisible = canAccessDashboard(authSession?.user);
+  const isAdminWorkspace = auditVisible;
   const effectiveDriverStatus =
     currentMembership?.effectiveDriverVerificationStatus
     ?? currentMembership?.driverVerificationStatus
@@ -190,8 +214,17 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const hasStartedDriverFlow = effectiveDriverStatus !== DriverVerificationStatus.NotRequested;
 
   const visibleNavItems = useMemo(
-    () =>
-      NAV_ITEMS.filter((item) => {
+    () => {
+      if (isAdminWorkspace) {
+        return NAV_ITEMS.filter((item) =>
+          item.href === '/inicio'
+          || item.href === '/dashboard'
+          || item.href === '/moderacion'
+          || item.href === '/usuarios'
+          || item.href === '/auditoria');
+      }
+
+      return NAV_ITEMS.filter((item) => {
         if (item.audience === 'admin') {
           return auditVisible;
         }
@@ -205,8 +238,9 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         }
 
         return true;
-      }),
-    [auditVisible, dashboardVisible, isApprovedDriver],
+      });
+    },
+    [auditVisible, dashboardVisible, isAdminWorkspace, isApprovedDriver],
   );
 
   useEffect(() => {
@@ -422,19 +456,21 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                       </svg>
                       Mi perfil
                     </Link>
-                    <button
-                      className={styles.dropdownItem}
-                      onClick={handleDriverEntry}
-                      type="button"
-                    >
-                      <svg className={styles.dropdownIcon} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 15h14l-1.1-5H6.1L5 15Z" />
-                        <circle cx="8.5" cy="16.8" r="1.4" />
-                        <circle cx="15.5" cy="16.8" r="1.4" />
-                        <path d="M6.2 10 8 6.8h8L17.8 10" />
-                      </svg>
-                      Conductor
-                    </button>
+                    {!isAdminWorkspace ? (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={handleDriverEntry}
+                        type="button"
+                      >
+                        <svg className={styles.dropdownIcon} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 15h14l-1.1-5H6.1L5 15Z" />
+                          <circle cx="8.5" cy="16.8" r="1.4" />
+                          <circle cx="15.5" cy="16.8" r="1.4" />
+                          <path d="M6.2 10 8 6.8h8L17.8 10" />
+                        </svg>
+                        Conductor
+                      </button>
+                    ) : null}
                     <button 
                       className={styles.dropdownItemDanger}
                       onClick={handleSignOut} 
@@ -510,26 +546,28 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                 </div>
               </Link>
             </li>
-            <li>
-              <button
-                className="flex w-full items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-teal-700 border border-transparent"
-                onClick={handleDriverEntry}
-                type="button"
-              >
-                <svg className="w-5 h-5 stroke-current fill-none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M5 15h14l-1.1-5H6.1L5 15Z"></path>
-                  <circle cx="8.5" cy="16.8" r="1.4"></circle>
-                  <circle cx="15.5" cy="16.8" r="1.4"></circle>
-                  <path d="M6.2 10 8 6.8h8L17.8 10"></path>
-                </svg>
-                <div className="flex flex-col">
-                  <strong className="text-lg font-semibold">Conductor</strong>
-                  <span className="text-sm font-medium opacity-70">
-                    {isApprovedDriver || hasStartedDriverFlow ? 'Gestionar estado' : 'Iniciar proceso'}
-                  </span>
-                </div>
-              </button>
-            </li>
+            {!isAdminWorkspace ? (
+              <li>
+                <button
+                  className="flex w-full items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-teal-700 border border-transparent"
+                  onClick={handleDriverEntry}
+                  type="button"
+                >
+                  <svg className="w-5 h-5 stroke-current fill-none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <path d="M5 15h14l-1.1-5H6.1L5 15Z"></path>
+                    <circle cx="8.5" cy="16.8" r="1.4"></circle>
+                    <circle cx="15.5" cy="16.8" r="1.4"></circle>
+                    <path d="M6.2 10 8 6.8h8L17.8 10"></path>
+                  </svg>
+                  <div className="flex flex-col">
+                    <strong className="text-lg font-semibold">Conductor</strong>
+                    <span className="text-sm font-medium opacity-70">
+                      {isApprovedDriver || hasStartedDriverFlow ? 'Gestionar estado' : 'Iniciar proceso'}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            ) : null}
           </ul>
 
           {/* Alertas */}
