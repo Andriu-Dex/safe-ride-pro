@@ -66,4 +66,5 @@ export type CreateTripRequestInput = {
   requestedDropoffLatitude?: number;
   requestedDropoffLongitude?: number;
   requestMessage?: string;
+  acceptReservationCommitment: boolean;
 };

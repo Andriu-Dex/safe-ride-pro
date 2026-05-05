@@ -18,6 +18,9 @@ export type TripRequestMembershipRecord = {
   institutionId: string;
   institutionName: string;
   membershipStatus: MembershipStatus;
+  termsAcceptedAt: Date | null;
+  privacyAcceptedAt: Date | null;
+  safetyRulesAcceptedAt: Date | null;
 };
 
 export type TripRequestTripRecord = {

@@ -1,9 +1,11 @@
 import {
+  CANCELLATION_LATE_WINDOW_MINUTES,
   DriverLicenseStatus,
   getTripPostClosureSummary,
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
+import Link from 'next/link';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
@@ -125,6 +127,7 @@ export function TripsOperationWorkspace({
                 trip.status,
                 trip.estimatedArrivalAt,
               );
+              const lateRemovalWarning = getLateRemovalWarning(trip);
 
               return (
                 <TripOverviewCard
@@ -149,6 +152,9 @@ export function TripsOperationWorkspace({
                       && startAvailabilityMessage ? (
                         <p className="panel-text">{startAvailabilityMessage}</p>
                       ) : null}
+                      {lateRemovalWarning ? (
+                        <p className="panel-text">{lateRemovalWarning}</p>
+                      ) : null}
                       {completionOverdueMessage ? (
                         <p className="panel-text">
                           {completionOverdueMessage}
@@ -159,6 +165,16 @@ export function TripsOperationWorkspace({
                   trip={trip}
                 >
                   <div className="button-row">
+                    <Link className="button button-secondary" href={`/viajes/${trip.id}`}>
+                      Ver detalle
+                    </Link>
+                    {trip.status === TripStatus.Draft ||
+                    trip.status === TripStatus.Published ||
+                    trip.status === TripStatus.Full ? (
+                      <Link className="button button-ghost" href={`/viajes/${trip.id}/editar`}>
+                        Editar
+                      </Link>
+                    ) : null}
                     {trip.status === TripStatus.Draft ? (
                       <Button
                         disabled={
@@ -196,17 +212,6 @@ export function TripsOperationWorkspace({
                         variant="secondary"
                       >
                         Finalizar
-                      </Button>
-                    ) : null}
-                    {trip.status !== TripStatus.Completed
-                    && trip.status !== TripStatus.InProgress
-                    && trip.status !== TripStatus.Cancelled ? (
-                      <Button
-                        disabled={isMutatingTripId === trip.id}
-                        onClick={() => onTripAction(trip.id, 'cancel')}
-                        variant="ghost"
-                      >
-                        Cancelar
                       </Button>
                     ) : null}
                   </div>
@@ -260,6 +265,29 @@ export function TripsOperationWorkspace({
       ) : null}
     </section>
   );
+}
+
+function getLateRemovalWarning(trip: TripRecord): string | null {
+  if (
+    trip.status !== TripStatus.Draft &&
+    trip.status !== TripStatus.Published &&
+    trip.status !== TripStatus.Full
+  ) {
+    return null;
+  }
+
+  const departureAt = new Date(trip.departureAt);
+  const millisecondsUntilDeparture = departureAt.getTime() - Date.now();
+
+  if (millisecondsUntilDeparture <= 0) {
+    return null;
+  }
+
+  if (millisecondsUntilDeparture <= CANCELLATION_LATE_WINDOW_MINUTES * 60_000) {
+    return `Eliminar este viaje dentro de los ${CANCELLATION_LATE_WINDOW_MINUTES} minutos previos a la salida puede generar una incidencia operativa.`;
+  }
+
+  return null;
 }
 
 function buildDriverClosureItems(

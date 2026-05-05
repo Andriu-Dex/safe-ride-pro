@@ -1,10 +1,12 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   MembershipStatus,
+  PaymentProvider,
   TripRouteMode,
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import type { InstitutionsRepository } from '../../../src/modules/institutions/application/ports/institutions.repository';
 import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { CreateTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/create-trip-request.use-case';
 import type { TripRequestsRepository } from '../../../src/modules/trip-requests/application/ports/trip-requests.repository';
@@ -36,11 +38,27 @@ function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctio
   } as unknown as jest.Mocked<OperationalSanctionsService>;
 }
 
+function createInstitutionsRepositoryMock(): jest.Mocked<InstitutionsRepository> {
+  return {
+    listActive: jest.fn(),
+    create: jest.fn(),
+    findById: jest.fn(),
+    updateStatus: jest.fn(),
+    getSettings: jest.fn(),
+    updateSettings: jest.fn(),
+  };
+}
+
 describe('CreateTripRequestUseCase', () => {
   it('rejects when the user tries to request a trip owned by the same driver', async () => {
     const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new CreateTripRequestUseCase(repository, sanctionsService);
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -49,6 +67,9 @@ describe('CreateTripRequestUseCase', () => {
       institutionId: 'institution-1',
       institutionName: 'UTA',
       membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      privacyAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      safetyRulesAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
     });
 
     repository.findTripById.mockResolvedValue({
@@ -72,6 +93,7 @@ describe('CreateTripRequestUseCase', () => {
       useCase.execute({
         userId: 'user-1',
         tripId: 'trip-1',
+        acceptReservationCommitment: true,
       }),
     ).rejects.toThrow(new BadRequestException('No puedes solicitar un viaje propio.'));
 
@@ -80,8 +102,13 @@ describe('CreateTripRequestUseCase', () => {
 
   it('rejects custom detour points for direct routes', async () => {
     const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new CreateTripRequestUseCase(repository, sanctionsService);
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-2',
@@ -90,6 +117,9 @@ describe('CreateTripRequestUseCase', () => {
       institutionId: 'institution-1',
       institutionName: 'UTA',
       membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      privacyAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      safetyRulesAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
     });
 
     repository.findTripById.mockResolvedValue({
@@ -109,11 +139,24 @@ describe('CreateTripRequestUseCase', () => {
       availableSeats: 2,
     });
     repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+      allowPaypalPayments: true,
+      termsDocumentUrl: null,
+      privacyPolicyUrl: null,
+      safetyRulesTitle: 'Reglas',
+      safetyRulesSummary: 'Resumen',
+      safetyRulesBody: 'Detalle',
+      createdAt: null,
+      updatedAt: null,
+    });
 
     await expect(
       useCase.execute({
         userId: 'user-2',
         tripId: 'trip-2',
+        acceptReservationCommitment: true,
         requestedPickupLatitude: -1.23,
         requestedPickupLongitude: -78.61,
       }),
@@ -128,8 +171,13 @@ describe('CreateTripRequestUseCase', () => {
 
   it('blocks trip requests when the passenger has an active operational restriction', async () => {
     const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new CreateTripRequestUseCase(repository, sanctionsService);
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-2',
@@ -138,6 +186,9 @@ describe('CreateTripRequestUseCase', () => {
       institutionId: 'institution-1',
       institutionName: 'UTA',
       membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      privacyAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      safetyRulesAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
     });
     sanctionsService.assertPassengerOperationsAllowed.mockRejectedValue(
       new ForbiddenException(
@@ -149,6 +200,7 @@ describe('CreateTripRequestUseCase', () => {
       useCase.execute({
         userId: 'user-2',
         tripId: 'trip-2',
+        acceptReservationCommitment: true,
       }),
     ).rejects.toThrow(
       new ForbiddenException(
@@ -157,5 +209,105 @@ describe('CreateTripRequestUseCase', () => {
     );
 
     expect(repository.findTripById).not.toHaveBeenCalled();
+  });
+
+  it('rejects requests when the visible reservation commitment is not accepted', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      privacyAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      safetyRulesAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: false,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'Debes aceptar las reglas minimas de seguridad y las condiciones de reserva antes de continuar.',
+      ),
+    );
+  });
+
+  it('rejects disabled payment methods from institutional settings', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      privacyAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      safetyRulesAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+      allowPaypalPayments: false,
+      termsDocumentUrl: null,
+      privacyPolicyUrl: null,
+      safetyRulesTitle: 'Reglas',
+      safetyRulesSummary: 'Resumen',
+      safetyRulesBody: 'Detalle',
+      createdAt: null,
+      updatedAt: null,
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+        paymentProvider: PaymentProvider.Paypal,
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'Esta institucion desactivo temporalmente PayPal para nuevas reservas.',
+      ),
+    );
   });
 });

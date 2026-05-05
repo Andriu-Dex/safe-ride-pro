@@ -28,7 +28,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAdminOnlyRoute =
     pathname === '/auditoria' ||
     pathname === '/moderacion' ||
-    pathname === '/usuarios';
+    pathname === '/usuarios' ||
+    pathname === '/configuracion';
   const canUseAdminRoutes = canAccessAudit(authSession?.user);
   const canUseDashboard = canAccessDashboard(authSession?.user);
 

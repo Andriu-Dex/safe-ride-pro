@@ -30,6 +30,7 @@ import {
   TripMembershipRecord,
   TripRecord,
   TripsRepository,
+  UpdateTripInput,
   TripVehicleRecord,
 } from '../../application/ports/trips.repository';
 import { matchesTripDepartureTimeWindow } from '../../application/services/trip-search-filtering';
@@ -146,6 +147,35 @@ export class PrismaTripsRepository implements TripsRepository {
     return this.mapTrip(trip);
   }
 
+  async updateTrip(input: UpdateTripInput): Promise<TripRecord> {
+    const trip = await this.prisma.trip.update({
+      where: { id: input.tripId },
+      data: {
+        vehicleId: input.vehicleId,
+        routeMode: input.routeMode,
+        originLabel: input.originLabel,
+        destinationLabel: input.destinationLabel,
+        originLatitude: input.originLatitude,
+        originLongitude: input.originLongitude,
+        destinationLatitude: input.destinationLatitude,
+        destinationLongitude: input.destinationLongitude,
+        departureAt: input.departureAt,
+        estimatedArrivalAt: input.estimatedArrivalAt,
+        seatCount: input.seatCount,
+        availableSeats: input.availableSeats,
+        vehicleTypeSnapshot: input.vehicleTypeSnapshot,
+        luggagePolicySnapshot: input.luggagePolicySnapshot,
+        basePriceReference: input.basePriceReference,
+        detourSurchargeReference: input.detourSurchargeReference,
+        notes: input.notes,
+        status: input.status,
+      },
+      include: this.tripInclude(),
+    });
+
+    return this.mapTrip(trip);
+  }
+
   async findTripById(tripId: string): Promise<TripRecord | null> {
     const trip = await this.prisma.trip.findUnique({
       where: { id: tripId },
@@ -153,6 +183,17 @@ export class PrismaTripsRepository implements TripsRepository {
     });
 
     return trip ? this.mapTrip(trip) : null;
+  }
+
+  async countActiveRequestsForTrip(tripId: string): Promise<number> {
+    return this.prisma.tripRequest.count({
+      where: {
+        tripId,
+        status: {
+          in: [TripRequestStatus.Pending, TripRequestStatus.Accepted],
+        },
+      },
+    });
   }
 
   async listTripExecutionPassengers(tripId: string): Promise<TripExecutionPassengerRecord[]> {

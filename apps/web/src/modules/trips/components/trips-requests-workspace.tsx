@@ -8,6 +8,7 @@ import {
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
+import Link from 'next/link';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
@@ -235,6 +236,9 @@ export function TripsRequestsWorkspace({
                     />
                   ) : null}
                   <div className="button-row trip-request-action-row">
+                    <Link className="button button-ghost" href={`/viajes/${request.tripId}`}>
+                      Ver detalle
+                    </Link>
                     {canAcceptIncomingRequest(request) ? (
                       <Button
                         disabled={isMutatingRequestId === request.id}
@@ -366,6 +370,9 @@ export function TripsRequestsWorkspace({
                 ) : null}
                 {canCancelOwnRequest(request) ? (
                   <div className="button-row trip-request-action-row">
+                    <Link className="button button-secondary" href={`/viajes/${request.tripId}`}>
+                      Ver detalle
+                    </Link>
                     <Button
                       disabled={isMutatingRequestId === request.id}
                       onClick={() => onCancelMyRequest(request.id)}
@@ -373,6 +380,13 @@ export function TripsRequestsWorkspace({
                     >
                       Cancelar solicitud
                     </Button>
+                  </div>
+                ) : null}
+                {!canCancelOwnRequest(request) ? (
+                  <div className="button-row trip-request-action-row">
+                    <Link className="button button-ghost" href={`/viajes/${request.tripId}`}>
+                      Ver detalle
+                    </Link>
                   </div>
                 ) : null}
                 {request.payment ? (

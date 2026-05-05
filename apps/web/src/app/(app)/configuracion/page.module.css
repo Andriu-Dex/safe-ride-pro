@@ -1,0 +1,242 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+
+.pageBackground {
+  min-height: 100vh;
+  padding: 2rem 1.5rem 4rem;
+  background-color: #f1f5f9;
+  background-image:
+    radial-gradient(circle at 50% 0%, #ffffff 0%, transparent 60%),
+    linear-gradient(to bottom, transparent 0%, #e2e8f0 100%);
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.canvas {
+  width: 100%;
+  max-width: 76rem;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #ffffff;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 55px -18px rgba(100, 116, 139, 0.42);
+  overflow: hidden;
+}
+
+.canvasSmall {
+  max-width: 34rem;
+  margin: auto;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.loadingPulse {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.4) 0%, rgba(15, 118, 110, 0.08) 72%);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.hero {
+  padding: 2.5rem;
+  background: linear-gradient(135deg, #0f766e 0%, #042f2e 100%);
+  color: #ffffff;
+}
+
+.heroTop,
+.heroActions,
+.actionBar,
+.actionButtons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.heroTop,
+.actionBar {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-width: 44rem;
+}
+
+.kicker,
+.sectionKicker {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.kicker {
+  color: #5eead4;
+}
+
+.sectionKicker {
+  color: #0f766e;
+}
+
+.heroTitle,
+.stateTitle {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+}
+
+.heroLead,
+.stateText,
+.identityBlock span,
+.toggleRow span,
+.sideList li,
+.actionCopy span {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.heroLead {
+  color: #ccfbf1;
+}
+
+.stateText,
+.identityBlock span,
+.toggleRow span,
+.actionCopy span {
+  color: #64748b;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
+  gap: 3rem;
+  padding: 2.75rem 2.5rem;
+}
+
+.sideColumn,
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
+}
+
+.sideColumn > *:not(:last-child),
+.mainColumn > *:not(:last-child) {
+  padding-bottom: 2.2rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sideSection,
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.sideTitle,
+.sectionTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.28rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.identityBlock {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 1rem;
+  border-left: 3px solid #99f6e4;
+}
+
+.identityBlock strong,
+.actionCopy strong,
+.toggleRow strong {
+  color: #0f172a;
+}
+
+.sideList {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: #475569;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.toggleStack,
+.formStack {
+  display: grid;
+  gap: 1rem;
+}
+
+.toggleRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.toggleRow input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: #0f766e;
+  margin-top: 0.25rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.actionCopy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+@media (max-width: 960px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .pageBackground {
+    padding-inline: 0.85rem;
+  }
+
+  .hero,
+  .contentGrid {
+    padding-inline: 1.2rem;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .toggleRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.62;
+  }
+}

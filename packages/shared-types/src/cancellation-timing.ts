@@ -9,6 +9,7 @@ type CancellationTimingInput = {
   departureAt?: Date | string | null;
   cancelledAt?: Date | string | null;
   now?: Date;
+  lateWindowMinutes?: number | null;
 };
 
 function normalizeDate(value?: Date | string | null): Date | null {
@@ -24,6 +25,7 @@ function normalizeDate(value?: Date | string | null): Date | null {
 export function getCancellationTiming({
   departureAt,
   cancelledAt,
+  lateWindowMinutes,
 }: CancellationTimingInput): CancellationTiming | null {
   const normalizedDepartureAt = normalizeDate(departureAt);
   const normalizedCancelledAt = normalizeDate(cancelledAt);
@@ -32,8 +34,13 @@ export function getCancellationTiming({
     return null;
   }
 
+  const effectiveLateWindowMinutes =
+    typeof lateWindowMinutes === 'number' && Number.isFinite(lateWindowMinutes) && lateWindowMinutes > 0
+      ? Math.round(lateWindowMinutes)
+      : CANCELLATION_LATE_WINDOW_MINUTES;
+
   const lateThresholdAt = new Date(
-    normalizedDepartureAt.getTime() - CANCELLATION_LATE_WINDOW_MINUTES * 60_000,
+    normalizedDepartureAt.getTime() - effectiveLateWindowMinutes * 60_000,
   );
 
   return normalizedCancelledAt >= lateThresholdAt

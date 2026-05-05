@@ -22,6 +22,7 @@ import { GetTripLiveTrackingUseCase } from '../../../src/modules/trips/applicati
 import { ListTripsUseCase } from '../../../src/modules/trips/application/use-cases/list-trips.use-case';
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../../src/modules/trips/application/use-cases/start-trip.use-case';
+import { UpdateTripUseCase } from '../../../src/modules/trips/application/use-cases/update-trip.use-case';
 import { UpdateTripLiveTrackingUseCase } from '../../../src/modules/trips/application/use-cases/update-trip-live-tracking.use-case';
 import { TripsController } from '../../../src/modules/trips/presentation/controllers/trips.controller';
 import { createAuthenticatedHttpContext } from '../../helpers/create-authenticated-http-context';
@@ -48,6 +49,9 @@ describe('TripsController HTTP', () => {
     execute: jest.fn(),
   };
   const startTripUseCase = {
+    execute: jest.fn(),
+  };
+  const updateTripUseCase = {
     execute: jest.fn(),
   };
   const completeTripUseCase = {
@@ -112,6 +116,10 @@ describe('TripsController HTTP', () => {
         {
           provide: StartTripUseCase,
           useValue: startTripUseCase,
+        },
+        {
+          provide: UpdateTripUseCase,
+          useValue: updateTripUseCase,
         },
         {
           provide: CompleteTripUseCase,
@@ -234,6 +242,54 @@ describe('TripsController HTTP', () => {
       .expect(400);
 
     expect(publishTripUseCase.execute).not.toHaveBeenCalled();
+  });
+
+  it('updates a trip through HTTP using the authenticated user context', async () => {
+    updateTripUseCase.execute.mockResolvedValue({
+      message: 'Viaje actualizado correctamente.',
+      trip: {
+        id: 'trip-1',
+        status: TripStatus.Published,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .patch('/api/trips/8fe59d21-01aa-4764-b9f5-fa05a13997e4')
+      .set('Authorization', 'Bearer test-token')
+      .send({
+        vehicleId: '8fe59d21-01aa-4764-b9f5-fa05a13997e4',
+        routeMode: TripRouteMode.DirectRoute,
+        originLabel: 'Campus Huachi',
+        destinationLabel: 'Centro',
+        originLatitude: -1.25,
+        originLongitude: -78.62,
+        destinationLatitude: -1.24,
+        destinationLongitude: -78.61,
+        departureAt: '2030-01-01T10:00:00.000Z',
+        estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+        seatCount: 3,
+        basePriceReference: 2.5,
+      })
+      .expect(200);
+
+    expect(updateTripUseCase.execute).toHaveBeenCalledWith({
+      userId: 'user-1',
+      tripId: '8fe59d21-01aa-4764-b9f5-fa05a13997e4',
+      vehicleId: '8fe59d21-01aa-4764-b9f5-fa05a13997e4',
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Campus Huachi',
+      destinationLabel: 'Centro',
+      originLatitude: -1.25,
+      originLongitude: -78.62,
+      destinationLatitude: -1.24,
+      destinationLongitude: -78.61,
+      departureAt: '2030-01-01T10:00:00.000Z',
+      estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+      seatCount: 3,
+      basePriceReference: 2.5,
+      detourSurchargeReference: undefined,
+      notes: undefined,
+    });
   });
 
   it('lists trips with query filters transformed by the DTO', async () => {

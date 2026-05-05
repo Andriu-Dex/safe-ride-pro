@@ -5,6 +5,7 @@ import type {
   TripFilters,
   TripLiveTrackingRecord,
   TripRecord,
+  UpdateTripInput,
   UpdateTripLiveTrackingInput,
 } from '../types/trip';
 import { apiRequest } from '../../../lib/api-client';
@@ -54,6 +55,18 @@ export async function listAvailableTrips(
 export async function createTrip(accessToken: string, input: CreateTripInput): Promise<TripMutationResponse> {
   return apiRequest<TripMutationResponse>('/trips', {
     method: 'POST',
+    accessToken,
+    body: input,
+  });
+}
+
+export async function updateTrip(
+  accessToken: string,
+  tripId: string,
+  input: UpdateTripInput,
+): Promise<TripMutationResponse> {
+  return apiRequest<TripMutationResponse>(`/trips/${tripId}`, {
+    method: 'PATCH',
     accessToken,
     body: input,
   });

@@ -15,6 +15,10 @@ import {
 } from '@saferidepro/shared-types';
 
 import { getAppEnvironment } from '../../../../shared/infrastructure/config/app-environment';
+import {
+  INSTITUTIONS_REPOSITORY,
+  InstitutionsRepository,
+} from '../../../institutions/application/ports/institutions.repository';
 import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
@@ -32,6 +36,7 @@ export type CreateTripRequestCommand = {
   requestedDropoffLongitude?: number;
   requestMessage?: string;
   paymentProvider?: PaymentProvider;
+  acceptReservationCommitment: boolean;
 };
 
 @Injectable()
@@ -39,6 +44,8 @@ export class CreateTripRequestUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
+    @Inject(INSTITUTIONS_REPOSITORY)
+    private readonly institutionsRepository: InstitutionsRepository,
     private readonly operationalSanctionsService: OperationalSanctionsService,
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
@@ -51,6 +58,22 @@ export class CreateTripRequestUseCase {
 
     if (!membership || membership.membershipStatus !== MembershipStatus.Active) {
       throw new ForbiddenException('No tienes una membresia activa para solicitar viajes.');
+    }
+
+    if (
+      !membership.termsAcceptedAt ||
+      !membership.privacyAcceptedAt ||
+      !membership.safetyRulesAcceptedAt
+    ) {
+      throw new ForbiddenException(
+        'Debes completar la aceptacion de terminos, privacidad y seguridad desde tu perfil antes de solicitar viajes.',
+      );
+    }
+
+    if (!command.acceptReservationCommitment) {
+      throw new BadRequestException(
+        'Debes aceptar las reglas minimas de seguridad y las condiciones de reserva antes de continuar.',
+      );
     }
 
     await this.operationalSanctionsService.assertPassengerOperationsAllowed(membership.id);
@@ -77,6 +100,27 @@ export class CreateTripRequestUseCase {
       throw new BadRequestException('No puedes solicitar un viaje que ya esta por iniciar o salir.');
     }
 
+    const institutionSettings = await this.institutionsRepository.getSettings(trip.institutionId);
+    const selectedPaymentProvider = command.paymentProvider ?? PaymentProvider.Cash;
+
+    if (
+      selectedPaymentProvider === PaymentProvider.Cash &&
+      !institutionSettings.allowCashPayments
+    ) {
+      throw new BadRequestException(
+        'Esta institucion desactivo temporalmente el pago en efectivo para nuevas reservas.',
+      );
+    }
+
+    if (
+      selectedPaymentProvider === PaymentProvider.Paypal &&
+      !institutionSettings.allowPaypalPayments
+    ) {
+      throw new BadRequestException(
+        'Esta institucion desactivo temporalmente PayPal para nuevas reservas.',
+      );
+    }
+
     this.validateDetourPoints(trip.routeMode, command);
 
     const activeRequest = await this.tripRequestsRepository.findActiveRequestForTripAndPassenger(
@@ -91,7 +135,7 @@ export class CreateTripRequestUseCase {
     const tripRequest = await this.tripRequestsRepository.createTripRequest({
       tripId: trip.id,
       passengerMembershipId: membership.id,
-      paymentProvider: command.paymentProvider ?? PaymentProvider.Cash,
+      paymentProvider: selectedPaymentProvider,
       currencyCode: getAppEnvironment().paymentsCurrency,
       requestedPickupLatitude: command.requestedPickupLatitude,
       requestedPickupLongitude: command.requestedPickupLongitude,

@@ -1,6 +1,15 @@
 import { Type } from 'class-transformer';
 import { PaymentProvider } from '@saferidepro/shared-types';
-import { IsEnum, IsLatitude, IsLongitude, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsLatitude,
+  IsLongitude,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateTripRequestRequestDto {
   @IsUUID()
@@ -34,4 +43,7 @@ export class CreateTripRequestRequestDto {
   @IsOptional()
   @IsEnum(PaymentProvider)
   paymentProvider?: PaymentProvider;
+
+  @IsBoolean()
+  acceptReservationCommitment!: boolean;
 }

@@ -46,7 +46,7 @@ export function TripRequestDetourPlanner({
   }: {
     latitude: number;
     longitude: number;
-    target: PlannerTarget;
+    target: 'pickup' | 'dropoff' | 'origin' | 'destination';
   }) => {
     if (target === 'pickup') {
       onChange('requestedPickupLatitude', latitude.toFixed(6));
@@ -55,6 +55,10 @@ export function TripRequestDetourPlanner({
         'requestedPickupLabel',
         draft.requestedPickupLabel.trim() || 'Punto de recogida marcado en mapa',
       );
+      return;
+    }
+
+    if (target !== 'dropoff') {
       return;
     }
 

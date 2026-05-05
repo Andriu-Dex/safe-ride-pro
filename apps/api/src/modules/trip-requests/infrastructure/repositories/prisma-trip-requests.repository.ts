@@ -56,6 +56,9 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       institutionId: membership.institutionId,
       institutionName: membership.institution.name,
       membershipStatus: membership.membershipStatus as MembershipStatus,
+      termsAcceptedAt: membership.user.termsAcceptedAt,
+      privacyAcceptedAt: membership.user.privacyAcceptedAt,
+      safetyRulesAcceptedAt: membership.user.safetyRulesAcceptedAt,
     };
   }
 

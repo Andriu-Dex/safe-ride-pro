@@ -1,0 +1,155 @@
+.commitmentBlock {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem 1.05rem;
+  border-left: 3px solid rgba(15, 118, 110, 0.28);
+  background: rgba(241, 245, 249, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+}
+
+.commitmentLabel {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.18rem;
+  accent-color: #0f766e;
+}
+
+.copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.copy strong {
+  color: #12353d;
+  font-size: 0.95rem;
+}
+
+.copy span {
+  color: #475569;
+  line-height: 1.55;
+  font-size: 0.92rem;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.85rem;
+}
+
+.linkButton,
+.linkAnchor {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.linkButton:hover,
+.linkButton:focus-visible,
+.linkAnchor:hover,
+.linkAnchor:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.disabledLink {
+  color: #94a3b8;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(8px);
+}
+
+.modalCard {
+  width: min(100%, 44rem);
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.24);
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.4rem 1.5rem 1rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.modalEyebrow {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.modalTitle {
+  margin: 0;
+  color: #12353d;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.modalSummary {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.modalBody {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.2rem 1.5rem 1.5rem;
+}
+
+.ruleItem {
+  margin: 0;
+  color: #1e293b;
+  line-height: 1.6;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0 1.5rem 1.4rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .modalCard {
+    width: 100%;
+  }
+
+  .modalHeader,
+  .modalBody,
+  .modalActions {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

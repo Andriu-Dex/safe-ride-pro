@@ -23,6 +23,13 @@ type TripCreationFormProps = {
   vehicles: VehicleRecord[];
   disabled: boolean;
   isSubmitting: boolean;
+  headerKicker?: string;
+  title?: string;
+  lead?: string;
+  submitLabel?: string;
+  submittingLabel?: string;
+  readyCopy?: string;
+  pendingCopy?: string;
   onChange: (field: keyof TripFormValues, value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   latestRouteTemplate: LatestTripRouteTemplate | null;
@@ -39,6 +46,13 @@ export function TripCreationForm({
   vehicles,
   disabled,
   isSubmitting,
+  headerKicker = 'Creacion',
+  title = 'Arma tu proximo viaje',
+  lead = 'Define ruta, horario y cupos en una sola pasada.',
+  submitLabel = 'Crear viaje',
+  submittingLabel = 'Guardando...',
+  readyCopy = 'Listo para crear el viaje',
+  pendingCopy = 'Completa los datos pendientes',
   onChange,
   onSubmit,
   latestRouteTemplate,
@@ -227,11 +241,9 @@ export function TripCreationForm({
     <article className={styles.shell}>
       <div className={styles.header}>
         <div className={styles.headerCopy}>
-          <p className={styles.kicker}>Creacion</p>
-          <h2 className={styles.title}>Arma tu proximo viaje</h2>
-          <p className={styles.lead}>
-            Define ruta, horario y cupos en una sola pasada.
-          </p>
+          <p className={styles.kicker}>{headerKicker}</p>
+          <h2 className={styles.title}>{title}</h2>
+          <p className={styles.lead}>{lead}</p>
         </div>
 
         <div className={styles.headerStats}>
@@ -637,7 +649,7 @@ export function TripCreationForm({
         <div className={styles.actionBar}>
           <div className={styles.actionCopy}>
             <strong className={styles.summaryTitle}>
-              {canSubmit ? 'Listo para crear el viaje' : 'Completa los datos pendientes'}
+              {canSubmit ? readyCopy : pendingCopy}
             </strong>
             <span>
               {selectedVehicle ? `${getVehicleLabel(selectedVehicle)} | ${routeModeLabel}` : 'Selecciona un vehiculo para continuar'}
@@ -653,7 +665,7 @@ export function TripCreationForm({
               Limpiar
             </Button>
             <Button disabled={!canSubmit} type="submit">
-              {isSubmitting ? 'Creando...' : 'Crear viaje'}
+              {isSubmitting ? submittingLabel : submitLabel}
             </Button>
           </div>
         </div>

@@ -53,6 +53,7 @@ export class TripRequestsController {
       requestedDropoffLongitude: body.requestedDropoffLongitude,
       requestMessage: body.requestMessage,
       paymentProvider: body.paymentProvider,
+      acceptReservationCommitment: body.acceptReservationCommitment,
     });
   }
 

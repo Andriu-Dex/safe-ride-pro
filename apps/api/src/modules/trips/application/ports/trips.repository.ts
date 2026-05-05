@@ -93,6 +93,28 @@ export type CreateTripInput = {
   notes?: string;
 };
 
+export type UpdateTripInput = {
+  tripId: string;
+  vehicleId: string;
+  routeMode: TripRouteMode;
+  originLabel: string;
+  destinationLabel: string;
+  originLatitude: number;
+  originLongitude: number;
+  destinationLatitude: number;
+  destinationLongitude: number;
+  departureAt: Date;
+  estimatedArrivalAt: Date;
+  seatCount: number;
+  availableSeats: number;
+  vehicleTypeSnapshot: VehicleType;
+  luggagePolicySnapshot: LuggagePolicy;
+  basePriceReference: number;
+  detourSurchargeReference?: number;
+  notes?: string;
+  status: TripStatus;
+};
+
 export type TripFilters = {
   institutionId?: string;
   driverMembershipId?: string;
@@ -161,7 +183,9 @@ export interface TripsRepository {
   findDefaultMembershipByUserId(userId: string): Promise<TripMembershipRecord | null>;
   findVehicleByIdForMembership(membershipId: string, vehicleId: string): Promise<TripVehicleRecord | null>;
   createTrip(input: CreateTripInput): Promise<TripRecord>;
+  updateTrip(input: UpdateTripInput): Promise<TripRecord>;
   findTripById(tripId: string): Promise<TripRecord | null>;
+  countActiveRequestsForTrip(tripId: string): Promise<number>;
   listTripExecutionPassengers(tripId: string): Promise<TripExecutionPassengerRecord[]>;
   hasAcceptedTripRequest(tripId: string, passengerMembershipId: string): Promise<boolean>;
   findAcceptedPassengerMembershipIds(tripId: string): Promise<string[]>;

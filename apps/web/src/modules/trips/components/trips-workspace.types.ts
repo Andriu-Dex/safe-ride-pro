@@ -37,6 +37,7 @@ export const EMPTY_TRIP_FORM: TripFormValues = {
 export type TripRequestDraft = {
   paymentProvider: PaymentProvider;
   requestMessage: string;
+  acceptReservationCommitment: boolean;
   requestedPickupLabel: string;
   requestedPickupLatitude: string;
   requestedPickupLongitude: string;
@@ -48,6 +49,7 @@ export type TripRequestDraft = {
 export const EMPTY_REQUEST_DRAFT: TripRequestDraft = {
   paymentProvider: PaymentProvider.Cash,
   requestMessage: '',
+  acceptReservationCommitment: false,
   requestedPickupLabel: '',
   requestedPickupLatitude: '',
   requestedPickupLongitude: '',

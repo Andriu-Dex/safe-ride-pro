@@ -13,6 +13,7 @@ export const REALTIME_TRIP_LIVE_TRACKING_UPDATED_EVENT =
 
 export type RealtimeTripChangeReason =
   | 'created'
+  | 'updated'
   | 'published'
   | 'started'
   | 'completed'

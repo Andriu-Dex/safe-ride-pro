@@ -12,6 +12,7 @@ import { GetTripLiveTrackingUseCase } from './application/use-cases/get-trip-liv
 import { ListTripsUseCase } from './application/use-cases/list-trips.use-case';
 import { PublishTripUseCase } from './application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from './application/use-cases/start-trip.use-case';
+import { UpdateTripUseCase } from './application/use-cases/update-trip.use-case';
 import { UpdateTripLiveTrackingUseCase } from './application/use-cases/update-trip-live-tracking.use-case';
 import { TripLifecycleMaintenanceService } from './application/services/trip-lifecycle-maintenance.service';
 import { PrismaTripsRepository } from './infrastructure/repositories/prisma-trips.repository';
@@ -32,6 +33,7 @@ import { TripsController } from './presentation/controllers/trips.controller';
     GetTripLiveTrackingUseCase,
     PublishTripUseCase,
     StartTripUseCase,
+    UpdateTripUseCase,
     CompleteTripUseCase,
     CancelTripUseCase,
     UpdateTripLiveTrackingUseCase,

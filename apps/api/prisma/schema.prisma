@@ -165,6 +165,7 @@ enum AuditAction {
   TRIP_PASSENGER_DROPPED_OFF
   TRIP_COMPLETED
   TRIP_CANCELLED
+  TRIP_UPDATED
   REPORT_CREATED
   REPORT_REVIEWED
   SANCTION_APPLIED
@@ -173,6 +174,7 @@ enum AuditAction {
   SANCTION_APPEAL_APPROVED
   SANCTION_APPEAL_REJECTED
   SANCTION_LIFTED_MANUALLY
+  INSTITUTION_SETTINGS_UPDATED
 }
 
 enum AuditEntityType {
@@ -180,6 +182,7 @@ enum AuditEntityType {
   USER_MEMBERSHIP
   DRIVER_PROFILE
   TRIP
+  INSTITUTION
   REPORT
   OPERATIONAL_SANCTION
   SANCTION_APPEAL
@@ -205,17 +208,18 @@ enum AssetStorageProvider {
 }
 
 model Institution {
-  id           String                      @id @default(uuid())
-  name         String
-  code         String                      @unique
-  isActive     Boolean                     @default(true)
-  createdAt    DateTime                    @default(now())
-  updatedAt    DateTime                    @updatedAt
-  domains      InstitutionDomain[]
-  memberships  UserInstitutionMembership[]
-  trips        Trip[]
-  tripPayments TripPayment[]
-  auditEvents  AuditEvent[]
+  id            String                      @id @default(uuid())
+  name          String
+  code          String                      @unique
+  isActive      Boolean                     @default(true)
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+  domains       InstitutionDomain[]
+  settings      InstitutionSettings?
+  memberships   UserInstitutionMembership[]
+  trips         Trip[]
+  tripPayments  TripPayment[]
+  auditEvents   AuditEvent[]
   notifications AppNotification[]
 
   @@map("institutions")
@@ -233,6 +237,23 @@ model InstitutionDomain {
 
   @@unique([institutionId, domain])
   @@map("institution_domains")
+}
+
+model InstitutionSettings {
+  id                            String      @id @default(uuid())
+  institutionId                 String      @unique
+  allowCashPayments             Boolean     @default(true)
+  allowPaypalPayments           Boolean     @default(true)
+  termsDocumentUrl              String?
+  privacyPolicyUrl              String?
+  safetyRulesTitle              String      @default("Reglas minimas de seguridad")
+  safetyRulesSummary            String      @default("Respeta el punto de encuentro, confirma tu identidad y mantente atento durante todo el trayecto.")
+  safetyRulesBody               String      @default("1. Llega con anticipacion al punto acordado.\\n2. Verifica conductor, vehiculo y placa antes de abordar.\\n3. Mantente identificable y avisa cualquier cambio de ultimo momento.\\n4. Usa el viaje solo para fines autorizados por tu institucion.\\n5. Reporta de inmediato cualquier conducta insegura o fuera de protocolo.")
+  createdAt                     DateTime    @default(now())
+  updatedAt                     DateTime    @updatedAt
+  institution                   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@map("institution_settings")
 }
 
 model User {

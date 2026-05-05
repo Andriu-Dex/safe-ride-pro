@@ -23,6 +23,7 @@ import { ToastStack, type ToastItem } from '../../../components/ui/toast-stack';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
+import { getInstitutionSettings } from '../../../modules/institutions/lib/institution-api';
 import { useRealtimeEventStream } from '../../../modules/realtime/hooks/use-realtime-event-stream';
 import {
   getDriverLicenseAlertMessage,
@@ -78,6 +79,7 @@ import {
   getTrustRestrictions,
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
+import type { InstitutionSettingsRecord } from '../../../modules/institutions/types/institution-settings';
 import { TripsWorkspaceSkeleton } from '../../../modules/trips/components/trips-workspace-skeleton';
 import { TripFiltersPanel } from '../../../modules/trips/components/trip-filters-panel';
 import {
@@ -223,8 +225,12 @@ export default function TripsPage() {
   const searchParams = useSearchParams();
   const { authSession, isHydrated, refreshSession } = useAuth();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
+  const currentMembership =
+    operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
   const [vehicleOverview, setVehicleOverview] = useState<VehicleOverview | null>(null);
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
+  const [reservationSettings, setReservationSettings] =
+    useState<InstitutionSettingsRecord | null>(null);
   const [myTrips, setMyTrips] = useState<TripRecord[]>([]);
   const [availableTrips, setAvailableTrips] = useState<TripRecord[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<TripRequestRecord[]>([]);
@@ -272,22 +278,26 @@ export default function TripsPage() {
   }, []);
 
   const loadTripsData = useCallback(async (accessToken: string, filters: TripFilters) => {
-    const [vehicleData, trustSummaryData, myTripsData, availableTripsData, myTripRequestsData, incomingTripRequestsData] = await Promise.all([
+    const [vehicleData, trustSummaryData, myTripsData, availableTripsData, myTripRequestsData, incomingTripRequestsData, institutionSettingsData] = await Promise.all([
       getVehicleOverview(accessToken),
       getCurrentUserTrustSummary(accessToken),
       listMyTrips(accessToken, filters),
       listAvailableTrips(accessToken, filters),
       listMyTripRequests(accessToken),
       listIncomingTripRequests(accessToken),
+      currentMembership?.institutionId
+        ? getInstitutionSettings(accessToken, currentMembership.institutionId)
+        : Promise.resolve(null),
     ]);
 
     setVehicleOverview(vehicleData);
     setTrustSummary(trustSummaryData);
+    setReservationSettings(institutionSettingsData?.settings ?? null);
     setMyTrips(myTripsData);
     setAvailableTrips(availableTripsData);
     setMyRequests(myTripRequestsData);
     setIncomingRequests(incomingTripRequestsData);
-  }, []);
+  }, [currentMembership?.institutionId]);
 
   const refreshTripsData = useCallback(async (showSpinner = false) => {
     if (!authSession) {
@@ -321,6 +331,7 @@ export default function TripsPage() {
     if (!authSession || !operationalAccess.hasOperationalMembership) {
       setVehicleOverview(null);
       setTrustSummary(null);
+      setReservationSettings(null);
       setMyTrips([]);
       setAvailableTrips([]);
       setIncomingRequests([]);
@@ -609,7 +620,7 @@ export default function TripsPage() {
   const handleRequestDraftChange = (
     tripId: string,
     field: keyof TripRequestDraft,
-    value: string,
+    value: string | boolean,
   ) => {
     setRequestDrafts((currentDrafts) => ({
       ...currentDrafts,
@@ -626,6 +637,16 @@ export default function TripsPage() {
     }
 
     const draft = requestDrafts[trip.id] ?? EMPTY_REQUEST_DRAFT;
+    const paymentProvider =
+      draft.paymentProvider === PaymentProvider.Cash &&
+      reservationSettings?.allowCashPayments === false &&
+      reservationSettings.allowPaypalPayments
+        ? PaymentProvider.Paypal
+        : draft.paymentProvider === PaymentProvider.Paypal &&
+            reservationSettings?.allowPaypalPayments === false &&
+            reservationSettings.allowCashPayments
+          ? PaymentProvider.Cash
+          : draft.paymentProvider;
     setIsMutatingRequestId(trip.id);
     setRequestErrorMessage(null);
     setRequestSuccessMessage(null);
@@ -633,7 +654,8 @@ export default function TripsPage() {
     try {
       const response = await createTripRequest(authSession.accessToken, {
         tripId: trip.id,
-        paymentProvider: draft.paymentProvider,
+        paymentProvider,
+        acceptReservationCommitment: draft.acceptReservationCommitment,
         requestMessage: draft.requestMessage || undefined,
         requestedPickupLatitude: draft.requestedPickupLatitude
           ? Number.parseFloat(draft.requestedPickupLatitude)
@@ -650,7 +672,7 @@ export default function TripsPage() {
       });
 
       if (
-        draft.paymentProvider === PaymentProvider.Paypal &&
+        paymentProvider === PaymentProvider.Paypal &&
         response.tripRequest.payment?.id
       ) {
         const checkoutResponse = await createPaymentCheckoutLink(
@@ -681,6 +703,49 @@ export default function TripsPage() {
       setIsMutatingRequestId(null);
     }
   };
+
+  useEffect(() => {
+    if (!reservationSettings) {
+      return;
+    }
+
+    setRequestDrafts((currentDrafts) => {
+      let hasChanges = false;
+      const nextDrafts: Record<string, TripRequestDraft> = {};
+
+      Object.entries(currentDrafts).forEach(([tripId, draft]) => {
+        let nextPaymentProvider = draft.paymentProvider;
+
+        if (
+          nextPaymentProvider === PaymentProvider.Cash &&
+          !reservationSettings.allowCashPayments &&
+          reservationSettings.allowPaypalPayments
+        ) {
+          nextPaymentProvider = PaymentProvider.Paypal;
+          hasChanges = true;
+        }
+
+        if (
+          nextPaymentProvider === PaymentProvider.Paypal &&
+          !reservationSettings.allowPaypalPayments &&
+          reservationSettings.allowCashPayments
+        ) {
+          nextPaymentProvider = PaymentProvider.Cash;
+          hasChanges = true;
+        }
+
+        nextDrafts[tripId] =
+          nextPaymentProvider === draft.paymentProvider
+            ? draft
+            : {
+                ...draft,
+                paymentProvider: nextPaymentProvider,
+              };
+      });
+
+      return hasChanges ? nextDrafts : currentDrafts;
+    });
+  }, [reservationSettings]);
 
   const handleIncomingRequestAction = async (
     requestId: string,
@@ -1326,6 +1391,7 @@ export default function TripsPage() {
                     isPassengerOperationBlocked={trustRestrictions.blocksPassenger}
                     isRefreshingData={isRefreshingData}
                     myRequests={myRequests}
+                    reservationSettings={reservationSettings}
                     onApplyFilters={handleApplyFilters}
                     onCreateRequest={(trip) => void handleCreateRequest(trip)}
                     onFilterChange={handleFilterChange}

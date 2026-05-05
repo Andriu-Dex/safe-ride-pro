@@ -1,4 +1,10 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  DriverLicenseStatus,
+  DriverVerificationStatus,
+  MembershipStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
 import {
   TRIPS_REPOSITORY,
@@ -38,6 +44,24 @@ export class GetTripByIdUseCase {
       ? false
       : await this.tripsRepository.hasAcceptedTripRequest(tripId, membership.id);
     const canViewPreciseRoute = isOwner || isAcceptedPassenger;
+    const activeRequestCount = isOwner
+      ? await this.tripsRepository.countActiveRequestsForTrip(tripId)
+      : 0;
+    const canEdit =
+      isOwner &&
+      membership.membershipStatus === MembershipStatus.Active &&
+      membership.driverVerificationStatus === DriverVerificationStatus.Approved &&
+      membership.licenseStatus !== DriverLicenseStatus.Expired &&
+      activeRequestCount === 0 &&
+      (reconciledTrip.status === TripStatus.Draft ||
+        reconciledTrip.status === TripStatus.Published ||
+        reconciledTrip.status === TripStatus.Full) &&
+      reconciledTrip.departureAt > new Date();
+    const canCancel =
+      isOwner &&
+      reconciledTrip.status !== TripStatus.InProgress &&
+      reconciledTrip.status !== TripStatus.Completed &&
+      reconciledTrip.status !== TripStatus.Cancelled;
 
     return {
       id: reconciledTrip.id,
@@ -70,6 +94,11 @@ export class GetTripByIdUseCase {
       completedAt: reconciledTrip.completedAt,
       cancellationTiming: reconciledTrip.cancellationTiming,
       createdAt: reconciledTrip.createdAt,
+      isOwner,
+      isAcceptedPassenger,
+      canViewPreciseRoute,
+      canEdit,
+      canCancel,
     };
   }
 }

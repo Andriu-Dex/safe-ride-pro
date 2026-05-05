@@ -97,6 +97,14 @@ const NAV_ITEMS = [
     icon: 'audit',
     audience: 'admin',
   },
+  {
+    href: '/configuracion',
+    label: 'Configuracion',
+    subtitle: 'Parametros',
+    requiresOperationalMembership: false,
+    icon: 'settings',
+    audience: 'admin',
+  },
 ] as const;
 
 type NavIconName = (typeof NAV_ITEMS)[number]['icon'];
@@ -176,6 +184,13 @@ function NavIcon({ name }: { name: NavIconName }) {
           <circle cx="12" cy="7" r="4" />
         </svg>
       );
+    case 'settings':
+      return (
+        <svg aria-hidden="true" className={iconClass} {...strokeProps} viewBox="0 0 24 24">
+          <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
+          <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 1 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 1 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 1 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H20a2 2 0 1 1 0 4h-.2a1 1 0 0 0-.4 1Z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -221,7 +236,8 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           || item.href === '/dashboard'
           || item.href === '/moderacion'
           || item.href === '/usuarios'
-          || item.href === '/auditoria');
+          || item.href === '/auditoria'
+          || item.href === '/configuracion');
       }
 
       return NAV_ITEMS.filter((item) => {

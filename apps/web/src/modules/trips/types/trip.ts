@@ -41,6 +41,11 @@ export type TripDetailRecord = TripRecord & {
   originLongitude: number | null;
   destinationLatitude: number | null;
   destinationLongitude: number | null;
+  isOwner: boolean;
+  isAcceptedPassenger: boolean;
+  canViewPreciseRoute: boolean;
+  canEdit: boolean;
+  canCancel: boolean;
 };
 
 export type TripLiveTrackingPointRecord = {
@@ -105,6 +110,8 @@ export type CreateTripInput = {
   detourSurchargeReference?: number;
   notes?: string;
 };
+
+export type UpdateTripInput = CreateTripInput;
 
 export type LatestTripRouteTemplate = {
   sourceTripId: string;

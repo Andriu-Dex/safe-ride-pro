@@ -4,13 +4,16 @@ import {
   TripRouteMode,
   TripStatus,
 } from '@saferidepro/shared-types';
+import Link from 'next/link';
 
 import { Button } from '../../../components/ui/button';
 import { DisclosurePanel } from '../../../components/ui/disclosure-panel';
 import { StatusPill } from '../../../components/ui/status-pill';
+import type { InstitutionSettingsRecord } from '../../institutions/types/institution-settings';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
 import type { TripFilters, TripRecord } from '../types/trip';
+import { TripReservationCommitment } from './trip-reservation-commitment';
 import { TripOverviewCard } from './trip-overview-card';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
 import { TripRequestDetourPlanner } from './trip-request-detour-planner';
@@ -25,13 +28,18 @@ type TripsDiscoverWorkspaceProps = {
   isFiltering: boolean;
   requestDrafts: Record<string, TripRequestDraft>;
   myRequests: TripRequestRecord[];
+  reservationSettings: InstitutionSettingsRecord | null;
   isMutatingRequestId: string | null;
   isPassengerOperationBlocked: boolean;
   onFilterChange: (field: keyof TripFilters, value: string) => void;
   onApplyFilters: (event: React.FormEvent<HTMLFormElement>) => void;
   onResetFilters: () => void;
   onOpenRequests: () => void;
-  onRequestDraftChange: (tripId: string, field: keyof TripRequestDraft, value: string) => void;
+  onRequestDraftChange: (
+    tripId: string,
+    field: keyof TripRequestDraft,
+    value: string | boolean,
+  ) => void;
   onCreateRequest: (trip: TripRecord) => void;
   canCreateRequestForTrip: (trip: TripRecord, hasActiveRequest: boolean) => boolean;
   isRefreshingData?: boolean;
@@ -45,6 +53,7 @@ export function TripsDiscoverWorkspace({
   isFiltering,
   requestDrafts,
   myRequests,
+  reservationSettings,
   isMutatingRequestId,
   isPassengerOperationBlocked,
   onFilterChange,
@@ -93,7 +102,6 @@ export function TripsDiscoverWorkspace({
         {visibleAvailableTrips.length ? (
           <div className="list-stack">
             {visibleAvailableTrips.map((trip) => {
-              const draft = requestDrafts[trip.id] ?? EMPTY_REQUEST_DRAFT;
               const hasActiveRequest = myRequests.some(
                 (request) =>
                   request.tripId === trip.id
@@ -106,6 +114,20 @@ export function TripsDiscoverWorkspace({
                 hasActiveRequest,
                 isPassengerOperationBlocked,
               );
+              const canUseCashPayment =
+                reservationSettings?.allowCashPayments ?? true;
+              const canUsePaypalPayment =
+                reservationSettings?.allowPaypalPayments ?? true;
+              const hasEnabledPaymentOption = canUseCashPayment || canUsePaypalPayment;
+              const draft =
+                requestDrafts[trip.id] ??
+                ({
+                  ...EMPTY_REQUEST_DRAFT,
+                  paymentProvider:
+                    !canUseCashPayment && canUsePaypalPayment
+                      ? PaymentProvider.Paypal
+                      : PaymentProvider.Cash,
+                } satisfies TripRequestDraft);
 
               return (
                 <TripOverviewCard
@@ -167,48 +189,79 @@ export function TripsDiscoverWorkspace({
 
                         <fieldset className="trip-payment-choice">
                           <legend>Forma de pago</legend>
-                          <label className="trip-payment-option">
-                            <input
-                              checked={draft.paymentProvider === PaymentProvider.Cash}
-                              disabled={hasActiveRequest || isMutatingRequestId === trip.id}
-                              name={`payment-${trip.id}`}
-                              onChange={() =>
-                                onRequestDraftChange(
-                                  trip.id,
-                                  'paymentProvider',
-                                  PaymentProvider.Cash,
-                                )}
-                              type="radio"
-                            />
-                            <span>
-                              <strong>Efectivo</strong>
-                              <small>Pagas al finalizar el viaje.</small>
-                            </span>
-                          </label>
-                          <label className="trip-payment-option">
-                            <input
-                              checked={draft.paymentProvider === PaymentProvider.Paypal}
-                              disabled={hasActiveRequest || isMutatingRequestId === trip.id}
-                              name={`payment-${trip.id}`}
-                              onChange={() =>
-                                onRequestDraftChange(
-                                  trip.id,
-                                  'paymentProvider',
-                                  PaymentProvider.Paypal,
-                                )}
-                              type="radio"
-                            />
-                            <span>
-                              <strong>PayPal</strong>
-                              <small>Debes pagar antes de enviar al conductor.</small>
-                            </span>
-                          </label>
+                          {canUseCashPayment ? (
+                            <label className="trip-payment-option">
+                              <input
+                                checked={draft.paymentProvider === PaymentProvider.Cash}
+                                disabled={hasActiveRequest || isMutatingRequestId === trip.id}
+                                name={`payment-${trip.id}`}
+                                onChange={() =>
+                                  onRequestDraftChange(
+                                    trip.id,
+                                    'paymentProvider',
+                                    PaymentProvider.Cash,
+                                  )}
+                                type="radio"
+                              />
+                              <span>
+                                <strong>Efectivo</strong>
+                                <small>Pagas al finalizar el viaje.</small>
+                              </span>
+                            </label>
+                          ) : null}
+                          {canUsePaypalPayment ? (
+                            <label className="trip-payment-option">
+                              <input
+                                checked={draft.paymentProvider === PaymentProvider.Paypal}
+                                disabled={hasActiveRequest || isMutatingRequestId === trip.id}
+                                name={`payment-${trip.id}`}
+                                onChange={() =>
+                                  onRequestDraftChange(
+                                    trip.id,
+                                    'paymentProvider',
+                                    PaymentProvider.Paypal,
+                                  )}
+                                type="radio"
+                              />
+                              <span>
+                                <strong>PayPal</strong>
+                                <small>Debes pagar antes de enviar al conductor.</small>
+                              </span>
+                            </label>
+                          ) : null}
+                          {!hasEnabledPaymentOption ? (
+                            <p className="panel-text">
+                              Esta institucion no tiene formas de pago habilitadas para nuevas
+                              reservas.
+                            </p>
+                          ) : null}
                         </fieldset>
 
+                        <TripReservationCommitment
+                          checked={draft.acceptReservationCommitment}
+                          disabled={
+                            hasActiveRequest ||
+                            isMutatingRequestId === trip.id ||
+                            isPassengerOperationBlocked
+                          }
+                          onCheckedChange={(checked) =>
+                            onRequestDraftChange(
+                              trip.id,
+                              'acceptReservationCommitment',
+                              checked,
+                            )}
+                          settings={reservationSettings}
+                        />
+
                         <div className="button-row trip-request-composer-footer">
+                          <Link className="button button-ghost" href={`/viajes/${trip.id}`}>
+                            Ver detalle
+                          </Link>
                           <Button
                             disabled={
                               !canSubmitRequest
+                              || !draft.acceptReservationCommitment
+                              || !hasEnabledPaymentOption
                               || isMutatingRequestId === trip.id
                               || isPassengerOperationBlocked
                             }

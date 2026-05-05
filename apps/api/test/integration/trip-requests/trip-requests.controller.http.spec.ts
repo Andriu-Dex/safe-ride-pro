@@ -170,6 +170,7 @@ describe('TripRequestsController HTTP', () => {
         requestedPickupLatitude: -1.25,
         requestedPickupLongitude: -78.62,
         requestMessage: 'Puedo estar listo en 5 minutos',
+        acceptReservationCommitment: true,
       })
       .expect(201);
 
@@ -188,6 +189,8 @@ describe('TripRequestsController HTTP', () => {
       requestedDropoffLatitude: undefined,
       requestedDropoffLongitude: undefined,
       requestMessage: 'Puedo estar listo en 5 minutos',
+      paymentProvider: undefined,
+      acceptReservationCommitment: true,
     });
   });
 

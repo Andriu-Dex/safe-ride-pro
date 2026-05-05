@@ -18,6 +18,7 @@ export enum AuditAction {
   TripPassengerDroppedOff = 'TRIP_PASSENGER_DROPPED_OFF',
   TripCompleted = 'TRIP_COMPLETED',
   TripCancelled = 'TRIP_CANCELLED',
+  TripUpdated = 'TRIP_UPDATED',
   ReportCreated = 'REPORT_CREATED',
   ReportReviewed = 'REPORT_REVIEWED',
   SanctionApplied = 'SANCTION_APPLIED',
@@ -26,6 +27,7 @@ export enum AuditAction {
   SanctionAppealApproved = 'SANCTION_APPEAL_APPROVED',
   SanctionAppealRejected = 'SANCTION_APPEAL_REJECTED',
   SanctionLiftedManually = 'SANCTION_LIFTED_MANUALLY',
+  InstitutionSettingsUpdated = 'INSTITUTION_SETTINGS_UPDATED',
 }
 
 export enum AuditEntityType {
@@ -33,6 +35,7 @@ export enum AuditEntityType {
   UserMembership = 'USER_MEMBERSHIP',
   DriverProfile = 'DRIVER_PROFILE',
   Trip = 'TRIP',
+  Institution = 'INSTITUTION',
   Report = 'REPORT',
   OperationalSanction = 'OPERATIONAL_SANCTION',
   SanctionAppeal = 'SANCTION_APPEAL',

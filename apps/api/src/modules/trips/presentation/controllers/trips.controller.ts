@@ -22,10 +22,12 @@ import { GetTripLiveTrackingUseCase } from '../../application/use-cases/get-trip
 import { ListTripsUseCase } from '../../application/use-cases/list-trips.use-case';
 import { PublishTripUseCase } from '../../application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../application/use-cases/start-trip.use-case';
+import { UpdateTripUseCase } from '../../application/use-cases/update-trip.use-case';
 import { UpdateTripLiveTrackingUseCase } from '../../application/use-cases/update-trip-live-tracking.use-case';
 import { CompleteTripRequestDto } from '../dto/complete-trip.request.dto';
 import { CreateTripRequestDto } from '../dto/create-trip.request.dto';
 import { ListTripsQueryDto } from '../dto/list-trips.query.dto';
+import { UpdateTripRequestDto } from '../dto/update-trip.request.dto';
 import { UpdateTripLiveTrackingRequestDto } from '../dto/update-trip-live-tracking.request.dto';
 
 @Controller('trips')
@@ -39,6 +41,7 @@ export class TripsController {
     private readonly getTripLiveTrackingUseCase: GetTripLiveTrackingUseCase,
     private readonly publishTripUseCase: PublishTripUseCase,
     private readonly startTripUseCase: StartTripUseCase,
+    private readonly updateTripUseCase: UpdateTripUseCase,
     private readonly completeTripUseCase: CompleteTripUseCase,
     private readonly cancelTripUseCase: CancelTripUseCase,
     private readonly updateTripLiveTrackingUseCase: UpdateTripLiveTrackingUseCase,
@@ -99,6 +102,32 @@ export class TripsController {
     @Param('tripId', new ParseUUIDPipe()) tripId: string,
   ) {
     return this.getTripByIdUseCase.execute(currentUser.id, tripId);
+  }
+
+  @Patch(':tripId')
+  updateTrip(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Body() body: UpdateTripRequestDto,
+  ) {
+    return this.updateTripUseCase.execute({
+      userId: currentUser.id,
+      tripId,
+      vehicleId: body.vehicleId,
+      routeMode: body.routeMode,
+      originLabel: body.originLabel,
+      destinationLabel: body.destinationLabel,
+      originLatitude: body.originLatitude,
+      originLongitude: body.originLongitude,
+      destinationLatitude: body.destinationLatitude,
+      destinationLongitude: body.destinationLongitude,
+      departureAt: body.departureAt,
+      estimatedArrivalAt: body.estimatedArrivalAt,
+      seatCount: body.seatCount,
+      basePriceReference: body.basePriceReference,
+      detourSurchargeReference: body.detourSurchargeReference,
+      notes: body.notes,
+    });
   }
 
   @Get(':tripId/live-tracking')
