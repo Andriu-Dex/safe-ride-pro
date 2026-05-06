@@ -22,7 +22,7 @@ import {
 } from '../../../../modules/driver/lib/driver-status';
 import {
   createTrip,
-  getLatestTripRouteTemplate,
+  listRecentTripRouteTemplates,
 } from '../../../../modules/trips/lib/trip-api';
 import { TripCreationForm } from '../../../../modules/trips/components/trip-creation-form';
 import {
@@ -40,7 +40,7 @@ import {
   getVisibleReputationTone,
 } from '../../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../../modules/users/types/trust-summary';
-import type { LatestTripRouteTemplate } from '../../../../modules/trips/types/trip';
+import type { RecentTripRouteTemplate } from '../../../../modules/trips/types/trip';
 import type { VehicleRecord } from '../../../../modules/vehicles/types/vehicle';
 import styles from './page.module.css';
 
@@ -69,7 +69,7 @@ export default function NewTripPage() {
 
   const [vehicleOverview, setVehicleOverview] = useState<VehicleOverview | null>(null);
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
-  const [latestRouteTemplate, setLatestRouteTemplate] = useState<LatestTripRouteTemplate | null>(null);
+  const [recentRouteTemplates, setRecentRouteTemplates] = useState<RecentTripRouteTemplate[]>([]);
   const [tripForm, setTripForm] = useState(EMPTY_TRIP_FORM);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingTrip, setIsCreatingTrip] = useState(false);
@@ -94,15 +94,15 @@ export default function NewTripPage() {
   }, []);
 
   const loadCreateContext = useCallback(async (accessToken: string) => {
-    const [vehicleData, trustSummaryData, latestRoute] = await Promise.all([
+    const [vehicleData, trustSummaryData, recentRoutes] = await Promise.all([
       getVehicleOverview(accessToken),
       getCurrentUserTrustSummary(accessToken),
-      getLatestTripRouteTemplate(accessToken).catch(() => null),
+      listRecentTripRouteTemplates(accessToken).catch(() => []),
     ]);
 
     setVehicleOverview(vehicleData);
     setTrustSummary(trustSummaryData);
-    setLatestRouteTemplate(latestRoute);
+    setRecentRouteTemplates(recentRoutes);
   }, []);
 
   const refreshCreateContext = useCallback(async (showSpinner = false) => {
@@ -147,7 +147,7 @@ export default function NewTripPage() {
     if (!authSession || !operationalAccess.hasOperationalMembership) {
       setVehicleOverview(null);
       setTrustSummary(null);
-      setLatestRouteTemplate(null);
+      setRecentRouteTemplates([]);
       setIsLoading(false);
       return;
     }
@@ -219,29 +219,31 @@ export default function NewTripPage() {
     setTripErrorMessage(null);
   }, []);
 
-  const handleUseLatestRoute = () => {
-    if (!latestRouteTemplate) {
+  const handleUseRouteTemplate = (templateId: string) => {
+    const routeTemplate = recentRouteTemplates.find((template) => template.sourceTripId === templateId);
+
+    if (!routeTemplate) {
       return;
     }
 
-    const suggestedVehicle = activeVehicles.some((vehicle) => vehicle.id === latestRouteTemplate.vehicleId)
-      ? latestRouteTemplate.vehicleId
+    const suggestedVehicle = activeVehicles.some((vehicle) => vehicle.id === routeTemplate.vehicleId)
+      ? routeTemplate.vehicleId
       : '';
 
     setTripForm((currentForm) => ({
       ...currentForm,
       vehicleId: suggestedVehicle,
-      routeMode: latestRouteTemplate.routeMode,
-      originLabel: latestRouteTemplate.originLabel,
-      destinationLabel: latestRouteTemplate.destinationLabel,
-      originLatitude: latestRouteTemplate.originLatitude.toFixed(6),
-      originLongitude: latestRouteTemplate.originLongitude.toFixed(6),
-      destinationLatitude: latestRouteTemplate.destinationLatitude.toFixed(6),
-      destinationLongitude: latestRouteTemplate.destinationLongitude.toFixed(6),
-      seatCount: String(latestRouteTemplate.seatCount),
-      basePriceReference: String(latestRouteTemplate.basePriceReference),
-      detourSurchargeReference: String(latestRouteTemplate.detourSurchargeReference ?? 0),
-      notes: latestRouteTemplate.notes ?? '',
+      routeMode: routeTemplate.routeMode,
+      originLabel: routeTemplate.originLabel,
+      destinationLabel: routeTemplate.destinationLabel,
+      originLatitude: routeTemplate.originLatitude.toFixed(6),
+      originLongitude: routeTemplate.originLongitude.toFixed(6),
+      destinationLatitude: routeTemplate.destinationLatitude.toFixed(6),
+      destinationLongitude: routeTemplate.destinationLongitude.toFixed(6),
+      seatCount: String(routeTemplate.seatCount),
+      basePriceReference: String(routeTemplate.basePriceReference),
+      detourSurchargeReference: String(routeTemplate.detourSurchargeReference ?? 0),
+      notes: routeTemplate.notes ?? '',
       departureAt: currentForm.departureAt,
       estimatedArrivalAt: currentForm.estimatedArrivalAt,
     }));
@@ -378,9 +380,14 @@ export default function NewTripPage() {
             <button className={styles.heroBtnSecondary} onClick={() => router.push('/viajes')} type="button">
               Volver
             </button>
-            {latestRouteTemplate ? (
-              <button className={styles.heroBtnSecondary} disabled={!canCreateTrips} onClick={handleUseLatestRoute} type="button">
-                Cargar ultima ruta
+            {recentRouteTemplates.length ? (
+              <button
+                className={styles.heroBtnSecondary}
+                disabled={!canCreateTrips}
+                onClick={() => handleUseRouteTemplate(recentRouteTemplates[0].sourceTripId)}
+                type="button"
+              >
+                Cargar ruta reciente
               </button>
             ) : null}
             <button
@@ -420,11 +427,11 @@ export default function NewTripPage() {
             <TripCreationForm
               disabled={!canCreateTrips}
               isSubmitting={isCreatingTrip}
-              latestRouteTemplate={latestRouteTemplate}
               onChange={handleTripFormChange}
               onReset={handleResetTripForm}
               onSubmit={handleCreateTrip}
-              onUseLatestRoute={handleUseLatestRoute}
+              onUseRouteTemplate={handleUseRouteTemplate}
+              recentRouteTemplates={recentRouteTemplates}
               values={tripForm}
               vehicles={activeVehicles}
             />

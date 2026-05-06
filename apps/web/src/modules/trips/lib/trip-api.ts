@@ -1,7 +1,7 @@
 import type {
   CreateTripInput,
   TripDetailRecord,
-  LatestTripRouteTemplate,
+  RecentTripRouteTemplate,
   TripFilters,
   TripLiveTrackingRecord,
   TripRecord,
@@ -72,10 +72,10 @@ export async function updateTrip(
   });
 }
 
-export async function getLatestTripRouteTemplate(
+export async function listRecentTripRouteTemplates(
   accessToken: string,
-): Promise<LatestTripRouteTemplate | null> {
-  return apiRequest<LatestTripRouteTemplate | null>('/trips/templates/latest', {
+): Promise<RecentTripRouteTemplate[]> {
+  return apiRequest<RecentTripRouteTemplate[]>('/trips/templates/recent', {
     accessToken,
   });
 }

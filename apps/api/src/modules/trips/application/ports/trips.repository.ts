@@ -192,6 +192,10 @@ export interface TripsRepository {
   findLatestReusableTripByDriverMembershipId(
     driverMembershipId: string,
   ): Promise<TripRecord | null>;
+  listRecentReusableTripsByDriverMembershipId(
+    driverMembershipId: string,
+    limit: number,
+  ): Promise<TripRecord[]>;
   listTrips(filters: TripFilters): Promise<TripRecord[]>;
   findOverlappingTrips(
     driverMembershipId: string,

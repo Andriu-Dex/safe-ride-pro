@@ -6,8 +6,10 @@ import {
   TripsRepository,
 } from '../ports/trips.repository';
 
+const RECENT_ROUTE_LIMIT = 5;
+
 @Injectable()
-export class GetLatestTripRouteTemplateUseCase {
+export class ListRecentTripRouteTemplatesUseCase {
   constructor(
     @Inject(TRIPS_REPOSITORY)
     private readonly tripsRepository: TripsRepository,
@@ -20,13 +22,12 @@ export class GetLatestTripRouteTemplateUseCase {
       throw new ForbiddenException('No tienes una membresia activa para reutilizar rutas.');
     }
 
-    const trip = await this.tripsRepository.findLatestReusableTripByDriverMembershipId(membership.id);
+    const trips = await this.tripsRepository.listRecentReusableTripsByDriverMembershipId(
+      membership.id,
+      RECENT_ROUTE_LIMIT,
+    );
 
-    if (!trip) {
-      return null;
-    }
-
-    return {
+    return trips.map((trip) => ({
       sourceTripId: trip.id,
       vehicleId: trip.vehicleId,
       routeMode: trip.routeMode,
@@ -44,6 +45,6 @@ export class GetLatestTripRouteTemplateUseCase {
       departureAt: trip.departureAt,
       vehicleDisplayName: trip.vehicleDisplayName,
       vehiclePlate: trip.vehiclePlate,
-    };
+    }));
   }
 }

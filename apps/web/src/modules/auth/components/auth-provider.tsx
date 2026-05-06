@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useEffect, useState } from 'react';
 
+import { persistToast } from '../../../components/ui/flash-toast';
 import { ApiError } from '../../../lib/api-client';
 import {
   createSession,
@@ -10,11 +11,13 @@ import {
   logout,
   refreshSession as refreshTokens,
 } from '../lib/auth-api';
-import { isAuthSessionSyncSuppressed } from '../lib/auth-sync-guard';
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../lib/auth-storage';
+import { isAuthSessionSyncSuppressed } from '../lib/auth-sync-guard';
+import { getMillisecondsUntilTokenExpiry, isTokenExpired } from '../lib/auth-token';
 import type { AuthSession, AuthTokens, LoginInput } from '../types/auth-session';
 
 const SESSION_REFRESH_INTERVAL_MS = 30_000;
+const SESSION_EXPIRY_BUFFER_MS = 15_000;
 
 type AuthContextValue = {
   authSession: AuthSession | null;
@@ -37,6 +40,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
+  const applySession = useCallback((session: AuthSession | null) => {
+    if (!session) {
+      clearStoredSession();
+      setAuthSession(null);
+      return;
+    }
+
+    writeStoredSession(session);
+    setAuthSession(session);
+  }, []);
+
+  const closeExpiredSession = useCallback(() => {
+    clearStoredSession();
+    setAuthSession(null);
+    persistToast({
+      title: 'Sesion finalizada',
+      description: 'Tu sesion expiro. Ingresa nuevamente para continuar.',
+      tone: 'info',
+    });
+  }, []);
+
+  const refreshSessionTokens = useCallback(async (refreshToken: string): Promise<AuthSession | null> => {
+    try {
+      const refreshedTokens = await refreshTokens(refreshToken);
+      const user = await getCurrentUser(refreshedTokens.accessToken);
+
+      return {
+        accessToken: refreshedTokens.accessToken,
+        refreshToken: refreshedTokens.refreshToken,
+        user,
+      } satisfies AuthSession;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -53,6 +92,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       try {
+        if (isTokenExpired(storedSession.accessToken) && storedSession.refreshToken) {
+          const refreshedSession = await refreshSessionTokens(storedSession.refreshToken);
+
+          if (refreshedSession) {
+            if (isMounted) {
+              applySession(refreshedSession);
+            }
+          } else if (isMounted) {
+            clearStoredSession();
+            setAuthSession(null);
+          }
+
+          return;
+        }
+
         const user = await getCurrentUser(storedSession.accessToken);
         const nextSession = {
           accessToken: storedSession.accessToken,
@@ -71,24 +125,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           error instanceof ApiError &&
           error.status === 401
         ) {
-          try {
-            const refreshedTokens = await refreshTokens(storedSession.refreshToken);
-            const user = await getCurrentUser(refreshedTokens.accessToken);
-            const nextSession = {
-              accessToken: refreshedTokens.accessToken,
-              refreshToken: refreshedTokens.refreshToken,
-              user,
-            } satisfies AuthSession;
+          const refreshedSession = await refreshSessionTokens(storedSession.refreshToken);
 
-            writeStoredSession(nextSession);
-
+          if (refreshedSession) {
             if (isMounted) {
-              setAuthSession(nextSession);
+              applySession(refreshedSession);
             }
 
             return;
-          } catch {
-            // Fall through to clearing storage below.
           }
         }
 
@@ -109,7 +153,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [applySession, refreshSessionTokens]);
 
   useEffect(() => {
     if (!authSession || typeof window === 'undefined') {
@@ -120,6 +164,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const syncSession = async () => {
       if (isAuthSessionSyncSuppressed()) {
+        return;
+      }
+
+      if (isTokenExpired(authSession.accessToken)) {
+        const refreshedSession = await refreshSessionTokens(authSession.refreshToken);
+
+        if (!isActive) {
+          return;
+        }
+
+        if (refreshedSession) {
+          applySession(refreshedSession);
+        } else {
+          closeExpiredSession();
+        }
+
         return;
       }
 
@@ -145,29 +205,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        try {
-          const refreshedTokens = await refreshTokens(authSession.refreshToken);
-          const user = await getCurrentUser(refreshedTokens.accessToken);
+        const refreshedSession = await refreshSessionTokens(authSession.refreshToken);
 
-          if (!isActive) {
-            return;
-          }
+        if (!isActive) {
+          return;
+        }
 
-          const nextSession = {
-            accessToken: refreshedTokens.accessToken,
-            refreshToken: refreshedTokens.refreshToken,
-            user,
-          } satisfies AuthSession;
-
-          writeStoredSession(nextSession);
-          setAuthSession((currentSession) =>
-            areAuthSessionsEqual(currentSession, nextSession) ? currentSession : nextSession,
-          );
-        } catch {
-          if (isActive) {
-            clearStoredSession();
-            setAuthSession(null);
-          }
+        if (refreshedSession) {
+          applySession(refreshedSession);
+        } else {
+          closeExpiredSession();
         }
       }
     };
@@ -186,31 +233,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
       void syncSession();
     }, SESSION_REFRESH_INTERVAL_MS);
 
+    const millisecondsUntilExpiry = getMillisecondsUntilTokenExpiry(authSession.accessToken);
+    const timeoutDelay =
+      millisecondsUntilExpiry === null
+        ? null
+        : Math.max(millisecondsUntilExpiry - SESSION_EXPIRY_BUFFER_MS, 0);
+    const expiryTimeoutId =
+      timeoutDelay === null
+        ? null
+        : window.setTimeout(() => {
+            void syncSession();
+          }, timeoutDelay);
+
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isActive = false;
       window.clearInterval(intervalId);
+
+      if (expiryTimeoutId !== null) {
+        window.clearTimeout(expiryTimeoutId);
+      }
+
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [authSession]);
+  }, [applySession, authSession, closeExpiredSession, refreshSessionTokens]);
 
   const signIn = async (input: LoginInput): Promise<void> => {
     setIsSigningIn(true);
 
     try {
       const session = await createSession(input);
-      writeStoredSession(session);
-      setAuthSession(session);
+      applySession(session);
     } finally {
       setIsSigningIn(false);
       setIsHydrated(true);
     }
   };
 
-  const signOut = (): void => {
+  const signOut = useCallback((): void => {
     if (authSession?.refreshToken) {
       void (async () => {
         try {
@@ -223,17 +286,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     clearStoredSession();
     setAuthSession(null);
-  };
+  }, [authSession?.refreshToken]);
 
   const establishSession = async (tokens: AuthTokens): Promise<void> => {
     const session = await createSessionFromTokens(tokens);
-    writeStoredSession(session);
-    setAuthSession(session);
+    applySession(session);
     setIsHydrated(true);
   };
 
   const refreshSession = async (): Promise<void> => {
     if (!authSession) {
+      return;
+    }
+
+    if (isTokenExpired(authSession.accessToken)) {
+      const refreshedSession = await refreshSessionTokens(authSession.refreshToken);
+
+      if (refreshedSession) {
+        applySession(refreshedSession);
+      } else {
+        closeExpiredSession();
+      }
+
       return;
     }
 
@@ -244,8 +318,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       user,
     } satisfies AuthSession;
 
-    writeStoredSession(nextSession);
-    setAuthSession(nextSession);
+    applySession(nextSession);
   };
 
   return (
@@ -279,5 +352,3 @@ function areAuthSessionsEqual(
     JSON.stringify(currentSession.user) === JSON.stringify(nextSession.user)
   );
 }
-
-

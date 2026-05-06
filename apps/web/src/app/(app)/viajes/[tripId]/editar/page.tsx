@@ -297,14 +297,14 @@ export default function EditTripPage() {
             disabled={isSaving}
             headerKicker="Edicion"
             isSubmitting={isSaving}
-            latestRouteTemplate={null}
             lead="Conserva la misma intencion del viaje, pero corrige datos operativos o de ruta."
             onChange={handleTripFormChange}
             onReset={handleResetTripForm}
             onSubmit={handleUpdateTrip}
-            onUseLatestRoute={() => undefined}
+            onUseRouteTemplate={() => undefined}
             pendingCopy="Corrige los datos obligatorios antes de guardar."
             readyCopy="Listo para guardar cambios"
+            recentRouteTemplates={[]}
             submitLabel="Guardar cambios"
             submittingLabel="Guardando cambios..."
             title="Actualiza este trayecto"

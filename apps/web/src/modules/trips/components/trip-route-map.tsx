@@ -72,6 +72,9 @@ export function TripRouteMap({
           zoom: DEFAULT_TRIP_MAP_ZOOM,
           zoomControl: true,
           attributionControl: true,
+          zoomAnimation: false,
+          fadeAnimation: false,
+          markerZoomAnimation: false,
         });
 
         leafletModule.tileLayer(
@@ -93,12 +96,12 @@ export function TripRouteMap({
 
         syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff, livePosition, history);
         invalidateFrameRef.current = window.requestAnimationFrame(() => {
-          if (!isMounted || bundleRef.current?.map !== map) {
+          if (!isMounted || bundleRef.current?.map !== map || !mapElement.isConnected) {
             return;
           }
 
           try {
-            map.invalidateSize();
+            map.invalidateSize({ pan: false, animate: false });
           } catch {
             // Leaflet can briefly throw during teardown or hidden-layout transitions.
           }
@@ -126,7 +129,16 @@ export function TripRouteMap({
         invalidateFrameRef.current = null;
       }
       setIsMapReady(false);
-      bundleRef.current?.map.remove();
+      if (bundleRef.current) {
+        try {
+          bundleRef.current.overlayGroup.clearLayers();
+          bundleRef.current.map.off();
+          bundleRef.current.map.stop();
+          bundleRef.current.map.remove();
+        } catch {
+          // Ignore teardown issues from Leaflet during route transitions.
+        }
+      }
       bundleRef.current = null;
     };
   }, []);
@@ -140,12 +152,12 @@ export function TripRouteMap({
 
     syncMapBundle(bundle, origin, destination, pickup, dropoff, livePosition, history);
     invalidateFrameRef.current = window.requestAnimationFrame(() => {
-      if (bundleRef.current?.map !== bundle.map) {
+      if (bundleRef.current?.map !== bundle.map || !mapRef.current?.isConnected) {
         return;
       }
 
       try {
-        bundle.map.invalidateSize();
+        bundle.map.invalidateSize({ pan: false, animate: false });
       } catch {
         // Ignore transient Leaflet layout errors when the container is changing.
       }
@@ -285,16 +297,18 @@ function syncMapBundle(
     map.setView(
       [DEFAULT_TRIP_MAP_CENTER.latitude, DEFAULT_TRIP_MAP_CENTER.longitude],
       DEFAULT_TRIP_MAP_ZOOM,
+      { animate: false },
     );
     return;
   }
 
   if (points.length === 1) {
-    map.setView(points[0], 15);
+    map.setView(points[0], 15, { animate: false });
     return;
   }
 
   map.fitBounds(overlayGroup.getBounds(), {
+    animate: false,
     padding: [72, 72],
   });
 }

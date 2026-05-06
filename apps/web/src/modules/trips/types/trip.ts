@@ -113,7 +113,7 @@ export type CreateTripInput = {
 
 export type UpdateTripInput = CreateTripInput;
 
-export type LatestTripRouteTemplate = {
+export type RecentTripRouteTemplate = {
   sourceTripId: string;
   vehicleId: string;
   vehicleDisplayName: string;

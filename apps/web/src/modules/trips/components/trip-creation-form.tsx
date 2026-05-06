@@ -11,7 +11,7 @@ import {
   isGeoapifyConfigured,
 } from '../lib/geoapify';
 import { getTripRouteModeLabel } from '../lib/trip-labels';
-import type { LatestTripRouteTemplate } from '../types/trip';
+import type { RecentTripRouteTemplate } from '../types/trip';
 import type { PlaceSelection } from '../types/place-selection';
 import type { TripFormValues } from './trips-workspace.types';
 import { PlaceAutocompleteField } from './place-autocomplete-field';
@@ -32,8 +32,8 @@ type TripCreationFormProps = {
   pendingCopy?: string;
   onChange: (field: keyof TripFormValues, value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  latestRouteTemplate: LatestTripRouteTemplate | null;
-  onUseLatestRoute: () => void;
+  recentRouteTemplates: RecentTripRouteTemplate[];
+  onUseRouteTemplate: (templateId: string) => void;
   onReset: () => void;
 };
 
@@ -55,8 +55,8 @@ export function TripCreationForm({
   pendingCopy = 'Completa los datos pendientes',
   onChange,
   onSubmit,
-  latestRouteTemplate,
-  onUseLatestRoute,
+  recentRouteTemplates,
+  onUseRouteTemplate,
   onReset,
 }: TripCreationFormProps) {
   const [activeTarget, setActiveTarget] = useState<SelectionTarget>('origin');
@@ -258,12 +258,12 @@ export function TripCreationForm({
         </div>
       </div>
 
-      {latestRouteTemplate ? (
+      {recentRouteTemplates.length ? (
         <section className={styles.templateCard}>
           <div className={styles.templateHeader}>
             <div className={styles.templateRoute}>
-              <p className={styles.kicker}>Ruta guardada</p>
-              <strong>{latestRouteTemplate.originLabel} {'->'} {latestRouteTemplate.destinationLabel}</strong>
+              <p className={styles.kicker}>Rutas recientes</p>
+              <strong>Reutiliza una ruta reciente y ajusta solo lo necesario</strong>
             </div>
             <div className={styles.templateActions}>
               <Button
@@ -274,21 +274,30 @@ export function TripCreationForm({
               >
                 Empezar en blanco
               </Button>
-              <Button
-                disabled={disabled}
-                onClick={onUseLatestRoute}
-                type="button"
-                variant="secondary"
-              >
-                Usar esta ruta
-              </Button>
             </div>
           </div>
-          <div className={styles.templateMeta}>
-            <span>
-              Vehiculo sugerido: {latestRouteTemplate.vehicleDisplayName} ({latestRouteTemplate.vehiclePlate})
-            </span>
-            <span>Ultimo uso: {formatDateTime(latestRouteTemplate.departureAt)}</span>
+          <div className={styles.templateList}>
+            {recentRouteTemplates.map((template) => (
+              <article key={template.sourceTripId} className={styles.templateItem}>
+                <div className={styles.templateItemCopy}>
+                  <strong>{template.originLabel} {'->'} {template.destinationLabel}</strong>
+                  <div className={styles.templateMeta}>
+                    <span>
+                      {template.vehicleDisplayName} ({template.vehiclePlate})
+                    </span>
+                    <span>Ultimo uso: {formatDateTime(template.departureAt)}</span>
+                  </div>
+                </div>
+                <Button
+                  disabled={disabled}
+                  onClick={() => onUseRouteTemplate(template.sourceTripId)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Usar esta ruta
+                </Button>
+              </article>
+            ))}
           </div>
         </section>
       ) : null}

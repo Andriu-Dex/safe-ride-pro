@@ -283,6 +283,31 @@ export class PrismaTripsRepository implements TripsRepository {
     return trip ? this.mapTrip(trip) : null;
   }
 
+  async listRecentReusableTripsByDriverMembershipId(
+    driverMembershipId: string,
+    limit: number,
+  ): Promise<TripRecord[]> {
+    const trips = await this.prisma.trip.findMany({
+      where: {
+        driverMembershipId,
+        status: {
+          in: [
+            TripStatus.Draft,
+            TripStatus.Published,
+            TripStatus.Full,
+            TripStatus.InProgress,
+            TripStatus.Completed,
+          ],
+        },
+      },
+      include: this.tripInclude(),
+      orderBy: [{ createdAt: 'desc' }, { departureAt: 'desc' }],
+      take: limit,
+    });
+
+    return trips.map((trip) => this.mapTrip(trip));
+  }
+
   async listTrips(filters: TripFilters): Promise<TripRecord[]> {
     const trips = await this.prisma.trip.findMany({
       where: {

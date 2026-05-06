@@ -17,7 +17,7 @@ import { CancelTripUseCase } from '../../application/use-cases/cancel-trip.use-c
 import { CompleteTripUseCase } from '../../application/use-cases/complete-trip.use-case';
 import { CreateTripUseCase } from '../../application/use-cases/create-trip.use-case';
 import { GetTripByIdUseCase } from '../../application/use-cases/get-trip-by-id.use-case';
-import { GetLatestTripRouteTemplateUseCase } from '../../application/use-cases/get-latest-trip-route-template.use-case';
+import { ListRecentTripRouteTemplatesUseCase } from '../../application/use-cases/list-recent-trip-route-templates.use-case';
 import { GetTripLiveTrackingUseCase } from '../../application/use-cases/get-trip-live-tracking.use-case';
 import { ListTripsUseCase } from '../../application/use-cases/list-trips.use-case';
 import { PublishTripUseCase } from '../../application/use-cases/publish-trip.use-case';
@@ -37,7 +37,7 @@ export class TripsController {
     private readonly createTripUseCase: CreateTripUseCase,
     private readonly listTripsUseCase: ListTripsUseCase,
     private readonly getTripByIdUseCase: GetTripByIdUseCase,
-    private readonly getLatestTripRouteTemplateUseCase: GetLatestTripRouteTemplateUseCase,
+    private readonly listRecentTripRouteTemplatesUseCase: ListRecentTripRouteTemplatesUseCase,
     private readonly getTripLiveTrackingUseCase: GetTripLiveTrackingUseCase,
     private readonly publishTripUseCase: PublishTripUseCase,
     private readonly startTripUseCase: StartTripUseCase,
@@ -91,9 +91,9 @@ export class TripsController {
     });
   }
 
-  @Get('templates/latest')
-  getLatestTripRouteTemplate(@CurrentUser() currentUser: CurrentUserContext) {
-    return this.getLatestTripRouteTemplateUseCase.execute(currentUser.id);
+  @Get('templates/recent')
+  listRecentTripRouteTemplates(@CurrentUser() currentUser: CurrentUserContext) {
+    return this.listRecentTripRouteTemplatesUseCase.execute(currentUser.id);
   }
 
   @Get(':tripId')
