@@ -139,23 +139,18 @@ function sortByDepartureDateDescending<T extends { tripDepartureAt: string }>(it
 
 function getIncidentSummary(
   incidentType: TripClosureIncidentType,
-  tripClosureNote: string | null = null,
 ): string {
-  const closureContext = tripClosureNote?.trim()
-    ? ` Cierre operativo registrado: ${tripClosureNote.trim()}`
-    : '';
-
   switch (incidentType) {
     case TripClosureIncidentType.Completed:
-      return `Viaje completado dentro de la ventana de cierre. Si hubo un problema, registralo ahora.${closureContext}`;
+      return `Viaje completado dentro de la ventana de cierre. Si hubo un problema, regístralo ahora.`;
     case TripClosureIncidentType.LateDriverCancellation:
-      return `El conductor cancelo tarde un viaje que ya tenia participantes confirmados.${closureContext}`;
+      return `El conductor canceló tarde un viaje que ya tenía participantes confirmados.`;
     case TripClosureIncidentType.DriverAbsence:
-      return `El viaje fue cancelado por ausencia del conductor despues de la hora prevista de salida.${closureContext}`;
+      return `El viaje fue cancelado por ausencia del conductor después de la hora prevista de salida.`;
     case TripClosureIncidentType.OverdueInProgress:
-      return `El viaje sigue abierto fuera del tiempo estimado y puede requerir cierre o revision administrativa.${closureContext}`;
+      return `El viaje sigue abierto fuera del tiempo estimado y puede requerir cierre o revisión administrativa.`;
     default:
-      return `Incidente operativo disponible para revision.${closureContext}`;
+      return `Incidente operativo disponible para revisión.`;
   }
 }
 
@@ -315,10 +310,7 @@ function buildReportOpportunities(
       incidentType: closureSummary.incidentType,
       incidentLabel: getTripClosureIncidentLabel(closureSummary.incidentType),
       incidentTone: getTripClosureIncidentTone(closureSummary.incidentType),
-      incidentSummary: getIncidentSummary(
-        closureSummary.incidentType,
-        request.tripClosureNote,
-      ),
+      incidentSummary: getIncidentSummary(closureSummary.incidentType),
       suggestedReason: getSuggestedReportReason(closureSummary.incidentType),
       tripClosureNote: request.tripClosureNote,
       windowClosesAt: closureSummary.actionWindowClosesAt.toISOString(),
@@ -363,10 +355,7 @@ function buildReportOpportunities(
       incidentType: closureSummary.incidentType,
       incidentLabel: getTripClosureIncidentLabel(closureSummary.incidentType),
       incidentTone: getTripClosureIncidentTone(closureSummary.incidentType),
-      incidentSummary: getIncidentSummary(
-        closureSummary.incidentType,
-        request.tripClosureNote,
-      ),
+      incidentSummary: getIncidentSummary(closureSummary.incidentType),
       suggestedReason: getSuggestedReportReason(closureSummary.incidentType),
       tripClosureNote: request.tripClosureNote,
       windowClosesAt: closureSummary.actionWindowClosesAt.toISOString(),
@@ -1222,13 +1211,15 @@ export default function TrustPage() {
                           <strong>{opportunity.targetFullName}</strong>
                           <StatusPill label="Pendiente" tone="warning" />
                         </div>
-                        <div className={styles.metaText}>
-                          <span className={styles.metaBadge}>{formatDateTime(opportunity.tripDepartureAt)}</span>
-                          <span>{opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}</span>
+                        <div className={styles.tripContext}>
+                          <span className={styles.tripRoute}>{opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}</span>
+                          <span className={styles.tripDate}>Viaje del: {formatDateTime(opportunity.tripDepartureAt)}</span>
                         </div>
-                        <p className={styles.noteText} style={{ marginTop: '0.4rem' }}>
-                          {opportunity.ratingDirectionLabel}
-                        </p>
+                        <div className={styles.incidentBox}>
+                          <p className={styles.noteText}>
+                            {opportunity.ratingDirectionLabel}
+                          </p>
+                        </div>
                         <div className={styles.actionRow} style={{ marginTop: '0.8rem' }}>
                           <Button onClick={() => setActiveRatingOpportunity(opportunity)}>
                             Calificar
@@ -1259,16 +1250,24 @@ export default function TrustPage() {
                           <strong>{opportunity.targetFullName}</strong>
                           <StatusPill label="Pendiente" tone="danger" />
                         </div>
-                        <div className={styles.metaText}>
-                          <span className={styles.metaBadge}>{formatDateTime(opportunity.tripDepartureAt)}</span>
-                          <span>{opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}</span>
+                        <div className={styles.tripContext}>
+                          <span className={styles.tripRoute}>{opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}</span>
+                          <span className={styles.tripDate}>Salida: {formatDateTime(opportunity.tripDepartureAt)}</span>
                         </div>
-                        <div className={styles.badgeRow} style={{ marginTop: '0.4rem' }}>
-                          <StatusPill label={opportunity.incidentLabel} tone={opportunity.incidentTone} />
+                        <div className={styles.incidentBox}>
+                          <div className={styles.badgeRowStart}>
+                            <StatusPill label={opportunity.incidentLabel} tone={opportunity.incidentTone} />
+                          </div>
+                          <p className={styles.noteText}>
+                            {opportunity.incidentSummary}
+                          </p>
+                          {opportunity.tripClosureNote ? (
+                            <div className={styles.reviewBlock}>
+                              <strong>Nota de cierre operativo:</strong>
+                              <p>{opportunity.tripClosureNote}</p>
+                            </div>
+                          ) : null}
                         </div>
-                        <p className={styles.noteText} style={{ marginTop: '0.4rem' }}>
-                          {opportunity.incidentSummary}
-                        </p>
                         <div className={styles.actionRow} style={{ marginTop: '0.8rem' }}>
                           <Button variant="secondary" onClick={() => setActiveReportOpportunity(opportunity)}>
                             Reportar
@@ -1323,11 +1322,18 @@ export default function TrustPage() {
                           <strong>{rating.targetFullName}</strong>
                           <span className={styles.inlineStars}>{getRatingStars(rating.score)} {rating.score}/5</span>
                         </div>
-                        <div className={styles.metaText}>
-                          <span className={styles.metaBadge}>{formatDateTime(rating.tripDepartureAt)}</span>
-                          <span>{rating.tripOriginLabel} &rarr; {rating.tripDestinationLabel}</span>
+                        <div className={styles.tripContext}>
+                          <span className={styles.tripRoute}>{rating.tripOriginLabel} &rarr; {rating.tripDestinationLabel}</span>
+                          <span className={styles.tripDate}>Viaje del: {formatDateTime(rating.tripDepartureAt)}</span>
                         </div>
-                        {rating.comment ? <p className={styles.noteText}>"{rating.comment}"</p> : null}
+                        {rating.comment ? (
+                          <div className={styles.incidentBox}>
+                            <div className={styles.reviewBlock}>
+                              <strong>Tu comentario:</strong>
+                              <p>{rating.comment}</p>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1345,11 +1351,18 @@ export default function TrustPage() {
                           <strong>{rating.authorFullName}</strong>
                           <span className={styles.inlineStars}>{getRatingStars(rating.score)} {rating.score}/5</span>
                         </div>
-                        <div className={styles.metaText}>
-                          <span className={styles.metaBadge}>{formatDateTime(rating.tripDepartureAt)}</span>
-                          <span>{rating.tripOriginLabel} &rarr; {rating.tripDestinationLabel}</span>
+                        <div className={styles.tripContext}>
+                          <span className={styles.tripRoute}>{rating.tripOriginLabel} &rarr; {rating.tripDestinationLabel}</span>
+                          <span className={styles.tripDate}>Viaje del: {formatDateTime(rating.tripDepartureAt)}</span>
                         </div>
-                        {rating.comment ? <p className={styles.noteText}>"{rating.comment}"</p> : null}
+                        {rating.comment ? (
+                          <div className={styles.incidentBox}>
+                            <div className={styles.reviewBlock}>
+                              <strong>Comentario recibido:</strong>
+                              <p>{rating.comment}</p>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1370,21 +1383,28 @@ export default function TrustPage() {
                             tone={getReportStatusTone(report.status)}
                           />
                         </div>
-                        <div className={styles.metaText}>
-                          <span className={styles.metaBadge}>{formatDateTime(report.createdAt)}</span>
-                          <span>{report.tripOriginLabel} &rarr; {report.tripDestinationLabel}</span>
+                        <div className={styles.tripContext}>
+                          <span className={styles.tripRoute}>{report.tripOriginLabel} &rarr; {report.tripDestinationLabel}</span>
+                          <span className={styles.tripDate}>Emitido el: {formatDateTime(report.createdAt)}</span>
                         </div>
-                        <div className={styles.badgeRow} style={{ marginTop: '0.2rem' }}>
-                          <StatusPill
-                            label={getReportSeverityLabel(report.reason)}
-                            tone={getReportSeverityTone(report.reason)}
-                          />
-                          <span className={styles.metaBadge}>{getReportReasonLabel(report.reason)}</span>
+                        <div className={styles.incidentBox}>
+                          <div className={styles.badgeRowStart}>
+                            <StatusPill
+                              label={getReportSeverityLabel(report.reason)}
+                              tone={getReportSeverityTone(report.reason)}
+                            />
+                            <span className={styles.metaBadge}>{getReportReasonLabel(report.reason)}</span>
+                          </div>
+                          {report.description ? (
+                            <div className={styles.reviewBlock}>
+                              <strong>Detalle del reporte:</strong>
+                              <p>{report.description}</p>
+                            </div>
+                          ) : null}
                         </div>
-                        {report.description ? <p className={styles.noteText} style={{ marginTop: '0.4rem' }}>"{report.description}"</p> : null}
                         {report.reviewNote ? (
                           <div className={styles.reviewBlock}>
-                            <strong>Nota de revisi&oacute;n:</strong>
+                            <strong>Respuesta administrativa:</strong>
                             <p>{report.reviewNote}</p>
                           </div>
                         ) : null}
@@ -1440,18 +1460,18 @@ export default function TrustPage() {
                 isSubmitting={isSubmittingReportId === activeReportOpportunity.id}
                 isUploadingEvidence={isUploadingReportEvidenceId === activeReportOpportunity.id}
                 onChange={(field, value) => handleReportDraftChange(activeReportOpportunity, activeReportOpportunity.id, field as 'reason' | 'description', value)}
-                onEvidenceUpload={(file) => void handleUploadReportEvidence(activeReportOpportunity, activeReportOpportunity.id, file)}
+                onEvidenceValidationError={handleReportEvidenceValidationError}
                 onSubmit={() => void handleCreateReport(activeReportOpportunity)}
+                onUploadEvidence={(file: File) => void handleUploadReportEvidence(activeReportOpportunity, activeReportOpportunity.id, file)}
                 opportunity={{
                   id: activeReportOpportunity.id,
                   tripId: activeReportOpportunity.tripId,
-                  targetMembershipId: activeReportOpportunity.targetMembershipId,
-                  targetFullName: activeReportOpportunity.targetFullName,
+                  reportedMembershipId: activeReportOpportunity.targetMembershipId,
+                  reportedFullName: activeReportOpportunity.targetFullName,
                   tripOriginLabel: activeReportOpportunity.tripOriginLabel,
                   tripDestinationLabel: activeReportOpportunity.tripDestinationLabel,
                   tripDepartureAt: activeReportOpportunity.tripDepartureAt,
                   directionLabel: activeReportOpportunity.reportDirectionLabel,
-                  incidentType: activeReportOpportunity.incidentType,
                   incidentLabel: activeReportOpportunity.incidentLabel,
                   incidentTone: activeReportOpportunity.incidentTone,
                   incidentSummary: activeReportOpportunity.incidentSummary,

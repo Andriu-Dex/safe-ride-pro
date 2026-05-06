@@ -92,6 +92,13 @@
   gap: 0.7rem;
 }
 
+.badgeRowStart {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.7rem;
+}
+
 .focusBanner {
   padding-left: 1rem;
   border-left: 3px solid rgba(15, 118, 110, 0.35);
@@ -458,6 +465,52 @@
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.12);
   color: #5eead4;
+}
+
+.tripContext {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.8rem 1rem;
+  background: linear-gradient(to right, rgba(15, 118, 110, 0.02), rgba(15, 118, 110, 0.04));
+  border: 1px dashed rgba(15, 118, 110, 0.15);
+  border-radius: 10px;
+  margin-top: 0.4rem;
+}
+
+.tripRoute {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #12333a;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.tripDate {
+  font-size: 0.8rem;
+  color: #647b81;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tripDate::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #0f766e;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.incidentBox {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
 .noteText {
