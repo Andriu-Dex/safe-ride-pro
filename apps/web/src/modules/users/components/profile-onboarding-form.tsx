@@ -751,9 +751,6 @@ export function ProfileOnboardingForm() {
                       <p className={styles.kicker}>Consentimientos</p>
                       <h3>Compromisos institucionales</h3>
                     </div>
-                    <p className={styles.sectionText}>
-                      Requeridos para usar la plataforma.
-                    </p>
                   </div>
 
                   <div className={styles.bulkActions}>
@@ -765,9 +762,6 @@ export function ProfileOnboardingForm() {
                     >
                       Aceptar todo
                     </Button>
-                    <span className={styles.bulkHint}>
-                      Marca todas las opciones disponibles con un solo clic.
-                    </span>
                   </div>
 
                   <div className={styles.consentGrid}>

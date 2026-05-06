@@ -678,11 +678,20 @@ export default function AdminUsersPage() {
             role="dialog"
           >
             <div className={styles.modalHeader}>
-              <div>
-                <p className={styles.modalKicker}>Usuario</p>
-                <h2 className={styles.modalTitle} id="admin-user-detail-title">
-                  {activeUser.fullName}
-                </h2>
+              <div className={styles.modalHeaderProfile}>
+                <div className={`${styles.avatar} ${styles.modalAvatar}`}>
+                  {activeUser.profilePhotoUrl ? (
+                    <img alt="" className={styles.avatarImage} src={activeUser.profilePhotoUrl} />
+                  ) : (
+                    <span>{activeUser.fullName.slice(0, 1).toUpperCase()}</span>
+                  )}
+                </div>
+                <div>
+                  <p className={styles.modalKicker}>Detalle de usuario</p>
+                  <h2 className={styles.modalTitle} id="admin-user-detail-title">
+                    {activeUser.fullName}
+                  </h2>
+                </div>
               </div>
               <button
                 aria-label="Cerrar detalle"
@@ -690,7 +699,9 @@ export default function AdminUsersPage() {
                 onClick={() => setActiveUser(null)}
                 type="button"
               >
-                X
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
               </button>
             </div>
 
@@ -708,7 +719,7 @@ export default function AdminUsersPage() {
                 <strong>{getAccountStatusLabel(activeUser.accountStatus)}</strong>
               </div>
               <div className={styles.modalFact}>
-                <span>Registro</span>
+                <span>Registrado el</span>
                 <strong>{formatDateTime(activeUser.createdAt)}</strong>
               </div>
             </div>
@@ -745,9 +756,18 @@ export default function AdminUsersPage() {
                     </div>
 
                     <div className={styles.modalMembershipMetrics}>
-                      <span>Sanciones: {membership.activeSanctionsCount}</span>
-                      <span>Bloqueantes: {membership.activeBlockingSanctionsCount}</span>
-                      <span>Reportes: {membership.resolvedReportsReceivedCount}</span>
+                      <div className={styles.metricBadge}>
+                        <span>Sanciones</span>
+                        <span>{membership.activeSanctionsCount}</span>
+                      </div>
+                      <div className={styles.metricBadge}>
+                        <span>Bloqueantes</span>
+                        <span>{membership.activeBlockingSanctionsCount}</span>
+                      </div>
+                      <div className={styles.metricBadge}>
+                        <span>Reportes</span>
+                        <span>{membership.resolvedReportsReceivedCount}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -764,9 +784,9 @@ export default function AdminUsersPage() {
                 </Button>
               ) : (
                 <Button
+                  className={styles.modalButtonDanger}
                   disabled={isUpdatingUserId === activeUser.userId}
                   onClick={() => void handleAccountStatusChange(activeUser.userId, AccountStatus.Suspended)}
-                  variant="ghost"
                 >
                   {isUpdatingUserId === activeUser.userId ? 'Bloqueando...' : 'Bloquear cuenta'}
                 </Button>
