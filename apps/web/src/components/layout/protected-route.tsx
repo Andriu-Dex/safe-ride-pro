@@ -27,7 +27,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const canUseDriverRoutes = canAccessDriverTools(authSession?.user);
   const hasDriverProcessStarted = hasStartedDriverFlow(authSession?.user);
   const { isDriverExperienceActive } = useAppExperienceMode(authSession?.user);
-  const isDriverOnlyRoute = pathname === '/vehiculos' || pathname === '/viajes/nuevo';
+  const isDriverOnlyRoute =
+    pathname === '/vehiculos'
+    || pathname === '/viajes/nuevo'
+    || pathname === '/viajes/aprobar-solicitudes';
   const isDriverFlowRoute = pathname === '/conductor';
   const isDashboardRoute = pathname === '/dashboard';
   const isAdminOnlyRoute =

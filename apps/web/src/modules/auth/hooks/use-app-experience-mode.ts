@@ -27,7 +27,7 @@ function readStoredExperienceMode(): AppExperienceMode | null {
   return value === 'driver' || value === 'passenger' ? value : null;
 }
 
-function writeStoredExperienceMode(mode: AppExperienceMode) {
+export function setStoredExperienceMode(mode: AppExperienceMode) {
   if (!canUseStorage()) {
     return;
   }
@@ -97,7 +97,7 @@ export function useAppExperienceMode(
   const setExperienceMode = useCallback((nextMode: AppExperienceMode) => {
     const resolvedMode = resolveExperienceMode(user ?? null, nextMode);
     setExperienceModeState(resolvedMode);
-    writeStoredExperienceMode(resolvedMode);
+    setStoredExperienceMode(resolvedMode);
   }, [user]);
 
   const isDriverExperienceActive = useMemo(

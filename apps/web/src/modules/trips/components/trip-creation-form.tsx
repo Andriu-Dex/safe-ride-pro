@@ -176,14 +176,14 @@ export function TripCreationForm({
     if (target === 'origin') {
       onChange('originLatitude', latitude.toFixed(6));
       onChange('originLongitude', longitude.toFixed(6));
-      onChange('originLabel', values.originLabel.trim() || 'Punto de origen en el mapa');
+      onChange('originLabel', 'Punto de origen en el mapa');
       setActiveTarget('destination');
       return;
     }
 
     onChange('destinationLatitude', latitude.toFixed(6));
     onChange('destinationLongitude', longitude.toFixed(6));
-    onChange('destinationLabel', values.destinationLabel.trim() || 'Punto de destino en el mapa');
+    onChange('destinationLabel', 'Punto de destino en el mapa');
   };
 
   useEffect(() => {

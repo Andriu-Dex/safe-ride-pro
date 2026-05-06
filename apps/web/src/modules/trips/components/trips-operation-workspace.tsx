@@ -6,6 +6,7 @@ import {
   TripStatus,
 } from '@saferidepro/shared-types';
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
@@ -27,6 +28,7 @@ import {
 } from '../lib/trip-closure';
 import type { TripClosureActionItem } from './trip-closure-action-center';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
+import { TripsListPagination } from './trips-list-pagination';
 import { TripExecutionCommandCenter } from './trip-execution-command-center';
 import { TripOverviewCard } from './trip-overview-card';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
@@ -78,7 +80,21 @@ export function TripsOperationWorkspace({
   onMarkNoShow,
   onTripClosureNoteChange,
 }: TripsOperationWorkspaceProps) {
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+  const paginatedTrips = useMemo(
+    () => myTrips.slice((page - 1) * pageSize, page * pageSize),
+    [myTrips, page],
+  );
   const closureItems = buildDriverClosureItems(myTrips, incomingRequests);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(myTrips.length / pageSize));
+
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [myTrips.length, page]);
 
   return (
     <section className="trips-workspace-grid trips-operation-stack">
@@ -118,7 +134,7 @@ export function TripsOperationWorkspace({
         </div>
         {myTrips.length ? (
           <div className="list-stack">
-            {myTrips.map((trip) => {
+            {paginatedTrips.map((trip) => {
               const startAvailabilityMessage = getTripStartAvailabilityMessage(
                 trip.departureAt,
                 trip.estimatedArrivalAt,
@@ -227,6 +243,12 @@ export function TripsOperationWorkspace({
             title="Tu panel de conduccion aun esta vacio"
           />
         )}
+        <TripsListPagination
+          onPageChange={setPage}
+          page={page}
+          pageSize={pageSize}
+          totalItems={myTrips.length}
+        />
       </article>
 
       {closureItems.length ? (

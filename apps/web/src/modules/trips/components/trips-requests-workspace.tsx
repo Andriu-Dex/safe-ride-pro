@@ -42,6 +42,8 @@ import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
 type TripsRequestsWorkspaceProps = {
   incomingRequests: TripRequestRecord[];
   myRequests: TripRequestRecord[];
+  incomingRequestsCountOverride?: number;
+  myRequestsCountOverride?: number;
   isMutatingRequestId: string | null;
   isMutatingPaymentId: string | null;
   noShowNotes: Record<string, string>;
@@ -68,6 +70,8 @@ type TripsRequestsWorkspaceProps = {
 export function TripsRequestsWorkspace({
   incomingRequests,
   myRequests,
+  incomingRequestsCountOverride,
+  myRequestsCountOverride,
   isMutatingRequestId,
   isMutatingPaymentId,
   noShowNotes,
@@ -90,6 +94,12 @@ export function TripsRequestsWorkspace({
   showMyRequestsSection = true,
   showActiveRidePanel = true,
 }: TripsRequestsWorkspaceProps) {
+  const incomingSectionTitle =
+    showIncomingRequestsSection && !showMyRequestsSection
+      ? 'Aprobar solicitudes'
+      : 'Solicitudes recibidas';
+  const incomingResultsCount = incomingRequestsCountOverride ?? incomingRequests.length;
+  const myRequestsResultsCount = myRequestsCountOverride ?? myRequests.length;
   const closureItems = buildPassengerClosureItems(myRequests);
 
   return (
@@ -113,8 +123,8 @@ export function TripsRequestsWorkspace({
       {showIncomingRequestsSection ? (
         <article className="panel panel-stack trips-stream-panel">
           <div className="section-heading">
-            <h2 className="panel-title">Solicitudes recibidas</h2>
-            <p className="section-heading-meta">{incomingRequests.length} resultados</p>
+            <h2 className="panel-title">{incomingSectionTitle}</h2>
+            <p className="section-heading-meta">{incomingResultsCount} resultados</p>
           </div>
           {incomingRequests.length ? (
             <div className="list-stack">
@@ -271,7 +281,7 @@ export function TripsRequestsWorkspace({
             </div>
           ) : (
             <TripsEditorialEmptyState
-              eyebrow="Solicitudes recibidas"
+              eyebrow={incomingSectionTitle}
               title="Nada por aprobar por ahora"
             />
           )}
@@ -282,7 +292,7 @@ export function TripsRequestsWorkspace({
         <article className="panel panel-stack trips-stream-panel">
           <div className="section-heading">
             <h2 className="panel-title">Mis solicitudes</h2>
-            <p className="section-heading-meta">{myRequests.length} resultados</p>
+            <p className="section-heading-meta">{myRequestsResultsCount} resultados</p>
           </div>
           {myRequests.length ? (
             <div className="list-stack">

@@ -87,7 +87,7 @@ export class CapturePaymentUseCase {
         type: AppNotificationType.TripRequestCreated,
         title: 'Solicitud pagada',
         body: `${updatedPayment.passengerFullName} pago por PayPal y espera tu respuesta.`,
-        actionUrl: '/viajes',
+        actionUrl: '/viajes/aprobar-solicitudes?experienceMode=driver',
       });
     }
 

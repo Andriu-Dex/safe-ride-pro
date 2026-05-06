@@ -8,6 +8,7 @@ import {
 } from '@saferidepro/shared-types';
 
 import { persistToast } from '../../../components/ui/flash-toast';
+import { setStoredExperienceMode } from '../../auth/hooks/use-app-experience-mode';
 import { useRealtimeEventStream } from '../../realtime/hooks/use-realtime-event-stream';
 import {
   getUnreadNotificationCount,
@@ -87,6 +88,19 @@ export function NotificationBell({ accessToken }: NotificationBellProps) {
     setIsOpen(false);
 
     if (notification.actionUrl) {
+      if (typeof window !== 'undefined') {
+        try {
+          const url = new URL(notification.actionUrl, window.location.origin);
+          const experienceMode = url.searchParams.get('experienceMode');
+
+          if (experienceMode === 'driver' || experienceMode === 'passenger') {
+            setStoredExperienceMode(experienceMode);
+          }
+        } catch {
+          // Ignore malformed action URLs and still attempt navigation.
+        }
+      }
+
       router.push(notification.actionUrl);
     }
   };

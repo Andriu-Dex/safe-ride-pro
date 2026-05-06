@@ -108,7 +108,7 @@ export class AcceptTripRequestUseCase {
       type: AppNotificationType.TripRequestAccepted,
       title: 'Solicitud aceptada',
       body: `${updatedTripRequest.driverFullName} acepto tu viaje.`,
-      actionUrl: '/viajes',
+      actionUrl: '/viajes?passengerView=requests',
     });
 
     return {

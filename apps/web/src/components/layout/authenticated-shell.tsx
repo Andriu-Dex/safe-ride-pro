@@ -51,9 +51,9 @@ const NAV_ITEMS = [
     audience: 'driver',
   },
   {
-    href: '/viajes/nuevo',
-    label: 'Nuevo viaje',
-    subtitle: 'Publicar',
+    href: '/viajes/aprobar-solicitudes',
+    label: 'Solicitudes',
+    subtitle: 'Aprobar',
     requiresOperationalMembership: true,
     icon: 'trip',
     audience: 'driver',

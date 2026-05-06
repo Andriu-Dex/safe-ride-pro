@@ -16,9 +16,11 @@ import type { TripFilters, TripRecord } from '../types/trip';
 import { TripReservationCommitment } from './trip-reservation-commitment';
 import { TripOverviewCard } from './trip-overview-card';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
+import { TripsListPagination } from './trips-list-pagination';
 import { TripRequestDetourPlanner } from './trip-request-detour-planner';
 import { EMPTY_REQUEST_DRAFT, type TripRequestDraft } from './trips-workspace.types';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
+import { useEffect, useMemo, useState } from 'react';
 
 type TripsDiscoverWorkspaceProps = {
   activeFiltersCount: number;
@@ -65,9 +67,23 @@ export function TripsDiscoverWorkspace({
   canCreateRequestForTrip,
   isRefreshingData = false,
 }: TripsDiscoverWorkspaceProps) {
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+  const paginatedTrips = useMemo(
+    () => visibleAvailableTrips.slice((page - 1) * pageSize, page * pageSize),
+    [page, visibleAvailableTrips],
+  );
   const visibleTripsWithSeatsCount = visibleAvailableTrips.filter(
     (trip) => trip.status === TripStatus.Published && trip.availableSeats > 0,
   ).length;
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleAvailableTrips.length / pageSize));
+
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, visibleAvailableTrips.length]);
 
   return (
     <section className="trips-discover-stack">
@@ -101,7 +117,7 @@ export function TripsDiscoverWorkspace({
 
         {visibleAvailableTrips.length ? (
           <div className="list-stack">
-            {visibleAvailableTrips.map((trip) => {
+            {paginatedTrips.map((trip) => {
               const hasActiveRequest = myRequests.some(
                 (request) =>
                   request.tripId === trip.id
@@ -291,6 +307,13 @@ export function TripsDiscoverWorkspace({
             title="No hay viajes que encajen con estos filtros"
           />
         )}
+
+        <TripsListPagination
+          onPageChange={setPage}
+          page={page}
+          pageSize={pageSize}
+          totalItems={visibleAvailableTrips.length}
+        />
       </article>
     </section>
   );

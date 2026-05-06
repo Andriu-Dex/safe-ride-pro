@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Button } from '../../../components/ui/button';
 import type { InstitutionSettingsRecord } from '../../institutions/types/institution-settings';
@@ -91,7 +92,7 @@ export function TripReservationCommitment({
         </div>
       </div>
 
-      {isModalOpen ? (
+      {isModalOpen && typeof document !== 'undefined' ? createPortal(
         <div
           className={styles.modalOverlay}
           onClick={() => setIsModalOpen(false)}
@@ -135,7 +136,8 @@ export function TripReservationCommitment({
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </>
   );

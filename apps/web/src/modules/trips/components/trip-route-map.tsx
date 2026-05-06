@@ -45,6 +45,7 @@ export function TripRouteMap({
 }: TripRouteMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const bundleRef = useRef<MapBundle | null>(null);
+  const invalidateFrameRef = useRef<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
@@ -91,8 +92,16 @@ export function TripRouteMap({
         setIsMapReady(true);
 
         syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff, livePosition, history);
-        window.requestAnimationFrame(() => {
-          map.invalidateSize();
+        invalidateFrameRef.current = window.requestAnimationFrame(() => {
+          if (!isMounted || bundleRef.current?.map !== map) {
+            return;
+          }
+
+          try {
+            map.invalidateSize();
+          } catch {
+            // Leaflet can briefly throw during teardown or hidden-layout transitions.
+          }
         });
         setErrorMessage(null);
       } catch (error) {
@@ -112,6 +121,11 @@ export function TripRouteMap({
 
     return () => {
       isMounted = false;
+      if (invalidateFrameRef.current !== null) {
+        window.cancelAnimationFrame(invalidateFrameRef.current);
+        invalidateFrameRef.current = null;
+      }
+      setIsMapReady(false);
       bundleRef.current?.map.remove();
       bundleRef.current = null;
     };
@@ -125,8 +139,16 @@ export function TripRouteMap({
     }
 
     syncMapBundle(bundle, origin, destination, pickup, dropoff, livePosition, history);
-    window.requestAnimationFrame(() => {
-      bundle.map.invalidateSize();
+    invalidateFrameRef.current = window.requestAnimationFrame(() => {
+      if (bundleRef.current?.map !== bundle.map) {
+        return;
+      }
+
+      try {
+        bundle.map.invalidateSize();
+      } catch {
+        // Ignore transient Leaflet layout errors when the container is changing.
+      }
     });
   }, [destination, dropoff, history, livePosition, origin, pickup]);
 

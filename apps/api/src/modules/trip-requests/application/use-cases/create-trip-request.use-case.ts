@@ -162,7 +162,7 @@ export class CreateTripRequestUseCase {
         type: AppNotificationType.PaymentActionRequired,
         title: 'Completa tu pago',
         body: 'Tu solicitud se enviara al conductor cuando PayPal confirme el pago.',
-        actionUrl: '/viajes',
+        actionUrl: '/viajes?passengerView=requests',
       });
     } else {
       await this.notificationsService?.notifyMembership({
@@ -172,7 +172,7 @@ export class CreateTripRequestUseCase {
         type: AppNotificationType.TripRequestCreated,
         title: 'Nueva solicitud de viaje',
         body: `${membership.fullName} quiere unirse a tu ruta.`,
-        actionUrl: '/viajes',
+        actionUrl: '/viajes/aprobar-solicitudes?experienceMode=driver',
       });
     }
 

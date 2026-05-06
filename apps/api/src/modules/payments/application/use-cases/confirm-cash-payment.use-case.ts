@@ -51,7 +51,7 @@ export class ConfirmCashPaymentUseCase {
       type: AppNotificationType.PaymentConfirmed,
       title: 'Pago confirmado',
       body: 'El conductor marco el pago en efectivo como recibido.',
-      actionUrl: '/viajes',
+      actionUrl: '/viajes?passengerView=requests',
     });
 
     return {

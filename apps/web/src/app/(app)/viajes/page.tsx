@@ -124,7 +124,6 @@ const EMPTY_TRIP_FILTERS: TripFilters = {
 const DEFAULT_NO_SHOW_NOTE = 'El pasajero no se presento al punto acordado.';
 
 type PassengerWorkspace = 'discover' | 'requests';
-type DriverWorkspace = 'operation' | 'requests';
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
@@ -248,7 +247,6 @@ export default function TripsPage() {
   const [isMutatingPaymentId, setIsMutatingPaymentId] = useState<string | null>(null);
   const paymentCaptureInFlightRef = useRef<string | null>(null);
   const [passengerWorkspace, setPassengerWorkspace] = useState<PassengerWorkspace>('discover');
-  const [driverWorkspace, setDriverWorkspace] = useState<DriverWorkspace>('operation');
   const [tripErrorMessage, setTripErrorMessage] = useState<string | null>(null);
   const [tripSuccessMessage, setTripSuccessMessage] = useState<string | null>(null);
   const [requestErrorMessage, setRequestErrorMessage] = useState<string | null>(null);
@@ -548,6 +546,16 @@ export default function TripsPage() {
 
     router.replace('/viajes');
   }, [authSession, pushToast, refreshSession, refreshTripsData, router, searchParams]);
+
+  useEffect(() => {
+    const requestedPassengerView = searchParams.get('passengerView');
+
+    if (requestedPassengerView === 'requests') {
+      setPassengerWorkspace('requests');
+    } else if (requestedPassengerView === 'discover') {
+      setPassengerWorkspace('discover');
+    }
+  }, [searchParams]);
 
   const handleFilterChange = (field: keyof TripFilters, value: string) => {
     setFilterFormValues((currentFilters) => ({
@@ -1047,9 +1055,7 @@ export default function TripsPage() {
   const activeFilterLabels = buildTripFilterLabels(tripFilters);
   const activeViewTitle =
     showDriverWorkspace
-      ? driverWorkspace === 'operation'
-        ? 'Mis viajes'
-        : 'Solicitudes recibidas'
+      ? 'Mis viajes'
       : passengerWorkspace === 'discover'
         ? 'Viajes disponibles'
         : 'Mis solicitudes';
@@ -1172,9 +1178,9 @@ export default function TripsPage() {
                   <button
                     className={[
                       styles.viewNavButton,
-                      driverWorkspace === 'operation' ? styles.viewNavButtonActive : '',
+                      styles.viewNavButtonActive,
                     ].join(' ')}
-                    onClick={() => setDriverWorkspace('operation')}
+                    onClick={() => undefined}
                     type="button"
                   >
                     Mis viajes
@@ -1182,12 +1188,11 @@ export default function TripsPage() {
                   <button
                     className={[
                       styles.viewNavButton,
-                      driverWorkspace === 'requests' ? styles.viewNavButtonActive : '',
                     ].join(' ')}
-                    onClick={() => setDriverWorkspace('requests')}
+                    onClick={() => router.push('/viajes/aprobar-solicitudes')}
                     type="button"
                   >
-                    Solicitudes recibidas
+                    Aprobar solicitudes
                   </button>
                 </>
               ) : (
@@ -1259,6 +1264,9 @@ export default function TripsPage() {
                       solo cuando tu contexto este habilitado.
                     </p>
                     <div className={styles.sidebarSupportActions}>
+                      <Link className={styles.sidebarLink} href="/viajes/aprobar-solicitudes">
+                        Solicitudes
+                      </Link>
                       <Link className={styles.sidebarLink} href="/conductor">
                         Conductor
                       </Link>
@@ -1282,59 +1290,27 @@ export default function TripsPage() {
           <div className={styles.workspaceSurface}>
             <div className={styles.workspaceStage}>
             {showDriverWorkspace ? (
-              <>
-                {driverWorkspace === 'operation' ? (
-                  <TripsOperationWorkspace
-                    blocksDriver={trustRestrictions.blocksDriver}
-                    canCreateTrips={canCreateTrips}
-                    incomingRequests={incomingRequests}
-                    isMutatingRequestId={isMutatingRequestId}
-                    isMutatingTripId={isMutatingTripId}
-                    isRefreshingData={isRefreshingData}
-                    licenseStatus={licenseStatus}
-                    myTrips={myTrips}
-                    onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
-                    onNoShowNoteChange={handleNoShowNoteChange}
-                    onOpenRequests={() => setDriverWorkspace('requests')}
-                    onMarkPassengerBoarded={(requestId) => void handleMarkPassengerBoarded(requestId)}
-                    onMarkPassengerDroppedOff={(requestId) =>
-                      void handleMarkPassengerDroppedOff(requestId)}
-                    onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
-                    onTripAction={(tripId, action, options) => void handleTripAction(tripId, action, options)}
-                    onTripClosureNoteChange={handleTripClosureNoteChange}
-                    noShowNotes={noShowNotes}
-                    tripClosureNotes={tripClosureNotes}
-                  />
-                ) : (
-                  <TripsRequestsWorkspace
-                    canAcceptIncomingRequest={canAcceptIncomingRequest}
-                    canCancelOwnRequest={canCancelOwnRequest}
-                    canMarkRequestAsNoShow={canMarkRequestAsNoShow}
-                    canRejectIncomingRequest={canRejectIncomingRequest}
-                    defaultNoShowNote={DEFAULT_NO_SHOW_NOTE}
-                    incomingRequests={incomingRequests}
-                    isMutatingPaymentId={isMutatingPaymentId}
-                    isMutatingRequestId={isMutatingRequestId}
-                    isRefreshingData={isRefreshingData}
-                    myRequests={[]}
-                    onConfirmCashPayment={(paymentId) => void handleConfirmCashPayment(paymentId)}
-                    onCreatePaymentCheckout={(paymentId) => void handleCreatePaymentCheckout(paymentId)}
-                    onReportCashPaymentIssue={(paymentId) =>
-                      void handleReportCashPaymentIssue(paymentId)}
-                    noShowNotes={noShowNotes}
-                    onCancelMyRequest={(requestId) => void handleCancelMyRequest(requestId)}
-                    onExploreTrips={() => setPassengerWorkspace('discover')}
-                    onIncomingRequestAction={(requestId, action) =>
-                      void handleIncomingRequestAction(requestId, action)}
-                    onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
-                    onNoShowNoteChange={handleNoShowNoteChange}
-                    onRefreshPaymentStatus={(paymentId) => void handleRefreshPaymentStatus(paymentId)}
-                    showActiveRidePanel={false}
-                    showIncomingRequestsSection
-                    showMyRequestsSection={false}
-                  />
-                )}
-              </>
+              <TripsOperationWorkspace
+                blocksDriver={trustRestrictions.blocksDriver}
+                canCreateTrips={canCreateTrips}
+                incomingRequests={incomingRequests}
+                isMutatingRequestId={isMutatingRequestId}
+                isMutatingTripId={isMutatingTripId}
+                isRefreshingData={isRefreshingData}
+                licenseStatus={licenseStatus}
+                myTrips={myTrips}
+                onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
+                onNoShowNoteChange={handleNoShowNoteChange}
+                onOpenRequests={() => router.push('/viajes/aprobar-solicitudes')}
+                onMarkPassengerBoarded={(requestId) => void handleMarkPassengerBoarded(requestId)}
+                onMarkPassengerDroppedOff={(requestId) =>
+                  void handleMarkPassengerDroppedOff(requestId)}
+                onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
+                onTripAction={(tripId, action, options) => void handleTripAction(tripId, action, options)}
+                onTripClosureNoteChange={handleTripClosureNoteChange}
+                noShowNotes={noShowNotes}
+                tripClosureNotes={tripClosureNotes}
+              />
             ) : (
               <>
                 {passengerWorkspace === 'discover' ? (
