@@ -704,3 +704,105 @@
   background: #ffffff;
   color: #14212d;
 }
+
+.experienceFab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 1350;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 1.1rem 0.75rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.experienceFabToPassenger {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.92), rgba(15, 118, 110, 0.96));
+  color: #f0fdfa;
+  box-shadow: 0 12px 30px rgba(15, 118, 110, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: rgba(94, 234, 212, 0.3);
+  padding: 6px 15px 6px 6px;
+}
+
+.experienceFabToPassenger:hover,
+.experienceFabToPassenger:focus-visible {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(15, 118, 110, 0.4), 0 8px 16px rgba(0, 0, 0, 0.2);
+  outline: none;
+}
+
+.experienceFabToDriver {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+  color: #f8fafc;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: rgba(100, 116, 139, 0.4);
+  padding: 8px 13px 8px 6px;
+}
+
+.experienceFabToDriver:hover,
+.experienceFabToDriver:focus-visible {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.5), 0 8px 16px rgba(0, 0, 0, 0.3);
+  outline: none;
+}
+
+.experienceFabIcon {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.experienceFab:hover .experienceFabIcon {
+  transform: scale(1.08) rotate(-8deg);
+}
+
+.experienceFabIcon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.experienceFabCopy {
+  display: grid;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.experienceFabCopy small {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.experienceFabCopy strong {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .experienceFab {
+    right: 1rem;
+    bottom: 1rem;
+    padding: 0.4rem;
+  }
+
+  .experienceFabToPassenger:focus-visible {
+    padding: 0.4rem;
+  }
+
+  .experienceFabCopy {
+    display: none;
+  }
+}

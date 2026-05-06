@@ -36,6 +36,23 @@ export function canAccessDriverTools(user?: Pick<AuthUser, 'memberships'> | null
   return isApprovedDriverMembership(getCurrentOperationalMembership(user.memberships));
 }
 
+export function hasStartedDriverFlow(user?: Pick<AuthUser, 'memberships'> | null): boolean {
+  if (!user) {
+    return false;
+  }
+
+  const membership = getCurrentOperationalMembership(user.memberships);
+
+  if (!membership) {
+    return false;
+  }
+
+  const effectiveStatus =
+    membership.effectiveDriverVerificationStatus ?? membership.driverVerificationStatus;
+
+  return effectiveStatus !== DriverVerificationStatus.NotRequested;
+}
+
 export function canAccessDashboard(
   user?: Pick<AuthUser, 'globalRole' | 'memberships'> | null,
 ): boolean {

@@ -21,6 +21,7 @@ import { OperationalAccessCard } from '../../../components/ui/operational-access
 import { StatusPill } from '../../../components/ui/status-pill';
 import { ToastStack, type ToastItem } from '../../../components/ui/toast-stack';
 import { useAutoRefresh } from '../../../hooks/use-auto-refresh';
+import { useAppExperienceMode } from '../../../modules/auth/hooks/use-app-experience-mode';
 import { useAuth } from '../../../modules/auth/hooks/use-auth';
 import { getOperationalAccessState } from '../../../modules/auth/lib/operational-context';
 import { getInstitutionSettings } from '../../../modules/institutions/lib/institution-api';
@@ -28,7 +29,6 @@ import { useRealtimeEventStream } from '../../../modules/realtime/hooks/use-real
 import {
   getDriverLicenseAlertMessage,
   getDriverStatusLabel,
-  getDriverStatusTone,
 } from '../../../modules/driver/lib/driver-status';
 import {
   capturePayment,
@@ -123,7 +123,6 @@ const EMPTY_TRIP_FILTERS: TripFilters = {
 
 const DEFAULT_NO_SHOW_NOTE = 'El pasajero no se presento al punto acordado.';
 
-type TripsMode = 'passenger' | 'driver';
 type PassengerWorkspace = 'discover' | 'requests';
 type DriverWorkspace = 'operation' | 'requests';
 
@@ -224,6 +223,7 @@ export default function TripsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { authSession, isHydrated, refreshSession } = useAuth();
+  const { isDriverExperienceActive } = useAppExperienceMode(authSession?.user);
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const currentMembership =
     operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
@@ -247,7 +247,6 @@ export default function TripsPage() {
   const [isMutatingRequestId, setIsMutatingRequestId] = useState<string | null>(null);
   const [isMutatingPaymentId, setIsMutatingPaymentId] = useState<string | null>(null);
   const paymentCaptureInFlightRef = useRef<string | null>(null);
-  const [activeMode, setActiveMode] = useState<TripsMode>('driver');
   const [passengerWorkspace, setPassengerWorkspace] = useState<PassengerWorkspace>('discover');
   const [driverWorkspace, setDriverWorkspace] = useState<DriverWorkspace>('operation');
   const [tripErrorMessage, setTripErrorMessage] = useState<string | null>(null);
@@ -1040,33 +1039,22 @@ export default function TripsPage() {
     licenseStatus,
     vehicleOverview?.membership?.licenseExpiresInDays,
   );
+  const showDriverWorkspace = isDriverExperienceActive && hasDriverMode;
   const visibleAvailableTrips = availableTrips.filter(
     (trip) => trip.driverMembershipId !== defaultMembershipId,
   );
   const activeFiltersCount = countActiveFilters(tripFilters);
   const activeFilterLabels = buildTripFilterLabels(tripFilters);
   const activeViewTitle =
-    activeMode === 'driver'
+    showDriverWorkspace
       ? driverWorkspace === 'operation'
         ? 'Mis viajes'
         : 'Solicitudes recibidas'
       : passengerWorkspace === 'discover'
         ? 'Viajes disponibles'
         : 'Mis solicitudes';
-  const modeBadgeLabel = hasDriverMode
-    ? activeMode === 'driver'
-      ? 'Modo conductor'
-      : 'Modo pasajero'
-    : null;
   const shouldShowFiltersSidebar =
-    activeMode === 'passenger' && passengerWorkspace === 'discover';
-
-  useEffect(() => {
-    if (!hasDriverMode && activeMode === 'driver') {
-      setActiveMode('passenger');
-      setPassengerWorkspace('discover');
-    }
-  }, [activeMode, hasDriverMode]);
+    !showDriverWorkspace && passengerWorkspace === 'discover';
 
   if (isLoading) {
     return (
@@ -1121,13 +1109,7 @@ export default function TripsPage() {
           </div>
 
           <div className={styles.topbarActions}>
-            {modeBadgeLabel ? (
-              <StatusPill
-                label={modeBadgeLabel}
-                tone={activeMode === 'driver' ? getDriverStatusTone(driverStatus) : 'neutral'}
-              />
-            ) : null}
-            {activeMode === 'driver' ? (
+            {showDriverWorkspace ? (
               <Button disabled={!canCreateTrips} onClick={() => router.push('/viajes/nuevo')}>
                 Crear viaje
               </Button>
@@ -1142,17 +1124,17 @@ export default function TripsPage() {
           </div>
         </section>
 
-        {(activeMode === 'driver' && (!canCreateTrips || driverLicenseAlertMessage || trustRestrictions.blocksDriver)) ||
-        (activeMode === 'passenger' && trustRestrictions.blocksPassenger) ? (
+        {(showDriverWorkspace && (!canCreateTrips || driverLicenseAlertMessage || trustRestrictions.blocksDriver)) ||
+        (!showDriverWorkspace && trustRestrictions.blocksPassenger) ? (
           <article className={`${styles.noticeInline} ${styles.revealSoft}`}>
             <div className={styles.noticeCopy}>
               <strong>
-                {activeMode === 'driver'
+                {showDriverWorkspace
                   ? 'Revisa tu contexto de conductor'
                   : 'Tu acceso como pasajero tiene una restriccion'}
               </strong>
               <p>
-                {activeMode === 'driver'
+                {showDriverWorkspace
                   ? trustRestrictions.blocksDriver
                     ? trustRestrictions.message ?? 'Tu operacion como conductor tiene una restriccion activa.'
                     : driverLicenseAlertMessage
@@ -1164,7 +1146,7 @@ export default function TripsPage() {
               </p>
             </div>
             <div className={styles.noticeActions}>
-              {activeMode === 'driver' ? (
+              {showDriverWorkspace ? (
                 <>
                   <Link className={styles.inlineLink} href="/conductor">
                     Conductor
@@ -1184,33 +1166,8 @@ export default function TripsPage() {
 
         <section className={`${styles.workspaceLayout} ${styles.reveal}`}>
           <aside className={styles.sidebar}>
-            {hasDriverMode ? (
-              <div className={styles.modeSwitch} aria-label="Cambiar modo de viajes">
-                <button
-                  className={[
-                    styles.modeButton,
-                    activeMode === 'passenger' ? styles.modeButtonActive : '',
-                  ].join(' ')}
-                  onClick={() => setActiveMode('passenger')}
-                  type="button"
-                >
-                  Pasajero
-                </button>
-                <button
-                  className={[
-                    styles.modeButton,
-                    activeMode === 'driver' ? styles.modeButtonActive : '',
-                  ].join(' ')}
-                  onClick={() => setActiveMode('driver')}
-                  type="button"
-                >
-                  Conductor
-                </button>
-              </div>
-            ) : null}
-
             <nav className={styles.viewNav} aria-label="Vistas de viajes">
-              {activeMode === 'driver' ? (
+              {showDriverWorkspace ? (
                 <>
                   <button
                     className={[
@@ -1294,7 +1251,7 @@ export default function TripsPage() {
               </div>
             ) : (
               <div className={styles.sidebarSupport}>
-                {activeMode === 'driver' ? (
+                {showDriverWorkspace ? (
                   <>
                     <strong>Conduccion</strong>
                     <p>
@@ -1324,7 +1281,7 @@ export default function TripsPage() {
 
           <div className={styles.workspaceSurface}>
             <div className={styles.workspaceStage}>
-            {activeMode === 'driver' ? (
+            {showDriverWorkspace ? (
               <>
                 {driverWorkspace === 'operation' ? (
                   <TripsOperationWorkspace

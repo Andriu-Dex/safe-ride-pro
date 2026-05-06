@@ -5,9 +5,11 @@ import { useEffect } from 'react';
 
 import { canAccessAudit } from '../../modules/audit/lib/audit-access';
 import { useAuth } from '../../modules/auth/hooks/use-auth';
+import { useAppExperienceMode } from '../../modules/auth/hooks/use-app-experience-mode';
 import {
   canAccessDashboard,
   canAccessDriverTools,
+  hasStartedDriverFlow,
 } from '../../modules/auth/lib/app-access';
 import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
 
@@ -23,7 +25,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isProfileRoute = pathname === '/perfil';
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const canUseDriverRoutes = canAccessDriverTools(authSession?.user);
+  const hasDriverProcessStarted = hasStartedDriverFlow(authSession?.user);
+  const { isDriverExperienceActive } = useAppExperienceMode(authSession?.user);
   const isDriverOnlyRoute = pathname === '/vehiculos' || pathname === '/viajes/nuevo';
+  const isDriverFlowRoute = pathname === '/conductor';
   const isDashboardRoute = pathname === '/dashboard';
   const isAdminOnlyRoute =
     pathname === '/auditoria' ||
@@ -53,6 +58,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       return;
     }
 
+    if (authSession && isDriverOnlyRoute && !isDriverExperienceActive) {
+      router.replace('/inicio');
+      return;
+    }
+
+    if (authSession && isDriverFlowRoute && hasDriverProcessStarted && !isDriverExperienceActive) {
+      router.replace('/inicio');
+      return;
+    }
+
     if (authSession && isDashboardRoute && !canUseDashboard) {
       router.replace('/inicio');
       return;
@@ -66,9 +81,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     canUseAdminRoutes,
     canUseDashboard,
     canUseDriverRoutes,
+    hasDriverProcessStarted,
     isAdminOnlyRoute,
     isDashboardRoute,
+    isDriverFlowRoute,
     isDriverOnlyRoute,
+    isDriverExperienceActive,
     isHydrated,
     isProfileRoute,
     pathname,
@@ -81,6 +99,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     !authSession ||
     (requiresOnboarding && !isProfileRoute) ||
     (isDriverOnlyRoute && !canUseDriverRoutes) ||
+    (isDriverOnlyRoute && !isDriverExperienceActive) ||
+    (isDriverFlowRoute && hasDriverProcessStarted && !isDriverExperienceActive) ||
     (isDashboardRoute && !canUseDashboard) ||
     (isAdminOnlyRoute && !canUseAdminRoutes)
   ) {

@@ -7,7 +7,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { canAccessAudit } from '../../modules/audit/lib/audit-access';
 import { useAuth } from '../../modules/auth/hooks/use-auth';
-import { canAccessDashboard, canAccessDriverTools } from '../../modules/auth/lib/app-access';
+import { useAppExperienceMode } from '../../modules/auth/hooks/use-app-experience-mode';
+import { canAccessDashboard } from '../../modules/auth/lib/app-access';
 import { getOperationalAccessState } from '../../modules/auth/lib/operational-context';
 import { NotificationBell } from '../../modules/notifications/components/notification-bell';
 import { getUserInitials } from '../../modules/users/lib/get-user-initials';
@@ -219,14 +220,21 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     operationalAccess.operationalMembership ?? operationalAccess.selectedMembership;
   const userInitials = getUserInitials(authSession?.user.fullName);
   const displayName = getDisplayName(authSession?.user.fullName);
-  const isApprovedDriver = canAccessDriverTools(authSession?.user);
+  const {
+    setExperienceMode,
+    canUseDriverMode,
+    hasApprovedDriverMode,
+    isDriverExperienceActive,
+  } = useAppExperienceMode(authSession?.user);
+  const isApprovedDriver = hasApprovedDriverMode;
   const dashboardVisible = canAccessDashboard(authSession?.user);
   const isAdminWorkspace = auditVisible;
   const effectiveDriverStatus =
     currentMembership?.effectiveDriverVerificationStatus
     ?? currentMembership?.driverVerificationStatus
     ?? DriverVerificationStatus.NotRequested;
-  const hasStartedDriverFlow = effectiveDriverStatus !== DriverVerificationStatus.NotRequested;
+  const hasStartedDriverFlow =
+    canUseDriverMode || effectiveDriverStatus !== DriverVerificationStatus.NotRequested;
 
   const visibleNavItems = useMemo(
     () => {
@@ -245,18 +253,29 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           return auditVisible;
         }
 
+        if (item.href === '/conductor') {
+          return isDriverExperienceActive && hasStartedDriverFlow;
+        }
+
         if (item.audience === 'driver') {
-          return isApprovedDriver;
+          return isApprovedDriver && isDriverExperienceActive;
         }
 
         if (item.audience === 'dashboard') {
-          return dashboardVisible;
+          return dashboardVisible && isDriverExperienceActive;
         }
 
         return true;
       });
     },
-    [auditVisible, dashboardVisible, isAdminWorkspace, isApprovedDriver],
+    [
+      auditVisible,
+      dashboardVisible,
+      hasStartedDriverFlow,
+      isAdminWorkspace,
+      isApprovedDriver,
+      isDriverExperienceActive,
+    ],
   );
 
   useEffect(() => {
@@ -310,6 +329,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     setIsMobileMenuOpen(false);
 
     if (isApprovedDriver || hasStartedDriverFlow) {
+      setExperienceMode('driver');
       router.push('/conductor');
       return;
     }
@@ -621,6 +641,42 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         {children}
       </main>
 
+      {!isAdminWorkspace && hasStartedDriverFlow ? (
+        <button
+          aria-label={
+            isDriverExperienceActive
+              ? 'Cambiar a modo pasajero'
+              : 'Cambiar a modo conductor'
+          }
+          className={`${styles.experienceFab} ${
+            isDriverExperienceActive ? styles.experienceFabToPassenger : styles.experienceFabToDriver
+          }`}
+          onClick={() =>
+            setExperienceMode(isDriverExperienceActive ? 'passenger' : 'driver')}
+          type="button"
+        >
+          <span className={styles.experienceFabIcon} aria-hidden="true">
+            {isDriverExperienceActive ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 15h14l-1.1-5H6.1L5 15Z" />
+                <circle cx="8.5" cy="16.8" r="1.4" />
+                <circle cx="15.5" cy="16.8" r="1.4" />
+                <path d="M6.2 10 8 6.8h8L17.8 10" />
+              </svg>
+            )}
+          </span>
+          <span className={styles.experienceFabCopy}>
+            <small>Cambiar a</small>
+            <strong>{isDriverExperienceActive ? 'Pasajero' : 'Conductor'}</strong>
+          </span>
+        </button>
+      ) : null}
+
       {isDriverPromptOpen ? (
         <div className={styles.modalOverlay} role="presentation">
           <div
@@ -651,6 +707,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                 className={styles.modalPrimaryButton}
                 onClick={() => {
                   setIsDriverPromptOpen(false);
+                  setExperienceMode('driver');
                   router.push('/conductor');
                 }}
                 type="button"
