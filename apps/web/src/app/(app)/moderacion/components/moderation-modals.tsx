@@ -368,17 +368,16 @@ export function ModerationModals({
           role="dialog"
         >
           <div
-            className={`modal-card modal-card-lg ${styles.modalCard}`}
+            className={styles.modalCard}
             onClick={(event) => event.stopPropagation()}
           >
             <div className={styles.modalHeader}>
               <div>
-                <p className={styles.modalKicker}>Reporte</p>
                 <h2 className={styles.modalTitle} id="report-review-modal-title">
                   {activeReport.reportedFullName}
                 </h2>
                 <p className={styles.modalSubtitle}>
-                  {activeReport.reporterFullName} | {activeReport.institutionName}
+                  Reportado por {activeReport.reporterFullName} &bull; {activeReport.institutionName}
                 </p>
               </div>
               <Button onClick={onCloseReport} variant="ghost">
@@ -386,107 +385,71 @@ export function ModerationModals({
               </Button>
             </div>
 
-            <div className={styles.modalBadgeRow}>
-              <StatusPill
-                label={getReportStatusLabel(activeReport.status)}
-                tone={getReportStatusTone(activeReport.status)}
-              />
-              <StatusPill
-                label={getReportSeverityLabel(activeReport.reason)}
-                tone={getReportSeverityTone(activeReport.reason)}
-              />
+            <div className={styles.modalBody}>
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Detalles del Reporte</h3>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Estado / Severidad</span>
+                  <div className={styles.modalBadges}>
+                    <StatusPill label={getReportStatusLabel(activeReport.status)} tone={getReportStatusTone(activeReport.status)} />
+                    <StatusPill label={getReportSeverityLabel(activeReport.reason)} tone={getReportSeverityTone(activeReport.reason)} />
+                  </div>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Motivo</span>
+                  <span className={styles.modalFieldValue}>{getReportReasonLabel(activeReport.reason)}</span>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Fecha de creación</span>
+                  <span className={styles.modalFieldValue}>{formatDateTime(activeReport.createdAt)}</span>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Ruta Implicada</span>
+                  <span className={styles.modalFieldValue}>{activeReport.tripOriginLabel} &rarr; {activeReport.tripDestinationLabel}</span>
+                </div>
+              </div>
+
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Información Adicional</h3>
+                {activeReport.description && (
+                  <div className={styles.modalField}>
+                    <span className={styles.modalFieldLabel}>Descripción del usuario</span>
+                    <div className={styles.modalNote}>{activeReport.description}</div>
+                  </div>
+                )}
+                {activeReport.evidenceFileKey && (
+                  <div className={styles.modalActions}>
+                    <Button disabled={isOpeningReportEvidenceId === activeReport.id} onClick={() => void onOpenReportEvidencePreview(activeReport)} variant="secondary">
+                      Ver Evidencia
+                    </Button>
+                  </div>
+                )}
+                {activeReport.tripClosureNote && (
+                  <div className={styles.modalField} style={{marginTop: '1rem'}}>
+                    <span className={styles.modalFieldLabel}>Nota de Cierre Operativo</span>
+                    <div className={styles.modalNote}>{activeReport.tripClosureNote}</div>
+                  </div>
+                )}
+                {activeReport.reviewNote && (
+                  <div className={styles.modalField} style={{marginTop: '1rem'}}>
+                    <span className={styles.modalFieldLabel}>Nota Administrativa Previa</span>
+                    <div className={styles.modalNote}>{activeReport.reviewNote}</div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className={styles.modalGrid}>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Motivo</span>
-                <strong className={styles.modalFieldValue}>
-                  {getReportReasonLabel(activeReport.reason)}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Creado</span>
-                <strong className={styles.modalFieldValue}>
-                  {formatDateTime(activeReport.createdAt)}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Ruta</span>
-                <strong className={styles.modalFieldValue}>
-                  {activeReport.tripOriginLabel} -&gt; {activeReport.tripDestinationLabel}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Antiguedad</span>
-                <strong className={styles.modalFieldValue}>
-                  {formatRelativeElapsed(activeReport.createdAt)}
-                </strong>
-              </div>
-            </div>
-
-            {activeReport.description ? (
-              <div className={styles.modalNote}>
-                <span className={styles.modalFieldLabel}>Descripcion</span>
-                <p>{activeReport.description}</p>
-              </div>
-            ) : null}
-
-            {activeReport.tripClosureNote ? (
-              <div className={styles.modalNoteMuted}>
-                <span className={styles.modalFieldLabel}>Nota de cierre operativo</span>
-                <p>{activeReport.tripClosureNote}</p>
-              </div>
-            ) : null}
-
-            <div className={styles.modalActions}>
-              {activeReport.evidenceFileKey ? (
+            <div className={styles.modalFooter}>
+              {activeReport.status === ReportStatus.Pending || activeReport.status === ReportStatus.UnderReview ? (
                 <>
-                  <Button
-                    disabled={isOpeningReportEvidenceId === activeReport.id}
-                    onClick={() => void onOpenReportEvidencePreview(activeReport)}
-                    variant="secondary"
-                  >
-                    <span className={styles.buttonIcon}>
-                      <InlineIcon className={styles.iconSmall} name="file" />
-                    </span>
-                    Ver evidencia
-                  </Button>
-                  <Button
-                    disabled={isDownloadingReportEvidenceId === activeReport.id}
-                    onClick={() => void onDownloadReportEvidence(activeReport)}
-                    variant="ghost"
-                  >
-                    Descargar
-                  </Button>
-                </>
-              ) : (
-                <span className={styles.rowTagMuted}>Sin evidencia adjunta</span>
-              )}
-            </div>
-
-            {activeReport.reviewNote ? (
-              <div className={styles.modalNoteMuted}>
-                <span className={styles.modalFieldLabel}>Nota previa</span>
-                <p>{activeReport.reviewNote}</p>
-              </div>
-            ) : null}
-
-            {activeReport.status === ReportStatus.Pending ||
-            activeReport.status === ReportStatus.UnderReview ? (
-              <div className={styles.modalStack}>
-                <TextareaField
-                  label="Nota administrativa"
-                  onChange={(event) => onReviewNoteChange(activeReport.id, event.target.value)}
-                  placeholder="Comentario interno o motivo de la decision"
-                  rows={3}
-                  value={reviewNotes[activeReport.id] ?? ''}
-                />
-                {requiresDetailedReviewNote(activeReport.reason) ? (
-                  <p className={styles.modalNoteMuted}>
-                    Minimo {HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH} caracteres para cerrar.
-                  </p>
-                ) : null}
-                <div className={styles.modalActions}>
+                  <TextareaField
+                    label={`Nota Administrativa ${requiresDetailedReviewNote(activeReport.reason) ? `(Mínimo ${HIGH_SEVERITY_REPORT_REVIEW_MIN_NOTE_LENGTH} caracteres)` : ''}`}
+                    onChange={(event) => onReviewNoteChange(activeReport.id, event.target.value)}
+                    placeholder="Decisión y comentario interno"
+                    rows={3}
+                    value={reviewNotes[activeReport.id] ?? ''}
+                  />
+                  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                   {activeReport.status === ReportStatus.Pending ? (
                     <Button
                       disabled={isReviewingReportId === activeReport.id}
@@ -525,13 +488,12 @@ export function ModerationModals({
                   >
                     Desestimar
                   </Button>
-                </div>
-              </div>
-            ) : (
-              <p className={styles.modalNoteMuted}>
-                Cerrado por {activeReport.reviewedByFullName ?? 'administracion'}.
-              </p>
-            )}
+                  </div>
+                </>
+              ) : (
+                <div className={styles.modalNote}>Cerrado por {activeReport.reviewedByFullName ?? 'administración'}.</div>
+              )}
+            </div>
           </div>
         </div>
       ) : null}
@@ -545,12 +507,11 @@ export function ModerationModals({
           role="dialog"
         >
           <div
-            className={`modal-card modal-card-lg ${styles.modalCard}`}
+            className={styles.modalCard}
             onClick={(event) => event.stopPropagation()}
           >
             <div className={styles.modalHeader}>
               <div>
-                <p className={styles.modalKicker}>Sancion activa</p>
                 <h2 className={styles.modalTitle} id="sanction-review-modal-title">
                   {activeSanction.membershipUserFullName}
                 </h2>
@@ -561,58 +522,44 @@ export function ModerationModals({
               </Button>
             </div>
 
-            <div className={styles.modalBadgeRow}>
-              <StatusPill
-                label={getOperationalSanctionTypeLabel(activeSanction.type)}
-                tone={getOperationalSanctionTone(activeSanction.type)}
-              />
-              <StatusPill
-                label={getOperationalSanctionScopeLabel(activeSanction.scope)}
-                tone="neutral"
-              />
-            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Restricción Vigente</h3>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Sanción</span>
+                  <div className={styles.modalBadges}>
+                    <StatusPill label={getOperationalSanctionTypeLabel(activeSanction.type)} tone={getOperationalSanctionTone(activeSanction.type)} />
+                    <StatusPill label={getOperationalSanctionScopeLabel(activeSanction.scope)} tone="neutral" />
+                  </div>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Inicio de Sanción</span>
+                  <span className={styles.modalFieldValue}>{formatDateTime(activeSanction.startedAt)}</span>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Fin de Sanción</span>
+                  <span className={styles.modalFieldValue}>{activeSanction.endsAt ? formatDateTime(activeSanction.endsAt) : 'Indefinida'}</span>
+                </div>
+              </div>
 
-            <div className={styles.modalGrid}>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Inicio</span>
-                <strong className={styles.modalFieldValue}>
-                  {formatDateTime(activeSanction.startedAt)}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Fin</span>
-                <strong className={styles.modalFieldValue}>
-                  {activeSanction.endsAt ? formatDateTime(activeSanction.endsAt) : 'Indefinida'}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Origen</span>
-                <strong className={styles.modalFieldValue}>
-                  {activeSanction.isAutomatic ? 'Automatica' : 'Manual'}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Disparador</span>
-                <strong className={styles.modalFieldValue}>
-                  {getOperationalSanctionTriggerLabel(activeSanction.trigger)}
-                </strong>
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Motivo del Sistema</h3>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Disparador: {getOperationalSanctionTriggerLabel(activeSanction.trigger)} ({activeSanction.isAutomatic ? 'Automática' : 'Manual'})</span>
+                  <div className={styles.modalNote}>{activeSanction.reason}</div>
+                </div>
               </div>
             </div>
 
-            <div className={styles.modalNote}>
-              <span className={styles.modalFieldLabel}>Motivo</span>
-              <p>{activeSanction.reason}</p>
-            </div>
-
-            <div className={styles.modalStack}>
+            <div className={styles.modalFooter}>
               <TextareaField
-                label="Nota para levantar"
+                label="Nota Administrativa (Levantamiento Manual)"
                 onChange={(event) => onSanctionLiftNoteChange(activeSanction.id, event.target.value)}
-                placeholder="Justifica por que corresponde levantar esta sancion"
+                placeholder={`Justifica por qué corresponde levantar (Mínimo ${MANUAL_SANCTION_LIFT_NOTE_MIN_LENGTH} caracteres)`}
                 rows={3}
                 value={sanctionLiftNotes[activeSanction.id] ?? ''}
               />
-              <div className={styles.modalActions}>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                 <Button
                   disabled={
                     isLiftingSanctionId === activeSanction.id ||
@@ -638,17 +585,16 @@ export function ModerationModals({
           role="dialog"
         >
           <div
-            className={`modal-card modal-card-lg ${styles.modalCard}`}
+            className={styles.modalCard}
             onClick={(event) => event.stopPropagation()}
           >
             <div className={styles.modalHeader}>
               <div>
-                <p className={styles.modalKicker}>Apelacion</p>
                 <h2 className={styles.modalTitle} id="appeal-review-modal-title">
                   {activeAppeal.affectedFullName}
                 </h2>
                 <p className={styles.modalSubtitle}>
-                  Solicita {activeAppeal.requestedByFullName}
+                  Solicita {activeAppeal.requestedByFullName} &bull; {activeAppeal.institutionName}
                 </p>
               </div>
               <Button onClick={onCloseAppeal} variant="ghost">
@@ -656,66 +602,44 @@ export function ModerationModals({
               </Button>
             </div>
 
-            <div className={styles.modalBadgeRow}>
-              <StatusPill
-                label={getSanctionAppealStatusLabel(activeAppeal.status)}
-                tone={getSanctionAppealStatusTone(activeAppeal.status)}
-              />
-              <StatusPill
-                label={getOperationalSanctionTypeLabel(activeAppeal.sanctionType)}
-                tone={getOperationalSanctionTone(activeAppeal.sanctionType)}
-              />
-            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Sanción Original</h3>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Estado de Apelación y Sanción</span>
+                  <div className={styles.modalBadges}>
+                    <StatusPill label={getSanctionAppealStatusLabel(activeAppeal.status)} tone={getSanctionAppealStatusTone(activeAppeal.status)} />
+                    <StatusPill label={getOperationalSanctionTypeLabel(activeAppeal.sanctionType)} tone={getOperationalSanctionTone(activeAppeal.sanctionType)} />
+                    <StatusPill label={getOperationalSanctionScopeLabel(activeAppeal.sanctionScope)} tone="neutral" />
+                  </div>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Disparador / Motivo Original</span>
+                  <span className={styles.modalFieldValue}>{getOperationalSanctionTriggerLabel(activeAppeal.sanctionTrigger)}</span>
+                  <div className={styles.modalNote} style={{marginTop: '0.25rem'}}>{activeAppeal.sanctionReason}</div>
+                </div>
+              </div>
 
-            <div className={styles.modalGrid}>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Alcance</span>
-                <strong className={styles.modalFieldValue}>
-                  {getOperationalSanctionScopeLabel(activeAppeal.sanctionScope)}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Sancion</span>
-                <strong className={styles.modalFieldValue}>
-                  {activeAppeal.sanctionEndsAt
-                    ? `Hasta ${formatDateTime(activeAppeal.sanctionEndsAt)}`
-                    : 'Indefinida'}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Disparador</span>
-                <strong className={styles.modalFieldValue}>
-                  {getOperationalSanctionTriggerLabel(activeAppeal.sanctionTrigger)}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Institucion</span>
-                <strong className={styles.modalFieldValue}>
-                  {activeAppeal.institutionName}
-                </strong>
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Defensa del Usuario</h3>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Justificación</span>
+                  <div className={styles.modalNote}>{activeAppeal.reason}</div>
+                </div>
               </div>
             </div>
 
-            <div className={styles.modalNote}>
-              <span className={styles.modalFieldLabel}>Apelacion</span>
-              <p>{activeAppeal.reason}</p>
-            </div>
-
-            <div className={styles.modalNoteMuted}>
-              <span className={styles.modalFieldLabel}>Sancion original</span>
-              <p>{activeAppeal.sanctionReason}</p>
-            </div>
-
-            {activeAppeal.status === OperationalSanctionAppealStatus.Pending ? (
-              <div className={styles.modalStack}>
+            <div className={styles.modalFooter}>
+              {activeAppeal.status === OperationalSanctionAppealStatus.Pending ? (
+                <>
                 <TextareaField
-                  label="Nota administrativa"
+                  label={`Nota Administrativa (Mínimo ${SANCTION_APPEAL_REVIEW_NOTE_MIN_LENGTH} caracteres)`}
                   onChange={(event) => onAppealReviewNoteChange(activeAppeal.id, event.target.value)}
-                  placeholder="Explica la decision administrativa"
+                  placeholder="Resolución administrativa"
                   rows={3}
                   value={appealReviewNotes[activeAppeal.id] ?? ''}
                 />
-                <div className={styles.modalActions}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                   <Button
                     disabled={
                       isReviewingAppealId === activeAppeal.id ||
@@ -747,13 +671,12 @@ export function ModerationModals({
                   >
                     Rechazar apelacion
                   </Button>
-                </div>
-              </div>
-            ) : (
-              <p className={styles.modalNoteMuted}>
-                Cerrada por {activeAppeal.reviewedByFullName ?? 'administracion'}.
-              </p>
-            )}
+                  </div>
+                </>
+              ) : (
+                <div className={styles.modalNote}>Cerrada por {activeAppeal.reviewedByFullName ?? 'administración'}.</div>
+              )}
+            </div>
           </div>
         </div>
       ) : null}

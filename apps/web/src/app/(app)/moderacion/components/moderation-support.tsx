@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '../../../../components/ui/button';
 import styles from '../page.module.css';
 
 export type ModerationWorkspaceSection =
@@ -8,39 +7,6 @@ export type ModerationWorkspaceSection =
   | 'reports'
   | 'sanctions'
   | 'appeals';
-
-export function getWorkspaceHeadline(workspace: ModerationWorkspaceSection): {
-  title: string;
-  subtitle: string;
-} {
-  switch (workspace) {
-    case 'driver':
-      return {
-        title: 'Solicitudes de conductor',
-        subtitle: '',
-      };
-    case 'reports':
-      return {
-        title: 'Bandeja de reportes',
-        subtitle: 'Prioriza incidentes y resuelve cada caso con una nota administrativa clara.',
-      };
-    case 'sanctions':
-      return {
-        title: 'Sanciones activas',
-        subtitle: 'Controla restricciones vigentes y documenta levantamientos cuando corresponda.',
-      };
-    case 'appeals':
-      return {
-        title: 'Apelaciones pendientes',
-        subtitle: 'Resuelve solicitudes de revision disciplinaria con criterio consistente.',
-      };
-    default:
-      return {
-        title: 'Centro de moderacion',
-        subtitle: 'Gestion administrativa de conductores, reportes, sanciones y apelaciones.',
-      };
-  }
-}
 
 type IconName =
   | 'driver'
@@ -129,72 +95,17 @@ export function InlineIcon({ name, className }: { name: IconName; className?: st
   }
 }
 
-type StatTone = 'neutral' | 'warning' | 'danger' | 'success';
-
-const STAT_TONE_CLASSES: Record<StatTone, string> = {
-  neutral: '',
-  warning: styles.statChipWarning,
-  danger: styles.statChipDanger,
-  success: styles.statChipSuccess,
-};
-
 export function StatChip({
   label,
   value,
-  tone = 'neutral',
 }: {
   label: string;
   value: string | number;
-  tone?: StatTone;
 }) {
   return (
-    <div className={[styles.statChip, STAT_TONE_CLASSES[tone]].filter(Boolean).join(' ')}>
-      <span className={styles.statLabel}>{label}</span>
-      <strong className={styles.statValue}>{value}</strong>
-    </div>
-  );
-}
-
-type PaginationProps = {
-  page: number;
-  totalPages: number;
-  totalItems: number;
-  pageSize: number;
-  onPrev: () => void;
-  onNext: () => void;
-};
-
-export function PaginationBar({
-  page,
-  totalPages,
-  totalItems,
-  pageSize,
-  onPrev,
-  onNext,
-}: PaginationProps) {
-  if (totalItems <= pageSize) {
-    return null;
-  }
-
-  const start = Math.min(totalItems, (page - 1) * pageSize + 1);
-  const end = Math.min(totalItems, page * pageSize);
-
-  return (
-    <div className={styles.pagination}>
-      <span className={styles.paginationInfo}>
-        Mostrando {start}-{end} de {totalItems}
-      </span>
-      <div className={styles.paginationActions}>
-        <Button disabled={page <= 1} onClick={onPrev} variant="ghost">
-          Anterior
-        </Button>
-        <span className={styles.paginationLabel}>
-          {page}/{totalPages}
-        </span>
-        <Button disabled={page >= totalPages} onClick={onNext} variant="ghost">
-          Siguiente
-        </Button>
-      </div>
+    <div className={styles.statCard}>
+      <span className={styles.statCardLabel}>{label}</span>
+      <strong className={styles.statCardValue}>{value}</strong>
     </div>
   );
 }

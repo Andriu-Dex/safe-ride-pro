@@ -79,10 +79,8 @@ import {
   ReportEvidencePreviewState,
 } from './components/moderation-modals';
 import {
-  getWorkspaceHeadline,
   InlineIcon,
   ModerationWorkspaceSection,
-  PaginationBar,
   StatChip,
 } from './components/moderation-support';
 import styles from './page.module.css';
@@ -795,7 +793,6 @@ export default function ModerationPage() {
   };
 
   const activeFiltersCount = [institutionId, reportStatusFilter, driverApplicationStatusFilter].filter(Boolean).length;
-  const workspaceHeadline = getWorkspaceHeadline(activeWorkspace);
   const orderedReviewableReports = useMemo(
     () => [...reviewableReports].sort((left, right) => getReportPriorityRank(left) - getReportPriorityRank(right)),
     [reviewableReports],
@@ -822,28 +819,28 @@ export default function ModerationPage() {
   ).length;
 
   const driverStats = [
-    { label: 'Pendientes', value: pendingDriverApplicationsCount, tone: pendingDriverApplicationsCount ? 'warning' : 'success' as const },
-    { label: 'Aprobadas', value: reviewableDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Approved).length, tone: 'neutral' as const },
-    { label: 'Rechazadas', value: reviewableDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Rejected).length, tone: 'danger' as const },
-  ] as const;
+    { label: 'Pendientes', value: pendingDriverApplicationsCount },
+    { label: 'Aprobadas', value: reviewableDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Approved).length },
+    { label: 'Rechazadas', value: reviewableDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Rejected).length },
+  ];
 
   const reportStats = [
-    { label: 'Abiertos', value: openReportsCount, tone: openReportsCount ? 'warning' : 'success' as const },
-    { label: 'Alta severidad', value: reviewableReports.filter((item) => requiresDetailedReviewNote(item.reason) && (item.status === ReportStatus.Pending || item.status === ReportStatus.UnderReview)).length, tone: 'danger' as const },
-    { label: 'Resueltos', value: reviewableReports.filter((item) => item.status === ReportStatus.Resolved).length, tone: 'success' as const },
-  ] as const;
+    { label: 'Abiertos', value: openReportsCount },
+    { label: 'Alta severidad', value: reviewableReports.filter((item) => requiresDetailedReviewNote(item.reason) && (item.status === ReportStatus.Pending || item.status === ReportStatus.UnderReview)).length },
+    { label: 'Resueltos', value: reviewableReports.filter((item) => item.status === ReportStatus.Resolved).length },
+  ];
 
   const sanctionStats = [
-    { label: 'Activas', value: reviewableSanctions.length, tone: reviewableSanctions.length ? 'warning' : 'success' as const },
-    { label: 'Apeladas', value: sanctionsWithPendingAppeals.size, tone: sanctionsWithPendingAppeals.size ? 'warning' : 'neutral' as const },
-    { label: 'Manuales', value: reviewableSanctions.filter((item) => !item.isAutomatic).length, tone: 'neutral' as const },
-  ] as const;
+    { label: 'Activas', value: reviewableSanctions.length },
+    { label: 'Apeladas', value: sanctionsWithPendingAppeals.size },
+    { label: 'Manuales', value: reviewableSanctions.filter((item) => !item.isAutomatic).length },
+  ];
 
   const appealStats = [
-    { label: 'Pendientes', value: pendingAppealsCount, tone: pendingAppealsCount ? 'warning' : 'success' as const },
-    { label: 'Aprobadas', value: reviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Approved).length, tone: 'success' as const },
-    { label: 'Rechazadas', value: reviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Rejected).length, tone: 'danger' as const },
-  ] as const;
+    { label: 'Pendientes', value: pendingAppealsCount },
+    { label: 'Aprobadas', value: reviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Approved).length },
+    { label: 'Rechazadas', value: reviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Rejected).length },
+  ];
 
   const driverPageCount = Math.max(1, Math.ceil(reviewableDriverApplications.length / PAGE_SIZES.driver));
   const reportPageCount = Math.max(1, Math.ceil(orderedReviewableReports.length / PAGE_SIZES.reports));
@@ -892,16 +889,10 @@ export default function ModerationPage() {
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
         <section className={styles.page}>
-          <section className={styles.hero}>
-            <div className={styles.heroCopy}>
-              <p className={styles.kicker}>Moderacion</p>
-              <h1 className={styles.heroTitle}>Centro de control</h1>
-              <p className={styles.heroLead}>
-                Esta vista solo esta disponible para administradores institucionales y superadministracion.
-              </p>
-            </div>
-            <StatusPill label="Acceso restringido" tone="warning" />
-          </section>
+          <header className={styles.dashboardHeader}>
+            <h1 className={styles.headerTitle}>Moderación (Acceso Restringido)</h1>
+            <Button variant="ghost" onClick={() => router.push('/')}>Volver al Inicio</Button>
+          </header>
         </section>
       </>
     );
@@ -912,510 +903,362 @@ export default function ModerationPage() {
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
       <section className={styles.page}>
-        <section className={styles.hero}>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Moderacion</p>
-            <h1 className={styles.heroTitle}>Centro de control</h1>
-            <p className={styles.heroLead}>
-              Trabaja solo con decisiones de gestion: conductores, reportes, sanciones y apelaciones.
-            </p>
-          </div>
+        <header className={styles.dashboardHeader}>
+          <h1 className={styles.headerTitle}>Centro de Moderación</h1>
+          <Button
+            disabled={isRefreshingData}
+            onClick={() => void refreshData(true)}
+            variant="secondary"
+          >
+            <span className={styles.buttonIcon}>
+              <InlineIcon className={styles.icon} name="refresh" />
+            </span>
+            {isRefreshingData ? 'Actualizando...' : 'Actualizar Datos'}
+          </Button>
+        </header>
 
-          <div className={styles.heroActions}>
-            <div className={styles.heroChips}>
-              <span className={styles.heroChip}>{pendingDriverApplicationsCount} conductores pendientes</span>
-              <span className={styles.heroChip}>{openReportsCount} reportes abiertos</span>
-            </div>
-            <Button
-              disabled={isRefreshingData}
-              onClick={() => void refreshData(true)}
-              variant="secondary"
+        <div className={styles.dashboardTabs}>
+          <button
+            aria-pressed={activeWorkspace === 'driver'}
+            className={[styles.dashboardTab, activeWorkspace === 'driver' ? styles.dashboardTabActive : ''].filter(Boolean).join(' ')}
+            onClick={() => openWorkspace('driver')}
+          >
+            Conductores
+            {pendingDriverApplicationsCount > 0 && <span className={styles.tabBadge}>{pendingDriverApplicationsCount}</span>}
+          </button>
+          <button
+            aria-pressed={activeWorkspace === 'reports'}
+            className={[styles.dashboardTab, activeWorkspace === 'reports' ? styles.dashboardTabActive : ''].filter(Boolean).join(' ')}
+            onClick={() => openWorkspace('reports')}
+          >
+            Reportes
+            {openReportsCount > 0 && <span className={styles.tabBadge}>{openReportsCount}</span>}
+          </button>
+          <button
+            aria-pressed={activeWorkspace === 'sanctions'}
+            className={[styles.dashboardTab, activeWorkspace === 'sanctions' ? styles.dashboardTabActive : ''].filter(Boolean).join(' ')}
+            onClick={() => openWorkspace('sanctions')}
+          >
+            Sanciones
+            {reviewableSanctions.length > 0 && <span className={styles.tabBadge}>{reviewableSanctions.length}</span>}
+          </button>
+          <button
+            aria-pressed={activeWorkspace === 'appeals'}
+            className={[styles.dashboardTab, activeWorkspace === 'appeals' ? styles.dashboardTabActive : ''].filter(Boolean).join(' ')}
+            onClick={() => openWorkspace('appeals')}
+          >
+            Apelaciones
+            {pendingAppealsCount > 0 && <span className={styles.tabBadge}>{pendingAppealsCount}</span>}
+          </button>
+        </div>
+
+        <div className={styles.filtersBar}>
+          <SelectField
+            label="Institución"
+            onChange={(event) => setInstitutionId(event.target.value)}
+            value={institutionId}
+          >
+            <option value="">Todas las instituciones</option>
+            {institutionOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </SelectField>
+
+          {activeWorkspace === 'driver' && (
+            <SelectField
+              label="Estado de solicitud"
+              onChange={(event) => setDriverApplicationStatusFilter(event.target.value)}
+              value={driverApplicationStatusFilter}
             >
-              <span className={styles.buttonIcon}>
-                <InlineIcon className={styles.iconSmall} name="refresh" />
-              </span>
-              {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
-            </Button>
+              <option value="">Todos los estados</option>
+              <option value={DriverVerificationStatus.PendingVerification}>Pendientes</option>
+              <option value={DriverVerificationStatus.Approved}>Aprobadas</option>
+              <option value={DriverVerificationStatus.Rejected}>Rechazadas</option>
+              <option value={DriverVerificationStatus.Suspended}>Suspendidas</option>
+            </SelectField>
+          )}
+
+          {activeWorkspace === 'reports' && (
+            <SelectField
+              label="Estado del reporte"
+              onChange={(event) => setReportStatusFilter(event.target.value)}
+              value={reportStatusFilter}
+            >
+              <option value="">Todos los estados</option>
+              <option value={ReportStatus.Pending}>Pendientes</option>
+              <option value={ReportStatus.UnderReview}>En revisión</option>
+              <option value={ReportStatus.Resolved}>Resueltos</option>
+              <option value={ReportStatus.Dismissed}>Desestimados</option>
+            </SelectField>
+          )}
+
+          <div className={styles.filterActions}>
+            <Button onClick={() => void refreshData(true)}>Aplicar filtros</Button>
+            {activeFiltersCount > 0 && (
+              <Button onClick={handleResetFilters} variant="ghost">Limpiar</Button>
+            )}
           </div>
-        </section>
+        </div>
 
-        <div className={styles.board}>
-          <aside className={styles.rail}>
-            <section className={styles.railSection}>
-              <div className={styles.railHeader}>
-                <div>
-                  <p className={styles.railLabel}>Mesas</p>
-                  <h2 className={styles.railTitle}>Flujo activo</h2>
-                </div>
-              </div>
+        <div className={styles.statsRow}>
+          {(activeWorkspace === 'driver' ? driverStats :
+            activeWorkspace === 'reports' ? reportStats :
+            activeWorkspace === 'sanctions' ? sanctionStats :
+            appealStats).map((stat) => (
+            <StatChip key={stat.label} label={stat.label} value={stat.value} />
+          ))}
+        </div>
 
-              <div className={styles.tabList}>
-                <button
-                  aria-pressed={activeWorkspace === 'driver'}
-                  className={[styles.tabButton, activeWorkspace === 'driver' ? styles.tabButtonActive : ''].filter(Boolean).join(' ')}
-                  onClick={() => openWorkspace('driver')}
-                  type="button"
-                >
-                  <span className={styles.tabIcon}>
-                    <InlineIcon className={styles.iconSmall} name="driver" />
-                  </span>
-                  <span className={styles.tabBody}>
-                    <span className={styles.tabLabel}>Conductores</span>
-                    <span className={styles.tabMeta}>{pendingDriverApplicationsCount} pendientes</span>
-                  </span>
-                </button>
-
-                <button
-                  aria-pressed={activeWorkspace === 'reports'}
-                  className={[styles.tabButton, activeWorkspace === 'reports' ? styles.tabButtonActive : ''].filter(Boolean).join(' ')}
-                  onClick={() => openWorkspace('reports')}
-                  type="button"
-                >
-                  <span className={styles.tabIcon}>
-                    <InlineIcon className={styles.iconSmall} name="report" />
-                  </span>
-                  <span className={styles.tabBody}>
-                    <span className={styles.tabLabel}>Reportes</span>
-                    <span className={styles.tabMeta}>{openReportsCount} abiertos</span>
-                  </span>
-                </button>
-
-                <button
-                  aria-pressed={activeWorkspace === 'sanctions'}
-                  className={[styles.tabButton, activeWorkspace === 'sanctions' ? styles.tabButtonActive : ''].filter(Boolean).join(' ')}
-                  onClick={() => openWorkspace('sanctions')}
-                  type="button"
-                >
-                  <span className={styles.tabIcon}>
-                    <InlineIcon className={styles.iconSmall} name="sanction" />
-                  </span>
-                  <span className={styles.tabBody}>
-                    <span className={styles.tabLabel}>Sanciones</span>
-                    <span className={styles.tabMeta}>{reviewableSanctions.length} activas</span>
-                  </span>
-                </button>
-
-                <button
-                  aria-pressed={activeWorkspace === 'appeals'}
-                  className={[styles.tabButton, activeWorkspace === 'appeals' ? styles.tabButtonActive : ''].filter(Boolean).join(' ')}
-                  onClick={() => openWorkspace('appeals')}
-                  type="button"
-                >
-                  <span className={styles.tabIcon}>
-                    <InlineIcon className={styles.iconSmall} name="appeal" />
-                  </span>
-                  <span className={styles.tabBody}>
-                    <span className={styles.tabLabel}>Apelaciones</span>
-                    <span className={styles.tabMeta}>{pendingAppealsCount} pendientes</span>
-                  </span>
-                </button>
-              </div>
-            </section>
-
-            <section className={styles.railSection}>
-              <div className={styles.railHeader}>
-                <div>
-                  <p className={styles.railLabel}>Filtros</p>
-                  <h2 className={styles.railTitle}>Consulta</h2>
-                </div>
-                {activeFiltersCount ? (
-                  <span className={styles.filterBadge}>{activeFiltersCount}</span>
-                ) : null}
-              </div>
-
-              <div className={styles.filterForm}>
-                <SelectField
-                  label="Institucion"
-                  onChange={(event) => setInstitutionId(event.target.value)}
-                  value={institutionId}
-                >
-                  <option value="">Todas las accesibles</option>
-                  {institutionOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </SelectField>
-
-                {activeWorkspace === 'driver' ? (
-                  <SelectField
-                    label="Estado de solicitud"
-                    onChange={(event) => setDriverApplicationStatusFilter(event.target.value)}
-                    value={driverApplicationStatusFilter}
-                  >
-                    <option value="">Todos</option>
-                    <option value={DriverVerificationStatus.PendingVerification}>Pendientes</option>
-                    <option value={DriverVerificationStatus.Approved}>Aprobadas</option>
-                    <option value={DriverVerificationStatus.Rejected}>Rechazadas</option>
-                    <option value={DriverVerificationStatus.Suspended}>Suspendidas</option>
-                  </SelectField>
-                ) : null}
-
-                {activeWorkspace === 'reports' ? (
-                  <SelectField
-                    label="Estado del reporte"
-                    onChange={(event) => setReportStatusFilter(event.target.value)}
-                    value={reportStatusFilter}
-                  >
-                    <option value="">Todos</option>
-                    <option value={ReportStatus.Pending}>Pendientes</option>
-                    <option value={ReportStatus.UnderReview}>En revision</option>
-                    <option value={ReportStatus.Resolved}>Resueltos</option>
-                    <option value={ReportStatus.Dismissed}>Desestimados</option>
-                  </SelectField>
-                ) : null}
-
-                <div className={styles.filterActions}>
-                  <Button onClick={() => void refreshData(true)}>Aplicar filtros</Button>
-                  <Button onClick={handleResetFilters} type="button" variant="ghost">
-                    Limpiar
-                  </Button>
-                </div>
-              </div>
-            </section>
-          </aside>
-
-          <main className={styles.content}>
-            <header className={styles.contentHeader}>
-              <div>
-                <p className={styles.contentKicker}>Mesa activa</p>
-                <h2 className={styles.contentTitle}>{workspaceHeadline.title}</h2>
-                <p className={styles.contentSubtitle}>{workspaceHeadline.subtitle}</p>
-              </div>
-              <div className={styles.contentActions}>
-                {activeWorkspace === 'driver' ? (
-                  <StatusPill
-                    label={`${pendingDriverApplicationsCount} pendientes`}
-                    tone={pendingDriverApplicationsCount ? 'warning' : 'success'}
-                  />
-                ) : null}
-                {activeWorkspace === 'reports' ? (
-                  <StatusPill
-                    label={`${openReportsCount} abiertos`}
-                    tone={openReportsCount ? 'warning' : 'success'}
-                  />
-                ) : null}
-                {activeWorkspace === 'sanctions' ? (
-                  <StatusPill
-                    label={`${reviewableSanctions.length} activas`}
-                    tone={reviewableSanctions.length ? 'warning' : 'success'}
-                  />
-                ) : null}
-                {activeWorkspace === 'appeals' ? (
-                  <StatusPill
-                    label={`${pendingAppealsCount} pendientes`}
-                    tone={pendingAppealsCount ? 'warning' : 'success'}
-                  />
-                ) : null}
-              </div>
-            </header>
-
-            {activeWorkspace === 'driver' ? (
-              <section className={styles.section}>
-                <div className={styles.sectionTop}>
-                  <div>
-                    <h3 className={styles.sectionTitle}>Solicitudes</h3>
-                    <p className={styles.sectionMeta}>{reviewableDriverApplications.length} resultados</p>
-                  </div>
-                </div>
-
-                <div className={styles.statsRow}>
-                  {driverStats.map((stat) => (
-                    <StatChip key={stat.label} label={stat.label} tone={stat.tone} value={stat.value} />
-                  ))}
-                </div>
-
-                {paginatedDriverApplications.length ? (
-                  <div className={styles.list}>
-                    {paginatedDriverApplications.map((application, index) => {
-                      const isHighlighted = highlightedMembershipId === application.membershipId;
-
-                      return (
-                        <div
-                          key={application.membershipId}
-                          className={[styles.listRow, isHighlighted ? styles.rowHighlight : ''].filter(Boolean).join(' ')}
-                          style={{ animationDelay: `${index * 0.04}s` }}
-                        >
-                          <div className={styles.rowMain}>
-                            <div className={styles.rowTitle}>{application.userFullName}</div>
-                            <div className={styles.rowMeta}>
-                              {application.userEmail} | {application.institutionName}
-                            </div>
-                          </div>
-                          <div className={styles.rowBadges}>
-                            <StatusPill
-                              label={getDriverStatusLabel(application.driverVerificationStatus)}
-                              tone={getDriverStatusTone(application.driverVerificationStatus)}
-                            />
-                            <StatusPill
-                              label={getDriverLicenseStatusLabel(application.licenseStatus)}
-                              tone={getDriverLicenseStatusTone(application.licenseStatus)}
-                            />
-                          </div>
-                          <div className={styles.rowInfo}>
-                            <span>Expira {formatDateTime(application.licenseExpiresAt)}</span>
-                            <span>Enviada {formatDateTime(application.submittedAt)}</span>
-                          </div>
-                          <div className={styles.rowActions}>
-                            <Button onClick={() => setActiveDriverApplication(application)} variant="secondary">
-                              <span className={styles.buttonIcon}>
-                                <InlineIcon className={styles.iconSmall} name="review" />
-                              </span>
-                              Revisar
-                            </Button>
-                          </div>
+        <div className={styles.tableContainer}>
+          <table className={styles.dataTable}>
+            {activeWorkspace === 'driver' && (
+              <>
+                <thead>
+                  <tr>
+                    <th>Solicitante</th>
+                    <th>Institución</th>
+                    <th>Estado de Solicitud</th>
+                    <th>Licencia</th>
+                    <th>Fecha Envío</th>
+                    <th className={styles.actionsCell}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedDriverApplications.length === 0 ? (
+                    <tr>
+                      <td colSpan={6}>
+                        <div className={styles.emptyState}>
+                          <h3 className={styles.emptyTitle}>Sin solicitudes</h3>
+                          <p>No se encontraron solicitudes con los filtros actuales.</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <section className={styles.emptyState}>
-                    <h2 className={styles.emptyTitle}>Sin solicitudes</h2>
-                    <p className={styles.emptyText}>No hay solicitudes dentro del alcance actual.</p>
-                  </section>
-                )}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedDriverApplications.map((application) => (
+                      <tr key={application.membershipId} className={highlightedMembershipId === application.membershipId ? styles.rowHighlight : ''}>
+                        <td>
+                          <span className={styles.tdPrimary}>{application.userFullName}</span>
+                          <span className={styles.tdSecondary}>{application.userEmail}</span>
+                        </td>
+                        <td>{application.institutionName}</td>
+                        <td>
+                          <StatusPill label={getDriverStatusLabel(application.driverVerificationStatus)} tone={getDriverStatusTone(application.driverVerificationStatus)} />
+                        </td>
+                        <td>
+                          <span className={styles.tdPrimary}>{application.licenseType.code} - {application.licenseType.name}</span>
+                          <span className={styles.tdSecondary}>Expira: {formatDateTime(application.licenseExpiresAt)}</span>
+                        </td>
+                        <td>{formatDateTime(application.submittedAt)}</td>
+                        <td className={styles.actionsCell}>
+                          <Button onClick={() => setActiveDriverApplication(application)} variant="secondary">
+                            Revisar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </>
+            )}
 
-                <PaginationBar
-                  onNext={() => setPageByWorkspace((current) => ({ ...current, driver: Math.min(driverPageCount, driverPage + 1) }))}
-                  onPrev={() => setPageByWorkspace((current) => ({ ...current, driver: Math.max(1, driverPage - 1) }))}
-                  page={driverPage}
-                  pageSize={PAGE_SIZES.driver}
-                  totalItems={reviewableDriverApplications.length}
-                  totalPages={driverPageCount}
-                />
-              </section>
-            ) : null}
-
-            {activeWorkspace === 'reports' ? (
-              <section className={styles.section}>
-                <div className={styles.sectionTop}>
-                  <div>
-                    <h3 className={styles.sectionTitle}>Reportes</h3>
-                    <p className={styles.sectionMeta}>{reviewableReports.length} casos en bandeja</p>
-                  </div>
-                </div>
-
-                <div className={styles.statsRow}>
-                  {reportStats.map((stat) => (
-                    <StatChip key={stat.label} label={stat.label} tone={stat.tone} value={stat.value} />
-                  ))}
-                </div>
-
-                {paginatedReports.length ? (
-                  <div className={styles.list}>
-                    {paginatedReports.map((report, index) => {
-                      const isHighSeverity = requiresDetailedReviewNote(report.reason);
-                      const isHighlighted =
-                        highlightedReportId === report.id ||
-                        highlightedMembershipId === report.reportedMembershipId;
-
-                      return (
-                        <div
-                          key={report.id}
-                          className={[styles.listRow, isHighlighted ? styles.rowHighlight : ''].filter(Boolean).join(' ')}
-                          style={{ animationDelay: `${index * 0.04}s` }}
-                        >
-                          <div className={styles.rowMain}>
-                            <div className={styles.rowTitle}>{report.reportedFullName}</div>
-                            <div className={styles.rowMeta}>
-                              {getReportReasonLabel(report.reason)} | {report.reporterFullName}
-                            </div>
-                          </div>
-                          <div className={styles.rowBadges}>
+            {activeWorkspace === 'reports' && (
+              <>
+                <thead>
+                  <tr>
+                    <th>Reportado</th>
+                    <th>Reportante</th>
+                    <th>Motivo</th>
+                    <th>Estado / Severidad</th>
+                    <th>Antigüedad</th>
+                    <th className={styles.actionsCell}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedReports.length === 0 ? (
+                    <tr>
+                      <td colSpan={6}>
+                        <div className={styles.emptyState}>
+                          <h3 className={styles.emptyTitle}>Sin reportes</h3>
+                          <p>No se encontraron reportes con los filtros actuales.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedReports.map((report) => (
+                      <tr key={report.id} className={highlightedReportId === report.id ? styles.rowHighlight : ''}>
+                        <td>
+                          <span className={styles.tdPrimary}>{report.reportedFullName}</span>
+                        </td>
+                        <td>
+                          <span className={styles.tdPrimary}>{report.reporterFullName}</span>
+                          <span className={styles.tdSecondary}>{report.institutionName}</span>
+                        </td>
+                        <td>{getReportReasonLabel(report.reason)}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <StatusPill label={getReportStatusLabel(report.status)} tone={getReportStatusTone(report.status)} />
                             <StatusPill label={getReportSeverityLabel(report.reason)} tone={getReportSeverityTone(report.reason)} />
-                            {isHighSeverity ? <span className={styles.rowTag}>Alta severidad</span> : null}
                           </div>
-                          <div className={styles.rowInfo}>
-                            <span>{formatRelativeElapsed(report.createdAt)}</span>
-                            <span>{report.tripOriginLabel} -&gt; {report.tripDestinationLabel}</span>
-                          </div>
-                          <div className={styles.rowActions}>
-                            {report.evidenceFileKey ? (
-                              <Button
-                                disabled={isOpeningReportEvidenceId === report.id}
-                                onClick={() => void handleOpenReportEvidencePreview(report)}
-                                variant="ghost"
-                              >
-                                <span className={styles.buttonIcon}>
-                                  <InlineIcon className={styles.iconSmall} name="file" />
-                                </span>
-                                Evidencia
-                              </Button>
-                            ) : (
-                              <span className={styles.rowTagMuted}>Sin evidencia</span>
-                            )}
-                            <Button onClick={() => setActiveReport(report)} variant="secondary">
-                              <span className={styles.buttonIcon}>
-                                <InlineIcon className={styles.iconSmall} name="review" />
-                              </span>
-                              Revisar
-                            </Button>
-                          </div>
+                        </td>
+                        <td>
+                           <span className={styles.tdPrimary}>{formatRelativeElapsed(report.createdAt)}</span>
+                           <span className={styles.tdSecondary}>{formatDateTime(report.createdAt)}</span>
+                        </td>
+                        <td className={styles.actionsCell}>
+                          <Button onClick={() => setActiveReport(report)} variant="secondary">
+                            Revisar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </>
+            )}
+
+            {activeWorkspace === 'sanctions' && (
+              <>
+                <thead>
+                  <tr>
+                    <th>Usuario Sancionado</th>
+                    <th>Institución</th>
+                    <th>Sanción</th>
+                    <th>Disparador</th>
+                    <th>Vigencia</th>
+                    <th className={styles.actionsCell}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedSanctions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6}>
+                        <div className={styles.emptyState}>
+                          <h3 className={styles.emptyTitle}>Sin sanciones</h3>
+                          <p>No se encontraron sanciones con los filtros actuales.</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <section className={styles.emptyState}>
-                    <h2 className={styles.emptyTitle}>Sin reportes</h2>
-                    <p className={styles.emptyText}>No hay reportes para el filtro actual.</p>
-                  </section>
-                )}
-
-                <PaginationBar
-                  onNext={() => setPageByWorkspace((current) => ({ ...current, reports: Math.min(reportPageCount, reportPage + 1) }))}
-                  onPrev={() => setPageByWorkspace((current) => ({ ...current, reports: Math.max(1, reportPage - 1) }))}
-                  page={reportPage}
-                  pageSize={PAGE_SIZES.reports}
-                  totalItems={orderedReviewableReports.length}
-                  totalPages={reportPageCount}
-                />
-              </section>
-            ) : null}
-
-            {activeWorkspace === 'sanctions' ? (
-              <section className={styles.section}>
-                <div className={styles.sectionTop}>
-                  <div>
-                    <h3 className={styles.sectionTitle}>Sanciones activas</h3>
-                    <p className={styles.sectionMeta}>{reviewableSanctions.length} sanciones visibles</p>
-                  </div>
-                </div>
-
-                <div className={styles.statsRow}>
-                  {sanctionStats.map((stat) => (
-                    <StatChip key={stat.label} label={stat.label} tone={stat.tone} value={stat.value} />
-                  ))}
-                </div>
-
-                {paginatedSanctions.length ? (
-                  <div className={styles.list}>
-                    {paginatedSanctions.map((sanction, index) => {
-                      const hasPendingAppeal = sanctionsWithPendingAppeals.has(sanction.id);
-                      const isHighlighted =
-                        highlightedSanctionId === sanction.id ||
-                        highlightedMembershipId === sanction.membershipId;
-
-                      return (
-                        <div
-                          key={sanction.id}
-                          className={[styles.listRow, isHighlighted ? styles.rowHighlight : ''].filter(Boolean).join(' ')}
-                          style={{ animationDelay: `${index * 0.04}s` }}
-                        >
-                          <div className={styles.rowMain}>
-                            <div className={styles.rowTitle}>{sanction.membershipUserFullName}</div>
-                            <div className={styles.rowMeta}>{sanction.institutionName}</div>
-                          </div>
-                          <div className={styles.rowBadges}>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedSanctions.map((sanction) => (
+                      <tr key={sanction.id} className={highlightedSanctionId === sanction.id ? styles.rowHighlight : ''}>
+                        <td>
+                          <span className={styles.tdPrimary}>{sanction.membershipUserFullName}</span>
+                        </td>
+                        <td>{sanction.institutionName}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <StatusPill label={getOperationalSanctionTypeLabel(sanction.type)} tone={getOperationalSanctionTone(sanction.type)} />
                             <StatusPill label={getOperationalSanctionScopeLabel(sanction.scope)} tone="neutral" />
-                            {hasPendingAppeal ? <span className={styles.rowTag}>Apelacion</span> : null}
                           </div>
-                          <div className={styles.rowInfo}>
-                            <span>{getOperationalSanctionTriggerLabel(sanction.trigger)}</span>
-                            <span>{sanction.endsAt ? formatDateTime(sanction.endsAt) : 'Indefinida'}</span>
-                          </div>
-                          <div className={styles.rowActions}>
-                            <Button onClick={() => setActiveSanction(sanction)} variant="secondary">
-                              <span className={styles.buttonIcon}>
-                                <InlineIcon className={styles.iconSmall} name="detail" />
-                              </span>
-                              Detalle
-                            </Button>
-                          </div>
+                        </td>
+                        <td>{getOperationalSanctionTriggerLabel(sanction.trigger)}</td>
+                        <td>
+                          <span className={styles.tdPrimary}>{sanction.endsAt ? formatDateTime(sanction.endsAt) : 'Indefinida'}</span>
+                        </td>
+                        <td className={styles.actionsCell}>
+                          <Button onClick={() => setActiveSanction(sanction)} variant="secondary">
+                            Detalle
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </>
+            )}
+
+            {activeWorkspace === 'appeals' && (
+              <>
+                <thead>
+                  <tr>
+                    <th>Usuario Afectado</th>
+                    <th>Solicitante</th>
+                    <th>Estado / Sanción</th>
+                    <th>Disparador Sanción</th>
+                    <th>Fecha de Apelación</th>
+                    <th className={styles.actionsCell}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedAppeals.length === 0 ? (
+                    <tr>
+                      <td colSpan={6}>
+                        <div className={styles.emptyState}>
+                          <h3 className={styles.emptyTitle}>Sin apelaciones</h3>
+                          <p>No se encontraron apelaciones con los filtros actuales.</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <section className={styles.emptyState}>
-                    <h2 className={styles.emptyTitle}>Sin sanciones</h2>
-                    <p className={styles.emptyText}>No hay sanciones activas en este momento.</p>
-                  </section>
-                )}
-
-                <PaginationBar
-                  onNext={() => setPageByWorkspace((current) => ({ ...current, sanctions: Math.min(sanctionPageCount, sanctionPage + 1) }))}
-                  onPrev={() => setPageByWorkspace((current) => ({ ...current, sanctions: Math.max(1, sanctionPage - 1) }))}
-                  page={sanctionPage}
-                  pageSize={PAGE_SIZES.sanctions}
-                  totalItems={reviewableSanctions.length}
-                  totalPages={sanctionPageCount}
-                />
-              </section>
-            ) : null}
-
-            {activeWorkspace === 'appeals' ? (
-              <section className={styles.section}>
-                <div className={styles.sectionTop}>
-                  <div>
-                    <h3 className={styles.sectionTitle}>Apelaciones</h3>
-                    <p className={styles.sectionMeta}>{reviewableAppeals.length} visibles</p>
-                  </div>
-                </div>
-
-                <div className={styles.statsRow}>
-                  {appealStats.map((stat) => (
-                    <StatChip key={stat.label} label={stat.label} tone={stat.tone} value={stat.value} />
-                  ))}
-                </div>
-
-                {paginatedAppeals.length ? (
-                  <div className={styles.list}>
-                    {paginatedAppeals.map((appeal, index) => {
-                      const isHighlighted =
-                        highlightedSanctionId === appeal.sanctionId ||
-                        highlightedMembershipId === appeal.membershipId;
-
-                      return (
-                        <div
-                          key={appeal.id}
-                          className={[styles.listRow, isHighlighted ? styles.rowHighlight : ''].filter(Boolean).join(' ')}
-                          style={{ animationDelay: `${index * 0.04}s` }}
-                        >
-                          <div className={styles.rowMain}>
-                            <div className={styles.rowTitle}>{appeal.affectedFullName}</div>
-                            <div className={styles.rowMeta}>Solicita {appeal.requestedByFullName}</div>
-                          </div>
-                          <div className={styles.rowBadges}>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedAppeals.map((appeal) => (
+                      <tr key={appeal.id}>
+                        <td>
+                          <span className={styles.tdPrimary}>{appeal.affectedFullName}</span>
+                        </td>
+                        <td>
+                          <span className={styles.tdPrimary}>{appeal.requestedByFullName}</span>
+                          <span className={styles.tdSecondary}>{appeal.institutionName}</span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <StatusPill label={getSanctionAppealStatusLabel(appeal.status)} tone={getSanctionAppealStatusTone(appeal.status)} />
                             <StatusPill label={getOperationalSanctionTypeLabel(appeal.sanctionType)} tone={getOperationalSanctionTone(appeal.sanctionType)} />
                           </div>
-                          <div className={styles.rowInfo}>
-                            <span>{getOperationalSanctionTriggerLabel(appeal.sanctionTrigger)}</span>
-                            <span>{formatDateTime(appeal.createdAt)}</span>
-                          </div>
-                          <div className={styles.rowActions}>
-                            <Button onClick={() => setActiveAppeal(appeal)} variant="secondary">
-                              <span className={styles.buttonIcon}>
-                                <InlineIcon className={styles.iconSmall} name="review" />
-                              </span>
-                              Revisar
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <section className={styles.emptyState}>
-                    <h2 className={styles.emptyTitle}>Sin apelaciones</h2>
-                    <p className={styles.emptyText}>No hay apelaciones en este momento.</p>
-                  </section>
-                )}
+                        </td>
+                        <td>{getOperationalSanctionTriggerLabel(appeal.sanctionTrigger)}</td>
+                        <td>{formatDateTime(appeal.createdAt)}</td>
+                        <td className={styles.actionsCell}>
+                          <Button onClick={() => setActiveAppeal(appeal)} variant="secondary">
+                            Revisar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </>
+            )}
+          </table>
 
-                <PaginationBar
-                  onNext={() => setPageByWorkspace((current) => ({ ...current, appeals: Math.min(appealPageCount, appealPage + 1) }))}
-                  onPrev={() => setPageByWorkspace((current) => ({ ...current, appeals: Math.max(1, appealPage - 1) }))}
-                  page={appealPage}
-                  pageSize={PAGE_SIZES.appeals}
-                  totalItems={reviewableAppeals.length}
-                  totalPages={appealPageCount}
-                />
-              </section>
-            ) : null}
-          </main>
+          {((activeWorkspace === 'driver' && driverPageCount > 1) ||
+            (activeWorkspace === 'reports' && reportPageCount > 1) ||
+            (activeWorkspace === 'sanctions' && sanctionPageCount > 1) ||
+            (activeWorkspace === 'appeals' && appealPageCount > 1)) && (
+            <div className={styles.pagination}>
+              <span className={styles.paginationInfo}>
+                Página {
+                  activeWorkspace === 'driver' ? driverPage :
+                  activeWorkspace === 'reports' ? reportPage :
+                  activeWorkspace === 'sanctions' ? sanctionPage : appealPage
+                } de {
+                  activeWorkspace === 'driver' ? driverPageCount :
+                  activeWorkspace === 'reports' ? reportPageCount :
+                  activeWorkspace === 'sanctions' ? sanctionPageCount : appealPageCount
+                }
+              </span>
+              <div className={styles.paginationActions}>
+                <Button 
+                  onClick={() => setPageByWorkspace(curr => ({ ...curr, [activeWorkspace]: Math.max(1, curr[activeWorkspace] - 1)}))}
+                  variant="ghost"
+                  disabled={(activeWorkspace === 'driver' ? driverPage : activeWorkspace === 'reports' ? reportPage : activeWorkspace === 'sanctions' ? sanctionPage : appealPage) <= 1}
+                >
+                  Anterior
+                </Button>
+                <Button 
+                  onClick={() => setPageByWorkspace(curr => ({ ...curr, [activeWorkspace]: Math.min(
+                    activeWorkspace === 'driver' ? driverPageCount : activeWorkspace === 'reports' ? reportPageCount : activeWorkspace === 'sanctions' ? sanctionPageCount : appealPageCount,
+                    curr[activeWorkspace] + 1
+                  )}))}
+                  variant="ghost"
+                  disabled={(activeWorkspace === 'driver' ? driverPage : activeWorkspace === 'reports' ? reportPage : activeWorkspace === 'sanctions' ? sanctionPage : appealPage) >= (activeWorkspace === 'driver' ? driverPageCount : activeWorkspace === 'reports' ? reportPageCount : activeWorkspace === 'sanctions' ? sanctionPageCount : appealPageCount)}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
