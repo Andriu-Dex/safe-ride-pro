@@ -236,206 +236,165 @@ export default function ConfigurationPage() {
 
   if (isLoading || awaitingInstitutionSelection) {
     return (
-      <section className={styles.pageBackground}>
+      <section className={styles.page}>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <article className={`${styles.canvas} ${styles.canvasSmall}`}>
-          <div aria-hidden="true" className={styles.loadingPulse} />
-          <h1 className={styles.stateTitle}>Cargando configuracion</h1>
-          <p className={styles.stateText}>
-            Estamos preparando las reglas institucionales de este entorno.
-          </p>
-        </article>
+        <div className={styles.loadingShell}>
+          <article className={styles.stateCard}>
+            <div aria-hidden="true" className={styles.loadingPulse} />
+            <h1 className={styles.stateTitle}>Cargando configuración</h1>
+            <p className={styles.stateText}>Estamos preparando las reglas institucionales.</p>
+          </article>
+        </div>
       </section>
     );
   }
 
   if (showPageAccessError) {
     return (
-      <section className={styles.pageBackground}>
+      <section className={styles.page}>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <article className={`${styles.canvas} ${styles.canvasSmall}`}>
-          <h1 className={styles.stateTitle}>Configuracion no disponible</h1>
-          <p className={styles.stateText}>
-            Esta vista solo esta disponible para administracion institucional con una institucion activa.
-          </p>
-        </article>
+        <div className={styles.loadingShell}>
+          <article className={styles.stateCard}>
+            <h1 className={styles.stateTitle}>Configuración no disponible</h1>
+            <p className={styles.stateText}>Esta vista solo está disponible para administración institucional.</p>
+          </article>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className={styles.pageBackground}>
+    <section className={styles.page}>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <article className={styles.canvas}>
-        <section className={styles.hero}>
-          <div className={styles.heroTop}>
-            <div className={styles.heroCopy}>
-              <p className={styles.kicker}>Configuracion</p>
-              <h1 className={styles.heroTitle}>Parametros generales</h1>
-              <p className={styles.heroLead}>
-                Define medios de pago, enlaces legales y reglas visibles antes de reservar.
-              </p>
-            </div>
+      <header className={styles.heroHeader}>
+        <div>
+          <h1 className={styles.heroTitle}>Configuración General</h1>
+          <p className={styles.heroSubtitle}>Gestiona parámetros, enlaces legales y reglas visibles institucionales.</p>
+        </div>
+        <Button disabled={isLoading} onClick={() => void loadSettings()} variant="secondary">
+          Actualizar Datos
+        </Button>
+      </header>
 
-            <div className={styles.heroActions}>
-              <Button disabled={isLoading} onClick={() => void loadSettings()} variant="secondary">
-                Actualizar
-              </Button>
+      <div className={styles.content}>
+        <div className={styles.institutionSelector}>
+          <div>
+            <h2 className={styles.cardTitle}>Institución Activa</h2>
+            <p className={styles.toggleInfo} style={{ marginTop: '0.2rem', color: '#5a6c72' }}>
+              Los cambios aplicarán a todas las reservas de esta institución.
+            </p>
+          </div>
+          {manageableMemberships.length > 1 ? (
+            <div style={{ minWidth: '280px' }}>
+              <SelectField
+                label=""
+                onChange={(event) => setSelectedInstitutionId(event.target.value)}
+                value={selectedInstitutionId}
+              >
+                {manageableMemberships.map((membership) => (
+                  <option key={membership.id} value={membership.institutionId}>
+                    {membership.institutionName}
+                  </option>
+                ))}
+              </SelectField>
+            </div>
+          ) : (
+            <strong style={{ fontSize: '1.1rem', color: '#162e33' }}>
+              {institutionName || manageableMemberships[0]?.institutionName}
+            </strong>
+          )}
+        </div>
+
+        <div className={styles.settingsGrid}>
+          <div className={styles.settingsCard}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Medios de Pago Habilitados</h2>
+            </div>
+            <label className={styles.toggleRow}>
+              <div className={styles.toggleInfo}>
+                <strong>Efectivo</strong>
+                <span>Pago presencial al finalizar el viaje.</span>
+              </div>
+              <input
+                checked={formState.allowCashPayments}
+                onChange={(event) => handleToggleChange('allowCashPayments', event.target.checked)}
+                type="checkbox"
+              />
+            </label>
+            <label className={styles.toggleRow}>
+              <div className={styles.toggleInfo}>
+                <strong>PayPal</strong>
+                <span>Pago digital previo al trayecto.</span>
+              </div>
+              <input
+                checked={formState.allowPaypalPayments}
+                onChange={(event) => handleToggleChange('allowPaypalPayments', event.target.checked)}
+                type="checkbox"
+              />
+            </label>
+          </div>
+
+          <div className={styles.settingsCard}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Enlaces Legales</h2>
+            </div>
+            <div className={styles.formGrid}>
+              <InputField
+                label="URL de Términos y Condiciones"
+                onChange={(event) => handleTextChange('termsDocumentUrl', event.target.value)}
+                placeholder="https://..."
+                value={formState.termsDocumentUrl}
+              />
+              <InputField
+                label="URL de Políticas de Privacidad"
+                onChange={(event) => handleTextChange('privacyPolicyUrl', event.target.value)}
+                placeholder="https://..."
+                value={formState.privacyPolicyUrl}
+              />
             </div>
           </div>
-        </section>
 
-        <section className={styles.contentGrid}>
-          <aside className={styles.sideColumn}>
-            <section className={styles.sideSection}>
-              <p className={styles.sectionKicker}>Institucion</p>
-              <h2 className={styles.sideTitle}>Contexto administrativo</h2>
-
-              {manageableMemberships.length > 1 ? (
-                <SelectField
-                  label="Institucion activa"
-                  onChange={(event) => setSelectedInstitutionId(event.target.value)}
-                  value={selectedInstitutionId}
-                >
-                  {manageableMemberships.map((membership) => (
-                    <option key={membership.id} value={membership.institutionId}>
-                      {membership.institutionName}
-                    </option>
-                  ))}
-                </SelectField>
-              ) : (
-                <div className={styles.identityBlock}>
-                  <strong>{institutionName || manageableMemberships[0]?.institutionName}</strong>
-                  <span>Gestionas los parametros visibles para reservas y pagos.</span>
-                </div>
-              )}
-            </section>
-
-            <section className={styles.sideSection}>
-              <p className={styles.sectionKicker}>Impacto</p>
-              <h2 className={styles.sideTitle}>Que controlas aqui</h2>
-              <ul className={styles.sideList}>
-                <li>Si la institucion permite reservas con efectivo o PayPal.</li>
-                <li>Los enlaces legales que el usuario puede consultar antes de reservar.</li>
-                <li>Las reglas minimas que aparecen en el compromiso previo a la solicitud.</li>
-              </ul>
-            </section>
-          </aside>
-
-          <div className={styles.mainColumn}>
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <p className={styles.sectionKicker}>Pagos</p>
-                  <h2 className={styles.sectionTitle}>Medios habilitados</h2>
-                </div>
-              </div>
-
-              <div className={styles.toggleStack}>
-                <label className={styles.toggleRow}>
-                  <div>
-                    <strong>Efectivo</strong>
-                    <span>Permite que el pasajero reserve y pague al finalizar el viaje.</span>
-                  </div>
-                  <input
-                    checked={formState.allowCashPayments}
-                    onChange={(event) =>
-                      handleToggleChange('allowCashPayments', event.target.checked)}
-                    type="checkbox"
-                  />
-                </label>
-
-                <label className={styles.toggleRow}>
-                  <div>
-                    <strong>PayPal</strong>
-                    <span>Permite que el pasajero complete el pago digital antes del trayecto.</span>
-                  </div>
-                  <input
-                    checked={formState.allowPaypalPayments}
-                    onChange={(event) =>
-                      handleToggleChange('allowPaypalPayments', event.target.checked)}
-                    type="checkbox"
-                  />
-                </label>
-              </div>
-            </section>
-
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <p className={styles.sectionKicker}>Enlaces legales</p>
-                  <h2 className={styles.sectionTitle}>Referencias visibles para el usuario</h2>
-                </div>
-              </div>
-
-              <div className={styles.formGrid}>
+          <div className={`${styles.settingsCard} ${styles.settingsCardFull}`}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Compromiso Previo de Seguridad</h2>
+            </div>
+            <div className={styles.formGrid}>
+              <div className={styles.formRow}>
                 <InputField
-                  label="URL de terminos"
-                  onChange={(event) => handleTextChange('termsDocumentUrl', event.target.value)}
-                  placeholder="https://..."
-                  value={formState.termsDocumentUrl}
-                />
-                <InputField
-                  label="URL de privacidad"
-                  onChange={(event) => handleTextChange('privacyPolicyUrl', event.target.value)}
-                  placeholder="https://..."
-                  value={formState.privacyPolicyUrl}
-                />
-              </div>
-            </section>
-
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <p className={styles.sectionKicker}>Compromiso previo</p>
-                  <h2 className={styles.sectionTitle}>Reglas minimas de seguridad</h2>
-                </div>
-              </div>
-
-              <div className={styles.formStack}>
-                <InputField
-                  label="Titulo"
+                  label="Título de las reglas"
                   onChange={(event) => handleTextChange('safetyRulesTitle', event.target.value)}
-                  placeholder="Reglas minimas de seguridad"
+                  placeholder="Ej. Reglas mínimas de seguridad"
                   value={formState.safetyRulesTitle}
                 />
-
                 <TextareaField
-                  label="Resumen visible"
+                  label="Resumen visible al reservar"
                   onChange={(event) => handleTextChange('safetyRulesSummary', event.target.value)}
-                  placeholder="Resumen breve para la interfaz antes de reservar."
+                  placeholder="Mensaje corto mostrado en el modal de reserva."
                   rows={3}
                   value={formState.safetyRulesSummary}
                 />
+              </div>
+              <TextareaField
+                label="Detalle completo de normativas"
+                onChange={(event) => handleTextChange('safetyRulesBody', event.target.value)}
+                placeholder="Escribe el cuerpo completo de las reglas institucionales..."
+                rows={6}
+                value={formState.safetyRulesBody}
+              />
+            </div>
 
-                <TextareaField
-                  label="Detalle completo"
-                  onChange={(event) => handleTextChange('safetyRulesBody', event.target.value)}
-                  placeholder="Escribe una regla por linea o por parrafos."
-                  rows={8}
-                  value={formState.safetyRulesBody}
-                />
-              </div>
-            </section>
-
-            <div className={styles.actionBar}>
-              <div className={styles.actionCopy}>
-                <strong>{institutionName || 'Institucion activa'}</strong>
-                <span>Los cambios se aplican sobre nuevas reservas y lecturas visibles en interfaz.</span>
-              </div>
-              <div className={styles.actionButtons}>
-                <Button disabled={isSaving} onClick={handleReset} variant="ghost">
-                  Restablecer
-                </Button>
-                <Button disabled={isSaving} onClick={() => void handleSave()}>
-                  {isSaving ? 'Guardando...' : 'Guardar configuracion'}
-                </Button>
-              </div>
+            <div className={styles.footerActions}>
+              <Button disabled={isSaving} onClick={handleReset} variant="ghost">
+                Restablecer
+              </Button>
+              <Button disabled={isSaving} onClick={() => void handleSave()}>
+                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+              </Button>
             </div>
           </div>
-        </section>
-      </article>
+        </div>
+      </div>
     </section>
   );
 }

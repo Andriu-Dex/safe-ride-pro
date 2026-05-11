@@ -22,6 +22,7 @@ import { useAuth } from '../hooks/use-auth';
 import { AuthProvider } from './auth-provider';
 import * as authApi from '../lib/auth-api';
 import * as authStorage from '../lib/auth-storage';
+import { readPersistedToasts } from '../../../components/ui/flash-toast';
 import type { AuthSession } from '../types/auth-session';
 
 vi.mock('../lib/auth-api', () => ({
@@ -97,14 +98,28 @@ function StorageWriter({ session }: { session: AuthSession }) {
   return null;
 }
 
+function createJwtTokenWithExpiration(offsetMilliseconds: number): string {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const payload = {
+    exp: Math.floor((Date.now() + offsetMilliseconds) / 1000),
+  };
+
+  const encode = (value: Record<string, unknown>) =>
+    btoa(JSON.stringify(value)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+  return `${encode(header)}.${encode(payload)}.signature`;
+}
+
 describe('AuthProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   it('hydrates the session from storage and refreshes the user', async () => {
@@ -206,5 +221,41 @@ describe('AuthProvider', () => {
     await waitFor(() => {
       expect(screen.getByTestId('user-name')).toHaveTextContent('Despues de refrescar');
     });
+  });
+
+  it('closes the session automatically and persists a clear toast when the token expired and refresh fails', async () => {
+    authStorage.writeStoredSession(
+      createTestSession({
+        accessToken: createJwtTokenWithExpiration(-60_000),
+        refreshToken: 'expired-refresh-token',
+      }),
+    );
+
+    vi.mocked(authApi.refreshSession).mockRejectedValue(new Error('refresh failed'));
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('hydrated')).toHaveTextContent('true');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-name')).toHaveTextContent('SIN_SESION');
+    });
+
+    expect(authStorage.readStoredSession()).toBeNull();
+    expect(readPersistedToasts()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: 'Sesion finalizada',
+          description: 'Tu sesion expiro. Ingresa nuevamente para continuar.',
+          tone: 'info',
+        }),
+      ]),
+    );
   });
 });

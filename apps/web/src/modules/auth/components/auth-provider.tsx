@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useEffect, useState } from 'react';
+import { createContext, useCallback, useEffect, useRef, useState } from 'react';
 
 import { persistToast } from '../../../components/ui/flash-toast';
 import { ApiError } from '../../../lib/api-client';
@@ -39,6 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const hasHandledSessionExpiryRef = useRef(false);
 
   const applySession = useCallback((session: AuthSession | null) => {
     if (!session) {
@@ -47,11 +48,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
+    hasHandledSessionExpiryRef.current = false;
     writeStoredSession(session);
     setAuthSession(session);
   }, []);
 
   const closeExpiredSession = useCallback(() => {
+    if (hasHandledSessionExpiryRef.current) {
+      clearStoredSession();
+      setAuthSession(null);
+      return;
+    }
+
+    hasHandledSessionExpiryRef.current = true;
     clearStoredSession();
     setAuthSession(null);
     persistToast({
@@ -100,8 +109,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               applySession(refreshedSession);
             }
           } else if (isMounted) {
-            clearStoredSession();
-            setAuthSession(null);
+            closeExpiredSession();
           }
 
           return;
@@ -139,7 +147,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         clearStoredSession();
 
         if (isMounted) {
-          setAuthSession(null);
+          closeExpiredSession();
         }
       } finally {
         if (isMounted) {
@@ -284,6 +292,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })();
     }
 
+    hasHandledSessionExpiryRef.current = false;
     clearStoredSession();
     setAuthSession(null);
   }, [authSession?.refreshToken]);
