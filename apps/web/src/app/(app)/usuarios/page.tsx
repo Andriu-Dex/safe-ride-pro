@@ -34,7 +34,13 @@ import styles from './page.module.css';
 const PAGE_SIZE = 10;
 
 function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
-  return error instanceof ApiError ? error.message : fallbackMessage;
+  if (error instanceof ApiError) {
+    if (error.message.includes('uuid is expected')) {
+      return 'El identificador del usuario es inválido o no se encontró (se esperaba un formato UUID válido).';
+    }
+    return error.message;
+  }
+  return fallbackMessage;
 }
 
 function getAccountStatusLabel(status: AccountStatus): string {
@@ -108,7 +114,7 @@ function UserActionIcon({
   name,
   className,
 }: {
-  name: 'detail' | 'lock' | 'unlock';
+  name: 'refresh' | 'lock' | 'unlock' | 'report' | 'sanction' | 'detail';
   className?: string;
 }) {
   const iconProps = {
@@ -122,11 +128,18 @@ function UserActionIcon({
   };
 
   switch (name) {
+    case 'refresh':
+      return (
+        <svg {...iconProps}>
+          <path d="M20 6v6h-6" />
+          <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+        </svg>
+      );
     case 'detail':
       return (
         <svg {...iconProps}>
           <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z" />
-          <circle cx="12" cy="12" r="2" />
+          <circle cx="12" cy="12" r="3" />
         </svg>
       );
     case 'lock':
@@ -143,6 +156,24 @@ function UserActionIcon({
           <path d="M8 11V8a4 4 0 0 1 7-2.65" />
         </svg>
       );
+    case 'report':
+      return (
+        <svg {...iconProps}>
+          <path d="M12 3l9 16H3l9-16z" />
+          <path d="M12 9v4" />
+          <circle cx="12" cy="17" r="1" />
+        </svg>
+      );
+    case 'sanction':
+      return (
+        <svg {...iconProps}>
+          <path d="M2 21h7" />
+          <path d="M6 13l5-5" />
+          <path d="M8 15l4 4" />
+          <path d="M12 6l4 4" />
+          <path d="M13 5l4 4" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -155,7 +186,7 @@ export default function AdminUsersPage() {
   const [institutionId, setInstitutionId] = useState('');
   const [accountStatus, setAccountStatus] = useState('');
   const [driverStatus, setDriverStatus] = useState('');
-  const [fetchLimit, setFetchLimit] = useState('80');
+  const [fetchLimit, setFetchLimit] = useState('50');
   const [page, setPage] = useState(1);
   const [activeUser, setActiveUser] = useState<AdminUserDirectoryRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -323,7 +354,7 @@ export default function AdminUsersPage() {
     setInstitutionId('');
     setAccountStatus('');
     setDriverStatus('');
-    setFetchLimit('80');
+    setFetchLimit('50');
   };
 
   const handleAccountStatusChange = async (
@@ -375,7 +406,7 @@ export default function AdminUsersPage() {
     institutionId,
     accountStatus,
     driverStatus,
-    fetchLimit !== '80' ? fetchLimit : '',
+    fetchLimit !== '50' ? fetchLimit : '',
   ].filter(Boolean).length;
   const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -389,10 +420,10 @@ export default function AdminUsersPage() {
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
         <section className={styles.loadingShell}>
-          <article className={styles.loadingCard}>
+          <article className={styles.stateCard}>
             <div aria-hidden="true" className={styles.loadingPulse} />
-            <h1 className={styles.loadingTitle}>Cargando usuarios</h1>
-            <p className={styles.loadingText}>
+            <h1 className={styles.stateTitle}>Cargando usuarios</h1>
+            <p className={styles.stateText}>
               Estamos preparando la bandeja administrativa de cuentas.
             </p>
           </article>
@@ -405,17 +436,10 @@ export default function AdminUsersPage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.pageShell}>
-          <section className={styles.hero}>
-            <div className={styles.heroCopy}>
-              <p className={styles.kicker}>Usuarios</p>
-              <h1 className={styles.heroTitle}>Gestion de cuentas</h1>
-              <p className={styles.heroLead}>
-                Esta vista solo esta disponible para administradores institucionales y superadministracion.
-              </p>
-            </div>
-            <StatusPill label="Acceso restringido" tone="warning" />
-          </section>
+        <section className={styles.page}>
+          <header className={styles.dashboardHeader}>
+            <h1 className={styles.headerTitle}>Gestión de Usuarios (Acceso Restringido)</h1>
+          </header>
         </section>
       </>
     );
@@ -425,247 +449,219 @@ export default function AdminUsersPage() {
     <>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <section className={styles.pageShell}>
-        <section className={styles.hero}>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Usuarios</p>
-            <h1 className={styles.heroTitle}>Gestion de cuentas</h1>
-            <p className={styles.heroLead}>
-              Busca personas, revisa su contexto institucional y controla el acceso sin desperdiciar espacio en pantalla.
-            </p>
+      <section className={styles.page}>
+        <header className={styles.dashboardHeader}>
+          <h1 className={styles.headerTitle}>Gestión de Usuarios</h1>
+          <Button
+            disabled={isRefreshing}
+            onClick={() => void refreshUsers(true)}
+            variant="secondary"
+          >
+            <span className={styles.buttonIcon}>
+              <UserActionIcon className={styles.icon} name="refresh" />
+            </span>
+            {isRefreshing ? 'Actualizando...' : 'Actualizar Datos'}
+          </Button>
+        </header>
+
+        <div className={styles.filtersBar}>
+          <InputField
+            label="Buscar"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Nombre, correo o documento"
+            value={searchQuery}
+          />
+
+          <SelectField
+            label="Institución"
+            onChange={(event) => setInstitutionId(event.target.value)}
+            value={institutionId}
+          >
+            <option value="">Todas las accesibles</option>
+            {institutionOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </SelectField>
+
+          <SelectField
+            label="Estado de cuenta"
+            onChange={(event) => setAccountStatus(event.target.value)}
+            value={accountStatus}
+          >
+            <option value="">Todos</option>
+            <option value={AccountStatus.Active}>Activa</option>
+            <option value={AccountStatus.Suspended}>Bloqueada</option>
+            <option value={AccountStatus.PendingEmailVerification}>Pendiente</option>
+          </SelectField>
+
+          <SelectField
+            label="Estado de conductor"
+            onChange={(event) => setDriverStatus(event.target.value)}
+            value={driverStatus}
+          >
+            <option value="">Todos</option>
+            <option value={DriverVerificationStatus.PendingVerification}>Pendiente</option>
+            <option value={DriverVerificationStatus.Approved}>Aprobado</option>
+            <option value={DriverVerificationStatus.Rejected}>Rechazado</option>
+            <option value={DriverVerificationStatus.Suspended}>Suspendido</option>
+          </SelectField>
+
+          <SelectField
+            label="Carga inicial"
+            onChange={(event) => setFetchLimit(event.target.value)}
+            value={fetchLimit}
+          >
+            <option value="25">25 registros</option>
+            <option value="50">50 registros</option>
+            <option value="100">100 registros</option>
+          </SelectField>
+
+          <div className={styles.filterActions}>
+            <Button onClick={() => setPage(1)}>Aplicar filtros</Button>
+            {activeFiltersCount > 0 && (
+              <Button onClick={handleResetFilters} variant="ghost">Limpiar</Button>
+            )}
           </div>
+        </div>
 
-          <div className={styles.heroActions}>
-            <StatusPill
-              label={users.length ? `${users.length} visibles` : 'Sin resultados'}
-              tone={users.length ? 'neutral' : 'warning'}
-            />
-            <Button
-              disabled={isRefreshing}
-              onClick={() => void refreshUsers(true)}
-              variant="secondary"
-            >
-              {isRefreshing ? 'Actualizando...' : 'Actualizar'}
-            </Button>
-          </div>
-        </section>
+        <div className={styles.tableContainer}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Institución Principal</th>
+                <th>Estado General</th>
+                <th>Señales (Global)</th>
+                <th className={styles.actionsCell}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <div className={styles.emptyState}>
+                      <h3 className={styles.emptyTitle}>Sin resultados</h3>
+                      <p>No se encontraron usuarios con los filtros actuales.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedUsers.map((user) => {
+                  const blockingSanctions = sumMembershipMetric(user, 'activeBlockingSanctionsCount');
+                  const resolvedReports = sumMembershipMetric(user, 'resolvedReportsReceivedCount');
 
-        <div className={styles.layout}>
-          <aside className={styles.sidebar}>
-            <div className={styles.sidebarHeader}>
-              <div>
-                <p className={styles.sidebarKicker}>Filtros</p>
-                <h2 className={styles.sidebarTitle}>Directorio</h2>
-              </div>
-              {activeFiltersCount ? (
-                <span className={styles.filterBadge}>{activeFiltersCount} activos</span>
-              ) : null}
-            </div>
+                  return (
+                    <tr key={user.userId} className={activeUser?.userId === user.userId ? styles.rowHighlight : ''}>
+                      <td>
+                        <div className={styles.userIdentity}>
+                          <div className={styles.avatar}>
+                            {user.profilePhotoUrl ? (
+                              <img alt="" className={styles.avatarImage} src={user.profilePhotoUrl} />
+                            ) : (
+                              <span>{user.fullName.slice(0, 1).toUpperCase()}</span>
+                            )}
+                          </div>
+                          <div className={styles.userMeta}>
+                            <span className={styles.tdPrimary}>{user.fullName}</span>
+                            <span className={styles.tdSecondary}>{user.email} &bull; {getGlobalRoleLabel(user.globalRole)}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={styles.tdPrimary}>{getPrimaryInstitutionLabel(user)}</span>
+                        <span className={styles.tdSecondary}>{user.memberships.length} membresía(s)</span>
+                      </td>
+                      <td>
+                        <div className={styles.statusColumn}>
+                          <StatusPill label={getAccountStatusLabel(user.accountStatus)} tone={getAccountStatusTone(user.accountStatus)} />
+                          <StatusPill label={user.emailVerifiedAt ? 'Verificado' : 'Pendiente'} tone={user.emailVerifiedAt ? 'success' : 'warning'} />
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.signalGroup}>
+                          {blockingSanctions > 0 && (
+                            <span className={styles.metricBadge}>
+                              <UserActionIcon name="sanction" /> {blockingSanctions} bloqueos
+                            </span>
+                          )}
+                          {resolvedReports > 0 && (
+                            <span className={styles.metricBadge}>
+                              <UserActionIcon name="report" /> {resolvedReports} reportes
+                            </span>
+                          )}
+                          {blockingSanctions === 0 && resolvedReports === 0 && (
+                            <span className={styles.tdSecondary}>Sin alertas</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className={styles.actionsCell}>
+                        <div className={styles.actionIconGroup}>
+                          <button
+                            className={styles.iconActionBtn}
+                            onClick={() => setActiveUser(user)}
+                            title="Ver detalle"
+                            type="button"
+                          >
+                            <UserActionIcon className={styles.iconSmall} name="detail" />
+                          </button>
+                          {user.accountStatus === AccountStatus.Suspended ? (
+                            <button
+                              className={`${styles.iconActionBtn} ${styles.iconActionBtnSuccess}`}
+                              disabled={isUpdatingUserId === user.userId}
+                              onClick={() => void handleAccountStatusChange(user.userId, AccountStatus.Active)}
+                              title="Reactivar cuenta"
+                              type="button"
+                            >
+                              <UserActionIcon className={styles.iconSmall} name="unlock" />
+                            </button>
+                          ) : (
+                            <button
+                              className={`${styles.iconActionBtn} ${styles.iconActionBtnDanger}`}
+                              disabled={isUpdatingUserId === user.userId}
+                              onClick={() => void handleAccountStatusChange(user.userId, AccountStatus.Suspended)}
+                              title="Bloquear cuenta"
+                              type="button"
+                            >
+                              <UserActionIcon className={styles.iconSmall} name="lock" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
 
-            <div className={styles.filterForm}>
-              <InputField
-                label="Buscar"
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Nombre, correo o documento"
-                value={searchQuery}
-              />
-
-              <SelectField
-                label="Institucion"
-                onChange={(event) => setInstitutionId(event.target.value)}
-                value={institutionId}
-              >
-                <option value="">Todas las accesibles</option>
-                {institutionOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </SelectField>
-
-              <SelectField
-                label="Estado de cuenta"
-                onChange={(event) => setAccountStatus(event.target.value)}
-                value={accountStatus}
-              >
-                <option value="">Todos</option>
-                <option value={AccountStatus.Active}>Activa</option>
-                <option value={AccountStatus.Suspended}>Bloqueada</option>
-                <option value={AccountStatus.PendingEmailVerification}>Pendiente</option>
-              </SelectField>
-
-              <SelectField
-                label="Estado de conductor"
-                onChange={(event) => setDriverStatus(event.target.value)}
-                value={driverStatus}
-              >
-                <option value="">Todos</option>
-                <option value={DriverVerificationStatus.PendingVerification}>Pendiente</option>
-                <option value={DriverVerificationStatus.Approved}>Aprobado</option>
-                <option value={DriverVerificationStatus.Rejected}>Rechazado</option>
-                <option value={DriverVerificationStatus.Suspended}>Suspendido</option>
-              </SelectField>
-
-              <SelectField
-                label="Carga inicial"
-                onChange={(event) => setFetchLimit(event.target.value)}
-                value={fetchLimit}
-              >
-                <option value="40">40 registros</option>
-                <option value="80">80 registros</option>
-                <option value="120">120 registros</option>
-              </SelectField>
-
-              <div className={styles.filterActions}>
-                <Button onClick={() => setPage(1)}>Aplicar filtros</Button>
-                <Button onClick={handleResetFilters} type="button" variant="ghost">
-                  Limpiar
+          {totalPages > 1 && (
+            <div className={styles.pagination}>
+              <span className={styles.paginationInfo}>
+                Mostrando {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(users.length, currentPage * PAGE_SIZE)} de {users.length}
+              </span>
+              <div className={styles.paginationActions}>
+                <Button
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((value) => Math.max(1, value - 1))}
+                  variant="ghost"
+                >
+                  Anterior
+                </Button>
+                <span className={styles.paginationLabel}>
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+                  variant="ghost"
+                >
+                  Siguiente
                 </Button>
               </div>
             </div>
-          </aside>
-
-          <section className={styles.content}>
-            <header className={styles.sectionHeader}>
-              <div>
-                <p className={styles.sectionKicker}>Directorio</p>
-                <h2 className={styles.sectionTitle}>Usuarios dentro de tu alcance</h2>
-              </div>
-              <StatusPill
-                label={users.length ? `${users.length} registros` : 'Sin resultados'}
-                tone={users.length ? 'neutral' : 'warning'}
-              />
-            </header>
-
-            {users.length ? (
-              <>
-                <div className={styles.directoryTable}>
-                  <div className={styles.tableHead}>
-                    <span>Usuario</span>
-                    <span>Institucion</span>
-                    <span>Estado</span>
-                    <span>Señales</span>
-                    <span className={styles.actionsHeader}>Acciones</span>
-                  </div>
-
-                  <div className={styles.tableBody}>
-                    {paginatedUsers.map((user) => {
-                      const blockingSanctions = sumMembershipMetric(user, 'activeBlockingSanctionsCount');
-                      const resolvedReports = sumMembershipMetric(user, 'resolvedReportsReceivedCount');
-
-                      return (
-                        <article className={styles.tableRow} key={user.userId}>
-                          <div className={styles.userIdentity}>
-                            <div className={styles.avatar}>
-                              {user.profilePhotoUrl ? (
-                                <img alt="" className={styles.avatarImage} src={user.profilePhotoUrl} />
-                              ) : (
-                                <span>{user.fullName.slice(0, 1).toUpperCase()}</span>
-                              )}
-                            </div>
-
-                            <div className={styles.userMeta}>
-                              <strong>{user.fullName}</strong>
-                      <span>{user.email}</span>
-                      <small>{getGlobalRoleLabel(user.globalRole)}</small>
-                            </div>
-                          </div>
-
-                          <div className={styles.compactField}>
-                            <strong>{getPrimaryInstitutionLabel(user)}</strong>
-                            <span>{user.memberships.length} membresias</span>
-                          </div>
-
-                          <div className={styles.statusGroup}>
-                            <StatusPill
-                              label={getAccountStatusLabel(user.accountStatus)}
-                              tone={getAccountStatusTone(user.accountStatus)}
-                            />
-                            <StatusPill
-                              label={user.emailVerifiedAt ? 'Verificado' : 'Pendiente'}
-                              tone={user.emailVerifiedAt ? 'success' : 'warning'}
-                            />
-                          </div>
-
-                          <div className={styles.signalGroup}>
-                            <span>{blockingSanctions} bloqueos</span>
-                            <span>{resolvedReports} reportes</span>
-                          </div>
-
-                          <div className={styles.iconActions}>
-                            <button
-                              className={styles.iconButton}
-                              onClick={() => setActiveUser(user)}
-                              title="Ver detalle"
-                              type="button"
-                            >
-                              <UserActionIcon className={styles.icon} name="detail" />
-                            </button>
-
-                            {user.accountStatus === AccountStatus.Suspended ? (
-                              <button
-                                className={styles.iconButton}
-                                disabled={isUpdatingUserId === user.userId}
-                                onClick={() => void handleAccountStatusChange(user.userId, AccountStatus.Active)}
-                                title="Reactivar cuenta"
-                                type="button"
-                              >
-                                <UserActionIcon className={styles.icon} name="unlock" />
-                              </button>
-                            ) : (
-                              <button
-                                className={`${styles.iconButton} ${styles.iconButtonDanger}`}
-                                disabled={isUpdatingUserId === user.userId}
-                                onClick={() => void handleAccountStatusChange(user.userId, AccountStatus.Suspended)}
-                                title="Bloquear cuenta"
-                                type="button"
-                              >
-                                <UserActionIcon className={styles.icon} name="lock" />
-                              </button>
-                            )}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {users.length > PAGE_SIZE ? (
-                  <div className={styles.pagination}>
-                    <span className={styles.paginationInfo}>
-                      Mostrando {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(users.length, currentPage * PAGE_SIZE)} de {users.length}
-                    </span>
-                    <div className={styles.paginationActions}>
-                      <Button
-                        disabled={currentPage <= 1}
-                        onClick={() => setPage((value) => Math.max(1, value - 1))}
-                        variant="ghost"
-                      >
-                        Anterior
-                      </Button>
-                      <span className={styles.paginationLabel}>
-                        {currentPage}/{totalPages}
-                      </span>
-                      <Button
-                        disabled={currentPage >= totalPages}
-                        onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
-                        variant="ghost"
-                      >
-                        Siguiente
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <section className={styles.emptyState}>
-                <h2 className={styles.emptyTitle}>Sin resultados</h2>
-                <p className={styles.emptyText}>
-                  No hay usuarios que coincidan con los filtros actuales dentro de tu alcance administrativo.
-                </p>
-              </section>
-            )}
-          </section>
+          )}
         </div>
       </section>
 
@@ -687,7 +683,6 @@ export default function AdminUsersPage() {
                   )}
                 </div>
                 <div>
-                  <p className={styles.modalKicker}>Detalle de usuario</p>
                   <h2 className={styles.modalTitle} id="admin-user-detail-title">
                     {activeUser.fullName}
                   </h2>
@@ -705,38 +700,39 @@ export default function AdminUsersPage() {
               </button>
             </div>
 
-            <div className={styles.modalFacts}>
-              <div className={styles.modalFact}>
-                <span>Correo</span>
-                <strong>{activeUser.email}</strong>
+            <div className={styles.modalBody}>
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Información de la Cuenta</h3>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Correo Electrónico</span>
+                  <span className={styles.modalFieldValue}>{activeUser.email}</span>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Rol Global</span>
+                  <span className={styles.modalFieldValue}>{getGlobalRoleLabel(activeUser.globalRole)}</span>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Estado de Cuenta</span>
+                  <span className={styles.modalFieldValue}>{getAccountStatusLabel(activeUser.accountStatus)}</span>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Fecha de Registro</span>
+                  <span className={styles.modalFieldValue}>{formatDateTime(activeUser.createdAt)}</span>
+                </div>
               </div>
-              <div className={styles.modalFact}>
-                <span>Rol global</span>
-                <strong>{getGlobalRoleLabel(activeUser.globalRole)}</strong>
-              </div>
-              <div className={styles.modalFact}>
-                <span>Cuenta</span>
-                <strong>{getAccountStatusLabel(activeUser.accountStatus)}</strong>
-              </div>
-              <div className={styles.modalFact}>
-                <span>Registrado el</span>
-                <strong>{formatDateTime(activeUser.createdAt)}</strong>
-              </div>
-            </div>
 
-            <div className={styles.modalSection}>
-              <h3 className={styles.modalSectionTitle}>Membresias</h3>
-              <div className={styles.modalMembershipList}>
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Membresías Institucionales</h3>
                 {activeUser.memberships.map((membership) => (
-                  <div className={styles.modalMembershipRow} key={membership.id}>
-                    <div className={styles.modalMembershipMain}>
+                  <div className={styles.membershipCard} key={membership.id}>
+                    <div className={styles.membershipCardHeader}>
                       <strong>{membership.institutionName}</strong>
                       <span>
                         {getMembershipRoleLabel(membership.role)} | {membership.studentCode}
                       </span>
                     </div>
 
-                    <div className={styles.modalMembershipSignals}>
+                    <div className={styles.statusGroup}>
                       <StatusPill
                         label={getDriverStatusLabel(
                           membership.effectiveDriverVerificationStatus
@@ -755,26 +751,29 @@ export default function AdminUsersPage() {
                       ) : null}
                     </div>
 
-                    <div className={styles.modalMembershipMetrics}>
-                      <div className={styles.metricBadge}>
-                        <span>Sanciones</span>
-                        <span>{membership.activeSanctionsCount}</span>
-                      </div>
-                      <div className={styles.metricBadge}>
-                        <span>Bloqueantes</span>
-                        <span>{membership.activeBlockingSanctionsCount}</span>
-                      </div>
-                      <div className={styles.metricBadge}>
-                        <span>Reportes</span>
-                        <span>{membership.resolvedReportsReceivedCount}</span>
-                      </div>
+                    <div className={styles.membershipMetrics}>
+                      {membership.activeSanctionsCount > 0 && (
+                        <span className={styles.metricBadge}><UserActionIcon name="sanction" /> {membership.activeSanctionsCount} sanciones</span>
+                      )}
+                      {membership.activeBlockingSanctionsCount > 0 && (
+                        <span className={styles.metricBadge}><UserActionIcon name="lock" /> {membership.activeBlockingSanctionsCount} bloqueos</span>
+                      )}
+                      {membership.resolvedReportsReceivedCount > 0 && (
+                        <span className={styles.metricBadge}><UserActionIcon name="report" /> {membership.resolvedReportsReceivedCount} reportes</span>
+                      )}
+                      {membership.activeSanctionsCount === 0 && membership.resolvedReportsReceivedCount === 0 && (
+                        <span className={styles.tdSecondary}>Sin alertas en esta institución</span>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className={styles.modalActions}>
+            <div className={styles.modalFooter}>
+              <Button onClick={() => setActiveUser(null)} variant="ghost">
+                Cerrar
+              </Button>
               {activeUser.accountStatus === AccountStatus.Suspended ? (
                 <Button
                   disabled={isUpdatingUserId === activeUser.userId}
@@ -784,16 +783,12 @@ export default function AdminUsersPage() {
                 </Button>
               ) : (
                 <Button
-                  className={styles.modalButtonDanger}
                   disabled={isUpdatingUserId === activeUser.userId}
                   onClick={() => void handleAccountStatusChange(activeUser.userId, AccountStatus.Suspended)}
                 >
                   {isUpdatingUserId === activeUser.userId ? 'Bloqueando...' : 'Bloquear cuenta'}
                 </Button>
               )}
-              <Button onClick={() => setActiveUser(null)} variant="secondary">
-                Cerrar
-              </Button>
             </div>
           </div>
         </div>

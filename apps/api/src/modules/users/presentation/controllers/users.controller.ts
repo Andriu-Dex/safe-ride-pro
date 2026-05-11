@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -73,7 +72,7 @@ export class UsersController {
   @Patch('admin/:userId/account-status')
   updateAdminUserAccountStatus(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('userId', new ParseUUIDPipe()) userId: string,
+    @Param('userId') userId: string,
     @Body() body: UpdateAdminUserAccountStatusRequestDto,
   ) {
     return this.updateAdminUserAccountStatusUseCase.execute({
