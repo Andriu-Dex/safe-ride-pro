@@ -135,28 +135,17 @@ function InlineIcon({ name, className }: { name: IconName; className?: string })
   }
 }
 
-type StatTone = 'neutral' | 'warning' | 'danger' | 'success';
-
-const STAT_TONE_CLASSES: Record<StatTone, string> = {
-  neutral: '',
-  warning: styles.statChipWarning,
-  danger: styles.statChipDanger,
-  success: styles.statChipSuccess,
-};
-
 function StatChip({
   label,
   value,
-  tone = 'neutral',
 }: {
   label: string;
   value: string | number;
-  tone?: StatTone;
 }) {
   return (
-    <div className={[styles.statChip, STAT_TONE_CLASSES[tone]].filter(Boolean).join(' ')}>
-      <span className={styles.statLabel}>{label}</span>
-      <strong className={styles.statValue}>{value}</strong>
+    <div className={styles.statCard}>
+      <span className={styles.statCardLabel}>{label}</span>
+      <strong className={styles.statCardValue}>{value}</strong>
     </div>
   );
 }
@@ -188,18 +177,22 @@ function PaginationBar({
   return (
     <div className={styles.pagination}>
       <span className={styles.paginationInfo}>
-        Mostrando {start}-{end} de {totalItems}
+        Mostrando <strong>{start}-{end}</strong> de <strong>{totalItems}</strong> resultados
       </span>
       <div className={styles.paginationActions}>
-        <Button disabled={page <= 1} onClick={onPrev} variant="ghost">
+            <button className={styles.paginationBtn} disabled={page <= 1} onClick={onPrev} type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           Anterior
-        </Button>
-        <span className={styles.paginationLabel}>
-          {page}/{totalPages}
-        </span>
-        <Button disabled={page >= totalPages} onClick={onNext} variant="ghost">
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: '0 0.5rem' }}>
+              <span className={styles.pageNumber}>{page}</span>
+              <span className={styles.pageDivider}>de</span>
+              <span className={styles.pageNumberTotal}>{totalPages}</span>
+            </div>
+            <button className={styles.paginationBtn} disabled={page >= totalPages} onClick={onNext} type="button">
           Siguiente
-        </Button>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
       </div>
     </div>
   );
@@ -410,24 +403,20 @@ export default function AuditPage() {
     {
       label: 'Eventos',
       value: auditEvents.length,
-      tone: auditEvents.length ? 'neutral' : 'neutral',
     },
     {
       label: 'Acciones',
       value: uniqueActionCount,
-      tone: uniqueActionCount ? 'neutral' : 'neutral',
     },
     {
       label: 'Actores',
       value: uniqueActorCount,
-      tone: uniqueActorCount ? 'neutral' : 'neutral',
     },
     {
       label: 'Filtros',
       value: activeFiltersCount,
-      tone: activeFiltersCount ? 'warning' : 'neutral',
     },
-  ] as const;
+  ];
 
   if (isLoading) {
     return (
@@ -449,16 +438,9 @@ export default function AuditPage() {
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
         <section className={styles.page}>
-          <section className={styles.hero}>
-            <div className={styles.heroCopy}>
-              <p className={styles.kicker}>Auditoria</p>
-              <h1 className={styles.heroTitle}>Trazabilidad institucional</h1>
-              <p className={styles.heroLead}>
-                Esta vista solo esta disponible para administradores institucionales y superadministracion.
-              </p>
-            </div>
-            <StatusPill label="Acceso restringido" tone="warning" />
-          </section>
+          <header className={styles.dashboardHeader}>
+            <h1 className={styles.headerTitle}>Auditoría (Acceso Restringido)</h1>
+          </header>
 
           <section className={styles.emptyState}>
             <h2 className={styles.emptyTitle}>Permisos insuficientes</h2>
@@ -476,262 +458,232 @@ export default function AuditPage() {
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
       <section className={styles.page}>
-        <section className={styles.hero}>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Auditoria</p>
-            <h1 className={styles.heroTitle}>Trazabilidad institucional</h1>
-            <p className={styles.heroLead}>
-              Consulta eventos administrativos y del sistema con filtros claros y un detalle rapido.
-            </p>
-          </div>
+        <header className={styles.dashboardHeader}>
+          <h1 className={styles.headerTitle}>Trazabilidad Institucional</h1>
+          <Button
+            disabled={isRefreshing}
+            onClick={() => void refreshEvents(true)}
+            variant="secondary"
+          >
+            <span className={styles.buttonIcon}>
+              <InlineIcon className={styles.icon} name="refresh" />
+            </span>
+            {isRefreshing ? 'Actualizando...' : 'Actualizar Datos'}
+          </Button>
+        </header>
 
-          <div className={styles.heroActions}>
-            <div className={styles.heroChips}>
-              <span className={styles.heroChip}>
-                <InlineIcon className={styles.iconSmall} name="event" />
-                {auditEvents.length} eventos
-              </span>
-            </div>
-            <Button
-              disabled={isRefreshing}
-              onClick={() => void refreshEvents(true)}
-              variant="secondary"
-            >
-              <span className={styles.buttonIcon}>
-                <InlineIcon className={styles.iconSmall} name="refresh" />
-              </span>
-              {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+        <form className={styles.filtersBar} onSubmit={handleApplyFilters}>
+          <SelectField
+            label="Institución"
+            onChange={(event) => handleFilterChange('institutionId', event.target.value)}
+            value={filterValues.institutionId ?? ''}
+          >
+            <option value="">Todas las accesibles</option>
+            {institutionOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </SelectField>
+
+          <SelectField
+            label="Acción"
+            onChange={(event) => handleFilterChange('action', event.target.value)}
+            value={filterValues.action ?? ''}
+          >
+            <option value="">Todas</option>
+            {AUDIT_ACTIONS.map((action) => (
+              <option key={action} value={action}>
+                {getAuditActionLabel(action)}
+              </option>
+            ))}
+          </SelectField>
+
+          <SelectField
+            label="Tipo de Entidad"
+            onChange={(event) => handleFilterChange('entityType', event.target.value)}
+            value={filterValues.entityType ?? ''}
+          >
+            <option value="">Todas</option>
+            {AUDIT_ENTITY_TYPES.map((entityType) => (
+              <option key={entityType} value={entityType}>
+                {getAuditEntityTypeLabel(entityType)}
+              </option>
+            ))}
+          </SelectField>
+
+          <InputField
+            label="Desde"
+            onChange={(event) => handleFilterChange('from', event.target.value)}
+            type="datetime-local"
+            value={filterValues.from ?? ''}
+          />
+
+          <InputField
+            label="Hasta"
+            onChange={(event) => handleFilterChange('to', event.target.value)}
+            type="datetime-local"
+            value={filterValues.to ?? ''}
+          />
+
+          <SelectField
+            label="Límite"
+            onChange={(event) => handleFilterChange('limit', event.target.value)}
+            value={filterValues.limit ?? '50'}
+          >
+            <option value="25">25 eventos</option>
+            <option value="50">50 eventos</option>
+            <option value="100">100 eventos</option>
+          </SelectField>
+
+          <div className={styles.filterActions}>
+            <Button disabled={isApplyingFilters} type="submit">
+              Aplicar filtros
             </Button>
+            {activeFiltersCount > 0 && (
+              <Button disabled={isApplyingFilters} onClick={handleResetFilters} type="button" variant="ghost">
+                Limpiar
+              </Button>
+            )}
           </div>
-        </section>
+        </form>
 
-        <div className={styles.board}>
-          <aside className={styles.rail}>
-            <section className={styles.railSection}>
-              <div className={styles.railHeader}>
-                <div>
-                  <p className={styles.railLabel}>Filtros</p>
-                  <h2 className={styles.railTitle}>Consulta</h2>
-                </div>
-                {activeFiltersCount ? (
-                  <span className={styles.filterBadge}>{activeFiltersCount}</span>
-                ) : null}
-              </div>
+        <div className={styles.statsRow}>
+          {eventStats.map((stat) => (
+            <StatChip
+              key={stat.label}
+              label={stat.label}
+              value={stat.value}
+            />
+          ))}
+        </div>
 
-              <form className={styles.filterForm} onSubmit={handleApplyFilters}>
-                <SelectField
-                  label="Institucion"
-                  onChange={(event) => handleFilterChange('institutionId', event.target.value)}
-                  value={filterValues.institutionId ?? ''}
-                >
-                  <option value="">Todas las accesibles</option>
-                  {institutionOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </SelectField>
-
-                <SelectField
-                  label="Accion"
-                  onChange={(event) => handleFilterChange('action', event.target.value)}
-                  value={filterValues.action ?? ''}
-                >
-                  <option value="">Todas</option>
-                  {AUDIT_ACTIONS.map((action) => (
-                    <option key={action} value={action}>
-                      {getAuditActionLabel(action)}
-                    </option>
-                  ))}
-                </SelectField>
-
-                <SelectField
-                  label="Entidad"
-                  onChange={(event) => handleFilterChange('entityType', event.target.value)}
-                  value={filterValues.entityType ?? ''}
-                >
-                  <option value="">Todas</option>
-                  {AUDIT_ENTITY_TYPES.map((entityType) => (
-                    <option key={entityType} value={entityType}>
-                      {getAuditEntityTypeLabel(entityType)}
-                    </option>
-                  ))}
-                </SelectField>
-
-                <InputField
-                  label="Desde"
-                  onChange={(event) => handleFilterChange('from', event.target.value)}
-                  type="datetime-local"
-                  value={filterValues.from ?? ''}
-                />
-
-                <InputField
-                  label="Hasta"
-                  onChange={(event) => handleFilterChange('to', event.target.value)}
-                  type="datetime-local"
-                  value={filterValues.to ?? ''}
-                />
-
-                <SelectField
-                  label="Limite"
-                  onChange={(event) => handleFilterChange('limit', event.target.value)}
-                  value={filterValues.limit ?? '50'}
-                >
-                  <option value="25">25 eventos</option>
-                  <option value="50">50 eventos</option>
-                  <option value="100">100 eventos</option>
-                </SelectField>
-
-                <div className={styles.filterActions}>
-                  <Button disabled={isApplyingFilters} type="submit">
-                    Aplicar filtros
-                  </Button>
-                  <Button disabled={isApplyingFilters} onClick={handleResetFilters} type="button" variant="ghost">
-                    Limpiar
-                  </Button>
-                </div>
-              </form>
-            </section>
-          </aside>
-
-          <main className={styles.content}>
-            <header className={styles.contentHeader}>
-              <div>
-                <p className={styles.contentKicker}>Eventos</p>
-                <h2 className={styles.contentTitle}>Historial visible</h2>
-                <p className={styles.contentSubtitle}>Revisa la actividad administrativa mas reciente.</p>
-              </div>
-            </header>
-
-            <div className={styles.statsRow}>
-              {eventStats.map((stat) => (
-                <StatChip
-                  key={stat.label}
-                  label={stat.label}
-                  tone={stat.tone}
-                  value={stat.value}
-                />
-              ))}
-            </div>
-
-            {paginatedEvents.length ? (
-              <div className={styles.list}>
-                {paginatedEvents.map((event, index) => (
-                  <div
-                    key={event.id}
-                    className={styles.listRow}
-                    style={{ animationDelay: `${index * 0.04}s` }}
-                  >
-                    <div className={styles.rowMain}>
-                      <div className={styles.rowTitle}>{getAuditActionLabel(event.action)}</div>
-                      <div className={styles.rowMeta}>
-                        {event.actorFullName ?? 'Sistema'} | {formatDateTime(event.createdAt)}
-                      </div>
+        <div className={styles.tableContainer}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Acción Realizada</th>
+                <th>Actor y Fecha</th>
+                <th>Entidad Afectada</th>
+                <th>Institución</th>
+                <th className={styles.actionsCell}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedEvents.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <div className={styles.emptyState}>
+                      <h3 className={styles.emptyTitle}>Sin resultados</h3>
+                      <p>No hay eventos registrados para los filtros de búsqueda actuales.</p>
                     </div>
-                    <div className={styles.rowBadges}>
-                      <StatusPill
-                        label={getAuditEntityTypeLabel(event.entityType)}
-                        tone="neutral"
-                      />
-                    </div>
-                    <div className={styles.rowInfo}>
-                      <span>{event.institutionName ?? 'No aplica'}</span>
-                      <span>{event.entityId ?? 'Sin referencia'}</span>
-                    </div>
-                    <div className={styles.rowActions}>
+                  </td>
+                </tr>
+              ) : (
+                paginatedEvents.map((event) => (
+                  <tr key={event.id}>
+                    <td>
+                      <span className={styles.tdPrimary}>{getAuditActionLabel(event.action)}</span>
+                    </td>
+                    <td>
+                      <span className={styles.tdPrimary}>{event.actorFullName ?? 'Sistema'}</span>
+                      <span className={styles.tdSecondary}>{formatDateTime(event.createdAt)}</span>
+                    </td>
+                    <td>
+                      <span className={styles.tdPrimary}>{getAuditEntityTypeLabel(event.entityType)}</span>
+                      <span className={styles.tdSecondary}>{event.entityId ?? 'Sin referencia'}</span>
+                    </td>
+                    <td>{event.institutionName ?? 'Global / No aplica'}</td>
+                    <td className={styles.actionsCell}>
                       <Button onClick={() => setActiveEvent(event)} variant="secondary">
-                        <span className={styles.buttonIcon}>
-                          <InlineIcon className={styles.iconSmall} name="detail" />
-                        </span>
                         Detalle
                       </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <section className={styles.emptyState}>
-                <h2 className={styles.emptyTitle}>Sin resultados</h2>
-                <p className={styles.emptyText}>
-                  No hay eventos para los filtros actuales. Ajusta la fecha o la accion para ampliar la consulta.
-                </p>
-              </section>
-            )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
 
-            <PaginationBar
-              onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
-              onPrev={() => setPage((current) => Math.max(1, current - 1))}
-              page={safePage}
-              pageSize={PAGE_SIZE}
-              totalItems={auditEvents.length}
-              totalPages={pageCount}
-            />
-          </main>
+          <PaginationBar
+            onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
+            onPrev={() => setPage((current) => Math.max(1, current - 1))}
+            page={safePage}
+            pageSize={PAGE_SIZE}
+            totalItems={auditEvents.length}
+            totalPages={pageCount}
+          />
         </div>
       </section>
 
       {activeEvent ? (
         <div
-          aria-labelledby="audit-event-modal-title"
-          aria-modal="true"
-          className="modal-backdrop"
-          onClick={() => setActiveEvent(null)}
-          role="dialog"
+          className={styles.modalOverlay}
+          role="presentation"
         >
           <div
-            className={`modal-card modal-card-lg ${styles.modalCard}`}
-            onClick={(event) => event.stopPropagation()}
+            aria-labelledby="audit-event-modal-title"
+            aria-modal="true"
+            className={styles.modalCard}
+            role="dialog"
           >
             <div className={styles.modalHeader}>
               <div>
-                <p className={styles.modalKicker}>Evento</p>
                 <h2 className={styles.modalTitle} id="audit-event-modal-title">
                   {getAuditActionLabel(activeEvent.action)}
                 </h2>
                 <p className={styles.modalSubtitle}>
-                  {activeEvent.actorFullName ?? 'Sistema'} | {formatDateTime(activeEvent.createdAt)}
+                  Por {activeEvent.actorFullName ?? 'Sistema'} &bull; {formatDateTime(activeEvent.createdAt)}
                 </p>
               </div>
-              <Button onClick={() => setActiveEvent(null)} variant="ghost">
-                Cerrar
-              </Button>
+              <button
+                aria-label="Cerrar detalle"
+                className={styles.modalClose}
+                onClick={() => setActiveEvent(null)}
+                type="button"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
+              </button>
             </div>
 
-            <div className={styles.modalBadgeRow}>
-              <StatusPill
-                label={getAuditEntityTypeLabel(activeEvent.entityType)}
-                tone="neutral"
-              />
-            </div>
-
-            <div className={styles.modalGrid}>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Institucion</span>
-                <strong className={styles.modalFieldValue}>
-                  {activeEvent.institutionName ?? 'No aplica'}
-                </strong>
-              </div>
-              <div className={styles.modalField}>
-                <span className={styles.modalFieldLabel}>Entidad</span>
-                <strong className={styles.modalFieldValue}>
-                  {activeEvent.entityId ?? 'Sin referencia'}
-                </strong>
-              </div>
-            </div>
-
-            <div className={styles.modalStack}>
-              {extractMetadataEntries(activeEvent.metadata).length ? (
-                <div className={styles.modalGrid}>
-                  {extractMetadataEntries(activeEvent.metadata).map((entry) => (
-                    <div key={`${activeEvent.id}-${entry.key}`} className={styles.modalField}>
-                      <span className={styles.modalFieldLabel}>{entry.key}</span>
-                      <strong className={styles.modalFieldValue}>{entry.value}</strong>
-                    </div>
-                  ))}
+            <div className={styles.modalBody}>
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Información de Entidad</h3>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Tipo de Entidad</span>
+                  <span className={styles.modalFieldValue}>{getAuditEntityTypeLabel(activeEvent.entityType)}</span>
                 </div>
-              ) : (
-                <p className={styles.modalNoteMuted}>Sin metadatos adicionales.</p>
-              )}
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Identificador de Entidad</span>
+                  <span className={styles.modalFieldValue}>{activeEvent.entityId ?? 'Sin referencia'}</span>
+                </div>
+                <div className={styles.modalField}>
+                  <span className={styles.modalFieldLabel}>Institución Involucrada</span>
+                  <span className={styles.modalFieldValue}>{activeEvent.institutionName ?? 'Global / No aplica'}</span>
+                </div>
+              </div>
+
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Metadatos Adicionales</h3>
+                {extractMetadataEntries(activeEvent.metadata).length ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                    {extractMetadataEntries(activeEvent.metadata).map((entry) => (
+                      <div key={`${activeEvent.id}-${entry.key}`} className={styles.modalField}>
+                        <span className={styles.modalFieldLabel}>{entry.key}</span>
+                        <span className={styles.modalNote}>{entry.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.modalNote}>Sin metadatos adicionales en este evento.</div>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <Button onClick={() => setActiveEvent(null)} variant="ghost">Cerrar</Button>
             </div>
           </div>
         </div>

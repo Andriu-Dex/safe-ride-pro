@@ -639,26 +639,32 @@ export default function AdminUsersPage() {
           {totalPages > 1 && (
             <div className={styles.pagination}>
               <span className={styles.paginationInfo}>
-                Mostrando {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(users.length, currentPage * PAGE_SIZE)} de {users.length}
+                Mostrando <strong>{(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(users.length, currentPage * PAGE_SIZE)}</strong> de <strong>{users.length}</strong> resultados
               </span>
               <div className={styles.paginationActions}>
-                <Button
+                <button
+                  className={styles.paginationBtn}
                   disabled={currentPage <= 1}
                   onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  variant="ghost"
+                  type="button"
                 >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                   Anterior
-                </Button>
-                <span className={styles.paginationLabel}>
-                  Página {currentPage} de {totalPages}
-                </span>
-                <Button
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: '0 0.5rem' }}>
+                  <span className={styles.pageNumber}>{currentPage}</span>
+                  <span className={styles.pageDivider}>de</span>
+                  <span className={styles.pageNumberTotal}>{totalPages}</span>
+                </div>
+                <button
+                  className={styles.paginationBtn}
                   disabled={currentPage >= totalPages}
                   onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
-                  variant="ghost"
+                  type="button"
                 >
                   Siguiente
-                </Button>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
               </div>
             </div>
           )}
