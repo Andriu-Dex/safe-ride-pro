@@ -11,6 +11,7 @@
     "start": "node ../../scripts/run-web-next.js start --port 3000",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:priority:auth-profile": "vitest run src/modules/auth/components/login-form.spec.tsx src/modules/auth/components/register-form.spec.tsx src/modules/auth/components/forgot-password-form.spec.tsx src/modules/auth/components/reset-password-form.spec.tsx src/modules/users/components/profile-onboarding-form.spec.tsx",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test e2e/specs/auth-admin.spec.ts e2e/specs/driver-onboarding-trip.spec.ts e2e/specs/passenger-trust-audit.spec.ts",

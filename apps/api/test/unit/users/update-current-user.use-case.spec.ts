@@ -16,8 +16,10 @@ function createUsersRepositoryMock(): jest.Mocked<UsersRepository> {
     findById: jest.fn(),
     findProfilePhotoRecordById: jest.fn(),
     updateProfile: jest.fn(),
+    updateAccountStatus: jest.fn(),
     updateProfilePhoto: jest.fn(),
     getTrustSummary: jest.fn(),
+    listAdminUserDirectory: jest.fn(),
   };
 }
 
@@ -59,6 +61,20 @@ function buildUserProfile() {
 }
 
 describe('UpdateCurrentUserUseCase', () => {
+  it('rejects explicit rejection of terms acceptance', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    repository.findById.mockResolvedValue(buildUserProfile() as never);
+
+    await expect(
+      useCase.execute('user-1', {
+        acceptTerms: false,
+      }),
+    ).rejects.toThrow(new BadRequestException('Debes aceptar los terminos para continuar.'));
+
+    expect(repository.updateProfile).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid Ecuadorian mobile phones', async () => {
     const repository = createUsersRepositoryMock();
     const useCase = new UpdateCurrentUserUseCase(repository);

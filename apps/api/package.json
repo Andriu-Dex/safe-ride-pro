@@ -11,6 +11,7 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest --config ./jest.config.js --runInBand",
+    "test:priority:auth-profile": "jest --config ./jest.config.js --runInBand test/unit/auth/login.use-case.spec.ts test/unit/auth/register-user.use-case.spec.ts test/unit/auth/forgot-password.use-case.spec.ts test/unit/auth/reset-password.use-case.spec.ts test/unit/users/update-current-user.use-case.spec.ts",
     "test:watch": "jest --config ./jest.config.js --watch",
     "pretest:db": "corepack pnpm --filter @saferidepro/shared-types build",
     "test:db": "node ./test/scripts/run-db-tests.js",
