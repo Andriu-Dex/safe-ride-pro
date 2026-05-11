@@ -463,6 +463,9 @@ export class PrismaUsersRepository implements UsersRepository {
           ? input.driverVerificationStatus as unknown as DriverVerificationStatus
           : undefined,
         user: {
+          id: input.excludeUserIds?.length
+            ? { notIn: input.excludeUserIds }
+            : undefined,
           accountStatus: input.accountStatus
             ? input.accountStatus as unknown as AccountStatus
             : undefined,

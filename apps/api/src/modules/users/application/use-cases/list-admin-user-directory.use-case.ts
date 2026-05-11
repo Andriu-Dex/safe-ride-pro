@@ -37,6 +37,7 @@ export class ListAdminUserDirectoryUseCase {
 
     const items = await this.usersRepository.listAdminUserDirectory({
       institutionIds,
+      excludeUserIds: [command.currentUser.id],
       query: command.query,
       accountStatus: command.accountStatus,
       driverVerificationStatus: command.driverVerificationStatus,

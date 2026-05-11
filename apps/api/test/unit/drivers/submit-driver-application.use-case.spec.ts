@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
+  AppNotificationType,
   DriverVerificationStatus,
   InstitutionMembershipRole,
   MembershipStatus,
@@ -7,6 +8,7 @@ import {
 
 import { AuditAction, AuditEntityType } from '../../../src/modules/audit/domain/audit.types';
 import { AuditService } from '../../../src/modules/audit/application/services/audit.service';
+import { NotificationsService } from '../../../src/modules/notifications/application/services/notifications.service';
 import { SubmitDriverApplicationUseCase } from '../../../src/modules/drivers/application/use-cases/submit-driver-application.use-case';
 import type {
   DriverMembershipRecord,
@@ -19,6 +21,7 @@ function createDriversRepositoryMock(): jest.Mocked<DriversRepository> {
   return {
     findDefaultMembershipByUserId: jest.fn(),
     findMembershipById: jest.fn(),
+    listInstitutionAdminMembershipIds: jest.fn(),
     findDriverProfileByMembershipId: jest.fn(),
     listReviewableDriverApplications: jest.fn(),
     submitDriverApplication: jest.fn(),
@@ -115,6 +118,32 @@ describe('SubmitDriverApplicationUseCase', () => {
     expect(repository.submitDriverApplication).not.toHaveBeenCalled();
   });
 
+  it('rejects reusing the same uploaded file for identity and license', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(buildMembership());
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        licenseTypeId: 'license-type-1',
+        licenseExpiresAt: '2030-01-01T10:00:00.000Z',
+        identityDocumentFileKey: 'same-file',
+        licenseDocumentFileKey: 'same-file',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'El documento de identidad y la licencia no pueden ser el mismo archivo.',
+      ),
+    );
+
+    expect(repository.submitDriverApplication).not.toHaveBeenCalled();
+  });
+
   it('rejects institutional admins acting as drivers', async () => {
     const repository = createDriversRepositoryMock();
     const auditService = {
@@ -181,9 +210,17 @@ describe('SubmitDriverApplicationUseCase', () => {
     const auditService = {
       record: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+    const notificationsService = {
+      notifyMembership: jest.fn(),
+    } as unknown as jest.Mocked<NotificationsService>;
+    const useCase = new SubmitDriverApplicationUseCase(
+      repository,
+      auditService,
+      notificationsService,
+    );
 
     repository.findDefaultMembershipByUserId.mockResolvedValue(buildMembership());
+    repository.listInstitutionAdminMembershipIds.mockResolvedValue(['admin-membership-1']);
     repository.submitDriverApplication.mockImplementation(async (input) => buildDriverProfile(input));
 
     const response = await useCase.execute({
@@ -213,6 +250,15 @@ describe('SubmitDriverApplicationUseCase', () => {
       metadata: {
         driverVerificationStatus: DriverVerificationStatus.PendingVerification,
       },
+    });
+    expect(notificationsService.notifyMembership).toHaveBeenCalledWith({
+      institutionId: 'institution-1',
+      recipientMembershipId: 'admin-membership-1',
+      actorUserId: 'user-1',
+      type: AppNotificationType.DriverApplicationUpdated,
+      title: 'Nueva solicitud de conductor',
+      body: 'Usuario Uno envio una solicitud para habilitarse como conductor.',
+      actionUrl: '/moderacion?section=drivers',
     });
   });
 });

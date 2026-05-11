@@ -166,6 +166,7 @@ export type AdminUserDirectoryRecord = {
 
 export type ListAdminUserDirectoryInput = {
   institutionIds?: string[];
+  excludeUserIds?: string[];
   query?: string;
   accountStatus?: AccountStatus;
   driverVerificationStatus?: DriverVerificationStatus;

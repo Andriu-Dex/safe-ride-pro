@@ -106,7 +106,15 @@ function getApplicationActionLabel(status: DriverVerificationStatus): string {
   }
 }
 
-function buildValidationMessage(values: DriverFormValues): string | null {
+function normalizeUploadedDocumentName(fileName?: string | null): string {
+  return fileName?.trim().toLowerCase() ?? '';
+}
+
+function buildValidationMessage(
+  values: DriverFormValues,
+  identityFileName?: string | null,
+  licenseFileName?: string | null,
+): string | null {
   if (!values.licenseTypeId) {
     return 'Selecciona el tipo de licencia.';
   }
@@ -129,6 +137,14 @@ function buildValidationMessage(values: DriverFormValues): string | null {
 
   if (!values.licenseDocumentFileKey.trim()) {
     return 'Carga tu documento de licencia.';
+  }
+
+  if (
+    normalizeUploadedDocumentName(identityFileName) &&
+    normalizeUploadedDocumentName(identityFileName) ===
+      normalizeUploadedDocumentName(licenseFileName)
+  ) {
+    return 'La cedula y la licencia deben cargarse como archivos distintos.';
   }
 
   return null;
@@ -362,7 +378,11 @@ export default function DriverPage() {
     driverOverview?.driverProfile?.userFullName ?? authSession?.user.fullName ?? 'usuario';
   const hasDriverProfile = Boolean(driverOverview?.driverProfile);
   const canEditApplication = currentStatus !== DriverVerificationStatus.Approved;
-  const validationMessage = buildValidationMessage(formValues);
+  const validationMessage = buildValidationMessage(
+    formValues,
+    identityFileName,
+    licenseFileName,
+  );
 
   const openApplicationModal = () => {
     if (driverOverview) {
@@ -411,6 +431,21 @@ export default function DriverPage() {
     file: File,
   ) => {
     if (!authSession) {
+      return;
+    }
+
+    const normalizedSelectedName = normalizeUploadedDocumentName(file.name);
+    const otherDocumentName =
+      documentType === 'identity'
+        ? normalizeUploadedDocumentName(licenseFileName)
+        : normalizeUploadedDocumentName(identityFileName);
+
+    if (normalizedSelectedName && normalizedSelectedName === otherDocumentName) {
+      pushToast(
+        'Archivo duplicado',
+        'La cedula y la licencia no pueden subirse con el mismo nombre de archivo.',
+        'error',
+      );
       return;
     }
 

@@ -504,7 +504,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
                           <circle cx="15.5" cy="16.8" r="1.4" />
                           <path d="M6.2 10 8 6.8h8L17.8 10" />
                         </svg>
-                        Conductor
+                        Ser Conductor
                       </button>
                     ) : null}
                     <button 

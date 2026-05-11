@@ -77,6 +77,7 @@ export type ReviewDriverApplicationInput = {
 export interface DriversRepository {
   findDefaultMembershipByUserId(userId: string): Promise<DriverMembershipRecord | null>;
   findMembershipById(membershipId: string): Promise<DriverMembershipRecord | null>;
+  listInstitutionAdminMembershipIds(institutionId: string): Promise<string[]>;
   findDriverProfileByMembershipId(membershipId: string): Promise<DriverProfileRecord | null>;
   listReviewableDriverApplications(
     filters: ListReviewableDriverApplicationsFilters,

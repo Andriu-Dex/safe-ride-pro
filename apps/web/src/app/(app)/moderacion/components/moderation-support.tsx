@@ -17,7 +17,7 @@ export function getWorkspaceHeadline(workspace: ModerationWorkspaceSection): {
     case 'driver':
       return {
         title: 'Solicitudes de conductor',
-        subtitle: 'Valida documentos y toma decisiones sin mezclar esta mesa con trazabilidad ni reportes globales.',
+        subtitle: '',
       };
     case 'reports':
       return {

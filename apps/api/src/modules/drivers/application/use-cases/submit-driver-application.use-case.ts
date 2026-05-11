@@ -1,5 +1,12 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
+import {
+  AppNotificationType,
   DriverVerificationStatus,
   InstitutionMembershipRole,
   MembershipStatus,
@@ -7,6 +14,7 @@ import {
 
 import { AuditService } from '../../../audit/application/services/audit.service';
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import {
   DRIVERS_REPOSITORY,
   DriversRepository,
@@ -26,6 +34,8 @@ export class SubmitDriverApplicationUseCase {
     @Inject(DRIVERS_REPOSITORY)
     private readonly driversRepository: DriversRepository,
     private readonly auditService: AuditService,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async execute(command: SubmitDriverApplicationCommand) {
@@ -73,6 +83,12 @@ export class SubmitDriverApplicationUseCase {
       );
     }
 
+    if (identityDocumentFileKey === licenseDocumentFileKey) {
+      throw new BadRequestException(
+        'El documento de identidad y la licencia no pueden ser el mismo archivo.',
+      );
+    }
+
     const driverProfile = await this.driversRepository.submitDriverApplication({
       membershipId: membership.id,
       licenseTypeId: command.licenseTypeId,
@@ -91,6 +107,26 @@ export class SubmitDriverApplicationUseCase {
         driverVerificationStatus: driverProfile.driverVerificationStatus,
       },
     });
+
+    const adminMembershipIds = await this.driversRepository.listInstitutionAdminMembershipIds(
+      membership.institutionId,
+    );
+
+    await Promise.all(
+      adminMembershipIds
+        .filter((recipientMembershipId) => recipientMembershipId !== membership.id)
+        .map((recipientMembershipId) =>
+          this.notificationsService?.notifyMembership({
+            institutionId: membership.institutionId,
+            recipientMembershipId,
+            actorUserId: command.userId,
+            type: AppNotificationType.DriverApplicationUpdated,
+            title: 'Nueva solicitud de conductor',
+            body: `${driverProfile.userFullName} envio una solicitud para habilitarse como conductor.`,
+            actionUrl: '/moderacion?section=drivers',
+          }),
+        ),
+    );
 
     return {
       message: 'Tu solicitud de conductor fue enviada y esta pendiente de revision.',

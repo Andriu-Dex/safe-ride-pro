@@ -62,6 +62,24 @@ export class PrismaDriversRepository implements DriversRepository {
     return membership ? this.mapMembership(membership) : null;
   }
 
+  async listInstitutionAdminMembershipIds(institutionId: string): Promise<string[]> {
+    const memberships = await this.prisma.userInstitutionMembership.findMany({
+      where: {
+        institutionId,
+        role: InstitutionMembershipRole.InstitutionAdmin,
+        membershipStatus: 'ACTIVE',
+        institution: {
+          isActive: true,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return memberships.map((membership) => membership.id);
+  }
+
   async findDriverProfileByMembershipId(membershipId: string): Promise<DriverProfileRecord | null> {
     const driverProfile = await this.prisma.driverProfile.findUnique({
       where: { membershipId },

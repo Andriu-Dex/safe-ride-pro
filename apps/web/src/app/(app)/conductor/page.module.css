@@ -71,7 +71,7 @@
 
 .kicker {
   margin: 0 0 0.35rem 0;
-  color: #0d9488;
+  color: #12353d;
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -451,7 +451,7 @@
   background: #ffffff;
   border-radius: 1.5rem;
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
-  border: 1px solid #e2e8f0;
+  border: 1px solid #0f172a;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -464,7 +464,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 2rem 2.5rem 1.5rem;
-  background: #f8fafc;
+  background: #0f766e;
   border-bottom: 1px solid #e2e8f0;
 }
 
@@ -479,7 +479,7 @@
 
 .modalText {
   margin: 0.25rem 0 0 0;
-  color: #64748b;
+  color: #ffffff;
   font-size: 1rem;
   line-height: 1.5;
 }
