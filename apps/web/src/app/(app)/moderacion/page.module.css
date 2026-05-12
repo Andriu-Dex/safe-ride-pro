@@ -227,6 +227,11 @@
   text-align: right;
 }
 
+.modalKicker{
+  color: #159a8b;
+  font-weight: bold;
+}
+
 .pagination {
   display: flex;
   flex-direction: column;

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from './button';
+import styles from './styles/file-preview-modal.module.css';
 
 type FilePreviewModalProps = {
   isOpen: boolean;
@@ -71,7 +72,7 @@ export function FilePreviewModal({
 
   const previewHint = useMemo(() => {
     if (isImage) {
-      return 'Pasa el cursor sobre la imagen para inspeccionar mejor los detalles.';
+      return 'Pasa el puntero sobre la imagen para ampliar los detalles del documento.';
     }
 
     if (isPdf) {
@@ -89,46 +90,54 @@ export function FilePreviewModal({
     <div
       aria-labelledby="file-preview-modal-title"
       aria-modal="true"
-      className="modal-backdrop"
+      className={styles.modalOverlay}
       onClick={onClose}
       role="dialog"
     >
       <div
-        className="modal-card modal-card-lg"
+        className={styles.modalCard}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="modal-header">
-          <div>
-            <p className="section-label">Previsualizacion</p>
-            <h2 className="panel-title" id="file-preview-modal-title">
+        <div className={styles.modalHeader}>
+          <div className={styles.headerContent}>
+            <p className={styles.kicker}>Previsualizaci&oacute;n</p>
+            <h2 className={styles.title} id="file-preview-modal-title">
               {title}
             </h2>
-            <p className="panel-text">
+            <p className={styles.description}>
               {description ?? previewHint}
             </p>
           </div>
-          <Button onClick={onClose} variant="secondary">
-            Cerrar
-          </Button>
+          <button
+            aria-label="Cerrar previsualizaci&oacute;n"
+            className={styles.modalClose}
+            onClick={onClose}
+            type="button"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+            </svg>
+          </button>
         </div>
 
-        <div className="modal-meta-row">
-          <span className="status-pill status-pill-neutral">
-            {getFileTypeLabel(mimeType)}
-          </span>
-          {fileName ? <span className="modal-file-name">{fileName}</span> : null}
-        </div>
+        <div className={styles.modalBody}>
+          <div className={styles.metaRow}>
+            <span className={styles.statusPill}>
+              {getFileTypeLabel(mimeType)}
+            </span>
+            {fileName ? <span className={styles.fileName}>{fileName}</span> : null}
+          </div>
 
-        <div className="file-preview-surface">
-          {isLoading ? (
-            <div className="file-preview-empty-state">
-              <p className="panel-text">Preparando la previsualizacion del documento...</p>
-            </div>
-          ) : errorMessage ? (
-            <div className="form-error">{errorMessage}</div>
-          ) : isImage && fileUrl ? (
-            <div
-              className="file-preview-image-shell"
+          <div className={styles.previewSurface}>
+            {isLoading ? (
+              <div className={styles.emptyState}>
+                <p>Preparando la previsualizaci&oacute;n del documento...</p>
+              </div>
+            ) : errorMessage ? (
+              <div className={styles.errorText}>{errorMessage}</div>
+            ) : isImage && fileUrl ? (
+              <div
+                className={styles.previewImageShell}
               onMouseMove={(event) => {
                 const bounds = event.currentTarget.getBoundingClientRect();
                 const x = ((event.clientX - bounds.left) / bounds.width) * 100;
@@ -138,29 +147,33 @@ export function FilePreviewModal({
             >
               <img
                 alt={title}
-                className="file-preview-image"
+                  className={styles.previewImage}
                 src={fileUrl}
                 style={{ transformOrigin: zoomOrigin }}
               />
             </div>
           ) : isPdf && fileUrl ? (
             <iframe
-              className="file-preview-frame"
+                className={styles.previewFrame}
               src={fileUrl}
               title={title}
             />
           ) : (
-            <div className="file-preview-empty-state">
-              <p className="panel-text">
-                No fue posible generar una previsualizacion directa para este archivo.
+              <div className={styles.emptyState}>
+                <p>
+                  No fue posible generar una previsualizaci&oacute;n directa para este archivo.
               </p>
             </div>
           )}
         </div>
+        </div>
 
-        <div className="button-row">
+        <div className={styles.buttonRow}>
           {onDownload ? (
             <Button disabled={isDownloading || isLoading} onClick={onDownload} variant="secondary">
+              <span className={styles.btnIcon}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </span>
               {isDownloading ? 'Descargando...' : 'Descargar archivo'}
             </Button>
           ) : null}

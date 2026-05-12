@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { persistToast } from '../../components/ui/flash-toast';
 import { canAccessAudit } from '../../modules/audit/lib/audit-access';
 import { useAuth } from '../../modules/auth/hooks/use-auth';
 import { useAppExperienceMode } from '../../modules/auth/hooks/use-app-experience-mode';
@@ -205,6 +206,27 @@ function getDisplayName(fullName?: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
 }
 
+function hasPendingDriverApproval(
+  memberships:
+    | readonly {
+        driverVerificationStatus?: DriverVerificationStatus | null;
+        effectiveDriverVerificationStatus?: DriverVerificationStatus | null;
+      }[]
+    | null
+    | undefined,
+): boolean {
+  if (!memberships?.length) {
+    return false;
+  }
+
+  return memberships.some((membership) => {
+    const effectiveStatus =
+      membership.effectiveDriverVerificationStatus ?? membership.driverVerificationStatus;
+
+    return effectiveStatus === DriverVerificationStatus.PendingVerification;
+  });
+}
+
 export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -235,6 +257,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     ?? DriverVerificationStatus.NotRequested;
   const hasStartedDriverFlow =
     canUseDriverMode || effectiveDriverStatus !== DriverVerificationStatus.NotRequested;
+  const hasPendingApprovalReminder = hasPendingDriverApproval(authSession?.user.memberships);
 
   const visibleNavItems = useMemo(
     () => {
@@ -330,6 +353,13 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
 
     if (isApprovedDriver || hasStartedDriverFlow) {
       setExperienceMode('driver');
+      if (hasPendingApprovalReminder) {
+        persistToast({
+          title: 'Solicitud en revision',
+          description: 'Tu solicitud para ser conductor aun no ha sido aprobada. Te avisaremos cuando haya una respuesta.',
+          tone: 'info',
+        });
+      }
       router.push('/conductor');
       return;
     }
@@ -651,8 +681,19 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           className={`${styles.experienceFab} ${
             isDriverExperienceActive ? styles.experienceFabToPassenger : styles.experienceFabToDriver
           }`}
-          onClick={() =>
-            setExperienceMode(isDriverExperienceActive ? 'passenger' : 'driver')}
+          onClick={() => {
+            const nextMode = isDriverExperienceActive ? 'passenger' : 'driver';
+
+            setExperienceMode(nextMode);
+
+            if (nextMode === 'driver' && hasPendingApprovalReminder) {
+              persistToast({
+                title: 'Solicitud en revision',
+                description: 'Tu solicitud para ser conductor aun no ha sido aprobada. Te avisaremos cuando haya una respuesta.',
+                tone: 'info',
+              });
+            }
+          }}
           type="button"
         >
           <span className={styles.experienceFabIcon} aria-hidden="true">
