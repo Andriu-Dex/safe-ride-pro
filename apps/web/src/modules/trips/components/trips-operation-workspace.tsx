@@ -58,6 +58,8 @@ type TripsOperationWorkspaceProps = {
   onMarkPassengerDroppedOff: (requestId: string) => void;
   onMarkNoShow: (requestId: string) => void;
   onTripClosureNoteChange: (tripId: string, value: string) => void;
+  showCommandCenter?: boolean;
+  showClosureItems?: boolean;
 };
 
 export function TripsOperationWorkspace({
@@ -79,6 +81,8 @@ export function TripsOperationWorkspace({
   onMarkPassengerDroppedOff,
   onMarkNoShow,
   onTripClosureNoteChange,
+  showCommandCenter = true,
+  showClosureItems = true,
 }: TripsOperationWorkspaceProps) {
   const [page, setPage] = useState(1);
   const pageSize = 6;
@@ -87,6 +91,17 @@ export function TripsOperationWorkspace({
     [myTrips, page],
   );
   const closureItems = buildDriverClosureItems(myTrips, incomingRequests);
+  const requestsByTrip = useMemo(() => {
+    const groupedRequests = new Map<string, TripRequestRecord[]>();
+
+    incomingRequests.forEach((request) => {
+      const currentRequests = groupedRequests.get(request.tripId) ?? [];
+      currentRequests.push(request);
+      groupedRequests.set(request.tripId, currentRequests);
+    });
+
+    return groupedRequests;
+  }, [incomingRequests]);
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(myTrips.length / pageSize));
@@ -100,23 +115,25 @@ export function TripsOperationWorkspace({
     <section className="trips-workspace-grid trips-operation-stack">
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="operation" /> : null}
 
-      <TripExecutionCommandCenter
-        blocksDriver={blocksDriver}
-        incomingRequests={incomingRequests}
-        isMutatingRequestId={isMutatingRequestId}
-        isMutatingTripId={isMutatingTripId}
-        licenseStatus={licenseStatus}
-        myTrips={myTrips}
-        noShowNotes={noShowNotes}
-        onMarkNoShow={onMarkNoShow}
-        onMarkPassengerBoarded={onMarkPassengerBoarded}
-        onMarkPassengerDroppedOff={onMarkPassengerDroppedOff}
-        onNoShowNoteChange={onNoShowNoteChange}
-        onOpenRequests={onOpenRequests}
-        onTripAction={onTripAction}
-        onTripClosureNoteChange={onTripClosureNoteChange}
-        tripClosureNotes={tripClosureNotes}
-      />
+      {showCommandCenter ? (
+        <TripExecutionCommandCenter
+          blocksDriver={blocksDriver}
+          incomingRequests={incomingRequests}
+          isMutatingRequestId={isMutatingRequestId}
+          isMutatingTripId={isMutatingTripId}
+          licenseStatus={licenseStatus}
+          myTrips={myTrips}
+          noShowNotes={noShowNotes}
+          onMarkNoShow={onMarkNoShow}
+          onMarkPassengerBoarded={onMarkPassengerBoarded}
+          onMarkPassengerDroppedOff={onMarkPassengerDroppedOff}
+          onNoShowNoteChange={onNoShowNoteChange}
+          onOpenRequests={onOpenRequests}
+          onTripAction={onTripAction}
+          onTripClosureNoteChange={onTripClosureNoteChange}
+          tripClosureNotes={tripClosureNotes}
+        />
+      ) : null}
 
       <article className="panel panel-stack trips-stream-panel">
         <div className="section-heading">
@@ -144,12 +161,29 @@ export function TripsOperationWorkspace({
                 trip.estimatedArrivalAt,
               );
               const lateRemovalWarning = getLateRemovalWarning(trip);
+              const relatedRequests = requestsByTrip.get(trip.id) ?? [];
+              const acceptedPassengersCount = relatedRequests.filter(
+                (request) => request.status === TripRequestStatus.Accepted,
+              ).length;
+              const pendingPassengersCount = relatedRequests.filter(
+                (request) => request.status === TripRequestStatus.Pending,
+              ).length;
 
               return (
                 <TripOverviewCard
                   key={trip.id}
                   helperContent={
                     <>
+                      <div className="trip-card-inline-meta">
+                        <span className="trip-card-inline-chip">
+                          {acceptedPassengersCount} confirmados
+                        </span>
+                        {pendingPassengersCount > 0 ? (
+                          <span className="trip-card-inline-chip trip-card-inline-chip-accent">
+                            {pendingPassengersCount} pendientes
+                          </span>
+                        ) : null}
+                      </div>
                       {trip.status === TripStatus.Cancelled && trip.cancellationTiming ? (
                         <StatusPill
                           label={getCancellationTimingLabel(trip.cancellationTiming) ?? 'Cancelacion'}
@@ -180,16 +214,58 @@ export function TripsOperationWorkspace({
                   }
                   trip={trip}
                 >
-                  <div className="button-row">
-                    <Link className="button button-secondary" href={`/viajes/${trip.id}`}>
-                      Ver detalle
-                    </Link>
+                  <div className="trip-card-actions-shell">
+                    <div className="trip-card-actions-compact">
+                      <Link
+                        aria-label="Ver detalle del viaje"
+                        className="trip-card-icon-action"
+                        href={`/viajes/${trip.id}`}
+                        title="Ver detalle"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        <span>Ver detalle</span>
+                      </Link>
+                      {trip.status === TripStatus.Draft ||
+                      trip.status === TripStatus.Published ||
+                      trip.status === TripStatus.Full ? (
+                        <Link
+                          aria-label="Editar viaje"
+                          className="trip-card-icon-action"
+                          href={`/viajes/${trip.id}/editar`}
+                          title="Editar"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24">
+                            <path d="m4 20 4.5-1 9.2-9.2a1.8 1.8 0 0 0 0-2.6l-.9-.9a1.8 1.8 0 0 0-2.6 0L5 15.5 4 20Z" />
+                            <path d="m13.5 6.5 4 4" />
+                          </svg>
+                          <span>Editar</span>
+                        </Link>
+                      ) : null}
+                    </div>
+                    <div className="trip-card-actions-main">
+                    {(trip.status === TripStatus.Published || trip.status === TripStatus.Full) && pendingPassengersCount > 0 ? (
+                      <Button
+                        onClick={onOpenRequests}
+                        title="Abrir solicitudes"
+                        variant="ghost"
+                      >
+                        Solicitudes
+                      </Button>
+                    ) : null}
                     {trip.status === TripStatus.Draft ||
                     trip.status === TripStatus.Published ||
                     trip.status === TripStatus.Full ? (
-                      <Link className="button button-ghost" href={`/viajes/${trip.id}/editar`}>
-                        Editar
-                      </Link>
+                      <Button
+                        disabled={isMutatingTripId === trip.id}
+                        onClick={() => onTripAction(trip.id, 'cancel')}
+                        title={lateRemovalWarning ?? 'Cancelar viaje'}
+                        variant="ghost"
+                      >
+                        Cancelar
+                      </Button>
                     ) : null}
                     {trip.status === TripStatus.Draft ? (
                       <Button
@@ -230,6 +306,7 @@ export function TripsOperationWorkspace({
                         Finalizar
                       </Button>
                     ) : null}
+                    </div>
                   </div>
                 </TripOverviewCard>
               );
@@ -251,7 +328,7 @@ export function TripsOperationWorkspace({
         />
       </article>
 
-      {closureItems.length ? (
+      {showClosureItems && closureItems.length ? (
         <article className="panel panel-stack trips-stream-panel">
           <div className="section-heading">
             <h2 className="panel-title">Pendientes post-viaje</h2>
