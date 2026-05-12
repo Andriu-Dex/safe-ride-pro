@@ -3,7 +3,6 @@ import {
   Get,
   NotFoundException,
   Param,
-  ParseUUIDPipe,
   Patch,
   UseGuards,
 } from '@nestjs/common';
@@ -46,7 +45,7 @@ export class NotificationsController {
   @Patch(':notificationId/read')
   async markAsRead(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
+    @Param('notificationId') notificationId: string,
   ) {
     const membershipId = this.getDefaultMembershipId(currentUser);
     const notification = await this.notificationsService.markAsRead(

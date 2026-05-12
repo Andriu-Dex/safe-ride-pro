@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -45,7 +44,7 @@ export class SanctionsController {
   @Post(':sanctionId/appeals')
   submitAppeal(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('sanctionId', new ParseUUIDPipe()) sanctionId: string,
+    @Param('sanctionId') sanctionId: string,
     @Body() body: SubmitSanctionAppealRequestDto,
   ) {
     return this.submitSanctionAppealUseCase.execute(currentUser, {
@@ -70,7 +69,7 @@ export class SanctionsController {
   @Patch('appeals/:appealId/review')
   reviewAppeal(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('appealId', new ParseUUIDPipe()) appealId: string,
+    @Param('appealId') appealId: string,
     @Body() body: ReviewSanctionAppealRequestDto,
   ) {
     return this.reviewSanctionAppealUseCase.execute(currentUser, {
@@ -95,7 +94,7 @@ export class SanctionsController {
   @Patch(':sanctionId/lift')
   liftSanction(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('sanctionId', new ParseUUIDPipe()) sanctionId: string,
+    @Param('sanctionId') sanctionId: string,
     @Body() body: LiftOperationalSanctionRequestDto,
   ) {
     return this.liftOperationalSanctionUseCase.execute(currentUser, {

@@ -4,7 +4,6 @@ import {
   Get,
   Header,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -101,7 +100,7 @@ export class ReportsController {
   @Header('Cache-Control', 'no-store')
   async getReportEvidence(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('reportId', new ParseUUIDPipe()) reportId: string,
+    @Param('reportId') reportId: string,
   ) {
     const evidence = await this.getReportEvidenceUseCase.execute(currentUser, reportId);
 
@@ -115,7 +114,7 @@ export class ReportsController {
   @Patch(':reportId/review')
   reviewReport(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('reportId', new ParseUUIDPipe()) reportId: string,
+    @Param('reportId') reportId: string,
     @Body() body: ReviewReportRequestDto,
   ) {
     return this.reviewReportUseCase.execute(currentUser, {

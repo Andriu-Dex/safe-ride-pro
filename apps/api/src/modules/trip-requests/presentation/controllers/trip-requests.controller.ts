@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -70,7 +69,7 @@ export class TripRequestsController {
   @Patch(':requestId/accept')
   acceptTripRequest(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Param('requestId') requestId: string,
     @Body() body: ReviewTripRequestRequestDto,
   ) {
     return this.acceptTripRequestUseCase.execute(currentUser.id, requestId, body.reviewNote);
@@ -79,7 +78,7 @@ export class TripRequestsController {
   @Patch(':requestId/reject')
   rejectTripRequest(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Param('requestId') requestId: string,
     @Body() body: ReviewTripRequestRequestDto,
   ) {
     return this.rejectTripRequestUseCase.execute(currentUser.id, requestId, body.reviewNote);
@@ -88,7 +87,7 @@ export class TripRequestsController {
   @Patch(':requestId/cancel')
   cancelTripRequest(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Param('requestId') requestId: string,
   ) {
     return this.cancelTripRequestUseCase.execute(currentUser.id, requestId);
   }
@@ -96,7 +95,7 @@ export class TripRequestsController {
   @Patch(':requestId/boarded')
   markTripRequestBoarded(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Param('requestId') requestId: string,
   ) {
     return this.markTripRequestBoardedUseCase.execute(currentUser.id, requestId);
   }
@@ -104,7 +103,7 @@ export class TripRequestsController {
   @Patch(':requestId/dropped-off')
   markTripRequestDroppedOff(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Param('requestId') requestId: string,
   ) {
     return this.markTripRequestDroppedOffUseCase.execute(currentUser.id, requestId);
   }
@@ -112,7 +111,7 @@ export class TripRequestsController {
   @Patch(':requestId/no-show')
   markTripRequestNoShow(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Param('requestId') requestId: string,
     @Body() body: ReviewTripRequestRequestDto,
   ) {
     return this.markTripRequestNoShowUseCase.execute(

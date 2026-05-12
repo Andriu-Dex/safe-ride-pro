@@ -1,10 +1,12 @@
-import { IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateRatingRequestDto {
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   tripId!: string;
 
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   targetMembershipId!: string;
 
   @IsInt()

@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -99,7 +98,7 @@ export class TripsController {
   @Get(':tripId')
   getTripById(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Param('tripId') tripId: string,
   ) {
     return this.getTripByIdUseCase.execute(currentUser.id, tripId);
   }
@@ -107,7 +106,7 @@ export class TripsController {
   @Patch(':tripId')
   updateTrip(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Param('tripId') tripId: string,
     @Body() body: UpdateTripRequestDto,
   ) {
     return this.updateTripUseCase.execute({
@@ -133,7 +132,7 @@ export class TripsController {
   @Get(':tripId/live-tracking')
   getTripLiveTracking(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Param('tripId') tripId: string,
   ) {
     return this.getTripLiveTrackingUseCase.execute(currentUser.id, tripId);
   }
@@ -141,7 +140,7 @@ export class TripsController {
   @Patch(':tripId/publish')
   publishTrip(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Param('tripId') tripId: string,
   ) {
     return this.publishTripUseCase.execute(currentUser.id, tripId);
   }
@@ -149,7 +148,7 @@ export class TripsController {
   @Patch(':tripId/start')
   startTrip(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Param('tripId') tripId: string,
   ) {
     return this.startTripUseCase.execute(currentUser.id, tripId);
   }
@@ -157,7 +156,7 @@ export class TripsController {
   @Patch(':tripId/complete')
   completeTrip(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Param('tripId') tripId: string,
     @Body() body: CompleteTripRequestDto,
   ) {
     return this.completeTripUseCase.execute(currentUser.id, tripId, body.closureNote);
@@ -166,7 +165,7 @@ export class TripsController {
   @Patch(':tripId/cancel')
   cancelTrip(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Param('tripId') tripId: string,
   ) {
     return this.cancelTripUseCase.execute(currentUser.id, tripId);
   }
@@ -174,7 +173,7 @@ export class TripsController {
   @Post(':tripId/live-tracking/positions')
   updateTripLiveTracking(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('tripId', new ParseUUIDPipe()) tripId: string,
+    @Param('tripId') tripId: string,
     @Body() body: UpdateTripLiveTrackingRequestDto,
   ) {
     return this.updateTripLiveTrackingUseCase.execute({

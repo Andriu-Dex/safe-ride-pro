@@ -3,7 +3,7 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
-  IsUUID,
+  IsString,
   Max,
   Min,
 } from 'class-validator';
@@ -11,7 +11,7 @@ import { Transform } from 'class-transformer';
 
 export class ListReviewableDriverApplicationsQueryDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   institutionId?: string;
 
   @IsOptional()

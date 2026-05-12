@@ -99,6 +99,24 @@ const PAGE_SIZES: Record<ModerationWorkspaceSection, number> = {
   appeals: 5,
 };
 
+type ModerationSortOption =
+  | 'newest'
+  | 'oldest'
+  | 'priority-recent'
+  | 'license-expiring'
+  | 'name-asc'
+  | 'severity-first'
+  | 'expires-soon'
+  | 'automatic-first'
+  | 'pending-first';
+
+const DEFAULT_SORT_BY_WORKSPACE: Record<ModerationWorkspaceSection, ModerationSortOption> = {
+  driver: 'newest',
+  reports: 'priority-recent',
+  sanctions: 'newest',
+  appeals: 'newest',
+};
+
 function isModerationWorkspaceSection(
   value: string | null,
 ): value is ModerationWorkspaceSection {
@@ -132,6 +150,63 @@ function formatRelativeElapsed(value: string): string {
   }
 
   return `${Math.floor(elapsedHours / 24)} d`;
+}
+
+function toTimestamp(value: string | null | undefined): number {
+  if (!value) {
+    return 0;
+  }
+
+  const parsedValue = new Date(value).getTime();
+  return Number.isNaN(parsedValue) ? 0 : parsedValue;
+}
+
+function isWithinDateRange(
+  value: string | null | undefined,
+  fromDate: string,
+  toDate: string,
+): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const valueTimestamp = toTimestamp(value);
+
+  if (!valueTimestamp) {
+    return false;
+  }
+
+  if (fromDate) {
+    const fromTimestamp = toTimestamp(`${fromDate}T00:00:00`);
+
+    if (fromTimestamp && valueTimestamp < fromTimestamp) {
+      return false;
+    }
+  }
+
+  if (toDate) {
+    const toTimestampValue = toTimestamp(`${toDate}T23:59:59.999`);
+
+    if (toTimestampValue && valueTimestamp > toTimestampValue) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function compareAscendingDates(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): number {
+  return toTimestamp(left) - toTimestamp(right);
+}
+
+function compareDescendingDates(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): number {
+  return toTimestamp(right) - toTimestamp(left);
 }
 
 function getOperationalSanctionTriggerLabel(trigger: OperationalSanctionTrigger): string {
@@ -205,6 +280,14 @@ export default function ModerationPage() {
   const [institutionId, setInstitutionId] = useState('');
   const [reportStatusFilter, setReportStatusFilter] = useState('');
   const [driverApplicationStatusFilter, setDriverApplicationStatusFilter] = useState('');
+  const [reportSeverityFilter, setReportSeverityFilter] = useState('');
+  const [sanctionSourceFilter, setSanctionSourceFilter] = useState('');
+  const [appealStatusFilter, setAppealStatusFilter] = useState('');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [sortByWorkspace, setSortByWorkspace] = useState<
+    Record<ModerationWorkspaceSection, ModerationSortOption>
+  >(DEFAULT_SORT_BY_WORKSPACE);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [driverReviewNotes, setDriverReviewNotes] = useState<Record<string, string>>({});
   const [appealReviewNotes, setAppealReviewNotes] = useState<Record<string, string>>({});
@@ -295,20 +378,20 @@ export default function ModerationPage() {
         listReviewableReports(accessToken, {
           institutionId: institutionId || undefined,
           status: reportStatusFilter ? (reportStatusFilter as ReportStatus) : undefined,
-          limit: 40,
+          limit: 100,
         }),
         listReviewableDriverApplications(accessToken, {
           institutionId: institutionId || undefined,
           status: driverApplicationStatusFilter || undefined,
-          limit: 40,
+          limit: 100,
         }),
         listReviewableActiveSanctions(accessToken, {
           institutionId: institutionId || undefined,
-          limit: 40,
+          limit: 100,
         }),
         listReviewableSanctionAppeals(accessToken, {
           institutionId: institutionId || undefined,
-          limit: 40,
+          limit: 100,
         }),
       ]);
 
@@ -457,6 +540,12 @@ export default function ModerationPage() {
     setInstitutionId('');
     setReportStatusFilter('');
     setDriverApplicationStatusFilter('');
+    setReportSeverityFilter('');
+    setSanctionSourceFilter('');
+    setAppealStatusFilter('');
+    setDateFromFilter('');
+    setDateToFilter('');
+    setSortByWorkspace(DEFAULT_SORT_BY_WORKSPACE);
     setPageByWorkspace(INITIAL_PAGES);
   };
 
@@ -792,67 +881,218 @@ export default function ModerationPage() {
     setReportEvidencePreviewError(null);
   };
 
-  const activeFiltersCount = [institutionId, reportStatusFilter, driverApplicationStatusFilter].filter(Boolean).length;
-  const orderedReviewableReports = useMemo(
-    () => [...reviewableReports].sort((left, right) => getReportPriorityRank(left) - getReportPriorityRank(right)),
-    [reviewableReports],
-  );
+  useEffect(() => {
+    setPageByWorkspace((current) => ({
+      ...current,
+      [activeWorkspace]: 1,
+    }));
+  }, [
+    activeWorkspace,
+    appealStatusFilter,
+    dateFromFilter,
+    dateToFilter,
+    driverApplicationStatusFilter,
+    institutionId,
+    reportSeverityFilter,
+    reportStatusFilter,
+    sanctionSourceFilter,
+    sortByWorkspace,
+  ]);
+
+  const activeFiltersCount = [
+    institutionId,
+    reportStatusFilter,
+    driverApplicationStatusFilter,
+    reportSeverityFilter,
+    sanctionSourceFilter,
+    appealStatusFilter,
+    dateFromFilter,
+    dateToFilter,
+    sortByWorkspace[activeWorkspace] !== DEFAULT_SORT_BY_WORKSPACE[activeWorkspace]
+      ? sortByWorkspace[activeWorkspace]
+      : '',
+  ].filter(Boolean).length;
+
+  const filteredDriverApplications = useMemo(() => {
+    const items = reviewableDriverApplications.filter((application) =>
+      isWithinDateRange(application.submittedAt, dateFromFilter, dateToFilter),
+    );
+
+    return [...items].sort((left, right) => {
+      switch (sortByWorkspace.driver) {
+        case 'oldest':
+          return compareAscendingDates(left.submittedAt, right.submittedAt);
+        case 'license-expiring':
+          return compareAscendingDates(left.licenseExpiresAt, right.licenseExpiresAt);
+        case 'name-asc':
+          return left.userFullName.localeCompare(right.userFullName, 'es');
+        case 'newest':
+        default:
+          return compareDescendingDates(left.submittedAt, right.submittedAt);
+      }
+    });
+  }, [dateFromFilter, dateToFilter, reviewableDriverApplications, sortByWorkspace.driver]);
+
+  const orderedReviewableReports = useMemo(() => {
+    const items = reviewableReports.filter((report) => {
+      if (!isWithinDateRange(report.createdAt, dateFromFilter, dateToFilter)) {
+        return false;
+      }
+
+      if (reportSeverityFilter === 'high') {
+        return requiresDetailedReviewNote(report.reason);
+      }
+
+      if (reportSeverityFilter === 'regular') {
+        return !requiresDetailedReviewNote(report.reason);
+      }
+
+      return true;
+    });
+
+    return [...items].sort((left, right) => {
+      switch (sortByWorkspace.reports) {
+        case 'newest':
+          return compareDescendingDates(left.createdAt, right.createdAt);
+        case 'oldest':
+          return compareAscendingDates(left.createdAt, right.createdAt);
+        case 'severity-first': {
+          const severityDifference =
+            Number(requiresDetailedReviewNote(right.reason)) -
+            Number(requiresDetailedReviewNote(left.reason));
+
+          return severityDifference || compareDescendingDates(left.createdAt, right.createdAt);
+        }
+        case 'priority-recent':
+        default: {
+          const priorityDifference = getReportPriorityRank(left) - getReportPriorityRank(right);
+          return priorityDifference || compareDescendingDates(left.createdAt, right.createdAt);
+        }
+      }
+    });
+  }, [dateFromFilter, dateToFilter, reportSeverityFilter, reviewableReports, sortByWorkspace.reports]);
+
+  const filteredReviewableSanctions = useMemo(() => {
+    const items = reviewableSanctions.filter((sanction) => {
+      if (!isWithinDateRange(sanction.startedAt, dateFromFilter, dateToFilter)) {
+        return false;
+      }
+
+      if (sanctionSourceFilter === 'automatic') {
+        return sanction.isAutomatic;
+      }
+
+      if (sanctionSourceFilter === 'manual') {
+        return !sanction.isAutomatic;
+      }
+
+      return true;
+    });
+
+    return [...items].sort((left, right) => {
+      switch (sortByWorkspace.sanctions) {
+        case 'oldest':
+          return compareAscendingDates(left.startedAt, right.startedAt);
+        case 'expires-soon':
+          return compareAscendingDates(left.endsAt, right.endsAt);
+        case 'automatic-first': {
+          const automaticDifference = Number(right.isAutomatic) - Number(left.isAutomatic);
+          return automaticDifference || compareDescendingDates(left.startedAt, right.startedAt);
+        }
+        case 'newest':
+        default:
+          return compareDescendingDates(left.startedAt, right.startedAt);
+      }
+    });
+  }, [dateFromFilter, dateToFilter, reviewableSanctions, sanctionSourceFilter, sortByWorkspace.sanctions]);
+
+  const filteredReviewableAppeals = useMemo(() => {
+    const items = reviewableAppeals.filter((appeal) => {
+      if (!isWithinDateRange(appeal.createdAt, dateFromFilter, dateToFilter)) {
+        return false;
+      }
+
+      if (appealStatusFilter) {
+        return appeal.status === appealStatusFilter;
+      }
+
+      return true;
+    });
+
+    return [...items].sort((left, right) => {
+      switch (sortByWorkspace.appeals) {
+        case 'oldest':
+          return compareAscendingDates(left.createdAt, right.createdAt);
+        case 'pending-first': {
+          const pendingDifference =
+            Number(right.status === OperationalSanctionAppealStatus.Pending) -
+            Number(left.status === OperationalSanctionAppealStatus.Pending);
+
+          return pendingDifference || compareDescendingDates(left.createdAt, right.createdAt);
+        }
+        case 'newest':
+        default:
+          return compareDescendingDates(left.createdAt, right.createdAt);
+      }
+    });
+  }, [appealStatusFilter, dateFromFilter, dateToFilter, reviewableAppeals, sortByWorkspace.appeals]);
+
   const sanctionsWithPendingAppeals = useMemo(
     () =>
       new Set(
-        reviewableAppeals
+        filteredReviewableAppeals
           .filter((appeal) => appeal.status === OperationalSanctionAppealStatus.Pending)
           .map((appeal) => appeal.sanctionId),
       ),
-    [reviewableAppeals],
+    [filteredReviewableAppeals],
   );
 
-  const pendingDriverApplicationsCount = reviewableDriverApplications.filter(
+  const pendingDriverApplicationsCount = filteredDriverApplications.filter(
     (application) =>
       application.driverVerificationStatus === DriverVerificationStatus.PendingVerification,
   ).length;
-  const openReportsCount = reviewableReports.filter(
+  const openReportsCount = orderedReviewableReports.filter(
     (report) => report.status === ReportStatus.Pending || report.status === ReportStatus.UnderReview,
   ).length;
-  const pendingAppealsCount = reviewableAppeals.filter(
+  const pendingAppealsCount = filteredReviewableAppeals.filter(
     (appeal) => appeal.status === OperationalSanctionAppealStatus.Pending,
   ).length;
 
   const driverStats = [
     { label: 'Pendientes', value: pendingDriverApplicationsCount },
-    { label: 'Aprobadas', value: reviewableDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Approved).length },
-    { label: 'Rechazadas', value: reviewableDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Rejected).length },
+    { label: 'Aprobadas', value: filteredDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Approved).length },
+    { label: 'Rechazadas', value: filteredDriverApplications.filter((item) => item.driverVerificationStatus === DriverVerificationStatus.Rejected).length },
   ];
 
   const reportStats = [
     { label: 'Abiertos', value: openReportsCount },
-    { label: 'Alta severidad', value: reviewableReports.filter((item) => requiresDetailedReviewNote(item.reason) && (item.status === ReportStatus.Pending || item.status === ReportStatus.UnderReview)).length },
-    { label: 'Resueltos', value: reviewableReports.filter((item) => item.status === ReportStatus.Resolved).length },
+    { label: 'Alta severidad', value: orderedReviewableReports.filter((item) => requiresDetailedReviewNote(item.reason) && (item.status === ReportStatus.Pending || item.status === ReportStatus.UnderReview)).length },
+    { label: 'Resueltos', value: orderedReviewableReports.filter((item) => item.status === ReportStatus.Resolved).length },
   ];
 
   const sanctionStats = [
-    { label: 'Activas', value: reviewableSanctions.length },
+    { label: 'Activas', value: filteredReviewableSanctions.length },
     { label: 'Apeladas', value: sanctionsWithPendingAppeals.size },
-    { label: 'Manuales', value: reviewableSanctions.filter((item) => !item.isAutomatic).length },
+    { label: 'Manuales', value: filteredReviewableSanctions.filter((item) => !item.isAutomatic).length },
   ];
 
   const appealStats = [
     { label: 'Pendientes', value: pendingAppealsCount },
-    { label: 'Aprobadas', value: reviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Approved).length },
-    { label: 'Rechazadas', value: reviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Rejected).length },
+    { label: 'Aprobadas', value: filteredReviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Approved).length },
+    { label: 'Rechazadas', value: filteredReviewableAppeals.filter((item) => item.status === OperationalSanctionAppealStatus.Rejected).length },
   ];
 
-  const driverPageCount = Math.max(1, Math.ceil(reviewableDriverApplications.length / PAGE_SIZES.driver));
+  const driverPageCount = Math.max(1, Math.ceil(filteredDriverApplications.length / PAGE_SIZES.driver));
   const reportPageCount = Math.max(1, Math.ceil(orderedReviewableReports.length / PAGE_SIZES.reports));
-  const sanctionPageCount = Math.max(1, Math.ceil(reviewableSanctions.length / PAGE_SIZES.sanctions));
-  const appealPageCount = Math.max(1, Math.ceil(reviewableAppeals.length / PAGE_SIZES.appeals));
+  const sanctionPageCount = Math.max(1, Math.ceil(filteredReviewableSanctions.length / PAGE_SIZES.sanctions));
+  const appealPageCount = Math.max(1, Math.ceil(filteredReviewableAppeals.length / PAGE_SIZES.appeals));
 
   const driverPage = Math.min(pageByWorkspace.driver, driverPageCount);
   const reportPage = Math.min(pageByWorkspace.reports, reportPageCount);
   const sanctionPage = Math.min(pageByWorkspace.sanctions, sanctionPageCount);
   const appealPage = Math.min(pageByWorkspace.appeals, appealPageCount);
 
-  const paginatedDriverApplications = reviewableDriverApplications.slice(
+  const paginatedDriverApplications = filteredDriverApplications.slice(
     (driverPage - 1) * PAGE_SIZES.driver,
     driverPage * PAGE_SIZES.driver,
   );
@@ -860,11 +1100,11 @@ export default function ModerationPage() {
     (reportPage - 1) * PAGE_SIZES.reports,
     reportPage * PAGE_SIZES.reports,
   );
-  const paginatedSanctions = reviewableSanctions.slice(
+  const paginatedSanctions = filteredReviewableSanctions.slice(
     (sanctionPage - 1) * PAGE_SIZES.sanctions,
     sanctionPage * PAGE_SIZES.sanctions,
   );
-  const paginatedAppeals = reviewableAppeals.slice(
+  const paginatedAppeals = filteredReviewableAppeals.slice(
     (appealPage - 1) * PAGE_SIZES.appeals,
     appealPage * PAGE_SIZES.appeals,
   );
@@ -966,6 +1206,66 @@ export default function ModerationPage() {
             ))}
           </SelectField>
 
+          <SelectField
+            label="Orden"
+            onChange={(event) =>
+              setSortByWorkspace((current) => ({
+                ...current,
+                [activeWorkspace]: event.target.value as ModerationSortOption,
+              }))
+            }
+            value={sortByWorkspace[activeWorkspace]}
+          >
+            {activeWorkspace === 'driver' ? (
+              <>
+                <option value="newest">Mas recientes primero</option>
+                <option value="oldest">Mas antiguas primero</option>
+                <option value="license-expiring">Licencia mas proxima a vencer</option>
+                <option value="name-asc">Nombre del solicitante</option>
+              </>
+            ) : null}
+
+            {activeWorkspace === 'reports' ? (
+              <>
+                <option value="priority-recent">Prioridad y recientes</option>
+                <option value="newest">Mas recientes primero</option>
+                <option value="oldest">Mas antiguos primero</option>
+                <option value="severity-first">Alta severidad primero</option>
+              </>
+            ) : null}
+
+            {activeWorkspace === 'sanctions' ? (
+              <>
+                <option value="newest">Mas recientes primero</option>
+                <option value="oldest">Mas antiguas primero</option>
+                <option value="expires-soon">Proximas a vencer primero</option>
+                <option value="automatic-first">Automaticas primero</option>
+              </>
+            ) : null}
+
+            {activeWorkspace === 'appeals' ? (
+              <>
+                <option value="newest">Mas recientes primero</option>
+                <option value="oldest">Mas antiguas primero</option>
+                <option value="pending-first">Pendientes primero</option>
+              </>
+            ) : null}
+          </SelectField>
+
+          <InputField
+            label="Desde"
+            onChange={(event) => setDateFromFilter(event.target.value)}
+            type="date"
+            value={dateFromFilter}
+          />
+
+          <InputField
+            label="Hasta"
+            onChange={(event) => setDateToFilter(event.target.value)}
+            type="date"
+            value={dateToFilter}
+          />
+
           {activeWorkspace === 'driver' && (
             <SelectField
               label="Estado de solicitud"
@@ -981,21 +1281,58 @@ export default function ModerationPage() {
           )}
 
           {activeWorkspace === 'reports' && (
+            <>
+              <SelectField
+                label="Estado del reporte"
+                onChange={(event) => setReportStatusFilter(event.target.value)}
+                value={reportStatusFilter}
+              >
+                <option value="">Todos los estados</option>
+                <option value={ReportStatus.Pending}>Pendientes</option>
+                <option value={ReportStatus.UnderReview}>En revisión</option>
+                <option value={ReportStatus.Resolved}>Resueltos</option>
+                <option value={ReportStatus.Dismissed}>Desestimados</option>
+              </SelectField>
+
+              <SelectField
+                label="Severidad"
+                onChange={(event) => setReportSeverityFilter(event.target.value)}
+                value={reportSeverityFilter}
+              >
+                <option value="">Todas</option>
+                <option value="high">Alta severidad</option>
+                <option value="regular">Regular</option>
+              </SelectField>
+            </>
+          )}
+
+          {activeWorkspace === 'sanctions' && (
             <SelectField
-              label="Estado del reporte"
-              onChange={(event) => setReportStatusFilter(event.target.value)}
-              value={reportStatusFilter}
+              label="Origen de sancion"
+              onChange={(event) => setSanctionSourceFilter(event.target.value)}
+              value={sanctionSourceFilter}
             >
-              <option value="">Todos los estados</option>
-              <option value={ReportStatus.Pending}>Pendientes</option>
-              <option value={ReportStatus.UnderReview}>En revisión</option>
-              <option value={ReportStatus.Resolved}>Resueltos</option>
-              <option value={ReportStatus.Dismissed}>Desestimados</option>
+              <option value="">Todas</option>
+              <option value="automatic">Automaticas</option>
+              <option value="manual">Manuales</option>
+            </SelectField>
+          )}
+
+          {activeWorkspace === 'appeals' && (
+            <SelectField
+              label="Estado de apelacion"
+              onChange={(event) => setAppealStatusFilter(event.target.value)}
+              value={appealStatusFilter}
+            >
+              <option value="">Todas</option>
+              <option value={OperationalSanctionAppealStatus.Pending}>Pendientes</option>
+              <option value={OperationalSanctionAppealStatus.Approved}>Aprobadas</option>
+              <option value={OperationalSanctionAppealStatus.Rejected}>Rechazadas</option>
             </SelectField>
           )}
 
           <div className={styles.filterActions}>
-            <Button onClick={() => void refreshData(true)}>Aplicar filtros</Button>
+            <Button onClick={() => void refreshData(true)}>Actualizar datos</Button>
             {activeFiltersCount > 0 && (
               <Button onClick={handleResetFilters} variant="ghost">Limpiar</Button>
             )}

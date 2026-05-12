@@ -1,10 +1,10 @@
 import { Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { OperationalSanctionAppealStatus } from '@saferidepro/shared-types';
 
 export class ListReviewableSanctionAppealsQueryDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   institutionId?: string;
 
   @IsOptional()

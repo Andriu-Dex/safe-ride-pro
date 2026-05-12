@@ -1,15 +1,15 @@
 import { Transform } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { AuditAction, AuditEntityType } from '../../domain/audit.types';
 
 export class ListAuditEventsQueryDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   institutionId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   actorUserId?: string;
 
   @IsOptional()

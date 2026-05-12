@@ -10,13 +10,13 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
   Min,
 } from 'class-validator';
 
 export class UpdateTripRequestDto {
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   vehicleId!: string;
 
   @IsEnum(TripRouteMode)

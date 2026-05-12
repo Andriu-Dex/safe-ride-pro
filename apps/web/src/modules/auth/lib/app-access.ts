@@ -33,7 +33,7 @@ export function canAccessDriverTools(user?: Pick<AuthUser, 'memberships'> | null
     return false;
   }
 
-  return isApprovedDriverMembership(getCurrentOperationalMembership(user.memberships));
+  return user.memberships.some((membership) => isApprovedDriverMembership(membership));
 }
 
 export function hasStartedDriverFlow(user?: Pick<AuthUser, 'memberships'> | null): boolean {
@@ -41,16 +41,12 @@ export function hasStartedDriverFlow(user?: Pick<AuthUser, 'memberships'> | null
     return false;
   }
 
-  const membership = getCurrentOperationalMembership(user.memberships);
+  return user.memberships.some((membership) => {
+    const effectiveStatus =
+      membership.effectiveDriverVerificationStatus ?? membership.driverVerificationStatus;
 
-  if (!membership) {
-    return false;
-  }
-
-  const effectiveStatus =
-    membership.effectiveDriverVerificationStatus ?? membership.driverVerificationStatus;
-
-  return effectiveStatus !== DriverVerificationStatus.NotRequested;
+    return effectiveStatus !== DriverVerificationStatus.NotRequested;
+  });
 }
 
 export function canAccessDashboard(

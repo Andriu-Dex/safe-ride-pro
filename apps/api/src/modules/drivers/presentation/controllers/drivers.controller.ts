@@ -5,7 +5,6 @@ import {
   Header,
   Param,
   ParseEnumPipe,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -104,7 +103,7 @@ export class DriversController {
   @Header('Cache-Control', 'no-store')
   async getDriverApplicationDocument(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('membershipId', new ParseUUIDPipe()) membershipId: string,
+    @Param('membershipId') membershipId: string,
     @Param('documentType', new ParseEnumPipe(DriverDocumentType))
     documentType: DriverDocumentType,
   ) {
@@ -124,7 +123,7 @@ export class DriversController {
   @Patch('applications/:membershipId/review')
   reviewDriverApplication(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('membershipId', new ParseUUIDPipe()) membershipId: string,
+    @Param('membershipId') membershipId: string,
     @Body() body: ReviewDriverApplicationRequestDto,
   ) {
     return this.reviewDriverApplicationUseCase.execute(currentUser, {

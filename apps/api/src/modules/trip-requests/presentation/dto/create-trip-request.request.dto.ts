@@ -7,12 +7,12 @@ import {
   IsLongitude,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
 } from 'class-validator';
 
 export class CreateTripRequestRequestDto {
-  @IsUUID()
+  @IsString()
+  @MaxLength(120)
   tripId!: string;
 
   @IsOptional()

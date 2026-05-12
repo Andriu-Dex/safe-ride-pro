@@ -1,9 +1,9 @@
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class ListReviewableActiveSanctionsQueryDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   institutionId?: string;
 
   @IsOptional()

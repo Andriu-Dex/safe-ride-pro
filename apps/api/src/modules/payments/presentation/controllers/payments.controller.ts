@@ -1,7 +1,6 @@
 import {
   Controller,
   Param,
-  ParseUUIDPipe,
   Post,
   UseGuards,
   Body,
@@ -31,7 +30,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   createCheckoutLink(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('paymentId', new ParseUUIDPipe()) paymentId: string,
+    @Param('paymentId') paymentId: string,
   ) {
     return this.createPaymentCheckoutLinkUseCase.execute(currentUser.id, paymentId);
   }
@@ -40,7 +39,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   refreshStatus(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('paymentId', new ParseUUIDPipe()) paymentId: string,
+    @Param('paymentId') paymentId: string,
   ) {
     return this.refreshPaymentStatusUseCase.execute(currentUser.id, paymentId);
   }
@@ -49,7 +48,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   capturePayment(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('paymentId', new ParseUUIDPipe()) paymentId: string,
+    @Param('paymentId') paymentId: string,
   ) {
     return this.capturePaymentUseCase.execute(currentUser.id, paymentId);
   }
@@ -58,7 +57,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   confirmCashPayment(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('paymentId', new ParseUUIDPipe()) paymentId: string,
+    @Param('paymentId') paymentId: string,
   ) {
     return this.confirmCashPaymentUseCase.execute(currentUser.id, paymentId);
   }
@@ -67,7 +66,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   reportCashPaymentIssue(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('paymentId', new ParseUUIDPipe()) paymentId: string,
+    @Param('paymentId') paymentId: string,
     @Body() body: ReportCashPaymentIssueRequestDto,
   ) {
     return this.reportCashPaymentIssueUseCase.execute(currentUser.id, paymentId, body.note);

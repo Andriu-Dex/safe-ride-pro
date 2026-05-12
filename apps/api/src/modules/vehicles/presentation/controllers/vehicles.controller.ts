@@ -4,7 +4,6 @@ import {
   Get,
   Header,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -121,7 +120,7 @@ export class VehiclesController {
   @Patch(':vehicleId')
   updateVehicle(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('vehicleId', new ParseUUIDPipe()) vehicleId: string,
+    @Param('vehicleId') vehicleId: string,
     @Body() body: UpdateVehicleRequestDto,
   ) {
     return this.updateVehicleUseCase.execute({
@@ -144,7 +143,7 @@ export class VehiclesController {
   @Patch(':vehicleId/status')
   setVehicleActiveStatus(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('vehicleId', new ParseUUIDPipe()) vehicleId: string,
+    @Param('vehicleId') vehicleId: string,
     @Body() body: SetVehicleActiveStatusRequestDto,
   ) {
     return this.setVehicleActiveStatusUseCase.execute({
@@ -158,7 +157,7 @@ export class VehiclesController {
   @Header('Cache-Control', 'no-store')
   async getVehicleRegistrationDocument(
     @CurrentUser() currentUser: CurrentUserContext,
-    @Param('vehicleId', new ParseUUIDPipe()) vehicleId: string,
+    @Param('vehicleId') vehicleId: string,
   ) {
     const document = await this.getVehicleRegistrationDocumentUseCase.execute(
       currentUser.id,
