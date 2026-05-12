@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { persistToast } from '../../../../components/ui/flash-toast';
 import { Button } from '../../../../components/ui/button';
-import { StatusPill } from '../../../../components/ui/status-pill';
 import { ToastStack, type ToastItem } from '../../../../components/ui/toast-stack';
 import { ApiError } from '../../../../lib/api-client';
 import { useAuth } from '../../../../modules/auth/hooks/use-auth';
@@ -158,6 +157,19 @@ export default function TripDetailPage() {
     return `${trip.institutionName} | ${formatDateTime(trip.departureAt)}`;
   }, [trip]);
 
+  const getBadgeClass = (tone: string) => {
+    switch (tone) {
+      case 'success':
+        return styles.heroBadgeSuccess;
+      case 'warning':
+        return styles.heroBadgeWarning;
+      case 'danger':
+        return styles.heroBadgeDanger;
+      default:
+        return styles.heroBadgeNeutral;
+    }
+  };
+
   const handleCancelTrip = async () => {
     if (!authSession || !trip || !trip.canCancel) {
       return;
@@ -211,209 +223,179 @@ export default function TripDetailPage() {
 
   if (isLoading) {
     return (
-      <section className={styles.pageBackground}>
+      <section className={styles.page}>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <article className={`${styles.canvas} ${styles.canvasSmall}`}>
-          <div aria-hidden="true" className={styles.loadingPulse} />
-          <h1 className={styles.stateTitle}>Cargando viaje</h1>
-          <p className={styles.stateText}>Estamos preparando el detalle completo del trayecto.</p>
-        </article>
+        <div className={styles.loadingShell}>
+          <article className={styles.stateCard}>
+            <div aria-hidden="true" className={styles.loadingPulse} />
+            <h1 className={styles.stateTitle}>Cargando viaje</h1>
+            <p className={styles.stateText}>Estamos preparando el detalle completo del trayecto.</p>
+          </article>
+        </div>
       </section>
     );
   }
 
   if (!authSession || !trip) {
     return (
-      <section className={styles.pageBackground}>
+      <section className={styles.page}>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <article className={`${styles.canvas} ${styles.canvasSmall}`}>
-          <h1 className={styles.stateTitle}>No pudimos abrir este viaje</h1>
-          <p className={styles.stateText}>
-            Verifica que sigas dentro de la misma institucion y vuelve a intentarlo.
-          </p>
-          <div className={styles.topActions}>
-            <Link className="button button-secondary" href="/viajes">
-              Volver a viajes
-            </Link>
-          </div>
-        </article>
+        <div className={styles.loadingShell}>
+          <article className={styles.stateCard}>
+            <h1 className={styles.stateTitle}>No pudimos abrir este viaje</h1>
+            <p className={styles.stateText}>
+              Verifica que sigas dentro de la misma institucion y vuelve a intentarlo.
+            </p>
+            <div className={styles.topActions} style={{ marginTop: '1.5rem' }}>
+              <Link className={styles.heroBtnSecondary} href="/viajes" style={{ color: '#0f2a2f', borderColor: '#cbd5e1' }}>
+                Volver a viajes
+              </Link>
+            </div>
+          </article>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className={styles.pageBackground}>
+    <section className={styles.page}>
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-      <article className={styles.canvas}>
-        <section className={styles.hero}>
-          <div className={styles.heroTop}>
-            <div className={styles.heroCopy}>
-              <p className={styles.kicker}>Viajes</p>
-              <h1 className={styles.heroTitle}>{trip.originLabel} -&gt; {trip.destinationLabel}</h1>
-              <p className={styles.heroLead}>{tripSubtitle}</p>
-            </div>
-
-            <div className={styles.topActions}>
-              <Link className="button button-secondary" href="/viajes">
-                Volver
-              </Link>
-              {trip.canEdit ? (
-                <Link className="button button-ghost" href={`/viajes/${trip.id}/editar`}>
-                  Editar
-                </Link>
-              ) : null}
-              {trip.canCancel ? (
-                <Button
-                  disabled={isCancelling}
-                  onClick={() => setIsDeletePromptOpen(true)}
-                  variant="primary"
-                >
-                  Eliminar
-                </Button>
-              ) : null}
-            </div>
-          </div>
-
+      <header className={styles.heroHeader}>
+        <div className={styles.heroCopy}>
+          <p className={styles.kicker}>Viajes</p>
+          <h1 className={styles.heroTitle}>{trip.originLabel} -&gt; {trip.destinationLabel}</h1>
+          <p className={styles.heroLead}>{tripSubtitle}</p>
+        
           <div className={styles.heroMeta}>
-            <StatusPill
-              label={getTripStatusLabel(trip.status)}
-              tone={getTripStatusTone(trip.status)}
-            />
-            <StatusPill label={getTripRouteModeLabel(trip.routeMode)} tone="neutral" />
-            <StatusPill label={`${trip.availableSeats}/${trip.seatCount} cupos`} tone="success" />
+            <span className={`${styles.heroBadge} ${getBadgeClass(getTripStatusTone(trip.status))}`}>
+              {getTripStatusLabel(trip.status)}
+            </span>
+            <span className={`${styles.heroBadge} ${getBadgeClass('neutral')}`}>
+              {getTripRouteModeLabel(trip.routeMode)}
+            </span>
+            <span className={`${styles.heroBadge} ${getBadgeClass('success')}`}>
+              {`${trip.availableSeats}/${trip.seatCount} cupos`}
+            </span>
             {trip.cancellationTiming ? (
-              <StatusPill
-                label={getCancellationTimingLabel(trip.cancellationTiming) ?? 'Cancelacion'}
-                tone={getCancellationTimingTone(trip.cancellationTiming)}
-              />
+              <span className={`${styles.heroBadge} ${getBadgeClass(getCancellationTimingTone(trip.cancellationTiming))}`}>
+                {getCancellationTimingLabel(trip.cancellationTiming) ?? 'Cancelacion'}
+              </span>
             ) : null}
           </div>
-        </section>
+        </div>
 
-        <section className={styles.contentGrid}>
-          <div className={styles.mainColumn}>
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <p className={styles.sectionKicker}>Recorrido</p>
-                  <h2 className={styles.sectionTitle}>Vista del viaje</h2>
-                </div>
-              </div>
+        <div className={styles.topActions}>
+          <Link className={styles.heroBtnSecondary} href="/viajes">
+            Volver
+          </Link>
+          {trip.canEdit ? (
+            <Link className={styles.heroBtnSecondary} href={`/viajes/${trip.id}/editar`}>
+              Editar
+            </Link>
+          ) : null}
+          {trip.canCancel ? (
+            <button
+              className={styles.heroBtnDanger}
+              disabled={isCancelling}
+              onClick={() => setIsDeletePromptOpen(true)}
+              type="button"
+            >
+              Eliminar
+            </button>
+          ) : null}
+        </div>
+      </header>
 
-              {canViewPreciseRoute && origin && destination ? (
-                <div className={styles.mapSection}>
-                  <TripRouteMap destination={destination} origin={origin} />
-                </div>
-              ) : (
-                <div className={styles.restrictedMap}>
-                  <strong>Ruta protegida</strong>
-                  <p>
-                    Los puntos precisos solo se muestran al conductor propietario o a pasajeros
-                    ya aceptados en este viaje.
-                  </p>
-                </div>
-              )}
-            </section>
+      <div className={styles.content}>
+        {lateCancellationWarning ? (
+          <div className={`${styles.noticeCard} ${styles.warning}`}>
+            <strong>Atencion: Eliminaci&oacute;n cercana a la salida</strong>
+            <p>
+              Si eliminas este viaje dentro de los {CANCELLATION_LATE_WINDOW_MINUTES} minutos previos a la salida, 
+              el sistema puede registrar una incidencia operativa para control interno.
+            </p>
+          </div>
+        ) : null}
 
-            <section className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <p className={styles.sectionKicker}>Datos operativos</p>
-                  <h2 className={styles.sectionTitle}>Detalle formal del viaje</h2>
-                </div>
-              </div>
+        {trip.status === TripStatus.Cancelled && trip.cancellationTiming === CancellationTiming.Late ? (
+          <div className={`${styles.noticeCard} ${styles.info}`}>
+            <strong>Auditoria: Cancelaci&oacute;n tard&iacute;a registrada</strong>
+            <p>
+              Este viaje fue eliminado l&oacute;gicamente dentro de la ventana sensible previa a la salida. 
+              La trazabilidad queda disponible para revisi&oacute;n administrativa.
+            </p>
+          </div>
+        ) : null}
 
-              <div className={styles.detailGrid}>
-                <DetailItem label="Conductor" value={trip.driverFullName} />
-                <DetailItem label="Institucion" value={trip.institutionName} />
-                <DetailItem label="Salida" value={formatDateTime(trip.departureAt)} />
-                <DetailItem label="Llegada estimada" value={formatDateTime(trip.estimatedArrivalAt)} />
-                <DetailItem label="Vehiculo" value={`${trip.vehicleDisplayName} | ${trip.vehiclePlate}`} />
-                <DetailItem label="Tipo" value={getVehicleTypeLabel(trip.vehicleTypeSnapshot)} />
-                <DetailItem label="Equipaje" value={getLuggagePolicyLabel(trip.luggagePolicySnapshot)} />
-                <DetailItem label="Precio base" value={formatCurrency(trip.basePriceReference)} />
-                <DetailItem
-                  label="Recargo por desvio"
-                  value={
-                    trip.detourSurchargeReference
-                      ? formatCurrency(trip.detourSurchargeReference)
-                      : 'No aplica'
-                  }
-                />
-                <DetailItem label="Creado" value={formatDateTime(trip.createdAt)} />
-                <DetailItem
-                  label="Cierre real"
-                  value={trip.completedAt ? formatDateTime(trip.completedAt) : 'Aun no cerrado'}
-                />
-                <DetailItem
-                  label="Cancelado"
-                  value={trip.cancelledAt ? formatDateTime(trip.cancelledAt) : 'Activo'}
-                />
-              </div>
-
-              {trip.notes ? (
-                <div className={styles.noteBlock}>
-                  <strong>Notas del conductor</strong>
-                  <p>{trip.notes}</p>
-                </div>
-              ) : null}
-
-              {trip.closureNote ? (
-                <div className={styles.noteBlock}>
-                  <strong>Nota de cierre operativo</strong>
-                  <p>{trip.closureNote}</p>
-                </div>
-              ) : null}
-            </section>
+        <div className={styles.tripCard}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>Vista del recorrido</h2>
           </div>
 
-          <aside className={styles.sideColumn}>
-            <section className={styles.sideSection}>
-              <p className={styles.sectionKicker}>Acciones</p>
-              <h2 className={styles.sideTitle}>Lo que puedes hacer aqui</h2>
-              <ul className={styles.actionList}>
-                <li>Revisar el detalle real antes de publicar, iniciar o cerrar un trayecto.</li>
-                <li>Editar solo si todavia no existen solicitudes activas ni pasajeros confirmados.</li>
-                <li>Eliminar de forma logica para conservar trazabilidad y auditoria.</li>
-              </ul>
-            </section>
+          {canViewPreciseRoute && origin && destination ? (
+            <div className={styles.mapSection}>
+              <TripRouteMap destination={destination} origin={origin} />
+            </div>
+          ) : (
+            <div className={`${styles.noticeCard} ${styles.info}`} style={{ margin: 0 }}>
+              <strong>Ubicaci&oacute;n precisa protegida</strong>
+              <p>
+                Mientras no formes parte confirmada del viaje o seas el propietario, 
+                la ruta exacta y los puntos precisos se mantienen ocultos por privacidad.
+              </p>
+            </div>
+          )}
+        </div>
 
-            {lateCancellationWarning ? (
-              <section className={styles.sideSection}>
-                <p className={styles.sectionKicker}>Atencion</p>
-                <h2 className={styles.sideTitle}>Eliminacion cercana a la salida</h2>
-                <p className={styles.sideText}>
-                  Si eliminas este viaje dentro de los {CANCELLATION_LATE_WINDOW_MINUTES} minutos
-                  previos a la salida, el sistema puede registrar una incidencia operativa para
-                  control interno.
-                </p>
-              </section>
-            ) : null}
+        <div className={styles.tripCard}>
+          <div className={styles.cardHeader}>
+            <h2 className={styles.cardTitle}>Datos formales del viaje</h2>
+          </div>
 
-            {trip.status === TripStatus.Cancelled && trip.cancellationTiming === CancellationTiming.Late ? (
-              <section className={styles.sideSection}>
-                <p className={styles.sectionKicker}>Auditoria</p>
-                <h2 className={styles.sideTitle}>Cancelacion tardia registrada</h2>
-                <p className={styles.sideText}>
-                  Este viaje ya fue eliminado logicamente dentro de la ventana sensible previa a la
-                  salida. La trazabilidad queda disponible para revision administrativa.
-                </p>
-              </section>
-            ) : null}
+          <div className={styles.detailGrid}>
+            <DetailItem label="Conductor" value={trip.driverFullName} />
+            <DetailItem label="Institucion" value={trip.institutionName} />
+            <DetailItem label="Salida" value={formatDateTime(trip.departureAt)} />
+            <DetailItem label="Llegada estimada" value={formatDateTime(trip.estimatedArrivalAt)} />
+            <DetailItem label="Vehiculo" value={`${trip.vehicleDisplayName} | ${trip.vehiclePlate}`} />
+            <DetailItem label="Tipo" value={getVehicleTypeLabel(trip.vehicleTypeSnapshot)} />
+            <DetailItem label="Equipaje" value={getLuggagePolicyLabel(trip.luggagePolicySnapshot)} />
+            <DetailItem label="Precio base" value={formatCurrency(trip.basePriceReference)} />
+            <DetailItem
+              label="Recargo por desvio"
+              value={
+                trip.detourSurchargeReference
+                  ? formatCurrency(trip.detourSurchargeReference)
+                  : 'No aplica'
+              }
+            />
+            <DetailItem label="Creado" value={formatDateTime(trip.createdAt)} />
+            <DetailItem
+              label="Cierre real"
+              value={trip.completedAt ? formatDateTime(trip.completedAt) : 'Aun no cerrado'}
+            />
+            <DetailItem
+              label="Cancelado"
+              value={trip.cancelledAt ? formatDateTime(trip.cancelledAt) : 'Activo'}
+            />
+          </div>
 
-            {!trip.canViewPreciseRoute ? (
-              <section className={styles.sideSection}>
-                <p className={styles.sectionKicker}>Privacidad</p>
-                <h2 className={styles.sideTitle}>Ubicacion precisa protegida</h2>
-                <p className={styles.sideText}>
-                  Mientras no formes parte confirmada del viaje, la ruta exacta se mantiene oculta.
-                </p>
-              </section>
-            ) : null}
-          </aside>
-        </section>
-      </article>
+          {trip.notes ? (
+            <div className={styles.noteBlock}>
+              <strong>Notas del conductor</strong>
+              <p>{trip.notes}</p>
+            </div>
+          ) : null}
+
+          {trip.closureNote ? (
+            <div className={styles.noteBlock}>
+              <strong>Nota de cierre operativo</strong>
+              <p>{trip.closureNote}</p>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       {isDeletePromptOpen ? (
         <div
@@ -429,39 +411,48 @@ export default function TripDetailPage() {
             role="dialog"
           >
             <div className={styles.modalHeader}>
-              <p className={styles.sectionKicker}>Eliminar viaje</p>
               <h2 className={styles.modalTitle} id="trip-delete-title">
-                Esta accion no borra el historial
+                Esta acci&oacute;n no borra el historial
               </h2>
-              <p className={styles.modalText}>
-                El viaje se cancelara logicamente para mantener auditoria. Si ya existen pagos,
-                solicitudes o pasajeros vinculados, el sistema dejara trazabilidad y aplicara las
-                reglas operativas correspondientes.
+              <p className={styles.modalSubtitle}>
+                El viaje ser&aacute; cancelado l&oacute;gicamente para mantener auditor&iacute;a.
               </p>
             </div>
 
-            {lateCancellationWarning ? (
-              <p className={styles.modalWarning}>
-                Estas dentro de la ventana sensible previa a la salida. Esto puede generar una
-                incidencia operativa automatica.
-              </p>
-            ) : null}
+            <div className={styles.modalBody}>
+              <div className={`${styles.noticeCard} ${styles.info}`} style={{ margin: 0 }}>
+                <strong>Trazabilidad protegida</strong>
+                <p>Si ya existen pagos, solicitudes o pasajeros vinculados, el sistema dejar&aacute; registro y aplicar&aacute; las reglas operativas correspondientes.</p>
+              </div>
+              
+              {lateCancellationWarning ? (
+                <div className={`${styles.noticeCard} ${styles.warning}`} style={{ margin: 0 }}>
+                  <strong>Atenci&oacute;n</strong>
+                  <p>Est&aacute;s dentro de la ventana sensible previa a la salida. Esto puede generar una incidencia operativa autom&aacute;tica.</p>
+                </div>
+              ) : null}
+            </div>
 
             <div className={styles.modalActions}>
-              <Button
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.heroBtnSecondary}
+                style={{ color: '#5a6c72', borderColor: '#e2e8f0' }}
                 disabled={isCancelling}
                 onClick={() => setIsDeletePromptOpen(false)}
-                variant="ghost"
+                type="button"
               >
                 Conservar viaje
-              </Button>
-              <Button
+              </button>
+              <button
+                className={styles.heroBtnDanger}
                 disabled={isCancelling}
                 onClick={() => void handleCancelTrip()}
-                variant="primary"
+                type="button"
               >
-                {isCancelling ? 'Eliminando...' : 'Eliminar logicamente'}
-              </Button>
+                {isCancelling ? 'Eliminando...' : 'Eliminar lógicamente'}
+              </button>
+            </div>
             </div>
           </div>
         </div>
@@ -472,7 +463,7 @@ export default function TripDetailPage() {
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className={styles.detailItem}>
+    <div className={styles.infoTile}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
