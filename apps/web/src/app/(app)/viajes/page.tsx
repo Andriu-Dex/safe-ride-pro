@@ -13,7 +13,7 @@ import {
 } from '@saferidepro/shared-types';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApiError } from '../../../lib/api-client';
 import { Button } from '../../../components/ui/button';
@@ -124,6 +124,26 @@ const EMPTY_TRIP_FILTERS: TripFilters = {
 const DEFAULT_NO_SHOW_NOTE = 'El pasajero no se presento al punto acordado.';
 
 type PassengerWorkspace = 'discover' | 'requests';
+type DriverTripStatusFilter = 'all' | 'draft' | 'published' | 'full' | 'in_progress' | 'completed' | 'cancelled';
+type DriverTripSortOption = 'recent' | 'departure-asc' | 'departure-desc' | 'created-asc';
+
+type DriverWorkspaceFilters = {
+  query: string;
+  status: DriverTripStatusFilter;
+  dateFrom: string;
+  dateTo: string;
+  onlyWithPendingRequests: boolean;
+  sortBy: DriverTripSortOption;
+};
+
+const EMPTY_DRIVER_WORKSPACE_FILTERS: DriverWorkspaceFilters = {
+  query: '',
+  status: 'all',
+  dateFrom: '',
+  dateTo: '',
+  onlyWithPendingRequests: false,
+  sortBy: 'recent',
+};
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
@@ -177,6 +197,38 @@ function buildTripFilterLabels(filters: TripFilters): string[] {
 
 function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof ApiError ? error.message : fallbackMessage;
+}
+
+function getTripStatusFilterLabel(status: DriverTripStatusFilter): string {
+  switch (status) {
+    case 'draft':
+      return 'Borrador';
+    case 'published':
+      return 'Publicado';
+    case 'full':
+      return 'Lleno';
+    case 'in_progress':
+      return 'En curso';
+    case 'completed':
+      return 'Finalizado';
+    case 'cancelled':
+      return 'Cancelado';
+    default:
+      return 'Todos';
+  }
+}
+
+function getDriverSortLabel(sortBy: DriverTripSortOption): string {
+  switch (sortBy) {
+    case 'departure-asc':
+      return 'Salida mas cercana';
+    case 'departure-desc':
+      return 'Salida mas lejana';
+    case 'created-asc':
+      return 'Mas antiguos primero';
+    default:
+      return 'Mas recientes primero';
+  }
 }
 
 function canAcceptIncomingRequest(request: TripRequestRecord): boolean {
@@ -254,6 +306,9 @@ export default function TripsPage() {
   const [paymentErrorMessage, setPaymentErrorMessage] = useState<string | null>(null);
   const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [driverWorkspaceFilters, setDriverWorkspaceFilters] = useState<DriverWorkspaceFilters>(
+    EMPTY_DRIVER_WORKSPACE_FILTERS,
+  );
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeRefreshPendingRef = useRef(false);
   const realtimeRefreshRunningRef = useRef(false);
@@ -1048,11 +1103,103 @@ export default function TripsPage() {
     vehicleOverview?.membership?.licenseExpiresInDays,
   );
   const showDriverWorkspace = isDriverExperienceActive && hasDriverMode;
+  const pendingRequestTripIds = useMemo(() => {
+    const tripIds = new Set<string>();
+
+    incomingRequests.forEach((request) => {
+      if (request.status === TripRequestStatus.Pending) {
+        tripIds.add(request.tripId);
+      }
+    });
+
+    return tripIds;
+  }, [incomingRequests]);
+  const filteredDriverTrips = useMemo(() => {
+    const normalizedQuery = driverWorkspaceFilters.query.trim().toLowerCase();
+    const fromTimestamp = driverWorkspaceFilters.dateFrom
+      ? new Date(`${driverWorkspaceFilters.dateFrom}T00:00:00`).getTime()
+      : null;
+    const toTimestamp = driverWorkspaceFilters.dateTo
+      ? new Date(`${driverWorkspaceFilters.dateTo}T23:59:59.999`).getTime()
+      : null;
+
+    const nextTrips = myTrips.filter((trip) => {
+      if (driverWorkspaceFilters.status !== 'all' && trip.status !== driverWorkspaceFilters.status.toUpperCase()) {
+        return false;
+      }
+
+      if (
+        normalizedQuery &&
+        ![
+          trip.originLabel,
+          trip.destinationLabel,
+          trip.vehicleDisplayName,
+          trip.vehiclePlate,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(normalizedQuery)
+      ) {
+        return false;
+      }
+
+      const departureTimestamp = new Date(trip.departureAt).getTime();
+
+      if (fromTimestamp !== null && departureTimestamp < fromTimestamp) {
+        return false;
+      }
+
+      if (toTimestamp !== null && departureTimestamp > toTimestamp) {
+        return false;
+      }
+
+      if (driverWorkspaceFilters.onlyWithPendingRequests && !pendingRequestTripIds.has(trip.id)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    nextTrips.sort((leftTrip, rightTrip) => {
+      switch (driverWorkspaceFilters.sortBy) {
+        case 'departure-asc':
+          return new Date(leftTrip.departureAt).getTime() - new Date(rightTrip.departureAt).getTime();
+        case 'departure-desc':
+          return new Date(rightTrip.departureAt).getTime() - new Date(leftTrip.departureAt).getTime();
+        case 'created-asc':
+          return new Date(leftTrip.createdAt).getTime() - new Date(rightTrip.createdAt).getTime();
+        default:
+          return new Date(rightTrip.createdAt).getTime() - new Date(leftTrip.createdAt).getTime();
+      }
+    });
+
+    return nextTrips;
+  }, [driverWorkspaceFilters, myTrips, pendingRequestTripIds]);
   const visibleAvailableTrips = availableTrips.filter(
     (trip) => trip.driverMembershipId !== defaultMembershipId,
   );
   const activeFiltersCount = countActiveFilters(tripFilters);
   const activeFilterLabels = buildTripFilterLabels(tripFilters);
+  const driverActiveFilterLabels = [
+    driverWorkspaceFilters.status !== 'all'
+      ? `Estado: ${getTripStatusFilterLabel(driverWorkspaceFilters.status)}`
+      : null,
+    driverWorkspaceFilters.query.trim()
+      ? `Buscar: ${driverWorkspaceFilters.query.trim()}`
+      : null,
+    driverWorkspaceFilters.dateFrom
+      ? `Desde: ${driverWorkspaceFilters.dateFrom}`
+      : null,
+    driverWorkspaceFilters.dateTo
+      ? `Hasta: ${driverWorkspaceFilters.dateTo}`
+      : null,
+    driverWorkspaceFilters.onlyWithPendingRequests
+      ? 'Con solicitudes pendientes'
+      : null,
+    driverWorkspaceFilters.sortBy !== 'recent'
+      ? `Orden: ${getDriverSortLabel(driverWorkspaceFilters.sortBy)}`
+      : null,
+  ].filter((label): label is string => Boolean(label));
   const activeViewTitle =
     showDriverWorkspace
       ? 'Mis viajes'
@@ -1061,6 +1208,7 @@ export default function TripsPage() {
         : 'Mis solicitudes';
   const shouldShowFiltersSidebar =
     !showDriverWorkspace && passengerWorkspace === 'discover';
+  const shouldShowDriverSidebar = showDriverWorkspace;
 
   if (isLoading) {
     return (
@@ -1172,9 +1320,9 @@ export default function TripsPage() {
         ) : null}
 
         <nav className={styles.dashboardTabs} aria-label="Vistas de viajes">
-          {showDriverWorkspace ? (
-            <>
-              <button
+            {showDriverWorkspace ? (
+              <>
+                <button
                 className={[styles.dashboardTab, styles.dashboardTabActive].join(' ')}
                 onClick={() => undefined}
                 type="button"
@@ -1215,46 +1363,229 @@ export default function TripsPage() {
           )}
         </nav>
 
-        {shouldShowFiltersSidebar ? (
+        {shouldShowFiltersSidebar || shouldShowDriverSidebar ? (
           <section className={styles.workspaceLayout}>
-            <aside className={styles.sidebar}>
-              <div className={styles.filterSidebar}>
-                <div className={styles.filterSidebarHeader}>
-                  <strong>Filtros</strong>
-                  {activeFiltersCount > 0 ? (
+            {shouldShowDriverSidebar ? (
+              <details className={styles.filterSidebar}>
+                <summary className={styles.filterSidebarHeader}>
+                  <strong>
+                    Gestion de lista
+                    {driverActiveFilterLabels.length > 0 && ` (${driverActiveFilterLabels.length} filtros activos)`}
+                  </strong>
+                  {driverActiveFilterLabels.length ? (
                     <button
                       className={styles.filterResetLink}
-                      onClick={handleResetFilters}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setDriverWorkspaceFilters(EMPTY_DRIVER_WORKSPACE_FILTERS);
+                      }}
                       type="button"
                     >
                       Limpiar
                     </button>
                   ) : null}
-                </div>
+                </summary>
+                <div className={styles.filterSidebarContent}>
+                  {driverActiveFilterLabels.length ? (
+                    <div className={styles.filterPills}>
+                      {driverActiveFilterLabels.map((label) => (
+                        <span key={label} className={styles.filterPill}>
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
 
-                {activeFilterLabels.length ? (
-                  <div className={styles.filterPills}>
-                    {activeFilterLabels.map((label) => (
-                      <span key={label} className={styles.filterPill}>
-                        {label}
-                      </span>
-                    ))}
+                  <div className={styles.driverFiltersContainer}>
+                    <div className={styles.driverFilterGroup}>
+                      <label className={styles.driverFilterLabel} htmlFor="driver-trip-search">
+                        Buscar viaje
+                      </label>
+                      <input
+                        id="driver-trip-search"
+                        className={styles.driverFilterInput}
+                        onChange={(event) =>
+                          setDriverWorkspaceFilters((currentFilters) => ({
+                            ...currentFilters,
+                            query: event.target.value,
+                          }))}
+                        placeholder="Origen, destino, vehiculo o placa"
+                        type="search"
+                        value={driverWorkspaceFilters.query}
+                      />
+                    </div>
+
+                    <div className={styles.driverFilterGroup}>
+                      <label className={styles.driverFilterLabel} htmlFor="driver-trip-status">
+                        Estado
+                      </label>
+                      <select
+                        id="driver-trip-status"
+                        className={styles.driverFilterSelect}
+                        onChange={(event) =>
+                          setDriverWorkspaceFilters((currentFilters) => ({
+                            ...currentFilters,
+                            status: event.target.value as DriverTripStatusFilter,
+                          }))}
+                        value={driverWorkspaceFilters.status}
+                      >
+                        <option value="all">Todos</option>
+                        <option value="draft">Borrador</option>
+                        <option value="published">Publicado</option>
+                        <option value="full">Lleno</option>
+                        <option value="in_progress">En curso</option>
+                        <option value="completed">Finalizado</option>
+                        <option value="cancelled">Cancelado</option>
+                      </select>
+                    </div>
+
+                    <div className={styles.driverFilterGroup}>
+                      <label className={styles.driverFilterLabel} htmlFor="driver-trip-date-from">
+                        Fecha desde
+                      </label>
+                      <input
+                        id="driver-trip-date-from"
+                        className={styles.driverFilterInput}
+                        onChange={(event) =>
+                          setDriverWorkspaceFilters((currentFilters) => ({
+                            ...currentFilters,
+                            dateFrom: event.target.value,
+                          }))}
+                        type="date"
+                        value={driverWorkspaceFilters.dateFrom}
+                      />
+                    </div>
+                    <div className={styles.driverFilterGroup}>
+                      <label className={styles.driverFilterLabel} htmlFor="driver-trip-date-to">
+                        Fecha hasta
+                      </label>
+                      <input
+                        id="driver-trip-date-to"
+                        className={styles.driverFilterInput}
+                        onChange={(event) =>
+                          setDriverWorkspaceFilters((currentFilters) => ({
+                            ...currentFilters,
+                            dateTo: event.target.value,
+                          }))}
+                        type="date"
+                        value={driverWorkspaceFilters.dateTo}
+                      />
+                    </div>
+
+                    <div className={styles.driverFilterGroup}>
+                      <label className={styles.driverFilterLabel} htmlFor="driver-trip-sort">
+                        Ordenar por
+                      </label>
+                      <select
+                        id="driver-trip-sort"
+                        className={styles.driverFilterSelect}
+                        onChange={(event) =>
+                          setDriverWorkspaceFilters((currentFilters) => ({
+                            ...currentFilters,
+                            sortBy: event.target.value as DriverTripSortOption,
+                          }))}
+                        value={driverWorkspaceFilters.sortBy}
+                      >
+                        <option value="recent">Mas recientes primero</option>
+                        <option value="created-asc">Mas antiguos primero</option>
+                        <option value="departure-asc">Salida mas cercana</option>
+                        <option value="departure-desc">Salida mas lejana</option>
+                      </select>
+                    </div>
+
+                    <div className={styles.driverFilterCheckContainer}>
+                      <label className={styles.driverFilterCheck}>
+                        <input
+                          checked={driverWorkspaceFilters.onlyWithPendingRequests}
+                          onChange={(event) =>
+                            setDriverWorkspaceFilters((currentFilters) => ({
+                              ...currentFilters,
+                              onlyWithPendingRequests: event.target.checked,
+                            }))}
+                          type="checkbox"
+                        />
+                        <span>Solo viajes con solicitudes pendientes</span>
+                      </label>
+                    </div>
                   </div>
-                ) : null}
 
-                <TripFiltersPanel
-                  isSubmitting={isFiltering}
-                  onApply={handleApplyFilters}
-                  onChange={handleFilterChange}
-                  onReset={handleResetFilters}
-                  values={filterFormValues}
-                />
-              </div>
-            </aside>
+                  <div className={styles.driverFilterSummary}>
+                    <strong>{filteredDriverTrips.length}</strong>
+                    <span>viajes visibles</span>
+                  </div>
+                </div>
+              </details>
+            ) : (
+              <details className={styles.filterSidebar}>
+                <summary className={styles.filterSidebarHeader}>
+                  <strong>
+                    Filtros
+                    {activeFiltersCount > 0 && ` (${activeFiltersCount} activos)`}
+                  </strong>
+                  {activeFiltersCount > 0 ? (
+                    <button
+                      className={styles.filterResetLink}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleResetFilters();
+                      }}
+                      type="button"
+                    >
+                      Limpiar
+                    </button>
+                  ) : null}
+                </summary>
+                <div className={styles.filterSidebarContent}>
+                  {activeFilterLabels.length ? (
+                    <div className={styles.filterPills}>
+                      {activeFilterLabels.map((label) => (
+                        <span key={label} className={styles.filterPill}>
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <TripFiltersPanel
+                    isSubmitting={isFiltering}
+                    onApply={handleApplyFilters}
+                    onChange={handleFilterChange}
+                    onReset={handleResetFilters}
+                    values={filterFormValues}
+                  />
+                </div>
+              </details>
+            )}
 
             <div className={styles.workspaceSurface}>
               <div className={styles.workspaceStage}>
-                    <TripsDiscoverWorkspace
+                {shouldShowDriverSidebar ? (
+                  <TripsOperationWorkspace
+                    blocksDriver={trustRestrictions.blocksDriver}
+                    canCreateTrips={canCreateTrips}
+                    incomingRequests={incomingRequests}
+                    isMutatingRequestId={isMutatingRequestId}
+                    isMutatingTripId={isMutatingTripId}
+                    isRefreshingData={isRefreshingData}
+                    licenseStatus={licenseStatus}
+                    myTrips={filteredDriverTrips}
+                    noShowNotes={noShowNotes}
+                    onMarkNoShow={(requestId) => void handleMarkNoShow(requestId)}
+                    onMarkPassengerBoarded={(requestId) => void handleMarkPassengerBoarded(requestId)}
+                    onMarkPassengerDroppedOff={(requestId) =>
+                      void handleMarkPassengerDroppedOff(requestId)}
+                    onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
+                    onNoShowNoteChange={handleNoShowNoteChange}
+                    onOpenRequests={() => router.push('/viajes/aprobar-solicitudes')}
+                    onTripAction={(tripId, action, options) =>
+                      void handleTripAction(tripId, action, options)}
+                    onTripClosureNoteChange={handleTripClosureNoteChange}
+                    showClosureItems={false}
+                    showCommandCenter={false}
+                    tripClosureNotes={tripClosureNotes}
+                  />
+                ) : (
+                  <TripsDiscoverWorkspace
                       activeFilterLabels={activeFilterLabels}
                       activeFiltersCount={activeFiltersCount}
                       canCreateRequestForTrip={canCreateRequestForTrip}
@@ -1273,7 +1604,8 @@ export default function TripsPage() {
                       requestDrafts={requestDrafts}
                       reservationSettings={reservationSettings}
                       visibleAvailableTrips={visibleAvailableTrips}
-                    />
+                  />
+                )}
               </div>
             </div>
           </section>

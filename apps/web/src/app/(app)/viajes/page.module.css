@@ -149,18 +149,9 @@
 }
 
 .workspaceLayout {
-  display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  gap: 2.5rem;
-  align-items: start;
-}
-
-.sidebar {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  position: sticky;
-  top: 1rem;
 }
 
 .dashboardTabs {
@@ -203,12 +194,13 @@
 .filterSidebar {
   background: #ffffff;
   border-radius: 16px;
-  padding: 1.5rem;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   border: 1px solid rgba(15, 23, 42, 0.04);
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.filterSidebar[open] {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
 }
 
 .filterSidebarHeader {
@@ -219,6 +211,38 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 1.5rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filterSidebarHeader::-webkit-details-marker {
+  display: none;
+}
+
+.filterSidebarHeader::after {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  border-style: solid;
+  border-color: currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.filterSidebar[open] > .filterSidebarHeader::after {
+  transform: rotate(-135deg);
+  margin-top: -0.2em;
+}
+
+.filterSidebarContent {
+  padding: 0 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .filterResetLink {
@@ -250,6 +274,79 @@
   font-weight: 700;
 }
 
+.driverFiltersContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+  align-items: flex-end;
+}
+
+.driverFilterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.driverFilterLabel {
+  color: #162e33;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.driverFilterInput,
+.driverFilterSelect {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: #f8fbfc;
+  color: #162e33;
+  padding: 0.7rem 0.8rem;
+  font-size: 0.92rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.driverFilterInput:focus,
+.driverFilterSelect:focus {
+  outline: none;
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  background: #ffffff;
+}
+
+.driverFilterCheckContainer {
+  display: flex;
+  align-items: center;
+  height: 42px;
+}
+
+.driverFilterCheck {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #35525a;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.driverFilterCheck input {
+  accent-color: #0f766e;
+}
+
+.driverFilterSummary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  padding-top: 0.9rem;
+  color: #4f6870;
+}
+
+.driverFilterSummary strong {
+  color: #162e33;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
 .workspaceSurface {
   flex: 1;
 }
@@ -268,11 +365,6 @@
   background: transparent;
   box-shadow: none;
 }
-.filterSidebar :global(.form-grid-2),
-.filterSidebar :global(.form-grid-3),
-.filterSidebar :global(.form-grid-4) {
-  grid-template-columns: 1fr;
-}
 .filterSidebar :global(.field),
 .filterSidebar :global(.place-autocomplete-field) {
   min-width: 0;
@@ -288,13 +380,6 @@
 .filterSidebar :global(select.input) {
   width: 100%;
   max-width: 100%;
-}
-.filterSidebar :global(.button-row) {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-.filterSidebar :global(.button-row .button) {
-  width: 100%;
 }
 .filterSidebar :global(.field-label) {
   color: #162e33;
@@ -396,13 +481,6 @@
 }
 
 @media (max-width: 980px) {
-  .workspaceLayout {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    position: static;
-  }
 }
 
 @media (max-width: 720px) {
@@ -421,4 +499,5 @@
   .noticeCard {
     margin: 1.5rem 1.5rem 0;
   }
+
 }
