@@ -1,132 +1,66 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
-.pageBackground {
-  min-height: 100vh;
-  padding: 2rem 1.5rem 4rem;
-  background-color: #f1f5f9;
-  background-image: 
-    radial-gradient(circle at 50% 0%, #ffffff 0%, transparent 60%),
-    linear-gradient(to bottom, transparent 0%, #e2e8f0 100%);
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.canvas {
-  width: 100%;
-  max-width: 64rem;
+.page {
+  width: min(100%, 1200px);
   margin: 0 auto;
-  background-color: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(40px);
-  border-radius: 1.5rem;
-  box-shadow: 0 25px 50px -12px rgba(148, 163, 184, 0.5);
-  border: 1px solid #ffffff;
-  display: flex;
-  flex-direction: column;
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  color: #0f1f24;
+  background-color: #e6ecef;
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  min-height: 85vh;
   overflow: hidden;
-}
-
-.canvasSmall {
-  max-width: 36rem;
-  margin: auto;
-  align-items: center;
-  text-align: center;
-  padding: 3rem 2rem;
-  gap: 1.5rem;
-}
-
-.reveal {
-  animation: vehicleRise 0.45s ease both;
-}
-
-.revealSoft {
-  animation: vehicleFade 0.48s ease both;
-}
-
-.hero {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 2.5rem;
-  background: linear-gradient(135deg, #0f766e 0%, #042f2e 100%);
-  color: #ffffff;
 }
 
-.heroTop {
+.heroHeader {
+  background: linear-gradient(135deg, #0f766e 0%, #0f2a2f 100%);
+  padding: 2.5rem 3rem;
+  color: #ffffff;
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 1.5rem;
 }
 
 .heroCopy {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-width: 42rem;
-}
-
-.kicker {
-  margin: 0 0 0.35rem 0;
-  color: #0d9488;
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.hero .kicker {
-  color: #5eead4;
-}
-
-.heroTitle,
-.lockedTitle {
-  margin: 0;
-  font-size: clamp(2rem, 3.7vw, 2.75rem);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.04em;
+  max-width: 44rem;
 }
 
 .heroTitle {
-  color: #ffffff;
-}
-
-.lockedTitle {
-  color: #0f172a;
-}
-
-.heroLead,
-.lockedText,
-.emptyStateCard span,
-.noticeCard span {
+  font-size: 2rem;
+  font-weight: 800;
   margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.6;
+  letter-spacing: -0.02em;
 }
 
 .heroLead {
-  color: #ccfbf1;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
 }
 
-.lockedText,
-.emptyStateCard span,
-.noticeCard span {
-  color: #64748b;
+.heroPills {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .heroBadge {
   display: inline-flex;
   align-items: center;
-  padding: 0.45rem 0.85rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
-  backdrop-filter: blur(12px);
   text-transform: uppercase;
 }
 
@@ -154,83 +88,126 @@
   color: #ffffff;
 }
 
-.heroPills,
-.heroActions,
-.modalActions,
-.documentActions,
-.vehiclePills {
+.heroActions {
   display: flex;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  align-items: center;
 }
 
-.mainGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
-  gap: 3rem;
-  align-items: start;
-  padding: 3rem 2.5rem;
+.heroBtnPrimary {
+  background: #ffffff;
+  color: #0f2a2f;
+  border: none;
+  font-weight: 700;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
 }
 
-.contentColumn,
-.sideColumn {
+.heroBtnPrimary:hover {
+  background: #f0f4f5;
+  transform: translateY(-1px);
+}
+
+.heroBtnSecondary {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-weight: 700;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  text-decoration: none;
+  display: inline-flex;
+}
+
+.heroBtnSecondary:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.content {
+  padding: 2.5rem 3rem;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 2rem;
 }
 
-.fleetCard,
-.sideCard {
-  background: transparent;
-  border: none;
-  padding: 0;
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #162e33;
+  margin: 0;
+}
+
+.vehicleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.vehicleCard {
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.contentColumn > *:not(:last-child),
-.sideColumn > *:not(:last-child) {
-  padding-bottom: 2.5rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.cardHeader,
-.formSectionHeader,
-.lockedHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.8rem;
-}
-
-.cardHeader h2,
-.formSectionHeader h3,
-.vehicleName {
-  margin: 0;
-  color: #1e293b;
-  font-size: 1.25rem;
-  font-weight: 700;
+.vehicleCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+  border-color: #cbd5e1;
 }
 
 .vehicleCardHeader {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.75rem;
 }
 
 .vehicleTitleGroup {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
+}
+
+.vehicleName {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #162e33;
+  margin: 0;
+}
+
+.vehiclePills {
+  display: flex;
+  gap: 0.4rem;
   flex-wrap: wrap;
 }
 
 .vehicleTags {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.5rem;
+  flex-wrap: wrap;
   margin: 0;
 }
 
@@ -238,9 +215,9 @@
 .vehicleTagPlate {
   display: inline-flex;
   align-items: center;
-  padding: 0.35rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.85rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
@@ -253,244 +230,293 @@
   background: #f0fdfa;
   color: #0f766e;
   border: 1px solid #ccfbf1;
-  letter-spacing: 0.05em;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .vehicleDetails {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1.5rem;
-  padding: 1.25rem 0;
-  border-top: 1px solid #f1f5f9;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-/* =========================================
-   TARJETAS DE DATOS (INFO TILES)
-   ========================================= */
-.infoTile {
-  background: transparent;
-  border: none;
-  padding: 0;
-  box-shadow: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.infoTile span {
-  color: #64748b;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  display: block;
-}
-
-.infoTile strong {
-  color: #0f172a;
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1.45;
-  word-break: break-word;
-}
-
-.vehicleDocumentRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
-  background: #f8fafc;
-  padding: 1.25rem;
-  border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.04);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
 }
 
-.documentRowInfo {
+.infoTile {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.documentRowLabel {
-  color: #64748b;
+.infoTile span {
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
+  color: #61747a;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.infoTile strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a3137;
+}
+
+.vehicleDocumentRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: #f7f9fa;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+.documentRowInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.documentRowLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #61747a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.documentName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #152b31;
 }
 
 .documentRowActions {
   display: flex;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
-/* =========================================
-   TARJETAS DE NOTIFICACIÓN (ALERTAS)
-   ========================================= */
-.noticeCard {
-  background: #f0fdfa;
-  border: 1px solid #ccfbf1;
-  border-radius: 1rem;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.noticeCard strong {
-  color: #0f766e;
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-.noticeCard span {
-  color: #115e59;
-}
-
-/* =========================================
-   PANEL VACÍO Y DOCUMENTOS
-   ========================================= */
-.emptyStateCard {
-  align-items: center;
-  text-align: center;
-  padding: 3rem 1.25rem;
-  background: transparent;
-  border: 1px dashed #cbd5e1;
-  border-radius: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.emptyStateCard strong {
-  color: #0f172a;
-  font-size: 1.15rem;
-  font-weight: 700;
-}
-
-.vehicleList,
-.noticeStack {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.vehicleCard,
-.documentCard {
+.actionBtnSecondary {
   background: #ffffff;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-.vehicleCard:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.025);
-}
-
-.documentFileName {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  color: #64748b;
-  font-size: 1rem;
-  margin-top: 0.25rem;
-}
-
-.documentDescription {
-  margin: 0;
-  color: #94a3b8;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
   font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionBtnSecondary:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.actionBtnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionBtnGhost {
+  background: transparent;
+  color: #64748b;
+  border: 1px solid transparent;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionBtnGhost:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.actionBtnGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionBtnPrimary {
+  background: #0f766e;
+  color: #ffffff;
+  border: none;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.15);
+}
+
+.actionBtnPrimary:hover:not(:disabled) {
+  background: #115e59;
+  transform: translateY(-1px);
+}
+
+.actionBtnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .vehicleActions {
   display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 0.5rem;
   padding-top: 0.5rem;
 }
 
-/* =========================================
-   MODAL DE SOLICITUD
-   ========================================= */
-.modalBackdrop {
+.emptyStateCard {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #5a6c72;
+}
+
+.emptyStateCard strong {
+  color: #162e33;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+/* Modal styles keep them as they are, just ensuring they match the new class names */
+@keyframes overlayFadeIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(8px); }
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: scale(0.97) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modalOverlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(8px);
-  animation: backdropFade 0.2s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(6, 14, 16, 0.65);
+  animation: overlayFadeIn 0.2s ease-out forwards;
 }
 
-.modalCanvas {
-  width: 100%;
-  max-width: 56rem;
-  max-height: calc(100vh - 3rem);
-  background: #ffffff;
-  border-radius: 1.5rem;
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
-  border: 1px solid #e2e8f0;
+.modalCard {
+  border-radius: 20px;
+  background: #f0f4f5;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  max-width: 850px;
+  width: 90vw;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: modalSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .modalHeader {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 2rem 2.5rem 1.5rem;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: #0f2a2f;
+  color: #ffffff;
+  z-index: 20;
 }
 
 .modalTitle {
-  margin: 0;
-  color: #0f172a;
   font-size: 1.5rem;
   font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  margin: 0;
+  color: #ffffff;
 }
 
-.modalText {
-  margin: 0.25rem 0 0 0;
-  color: #64748b;
-  font-size: 1rem;
-  line-height: 1.5;
+.modalSubtitle {
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0;
+  font-size: 0.95rem;
 }
 
-.registrationForm {
-  overflow-y: auto;
-  padding: 1.5rem 2.5rem 2.5rem;
+.modalClose {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modalClose:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.modalContentWrapper {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  flex: 1;
+  overflow: hidden;
 }
 
-.formSection {
+.modalBody {
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 1.5rem 2rem;
+  flex: 1;
 }
 
-.formSection:last-of-type {
-  border-bottom: none;
+.modalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+.modalSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.modalSectionTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #162e33;
+  margin: 0;
+}
+
+.modalKicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #0f766e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.25rem 0;
 }
 
 .formGrid {
@@ -513,15 +539,15 @@
 }
 
 .fieldPanelLabel {
-  color: #0f172a;
-  font-size: 0.875rem;
+  color: #162e33;
+  font-size: 0.85rem;
   font-weight: 700;
 }
 
 .textAction {
   border: 0;
   background: transparent;
-  color: #0d9488;
+  color: #0f766e;
   cursor: pointer;
   font: inherit;
   font-size: 0.8rem;
@@ -530,117 +556,96 @@
   transition: color 0.2s ease;
 }
 .textAction:hover {
-  color: #115e59;
+  color: #0f5f59;
   text-decoration: underline;
 }
 
-.modalActions {
+.modalFooter {
+  padding: 1.5rem 2rem;
+  background: #ffffff;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
   display: flex;
-  align-items: center;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.modalUploadCard {
+  background: #f7f9fa;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px dashed rgba(15, 23, 42, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.documentDescription {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.documentFileName {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  color: #64748b;
+  font-size: 1rem;
+  margin-top: 0.25rem;
+}
+
+.documentActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+/* LOADING SHELL */
+.loadingShell {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
 }
 
 .loadingPulse {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ccfbf1, #99f6e4);
-  animation: vehiclePulse 1.2s ease-in-out infinite;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 3px solid #e2e8f0;
+  border-top-color: #0f766e;
+  animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
 
-.loadingTitle {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1.5rem;
-  font-weight: 700;
+.stateCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
-.loadingText {
+.stateTitle {
+  color: #16343d;
+  margin: 0.5rem 0;
+  font-weight: 800;
+  font-size: 1.5rem;
+}
+
+.stateText {
+  color: #61797f;
   margin: 0;
-  color: #64748b;
-  font-size: 1.05rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-@keyframes vehicleRise {
-  0% {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes vehicleFade {
-  0% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes vehiclePulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.9;
-  }
-
-  50% {
-    transform: scale(1.05);
-    opacity: 0.55;
-  }
-}
-
-@keyframes backdropFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes modalSlideUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(20px) scale(0.98); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0) scale(1); 
-  }
-}
-
-@media (max-width: 1180px) {
-  .mainGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .modalCanvas {
-    max-height: calc(100vh - 2rem);
-  }
-
-  .modalHeader,
-  .registrationForm {
-    padding: 1.5rem;
-  }
+  display: none;
 }
 
 @media (max-width: 900px) {
@@ -648,151 +653,32 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .heroTop,
-  .cardHeader,
-  .lockedHeader,
-  .formSectionHeader {
+  .heroHeader,
+  .sectionHeader,
+  .modalSectionHeader {
     flex-direction: column;
+    align-items: flex-start;
   }
 }
 
 @media (max-width: 720px) {
-  .formGrid {
+  .formGrid,
+  .vehicleDetails {
     grid-template-columns: 1fr;
   }
 
   .vehicleActions,
-  .modalActions,
   .documentActions,
-  .heroActions,
-  .heroPills {
-    display: grid;
+  .heroActions {
+    width: 100%;
+    justify-content: space-between;
   }
 
-  .hero {
+  .heroHeader {
+    padding: 2rem;
+  }
+
+  .content {
     padding: 1.5rem;
   }
-
-  .mainGrid {
-    padding: 2rem 1.5rem 1.5rem 1.5rem;
-    gap: 2rem;
-  }
-
-  .canvasSmall {
-    padding: 2rem 1.5rem;
-  }
-}
-
-/* =========================================
-   BOTONES DEL ENCABEZADO (HERO)
-   ========================================= */
-.heroBtnPrimary,
-.heroBtnSecondary,
-.heroBtnGhost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.8rem 1.5rem;
-  border-radius: 999px;
-  font-size: 1rem;
-  font-weight: 700;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  text-decoration: none;
-  border: 1px solid transparent;
-}
-
-.heroBtnPrimary {
-  background: #5eead4; /* Mint/Cyan vibrante */
-  color: #042f2e; 
-  box-shadow: 0 4px 14px rgba(94, 234, 212, 0.25);
-}
-.heroBtnPrimary:hover {
-  background: #2dd4bf;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(94, 234, 212, 0.4);
-}
-
-.heroBtnSecondary {
-  background: transparent;
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.5);
-}
-.heroBtnSecondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #ffffff;
-  transform: translateY(-2px);
-}
-
-.heroBtnGhost {
-  background: rgba(0, 0, 0, 0.25);
-  color: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-}
-.heroBtnGhost:hover {
-  background: rgba(0, 0, 0, 0.4);
-  color: #ffffff;
-  transform: translateY(-2px);
-}
-
-/* =========================================
-   BOTONES DE ACCIÓN (INFERIORES)
-   ========================================= */
-.actionBtnPrimary,
-.actionBtnSecondary,
-.actionBtnGhost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.65rem 1.25rem;
-  border-radius: 0.75rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  border: 1px solid transparent;
-  outline: none;
-}
-
-.actionBtnPrimary {
-  background: #0f766e;
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.15);
-}
-.actionBtnPrimary:hover:not(:disabled) {
-  background: #115e59;
-  transform: translateY(-1px);
-}
-.actionBtnPrimary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.actionBtnSecondary {
-  background: #ffffff;
-  color: #334155;
-  border-color: #cbd5e1;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-.actionBtnSecondary:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  color: #0f172a;
-}
-.actionBtnSecondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.actionBtnGhost {
-  background: transparent;
-  color: #64748b;
-}
-.actionBtnGhost:hover:not(:disabled) {
-  background: #f1f5f9;
-  color: #1e293b;
-}
-.actionBtnGhost:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }

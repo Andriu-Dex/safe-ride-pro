@@ -801,20 +801,13 @@ export default function VehiclesPage() {
     return (
       <>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.pageBackground}>
-          <article className={`${styles.canvas} ${styles.canvasSmall}`}>
-            <div className={styles.lockedHeader}>
-              <div>
-                <p className={styles.kicker}>Vehiculos</p>
-                <h1 className={styles.lockedTitle}>Operacion no disponible</h1>
-              </div>
-              <StatusPill label="Bloqueado" tone="warning" />
-            </div>
+        <section className={styles.page}>
+          <div className={styles.content}>
             <OperationalAccessCard
               message={operationalAccess.message}
               title={operationalAccess.title}
             />
-          </article>
+          </div>
         </section>
       </>
     );
@@ -825,26 +818,23 @@ export default function VehiclesPage() {
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
       {isLoading ? (
-        <section className={styles.pageBackground}>
-          <article className={`${styles.canvas} ${styles.canvasSmall}`}>
-            <div aria-hidden="true" className={styles.loadingPulse} />
-            <h2 className={styles.loadingTitle}>Cargando vehiculos</h2>
-            <p className={styles.loadingText}>Estamos consultando tu flota actual.</p>
-          </article>
+        <section className={styles.page}>
+          <div className={styles.loadingShell}>
+            <article className={styles.stateCard}>
+              <div aria-hidden="true" className={styles.loadingPulse} />
+              <h2 className={styles.stateTitle}>Cargando vehiculos</h2>
+              <p className={styles.stateText}>Estamos consultando tu flota actual.</p>
+            </article>
+          </div>
         </section>
       ) : (
-        <section className={styles.pageBackground}>
-          <div className={`${styles.canvas} ${styles.revealSoft}`}>
-          <section className={styles.hero}>
-            <div className={styles.heroTop}>
-              <div className={styles.heroCopy}>
-                <p className={styles.kicker}>Vehiculos</p>
-                <h1 className={styles.heroTitle}>Gestiona tus vehiculos</h1>
-                <p className={styles.heroLead}>
-                  Registra tus unidades y activalas para que queden listas para publicar viajes.
-                </p>
-              </div>
-
+        <section className={styles.page}>
+          <header className={styles.heroHeader}>
+            <div className={styles.heroCopy}>
+              <h1 className={styles.heroTitle}>Gestiona tus vehiculos</h1>
+              <p className={styles.heroLead}>
+                Registra tus unidades y activalas para que queden listas para publicar viajes.
+              </p>
               <div className={styles.heroPills}>
                 <span className={`${styles.heroBadge} ${getBadgeClass(getDriverStatusTone(currentStatus))}`}>
                   {getDriverStatusLabel(currentStatus)}
@@ -862,171 +852,133 @@ export default function VehiclesPage() {
               <Link className={styles.heroBtnSecondary} href="/conductor">
                 Ver conductor
               </Link>
-              <Link className={styles.heroBtnGhost} href="/viajes">
+              <Link className={styles.heroBtnSecondary} href="/viajes">
                 Ir a viajes
               </Link>
             </div>
-          </section>
+          </header>
 
-          <section className={styles.mainGrid}>
-            <div className={styles.contentColumn}>
-              <article className={`${styles.fleetCard} ${styles.reveal}`}>
-                <div className={styles.cardHeader}>
-                  <div>
-                    <p className={styles.kicker}>Listado</p>
-                    <h2>Vehiculos registrados</h2>
-                  </div>
-                  <StatusPill label={`${totalVehicles} total`} tone="neutral" />
-                </div>
-
-                {vehicleOverview?.vehicles.length ? (
-                  <div className={styles.vehicleList}>
-                    {vehicleOverview.vehicles.map((vehicle) => {
-                      const isBusy = isTogglingVehicleId === vehicle.id;
-                      const hasRegistrationDocument = Boolean(
-                        vehicle.registrationDocumentFileKey,
-                      );
-                      const isLockedByTrips = vehicle.operationalTripCount > 0;
-
-                      return (
-                        <article className={styles.vehicleCard} key={vehicle.id}>
-                          <div className={styles.vehicleCardHeader}>
-                            <div className={styles.vehicleTitleGroup}>
-                              <h3 className={styles.vehicleName}>
-                                {getVehicleDisplayName(vehicle)}
-                              </h3>
-
-                            <div className={styles.vehiclePills}>
-                              <StatusPill
-                                label={vehicle.isActive ? 'Activo' : 'Inactivo'}
-                                tone={vehicle.isActive ? 'success' : 'warning'}
-                              />
-                              {isLockedByTrips ? (
-                                <StatusPill label="En viaje" tone="warning" />
-                              ) : null}
-                            </div>
-                            </div>
-                            <p className={styles.vehicleTags}>
-                              <span className={styles.vehicleTagPlate}>{vehicle.plate}</span>
-                              <span className={styles.vehicleTag}>{vehicle.color}</span>
-                              <span className={styles.vehicleTag}>{vehicle.year}</span>
-                            </p>
-                          </div>
-
-                          <div className={styles.vehicleDetails}>
-                            <article className={styles.infoTile}>
-                              <span>Tipo</span>
-                              <strong>{getVehicleTypeLabel(vehicle.vehicleType)}</strong>
-                            </article>
-                            <article className={styles.infoTile}>
-                              <span>Cupos</span>
-                              <strong>{vehicle.seatCount} asientos</strong>
-                            </article>
-                            <article className={styles.infoTile}>
-                              <span>Equipaje</span>
-                              <strong>{getLuggagePolicyLabel(vehicle.luggagePolicy)}</strong>
-                            </article>
-                          </div>
-
-                          <div className={styles.vehicleDocumentRow}>
-                            <div className={styles.documentRowInfo}>
-                              <span className={styles.documentRowLabel}>Matricula</span>
-                              <strong className={styles.documentName}>
-                                {hasRegistrationDocument ? 'Documento registrado' : 'Sin archivo'}
-                              </strong>
-                            </div>
-                            
-                            {hasRegistrationDocument ? (
-                              <div className={styles.documentRowActions}>
-                                <button
-                                  className={styles.actionBtnSecondary}
-                                  disabled={previewLoadingVehicleId === vehicle.id}
-                                  onClick={() => void handlePreviewStoredVehicleDocument(vehicle)}
-                                  type="button"
-                                >
-                                  {previewLoadingVehicleId === vehicle.id ? 'Abriendo...' : 'Ver'}
-                                </button>
-                                <button
-                                  className={styles.actionBtnGhost}
-                                  disabled={downloadingVehicleId === vehicle.id}
-                                  onClick={() => void handleDownloadStoredVehicleDocument(vehicle)}
-                                  type="button"
-                                >
-                                  {downloadingVehicleId === vehicle.id ? 'Descargando...' : 'Descargar'}
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-
-                          <div className={styles.vehicleActions}>
-                            <button
-                              className={styles.actionBtnSecondary}
-                              disabled={!vehicleManagementEnabled}
-                              onClick={() => openEditVehicleModal(vehicle)}
-                              type="button"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              className={vehicle.isActive ? styles.actionBtnSecondary : styles.actionBtnPrimary}
-                              disabled={
-                                !vehicleManagementEnabled ||
-                                isBusy ||
-                                (vehicle.isActive && isLockedByTrips)
-                              }
-                              onClick={() => void handleToggleVehicleStatus(vehicle)}
-                              type="button"
-                            >
-                              {isBusy
-                                ? 'Actualizando...'
-                                : vehicle.isActive
-                                  ? 'Desactivar'
-                                  : 'Activar'}
-                            </button>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className={styles.emptyStateCard}>
-                    <strong>Aun no tienes vehiculos registrados.</strong>
-                    <span>Empieza agregando tu primera unidad.</span>
-                  </div>
-                )}
-              </article>
+          <div className={styles.content}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Vehiculos registrados</h2>
+              <StatusPill label={`${totalVehicles} total`} tone="neutral" />
             </div>
 
-            <aside className={styles.sideColumn}>
-              <article className={`${styles.sideCard} ${styles.reveal}`}>
-                <div className={styles.cardHeader}>
-                  <div>
-                    <p className={styles.kicker}>Estado</p>
-                    <h2>Condicion actual</h2>
-                  </div>
-                  <StatusPill
-                    label={licenseStatus === DriverLicenseStatus.Expired ? 'Atencion' : 'Actual'}
-                    tone={licenseStatus === DriverLicenseStatus.Expired ? 'warning' : 'success'}
-                  />
-                </div>
+            {vehicleOverview?.vehicles.length ? (
+              <div className={styles.vehicleGrid}>
+                {vehicleOverview.vehicles.map((vehicle) => {
+                  const isBusy = isTogglingVehicleId === vehicle.id;
+                  const hasRegistrationDocument = Boolean(
+                    vehicle.registrationDocumentFileKey,
+                  );
+                  const isLockedByTrips = vehicle.operationalTripCount > 0;
 
-                <div className={styles.noticeStack}>
-                  <div className={styles.noticeCard}>
-                    <strong>Conductor</strong>
-                    <span>{getDriverStatusLabel(currentStatus)}</span>
-                  </div>
-                  <div className={styles.noticeCard}>
-                    <strong>Licencia</strong>
-                    <span>{licenseAlertMessage ?? 'Sin alertas activas.'}</span>
-                  </div>
-                  <div className={styles.noticeCard}>
-                    <strong>Uso actual</strong>
-                    <span>{vehiclesWithTrips} vehiculo(s) con viajes en curso.</span>
-                  </div>
-                </div>
-              </article>
-            </aside>
-          </section>
+                  return (
+                    <article className={styles.vehicleCard} key={vehicle.id}>
+                      <div className={styles.vehicleCardHeader}>
+                        <div className={styles.vehicleTitleGroup}>
+                          <h3 className={styles.vehicleName}>
+                            {getVehicleDisplayName(vehicle)}
+                          </h3>
+
+                          <div className={styles.vehiclePills}>
+                            <StatusPill
+                              label={vehicle.isActive ? 'Activo' : 'Inactivo'}
+                              tone={vehicle.isActive ? 'success' : 'warning'}
+                            />
+                            {isLockedByTrips ? (
+                              <StatusPill label="En viaje" tone="warning" />
+                            ) : null}
+                          </div>
+                        </div>
+                        <p className={styles.vehicleTags}>
+                          <span className={styles.vehicleTagPlate}>{vehicle.plate}</span>
+                          <span className={styles.vehicleTag}>{vehicle.color}</span>
+                          <span className={styles.vehicleTag}>{vehicle.year}</span>
+                        </p>
+                      </div>
+
+                      <div className={styles.vehicleDetails}>
+                        <div className={styles.infoTile}>
+                          <span>Tipo</span>
+                          <strong>{getVehicleTypeLabel(vehicle.vehicleType)}</strong>
+                        </div>
+                        <div className={styles.infoTile}>
+                          <span>Cupos</span>
+                          <strong>{vehicle.seatCount} asientos</strong>
+                        </div>
+                        <div className={styles.infoTile}>
+                          <span>Equipaje</span>
+                          <strong>{getLuggagePolicyLabel(vehicle.luggagePolicy)}</strong>
+                        </div>
+                      </div>
+
+                      <div className={styles.vehicleDocumentRow}>
+                        <div className={styles.documentRowInfo}>
+                          <span className={styles.documentRowLabel}>Matricula</span>
+                          <strong className={styles.documentName}>
+                            {hasRegistrationDocument ? 'Documento registrado' : 'Sin archivo'}
+                          </strong>
+                        </div>
+                        
+                        {hasRegistrationDocument ? (
+                          <div className={styles.documentRowActions}>
+                            <button
+                              className={styles.actionBtnSecondary}
+                              disabled={previewLoadingVehicleId === vehicle.id}
+                              onClick={() => void handlePreviewStoredVehicleDocument(vehicle)}
+                              type="button"
+                            >
+                              {previewLoadingVehicleId === vehicle.id ? 'Abriendo...' : 'Ver'}
+                            </button>
+                            <button
+                              className={styles.actionBtnGhost}
+                              disabled={downloadingVehicleId === vehicle.id}
+                              onClick={() => void handleDownloadStoredVehicleDocument(vehicle)}
+                              type="button"
+                            >
+                              {downloadingVehicleId === vehicle.id ? 'Descargando...' : 'Descargar'}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className={styles.vehicleActions}>
+                        <button
+                          className={styles.actionBtnSecondary}
+                          disabled={!vehicleManagementEnabled}
+                          onClick={() => openEditVehicleModal(vehicle)}
+                          type="button"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className={vehicle.isActive ? styles.actionBtnSecondary : styles.actionBtnPrimary}
+                          disabled={
+                            !vehicleManagementEnabled ||
+                            isBusy ||
+                            (vehicle.isActive && isLockedByTrips)
+                          }
+                          onClick={() => void handleToggleVehicleStatus(vehicle)}
+                          type="button"
+                        >
+                          {isBusy
+                            ? 'Actualizando...'
+                            : vehicle.isActive
+                              ? 'Desactivar'
+                              : 'Activar'}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={styles.emptyStateCard}>
+                <strong>Aun no tienes vehiculos registrados.</strong>
+                <span>Empieza agregando tu primera unidad.</span>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -1035,40 +987,43 @@ export default function VehiclesPage() {
         <div
           aria-labelledby="vehicle-registration-modal-title"
           aria-modal="true"
-          className={styles.modalBackdrop}
+          className={styles.modalOverlay}
           onClick={closeRegistrationModal}
           role="dialog"
         >
           <div
-            className={styles.modalCanvas}
+            className={styles.modalCard}
             onClick={(event) => event.stopPropagation()}
           >
             <div className={styles.modalHeader}>
               <div>
-                <p className={styles.kicker}>Vehiculo</p>
                 <h2 className={styles.modalTitle} id="vehicle-registration-modal-title">
                   {editingVehicle ? 'Editar vehiculo' : 'Registrar vehiculo'}
                 </h2>
-                <p className={styles.modalText}>
+                <p className={styles.modalSubtitle}>
                   Completa los datos y carga la matricula cuando corresponda.
                 </p>
               </div>
               <button
-                className={styles.actionBtnSecondary}
+                aria-label="Cerrar modal"
+                className={styles.modalClose}
                 disabled={isSubmitting}
                 onClick={closeRegistrationModal}
                 type="button"
               >
-                Cerrar
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
               </button>
             </div>
 
-            <form className={styles.registrationForm} onSubmit={handleSubmit}>
-              <section className={styles.formSection}>
-                <div className={styles.formSectionHeader}>
+            <form className={styles.modalContentWrapper} onSubmit={handleSubmit}>
+              <div className={styles.modalBody}>
+              <section className={styles.modalSection}>
+                <div className={styles.modalSectionHeader}>
                   <div>
-                    <p className={styles.kicker}>Datos base</p>
-                    <h3>Informacion del vehiculo</h3>
+                    <p className={styles.modalKicker}>Datos base</p>
+                    <h3 className={styles.modalSectionTitle}>Informacion del vehiculo</h3>
                   </div>
                   <StatusPill
                     label={editingVehicle ? 'Edicion' : 'Nuevo'}
@@ -1232,11 +1187,11 @@ export default function VehiclesPage() {
                 </div>
               </section>
 
-              <section className={styles.formSection}>
-                <div className={styles.formSectionHeader}>
+              <section className={styles.modalSection}>
+                <div className={styles.modalSectionHeader}>
                   <div>
-                    <p className={styles.kicker}>Documento</p>
-                    <h3>Matricula</h3>
+                    <p className={styles.modalKicker}>Documento</p>
+                    <h3 className={styles.modalSectionTitle}>Matricula</h3>
                   </div>
                   <StatusPill
                     label={
@@ -1248,7 +1203,7 @@ export default function VehiclesPage() {
                   />
                 </div>
 
-                <div className={styles.documentCard}>
+                <div className={styles.modalUploadCard}>
                   <div>
                     <strong>Documento de matricula</strong>
                     <p className={styles.documentDescription}>
@@ -1338,8 +1293,9 @@ export default function VehiclesPage() {
                   </div>
                 </div>
               </section>
+              </div>
 
-              <div className={styles.modalActions}>
+              <div className={styles.modalFooter}>
                 <button
                   className={styles.actionBtnGhost}
                   disabled={isSubmitting}

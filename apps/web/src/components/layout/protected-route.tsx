@@ -26,7 +26,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
   const canUseDriverRoutes = canAccessDriverTools(authSession?.user);
   const hasDriverProcessStarted = hasStartedDriverFlow(authSession?.user);
-  const { isDriverExperienceActive } = useAppExperienceMode(authSession?.user);
+  const { isDriverExperienceActive, setExperienceMode } = useAppExperienceMode(authSession?.user);
   const isDriverOnlyRoute =
     pathname === '/vehiculos'
     || pathname === '/viajes/nuevo'
@@ -40,6 +40,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     pathname === '/configuracion';
   const canUseAdminRoutes = canAccessAudit(authSession?.user);
   const canUseDashboard = canAccessDashboard(authSession?.user);
+  const shouldRestoreDriverExperience =
+    Boolean(authSession)
+    && !isDriverExperienceActive
+    && (
+      (isDriverOnlyRoute && canUseDriverRoutes)
+      || (isDriverFlowRoute && hasDriverProcessStarted)
+    );
 
   useEffect(() => {
     if (!isHydrated) {
@@ -56,18 +63,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       return;
     }
 
+    if (shouldRestoreDriverExperience) {
+      setExperienceMode('driver');
+      return;
+    }
+
     if (authSession && isDriverOnlyRoute && !canUseDriverRoutes) {
       router.replace('/conductor');
-      return;
-    }
-
-    if (authSession && isDriverOnlyRoute && !isDriverExperienceActive) {
-      router.replace('/inicio');
-      return;
-    }
-
-    if (authSession && isDriverFlowRoute && hasDriverProcessStarted && !isDriverExperienceActive) {
-      router.replace('/inicio');
       return;
     }
 
@@ -95,15 +97,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     pathname,
     requiresOnboarding,
     router,
+    setExperienceMode,
+    shouldRestoreDriverExperience,
   ]);
 
   if (
     !isHydrated ||
     !authSession ||
     (requiresOnboarding && !isProfileRoute) ||
+    shouldRestoreDriverExperience ||
     (isDriverOnlyRoute && !canUseDriverRoutes) ||
-    (isDriverOnlyRoute && !isDriverExperienceActive) ||
-    (isDriverFlowRoute && hasDriverProcessStarted && !isDriverExperienceActive) ||
     (isDashboardRoute && !canUseDashboard) ||
     (isAdminOnlyRoute && !canUseAdminRoutes)
   ) {

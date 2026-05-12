@@ -5,21 +5,31 @@ import { ProtectedRoute } from './protected-route';
 
 const replaceMock = vi.fn();
 const useAuthMock = vi.fn();
+const setExperienceModeMock = vi.fn();
+let pathnameMock = '/viajes';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: replaceMock,
   }),
-  usePathname: () => '/viajes',
+  usePathname: () => pathnameMock,
 }));
 
 vi.mock('../../modules/auth/hooks/use-auth', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../../modules/auth/hooks/use-app-experience-mode', () => ({
+  useAppExperienceMode: () => ({
+    isDriverExperienceActive: false,
+    setExperienceMode: setExperienceModeMock,
+  }),
+}));
+
 describe('ProtectedRoute', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    pathnameMock = '/viajes';
   });
 
   it('shows a loading state while the session is hydrating', () => {
@@ -133,5 +143,61 @@ describe('ProtectedRoute', () => {
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith('/perfil?next=%2Fviajes');
     });
+  });
+
+  it('restores driver mode automatically for approved drivers on driver routes', async () => {
+    pathnameMock = '/vehiculos';
+    useAuthMock.mockReturnValue({
+      authSession: {
+        accessToken: 'token',
+        user: {
+          id: 'user-1',
+          email: 'conductor@uta.edu.ec',
+          fullName: 'Conductor',
+          career: null,
+          phone: null,
+          referenceNeighborhood: null,
+          documentType: 'NATIONAL_ID',
+          documentNumber: '1710034065',
+          profilePhotoUrl: null,
+          globalRole: 'USER',
+          accountStatus: 'ACTIVE',
+          emailVerifiedAt: '2026-04-02T10:00:00.000Z',
+          termsAcceptedAt: '2026-04-02T10:00:00.000Z',
+          privacyAcceptedAt: '2026-04-02T10:00:00.000Z',
+          safetyRulesAcceptedAt: '2026-04-02T10:00:00.000Z',
+          onboardingCompletedAt: '2026-04-02T10:00:00.000Z',
+          onboardingStatus: 'COMPLETE',
+          missingOnboardingRequirements: [],
+          requiresOnboarding: false,
+          memberships: [
+            {
+              id: 'membership-driver',
+              institutionId: 'institution-1',
+              institutionName: 'UTA',
+              institutionIsActive: true,
+              role: 'STUDENT',
+              membershipStatus: 'ACTIVE',
+              studentCode: 'DRV001',
+              isDefault: true,
+              driverVerificationStatus: 'APPROVED',
+              effectiveDriverVerificationStatus: 'APPROVED',
+            },
+          ],
+        },
+      },
+      isHydrated: true,
+    });
+
+    render(
+      <ProtectedRoute>
+        <div>Panel protegido</div>
+      </ProtectedRoute>,
+    );
+
+    await waitFor(() => {
+      expect(setExperienceModeMock).toHaveBeenCalledWith('driver');
+    });
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 });

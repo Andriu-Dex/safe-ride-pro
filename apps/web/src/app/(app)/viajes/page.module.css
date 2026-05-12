@@ -39,6 +39,7 @@
   gap: 1rem;
   padding: 1.2rem 1.3rem;
   box-shadow: 2px 2px 2px #173338;
+  background: #0f766e;
 }
 
 .topbarCopy {
@@ -48,7 +49,7 @@
 
 .kicker {
   margin: 0;
-  color: #0f766e;
+  color: #5eead4;
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -58,10 +59,18 @@
 .topbarTitle,
 .lockedTitle {
   margin: 0;
-  color: #12353d;
+  color: #090c0d;
   font-size: clamp(2rem, 4vw, 3rem);
   line-height: 0.98;
   letter-spacing: -0.04em;
+}
+
+.button-primary {
+    box-shadow: 0 4px 1px #00000038;
+  }
+
+.button-secondary {
+  box-shadow: 0 4px 1px #00000038;
 }
 
 .topbarActions,
