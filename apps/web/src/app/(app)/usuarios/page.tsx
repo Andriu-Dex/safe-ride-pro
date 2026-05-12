@@ -605,7 +605,6 @@ export default function AdminUsersPage() {
                             type="button"
                           >
                             <UserActionIcon className={styles.iconSmall} name="detail" />
-                            Ver Detalle
                           </button>
                           {user.accountStatus === AccountStatus.Suspended ? (
                             <button

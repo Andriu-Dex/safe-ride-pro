@@ -41,6 +41,11 @@
   height: 1.1rem;
 }
 
+.iconSmall {
+  width: 1rem;
+  height: 1rem;
+}
+
 .filtersBar {
   display: flex;
   flex-wrap: wrap;
