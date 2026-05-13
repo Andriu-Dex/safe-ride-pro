@@ -28,6 +28,7 @@ import {
 } from '../lib/trip-closure';
 import type { TripClosureActionItem } from './trip-closure-action-center';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
+import { TripFinalizationModal } from './trip-finalization-modal';
 import { TripsListPagination } from './trips-list-pagination';
 import { TripExecutionCommandCenter } from './trip-execution-command-center';
 import { TripOverviewCard } from './trip-overview-card';
@@ -85,6 +86,7 @@ export function TripsOperationWorkspace({
   showClosureItems = true,
 }: TripsOperationWorkspaceProps) {
   const [page, setPage] = useState(1);
+  const [selectedTripIdForClosure, setSelectedTripIdForClosure] = useState<string | null>(null);
   const pageSize = 6;
   const paginatedTrips = useMemo(
     () => myTrips.slice((page - 1) * pageSize, page * pageSize),
@@ -102,6 +104,21 @@ export function TripsOperationWorkspace({
 
     return groupedRequests;
   }, [incomingRequests]);
+  const selectedTripForClosure = useMemo(
+    () => myTrips.find((trip) => trip.id === selectedTripIdForClosure) ?? null,
+    [myTrips, selectedTripIdForClosure],
+  );
+  const selectedTripRequestsForClosure = useMemo(
+    () =>
+      selectedTripForClosure
+        ? incomingRequests.filter(
+            (request) =>
+              request.tripId === selectedTripForClosure.id
+              && request.status === TripRequestStatus.Accepted,
+          )
+        : [],
+    [incomingRequests, selectedTripForClosure],
+  );
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(myTrips.length / pageSize));
@@ -111,8 +128,42 @@ export function TripsOperationWorkspace({
     }
   }, [myTrips.length, page]);
 
+  useEffect(() => {
+    if (selectedTripForClosure && selectedTripForClosure.status !== TripStatus.InProgress) {
+      setSelectedTripIdForClosure(null);
+    }
+  }, [selectedTripForClosure]);
+
   return (
-    <section className="trips-workspace-grid trips-operation-stack">
+    <>
+      <TripFinalizationModal
+        isMutatingRequestId={isMutatingRequestId}
+        isMutatingTripId={isMutatingTripId}
+        noShowNotes={noShowNotes}
+        onClose={() => setSelectedTripIdForClosure(null)}
+        onComplete={() => {
+          if (!selectedTripForClosure) {
+            return;
+          }
+
+          onTripAction(selectedTripForClosure.id, 'complete', {
+            closureNote: tripClosureNotes[selectedTripForClosure.id],
+          });
+        }}
+        onMarkNoShow={onMarkNoShow}
+        onMarkPassengerBoarded={onMarkPassengerBoarded}
+        onMarkPassengerDroppedOff={onMarkPassengerDroppedOff}
+        onNoShowNoteChange={onNoShowNoteChange}
+        onTripClosureNoteChange={onTripClosureNoteChange}
+        requestFallbackNoShowNote="El pasajero no se presento al punto acordado."
+        requestList={selectedTripRequestsForClosure}
+        trip={selectedTripForClosure}
+        tripClosureNote={
+          selectedTripForClosure ? tripClosureNotes[selectedTripForClosure.id] ?? '' : ''
+        }
+      />
+
+      <section className="trips-workspace-grid trips-operation-stack">
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="operation" /> : null}
 
       {showCommandCenter ? (
@@ -298,12 +349,10 @@ export function TripsOperationWorkspace({
                     {trip.status === TripStatus.InProgress ? (
                       <Button
                         disabled={isMutatingTripId === trip.id}
-                        onClick={() => onTripAction(trip.id, 'complete', {
-                          closureNote: tripClosureNotes[trip.id],
-                        })}
+                        onClick={() => setSelectedTripIdForClosure(trip.id)}
                         variant="secondary"
                       >
-                        Finalizar
+                        Gestionar cierre
                       </Button>
                     ) : null}
                     </div>
@@ -362,7 +411,8 @@ export function TripsOperationWorkspace({
           </div>
         </article>
       ) : null}
-    </section>
+      </section>
+    </>
   );
 }
 

@@ -69,6 +69,14 @@ export function TripCreationForm({
   const originLongitude = Number.parseFloat(values.originLongitude);
   const destinationLatitude = Number.parseFloat(values.destinationLatitude);
   const destinationLongitude = Number.parseFloat(values.destinationLongitude);
+  const hasOriginSelection =
+    originLabel.length > 0 && !Number.isNaN(originLatitude) && !Number.isNaN(originLongitude);
+  const hasDestinationSelection =
+    destinationLabel.length > 0
+    && !Number.isNaN(destinationLatitude)
+    && !Number.isNaN(destinationLongitude);
+  const effectiveSelectionTarget: SelectionTarget =
+    !hasOriginSelection ? 'origin' : !hasDestinationSelection ? 'destination' : activeTarget;
   const originSelection = buildPlaceSelection(originLabel, originLatitude, originLongitude);
   const destinationSelection = buildPlaceSelection(
     destinationLabel,
@@ -445,15 +453,15 @@ export function TripCreationForm({
                 <div className={styles.mapBody}>
                   <div style={{ marginBottom: '1rem' }}>
                     <p style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0f766e', fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.85rem' }}>
-                      {activeTarget === 'origin' ? (
+                      {effectiveSelectionTarget === 'origin' ? (
                         <>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                          Haz clic en el mapa para marcar la salida
+                          Primer clic: marca la salida en el mapa
                         </>
                       ) : (
                         <>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
-                          Haz clic en el mapa para marcar la llegada
+                          Segundo clic: marca la llegada en el mapa
                         </>
                       )}
                     </p>
@@ -462,7 +470,7 @@ export function TripCreationForm({
                         disabled={disabled}
                         onClick={() => setActiveTarget('origin')}
                         type="button"
-                        variant={activeTarget === 'origin' ? 'primary' : 'secondary'}
+                        variant={effectiveSelectionTarget === 'origin' ? 'primary' : 'secondary'}
                       >
                         Origen
                       </Button>
@@ -470,7 +478,7 @@ export function TripCreationForm({
                         disabled={disabled}
                         onClick={() => setActiveTarget('destination')}
                         type="button"
-                        variant={activeTarget === 'destination' ? 'primary' : 'secondary'}
+                        variant={effectiveSelectionTarget === 'destination' ? 'primary' : 'secondary'}
                       >
                         Destino
                       </Button>
@@ -482,7 +490,7 @@ export function TripCreationForm({
                       destination={destinationSelection} 
                       onMapSelect={handleMapSelect}
                       origin={originSelection} 
-                      selectionMode={activeTarget}
+                      selectionMode={effectiveSelectionTarget}
                     />
                   </div>
 

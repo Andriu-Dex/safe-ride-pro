@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../hooks/use-auth';
 import { AuthProvider } from './auth-provider';
 import * as authApi from '../lib/auth-api';
+import * as authNavigation from '../lib/auth-navigation';
 import * as authStorage from '../lib/auth-storage';
 import { readPersistedToasts } from '../../../components/ui/flash-toast';
 import type { AuthSession } from '../types/auth-session';
@@ -224,6 +225,8 @@ describe('AuthProvider', () => {
   });
 
   it('closes the session automatically and persists a clear toast when the token expired and refresh fails', async () => {
+    const redirectSpy = vi.spyOn(authNavigation, 'redirectToLogin').mockImplementation(() => undefined);
+
     authStorage.writeStoredSession(
       createTestSession({
         accessToken: createJwtTokenWithExpiration(-60_000),
@@ -257,5 +260,6 @@ describe('AuthProvider', () => {
         }),
       ]),
     );
+    expect(redirectSpy).toHaveBeenCalled();
   });
 });

@@ -15,7 +15,7 @@ export function getTripRequestStatusLabel(status: TripRequestStatus): string {
     case TripRequestStatus.Cancelled:
       return 'Cancelada';
     case TripRequestStatus.NoShow:
-      return 'No-show';
+      return 'Ausencia';
     default:
       return status;
   }
@@ -60,7 +60,7 @@ export function getTripRequestExecutionStatusLabel(
     case TripRequestExecutionStatus.DroppedOff:
       return 'Finalizado';
     case TripRequestExecutionStatus.NoShow:
-      return 'No-show';
+      return 'Ausencia';
     case TripRequestExecutionStatus.CancelledBeforeBoarding:
       return 'Cancelado antes de abordar';
     default:

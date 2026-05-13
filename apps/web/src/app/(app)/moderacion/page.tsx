@@ -214,7 +214,7 @@ function getOperationalSanctionTriggerLabel(trigger: OperationalSanctionTrigger)
     case OperationalSanctionTrigger.ResolvedReports:
       return 'Reportes resueltos';
     case OperationalSanctionTrigger.PassengerNoShow:
-      return 'No-show de pasajero';
+      return 'Ausencia del pasajero';
     case OperationalSanctionTrigger.LateDriverCancellation:
       return 'Cancelacion tardia de conductor';
     case OperationalSanctionTrigger.LatePassengerCancellation:

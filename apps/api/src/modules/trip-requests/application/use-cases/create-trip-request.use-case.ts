@@ -190,25 +190,28 @@ export class CreateTripRequestUseCase {
     command: CreateTripRequestCommand,
   ): void {
     this.validateCoordinatePair(
-      command.requestedPickupLatitude,
-      command.requestedPickupLongitude,
-      'punto de recogida',
-    );
-    this.validateCoordinatePair(
       command.requestedDropoffLatitude,
       command.requestedDropoffLongitude,
       'punto de destino',
     );
 
-    const hasCustomPoints =
+    const hasCustomPickup =
       command.requestedPickupLatitude !== undefined ||
-      command.requestedPickupLongitude !== undefined ||
+      command.requestedPickupLongitude !== undefined;
+
+    if (hasCustomPickup) {
+      throw new BadRequestException(
+        'El punto de recogida siempre corresponde a la institucion y no puede modificarse.',
+      );
+    }
+
+    const hasCustomDropoff =
       command.requestedDropoffLatitude !== undefined ||
       command.requestedDropoffLongitude !== undefined;
 
-    if (routeMode === TripRouteMode.DirectRoute && hasCustomPoints) {
+    if (routeMode === TripRouteMode.DirectRoute && hasCustomDropoff) {
       throw new BadRequestException(
-        'Las rutas directas no admiten puntos personalizados de recogida o destino.',
+        'Esta ruta no admite desvio ni destinos personalizados.',
       );
     }
   }

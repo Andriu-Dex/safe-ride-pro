@@ -182,16 +182,40 @@ export function TripsDiscoverWorkspace({
                       <div className="trip-request-composer-grid">
                         {trip.routeMode === TripRouteMode.PlannedDetour ? (
                           <TripRequestDetourPlanner
+                            destinationLabel={trip.destinationLabel}
+                            destinationLatitude={trip.destinationLatitude?.toFixed(6) ?? ''}
+                            destinationLongitude={trip.destinationLongitude?.toFixed(6) ?? ''}
                             disabled={
                               isPassengerOperationBlocked
                               || isMutatingRequestId === trip.id
                               || hasActiveRequest
                             }
                             draft={draft}
+                            originLabel={trip.originLabel}
+                            originLatitude={trip.originLatitude?.toFixed(6) ?? ''}
+                            originLongitude={trip.originLongitude?.toFixed(6) ?? ''}
                             onChange={(field, value) =>
                               onRequestDraftChange(trip.id, field, value)}
                           />
-                        ) : null}
+                        ) : (
+                          <div className="trip-request-routing-rule">
+                            <strong>Ruta sin desvio</strong>
+                            <p>
+                              La recogida siempre parte desde la institucion y el pasajero debe
+                              seguir la ruta definida por el conductor.
+                            </p>
+                            <div className="trip-request-fixed-points">
+                              <div className="trip-request-fixed-point">
+                                <span>Recogida</span>
+                                <strong>{trip.originLabel}</strong>
+                              </div>
+                              <div className="trip-request-fixed-point">
+                                <span>Destino del trayecto</span>
+                                <strong>{trip.destinationLabel}</strong>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         <TextareaField
                           label="Mensaje"

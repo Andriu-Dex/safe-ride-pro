@@ -376,7 +376,7 @@ export function TripExecutionCommandCenter({
                                 Marcar abordo
                               </Button>
                               <TextareaField
-                                label="Nota no-show"
+                                label="Nota de ausencia"
                                 onChange={(event) => onNoShowNoteChange(request.id, event.target.value)}
                                 placeholder="Describe brevemente la ausencia."
                                 rows={2}
@@ -387,7 +387,7 @@ export function TripExecutionCommandCenter({
                                 onClick={() => onMarkNoShow(request.id)}
                                 variant="ghost"
                               >
-                                Registrar no-show
+                                Registrar ausencia
                               </Button>
                             </>
                           ) : null}
@@ -562,7 +562,7 @@ function getDriverGuidance(
               : 'Cerrar trayecto',
         description:
           pendingBoardingCount > 0
-            ? 'Marca quienes ya subieron o registra no-show.'
+            ? 'Marca quienes ya subieron o registra una ausencia.'
             : onBoardCount > 0
               ? 'Finaliza a cada pasajero cuando llegue a destino.'
               : 'El viaje ya puede pasar al cierre.',

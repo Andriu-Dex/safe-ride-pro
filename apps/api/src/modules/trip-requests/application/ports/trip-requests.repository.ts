@@ -56,7 +56,11 @@ export type TripRequestRecord = {
   tripStatus: TripStatus;
   tripRouteMode: TripRouteMode;
   tripOriginLabel: string;
+  tripOriginLatitude: number | null;
+  tripOriginLongitude: number | null;
   tripDestinationLabel: string;
+  tripDestinationLatitude: number | null;
+  tripDestinationLongitude: number | null;
   tripDepartureAt: Date;
   tripEstimatedArrivalAt: Date;
   tripCompletedAt: Date | null;

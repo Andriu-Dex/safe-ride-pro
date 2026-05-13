@@ -11,6 +11,7 @@ import {
   logout,
   refreshSession as refreshTokens,
 } from '../lib/auth-api';
+import { redirectToLogin } from '../lib/auth-navigation';
 import { clearStoredSession, readStoredSession, writeStoredSession } from '../lib/auth-storage';
 import { isAuthSessionSyncSuppressed } from '../lib/auth-sync-guard';
 import { getMillisecondsUntilTokenExpiry, isTokenExpired } from '../lib/auth-token';
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       description: 'Tu sesion expiro. Ingresa nuevamente para continuar.',
       tone: 'info',
     });
+    redirectToLogin();
   }, []);
 
   const refreshSessionTokens = useCallback(async (refreshToken: string): Promise<AuthSession | null> => {

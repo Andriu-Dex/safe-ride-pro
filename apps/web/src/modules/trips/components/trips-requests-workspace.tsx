@@ -8,11 +8,10 @@ import {
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
-import Link from 'next/link';
+import { useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
-import { TextareaField } from '../../../components/ui/textarea-field';
 import {
   getTripRequestCancellationTimingLabel,
   getTripRequestExecutionStatusLabel,
@@ -36,6 +35,7 @@ import {
 import { getTripStatusLabel, getTripStatusTone } from '../lib/trip-labels';
 import type { TripClosureActionItem } from './trip-closure-action-center';
 import { PassengerActiveRidePanel } from './passenger-active-ride-panel';
+import { TripRequestDetailModal } from './trip-request-detail-modal';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
 
@@ -94,6 +94,8 @@ export function TripsRequestsWorkspace({
   showMyRequestsSection = true,
   showActiveRidePanel = true,
 }: TripsRequestsWorkspaceProps) {
+  const [selectedRequest, setSelectedRequest] = useState<TripRequestRecord | null>(null);
+  const [selectedRequestPerspective, setSelectedRequestPerspective] = useState<'driver' | 'passenger'>('driver');
   const incomingSectionTitle =
     showIncomingRequestsSection && !showMyRequestsSection
       ? 'Aprobar solicitudes'
@@ -103,7 +105,14 @@ export function TripsRequestsWorkspace({
   const closureItems = buildPassengerClosureItems(myRequests);
 
   return (
-    <section className="trips-workspace-grid">
+    <>
+      <TripRequestDetailModal
+        onClose={() => setSelectedRequest(null)}
+        perspective={selectedRequestPerspective}
+        request={selectedRequest}
+      />
+
+      <section className="trips-workspace-grid">
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="requests" /> : null}
 
       {showActiveRidePanel ? (
@@ -234,21 +243,16 @@ export function TripsRequestsWorkspace({
                       </Button>
                     </div>
                   ) : null}
-                  {canMarkRequestAsNoShow(request) ? (
-                    <TextareaField
-                      label="Nota no-show"
-                      onChange={(event) =>
-                        onNoShowNoteChange(request.id, event.target.value)
-                      }
-                      placeholder="Describe brevemente que el pasajero no se presento."
-                      rows={2}
-                      value={noShowNotes[request.id] ?? defaultNoShowNote}
-                    />
-                  ) : null}
                   <div className="button-row trip-request-action-row">
-                    <Link className="button button-ghost" href={`/viajes/${request.tripId}`}>
-                      Ver detalle
-                    </Link>
+                    <Button
+                      onClick={() => {
+                        setSelectedRequestPerspective('driver');
+                        setSelectedRequest(request);
+                      }}
+                      variant="ghost"
+                    >
+                      Ver solicitud
+                    </Button>
                     {canAcceptIncomingRequest(request) ? (
                       <Button
                         disabled={isMutatingRequestId === request.id}
@@ -264,15 +268,6 @@ export function TripsRequestsWorkspace({
                         variant="secondary"
                       >
                         Rechazar
-                      </Button>
-                    ) : null}
-                    {canMarkRequestAsNoShow(request) ? (
-                      <Button
-                        disabled={isMutatingRequestId === request.id}
-                        onClick={() => onMarkNoShow(request.id)}
-                        variant="ghost"
-                      >
-                        Registrar no-show
                       </Button>
                     ) : null}
                   </div>
@@ -380,9 +375,15 @@ export function TripsRequestsWorkspace({
                 ) : null}
                 {canCancelOwnRequest(request) ? (
                   <div className="button-row trip-request-action-row">
-                    <Link className="button button-secondary" href={`/viajes/${request.tripId}`}>
-                      Ver detalle
-                    </Link>
+                    <Button
+                      onClick={() => {
+                        setSelectedRequestPerspective('passenger');
+                        setSelectedRequest(request);
+                      }}
+                      variant="secondary"
+                    >
+                      Ver solicitud
+                    </Button>
                     <Button
                       disabled={isMutatingRequestId === request.id}
                       onClick={() => onCancelMyRequest(request.id)}
@@ -394,9 +395,15 @@ export function TripsRequestsWorkspace({
                 ) : null}
                 {!canCancelOwnRequest(request) ? (
                   <div className="button-row trip-request-action-row">
-                    <Link className="button button-ghost" href={`/viajes/${request.tripId}`}>
-                      Ver detalle
-                    </Link>
+                    <Button
+                      onClick={() => {
+                        setSelectedRequestPerspective('passenger');
+                        setSelectedRequest(request);
+                      }}
+                      variant="ghost"
+                    >
+                      Ver solicitud
+                    </Button>
                   </div>
                 ) : null}
                 {request.payment ? (
@@ -471,7 +478,8 @@ export function TripsRequestsWorkspace({
           </div>
         </article>
       ) : null}
-    </section>
+      </section>
+    </>
   );
 }
 

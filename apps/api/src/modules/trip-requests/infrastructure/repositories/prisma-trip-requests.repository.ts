@@ -667,7 +667,11 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
     trip: {
       institutionId: string;
       originLabel: string;
+      originLatitude: number | null;
+      originLongitude: number | null;
       destinationLabel: string;
+      destinationLatitude: number | null;
+      destinationLongitude: number | null;
       departureAt: Date;
       estimatedArrivalAt: Date;
       completedAt: Date | null;
@@ -708,7 +712,11 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       tripStatus: tripRequest.trip.status as TripStatus,
       tripRouteMode: tripRequest.trip.routeMode as TripRouteMode,
       tripOriginLabel: tripRequest.trip.originLabel,
+      tripOriginLatitude: tripRequest.trip.originLatitude,
+      tripOriginLongitude: tripRequest.trip.originLongitude,
       tripDestinationLabel: tripRequest.trip.destinationLabel,
+      tripDestinationLatitude: tripRequest.trip.destinationLatitude,
+      tripDestinationLongitude: tripRequest.trip.destinationLongitude,
       tripDepartureAt: tripRequest.trip.departureAt,
       tripEstimatedArrivalAt: tripRequest.trip.estimatedArrivalAt,
       tripCompletedAt: tripRequest.trip.completedAt,

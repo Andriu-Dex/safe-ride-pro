@@ -54,7 +54,7 @@ const REQUEST_STATUS_FILTERS: ReadonlyArray<{
 }> = [
   { key: TripRequestStatus.Pending, label: 'Pendientes' },
   { key: TripRequestStatus.Accepted, label: 'Aceptadas' },
-  { key: TripRequestStatus.NoShow, label: 'No-show' },
+  { key: TripRequestStatus.NoShow, label: 'Ausencias' },
   { key: TripRequestStatus.Rejected, label: 'Rechazadas' },
   { key: TripRequestStatus.Cancelled, label: 'Canceladas' },
 ];
@@ -474,7 +474,7 @@ export default function DriverTripRequestsPage() {
         await refreshSession().catch(() => undefined);
       }
 
-      setErrorMessage(getApiErrorMessage(error, 'No fue posible registrar el no-show.'));
+      setErrorMessage(getApiErrorMessage(error, 'No fue posible registrar la ausencia.'));
       await refreshRequests();
     } finally {
       setIsMutatingRequestId(null);

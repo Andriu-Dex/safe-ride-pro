@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import {
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type * as Leaflet from 'leaflet';
 
 import {
@@ -33,6 +40,9 @@ type MapBundle = {
   overlayGroup: Leaflet.FeatureGroup;
 };
 
+const MAX_HISTORY_POINTS = 24;
+let leafletModulePromise: Promise<typeof Leaflet> | null = null;
+
 export function TripRouteMap({
   origin,
   destination,
@@ -43,16 +53,70 @@ export function TripRouteMap({
   selectionMode = null,
   onMapSelect,
 }: TripRouteMapProps) {
+  const mapShellRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const bundleRef = useRef<MapBundle | null>(null);
   const invalidateFrameRef = useRef<number | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const lastGeometryKeyRef = useRef<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [shouldMountMap, setShouldMountMap] = useState(false);
+
+  const cappedHistory = useMemo(
+    () => (history.length > MAX_HISTORY_POINTS ? history.slice(-MAX_HISTORY_POINTS) : history),
+    [history],
+  );
+  const geometryKey = useMemo(
+    () =>
+      JSON.stringify({
+        origin: serializePlace(origin),
+        destination: serializePlace(destination),
+        pickup: serializePlace(pickup),
+        dropoff: serializePlace(dropoff),
+        livePosition: serializePlace(livePosition),
+        history: cappedHistory.map(serializePlace),
+      }),
+    [cappedHistory, destination, dropoff, livePosition, origin, pickup],
+  );
+
+  useEffect(() => {
+    const shellElement = mapShellRef.current;
+
+    if (!shellElement) {
+      return;
+    }
+
+    if (shouldMountMap) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+
+        if (entry?.isIntersecting) {
+          setShouldMountMap(true);
+          observer.disconnect();
+        }
+      },
+      {
+        rootMargin: '180px 0px',
+        threshold: 0.01,
+      },
+    );
+
+    observer.observe(shellElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [shouldMountMap]);
 
   useEffect(() => {
     const mapElement = mapRef.current;
 
-    if (!mapElement) {
+    if (!mapElement || !shouldMountMap) {
       return;
     }
 
@@ -60,9 +124,9 @@ export function TripRouteMap({
 
     const initializeMap = async () => {
       try {
-        const leafletModule = await import('leaflet');
+        const leafletModule = await getLeafletModule();
 
-        if (!isMounted || !mapElement) {
+        if (!isMounted || !mapElement || bundleRef.current) {
           return;
         }
 
@@ -82,6 +146,8 @@ export function TripRouteMap({
           {
             attribution: tileLayerConfig.attribution,
             maxZoom: tileLayerConfig.maxZoom,
+            updateWhenIdle: true,
+            keepBuffer: 2,
           },
         ).addTo(map);
 
@@ -94,28 +160,24 @@ export function TripRouteMap({
         };
         setIsMapReady(true);
 
-        syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff, livePosition, history);
-        invalidateFrameRef.current = window.requestAnimationFrame(() => {
-          if (!isMounted || bundleRef.current?.map !== map || !mapElement.isConnected) {
-            return;
-          }
-
-          try {
-            map.invalidateSize({ pan: false, animate: false });
-          } catch {
-            // Leaflet can briefly throw during teardown or hidden-layout transitions.
-          }
-        });
+        lastGeometryKeyRef.current = '';
+        syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff, livePosition, cappedHistory);
+        scheduleMapInvalidate(() => bundleRef.current?.map, mapRef, invalidateFrameRef);
         setErrorMessage(null);
+
+        if (typeof ResizeObserver !== 'undefined') {
+          resizeObserverRef.current = new ResizeObserver(() => {
+            scheduleMapInvalidate(() => bundleRef.current?.map, mapRef, invalidateFrameRef);
+          });
+          resizeObserverRef.current.observe(mapElement);
+        }
       } catch (error) {
         if (!isMounted) {
           return;
         }
 
         setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : 'No fue posible cargar el mapa del viaje.',
+          error instanceof Error ? error.message : 'No fue posible cargar el mapa del viaje.',
         );
       }
     };
@@ -124,11 +186,14 @@ export function TripRouteMap({
 
     return () => {
       isMounted = false;
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       if (invalidateFrameRef.current !== null) {
         window.cancelAnimationFrame(invalidateFrameRef.current);
         invalidateFrameRef.current = null;
       }
       setIsMapReady(false);
+      lastGeometryKeyRef.current = '';
       if (bundleRef.current) {
         try {
           bundleRef.current.overlayGroup.clearLayers();
@@ -141,28 +206,19 @@ export function TripRouteMap({
       }
       bundleRef.current = null;
     };
-  }, []);
+  }, [cappedHistory, destination, dropoff, livePosition, origin, pickup, shouldMountMap]);
 
   useEffect(() => {
     const bundle = bundleRef.current;
 
-    if (!bundle || !isMapReady) {
+    if (!bundle || !isMapReady || lastGeometryKeyRef.current === geometryKey) {
       return;
     }
 
-    syncMapBundle(bundle, origin, destination, pickup, dropoff, livePosition, history);
-    invalidateFrameRef.current = window.requestAnimationFrame(() => {
-      if (bundleRef.current?.map !== bundle.map || !mapRef.current?.isConnected) {
-        return;
-      }
-
-      try {
-        bundle.map.invalidateSize({ pan: false, animate: false });
-      } catch {
-        // Ignore transient Leaflet layout errors when the container is changing.
-      }
-    });
-  }, [destination, dropoff, history, livePosition, origin, pickup]);
+    syncMapBundle(bundle, origin, destination, pickup, dropoff, livePosition, cappedHistory);
+    lastGeometryKeyRef.current = geometryKey;
+    scheduleMapInvalidate(() => bundleRef.current?.map, mapRef, invalidateFrameRef);
+  }, [cappedHistory, destination, dropoff, geometryKey, isMapReady, livePosition, origin, pickup]);
 
   useEffect(() => {
     const bundle = bundleRef.current;
@@ -171,37 +227,132 @@ export function TripRouteMap({
       return;
     }
 
-    const mapElement = mapRef.current;
+    const mapContainer = bundle.map.getContainer();
+    mapContainer.classList.toggle('trip-map-canvas-passive', Boolean(selectionMode));
+    setMapInteractionMode(bundle.map, Boolean(selectionMode));
 
-    if (mapElement) {
-      mapElement.style.cursor = selectionMode ? 'crosshair' : '';
-    }
+    return () => {
+      mapContainer.classList.remove('trip-map-canvas-passive');
+    };
+  }, [isMapReady, onMapSelect, selectionMode]);
 
+  const handleSelectionPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!selectionMode || !onMapSelect) {
       return;
     }
 
-    const handleMapClick = (event: Leaflet.LeafletMouseEvent) => {
-      onMapSelect({
-        latitude: event.latlng.lat,
-        longitude: event.latlng.lng,
-        target: selectionMode,
-      });
-    };
+    const bundle = bundleRef.current;
+    const shellElement = mapShellRef.current;
 
-    bundle.map.on('click', handleMapClick);
+    if (!bundle || !shellElement) {
+      return;
+    }
 
-    return () => {
-      bundle.map.off('click', handleMapClick);
-    };
-  }, [onMapSelect, selectionMode, isMapReady]);
+    const bounds = shellElement.getBoundingClientRect();
+    const containerPoint: [number, number] = [
+      event.clientX - bounds.left,
+      event.clientY - bounds.top,
+    ];
+    const latlng = bundle.map.containerPointToLatLng(containerPoint);
+
+    onMapSelect({
+      latitude: latlng.lat,
+      longitude: latlng.lng,
+      target: selectionMode,
+    });
+  };
+
+  const handleSelectionWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    const bundle = bundleRef.current;
+
+    if (!bundle) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const delegatedWheelEvent = new WheelEvent('wheel', {
+      deltaX: event.deltaX,
+      deltaY: event.deltaY,
+      deltaMode: event.deltaMode,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    bundle.map.getContainer().dispatchEvent(delegatedWheelEvent);
+  };
 
   return (
     <>
       {errorMessage ? <div className="form-helper">{errorMessage}</div> : null}
-      <div className="trip-map-canvas" ref={mapRef} />
+      <div
+        className={[
+          'trip-map-shell',
+          selectionMode ? 'trip-map-canvas-selection' : null,
+          !shouldMountMap ? 'trip-map-canvas-pending' : null,
+          shouldMountMap && !isMapReady ? 'trip-map-canvas-loading' : null,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        ref={mapShellRef}
+      >
+        <div className="trip-map-canvas" ref={mapRef} />
+        {selectionMode && isMapReady ? (
+          <div
+            aria-label="Capa de selección de puntos en el mapa"
+            className="trip-map-selection-overlay"
+            onPointerUp={handleSelectionPointerUp}
+            onWheel={handleSelectionWheel}
+            role="presentation"
+          />
+        ) : null}
+        {!shouldMountMap || !isMapReady ? (
+          <div className="trip-map-placeholder">
+            <strong>{!shouldMountMap ? 'Preparando mapa' : 'Cargando ruta'}</strong>
+            <span>
+              {!shouldMountMap
+                ? 'El mapa se activara en cuanto entre en pantalla.'
+                : 'Sincronizando tiles y puntos del trayecto.'}
+            </span>
+          </div>
+        ) : null}
+      </div>
     </>
   );
+}
+
+async function getLeafletModule(): Promise<typeof Leaflet> {
+  if (!leafletModulePromise) {
+    leafletModulePromise = import('leaflet');
+  }
+
+  return leafletModulePromise;
+}
+
+function scheduleMapInvalidate(
+  getMap: () => Leaflet.Map | undefined,
+  mapRef: React.RefObject<HTMLDivElement | null>,
+  invalidateFrameRef: React.MutableRefObject<number | null>,
+) {
+  if (invalidateFrameRef.current !== null) {
+    window.cancelAnimationFrame(invalidateFrameRef.current);
+  }
+
+  invalidateFrameRef.current = window.requestAnimationFrame(() => {
+    const map = getMap();
+
+    if (!map || !mapRef.current?.isConnected || mapRef.current.offsetParent === null) {
+      return;
+    }
+
+    try {
+      map.invalidateSize({ pan: false, animate: false });
+    } catch {
+      // Ignore transient Leaflet layout errors when the container is changing.
+    }
+  });
 }
 
 function syncMapBundle(
@@ -324,4 +475,39 @@ function buildMarkerIcon(
     iconSize: [34, 34],
     iconAnchor: [17, 17],
   });
+}
+
+function serializePlace(place: PlaceSelection | null): string | null {
+  if (!place) {
+    return null;
+  }
+
+  return `${place.latitude.toFixed(6)}:${place.longitude.toFixed(6)}:${place.label}`;
+}
+
+function setMapInteractionMode(map: Leaflet.Map, isSelectionActive: boolean) {
+  toggleMapHandler(map.dragging, isSelectionActive);
+  toggleMapHandler(map.doubleClickZoom, isSelectionActive);
+  toggleMapHandler(map.boxZoom, isSelectionActive);
+  toggleMapHandler(map.keyboard, isSelectionActive);
+  toggleMapHandler(map.touchZoom, isSelectionActive);
+}
+
+function toggleMapHandler(
+  handler: {
+    disable: () => void;
+    enable: () => void;
+  } | null | undefined,
+  shouldDisable: boolean,
+) {
+  if (!handler) {
+    return;
+  }
+
+  if (shouldDisable) {
+    handler.disable();
+    return;
+  }
+
+  handler.enable();
 }

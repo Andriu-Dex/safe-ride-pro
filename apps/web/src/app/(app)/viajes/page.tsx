@@ -719,12 +719,6 @@ export default function TripsPage() {
         paymentProvider,
         acceptReservationCommitment: draft.acceptReservationCommitment,
         requestMessage: draft.requestMessage || undefined,
-        requestedPickupLatitude: draft.requestedPickupLatitude
-          ? Number.parseFloat(draft.requestedPickupLatitude)
-          : undefined,
-        requestedPickupLongitude: draft.requestedPickupLongitude
-          ? Number.parseFloat(draft.requestedPickupLongitude)
-          : undefined,
         requestedDropoffLatitude: draft.requestedDropoffLatitude
           ? Number.parseFloat(draft.requestedDropoffLatitude)
           : undefined,
@@ -884,7 +878,7 @@ export default function TripsPage() {
       }
 
       setRequestErrorMessage(
-        getApiErrorMessage(error, 'No fue posible registrar el no-show.'),
+        getApiErrorMessage(error, 'No fue posible registrar la ausencia.'),
       );
       await refreshTripsData();
     } finally {

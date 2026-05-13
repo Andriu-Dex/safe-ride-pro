@@ -1,8 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-
-import { Button } from '../../../components/ui/button';
 import { InputField } from '../../../components/ui/input-field';
 import {
   getGeoapifySetupMessage,
@@ -15,23 +12,33 @@ import { TripRouteMap } from './trip-route-map';
 
 type TripRequestDetourPlannerProps = {
   draft: TripRequestDraft;
+  destinationLabel: string;
+  destinationLatitude: string;
+  destinationLongitude: string;
   disabled?: boolean;
+  originLabel: string;
+  originLatitude: string;
+  originLongitude: string;
   onChange: (field: keyof TripRequestDraft, value: string) => void;
 };
 
-type PlannerTarget = 'pickup' | 'dropoff';
-
 export function TripRequestDetourPlanner({
   draft,
+  destinationLabel,
+  destinationLatitude,
+  destinationLongitude,
   disabled = false,
+  originLabel,
+  originLatitude,
+  originLongitude,
   onChange,
 }: TripRequestDetourPlannerProps) {
-  const [activeTarget, setActiveTarget] = useState<PlannerTarget>('pickup');
   const isMapsEnabled = isGeoapifyConfigured();
-  const pickupSelection = buildPlaceSelection(
-    draft.requestedPickupLabel,
-    draft.requestedPickupLatitude,
-    draft.requestedPickupLongitude,
+  const originSelection = buildPlaceSelection(originLabel, originLatitude, originLongitude);
+  const destinationSelection = buildPlaceSelection(
+    destinationLabel,
+    destinationLatitude,
+    destinationLongitude,
   );
   const dropoffSelection = buildPlaceSelection(
     draft.requestedDropoffLabel,
@@ -48,16 +55,6 @@ export function TripRequestDetourPlanner({
     longitude: number;
     target: 'pickup' | 'dropoff' | 'origin' | 'destination';
   }) => {
-    if (target === 'pickup') {
-      onChange('requestedPickupLatitude', latitude.toFixed(6));
-      onChange('requestedPickupLongitude', longitude.toFixed(6));
-      onChange(
-        'requestedPickupLabel',
-        draft.requestedPickupLabel.trim() || 'Punto de recogida marcado en mapa',
-      );
-      return;
-    }
-
     if (target !== 'dropoff') {
       return;
     }
@@ -72,126 +69,84 @@ export function TripRequestDetourPlanner({
 
   return (
     <section className="trip-request-detour-workspace">
-      <div className="trip-request-detour-toggle">
-        <Button
-          className={activeTarget === 'pickup' ? 'trip-request-map-target-active' : undefined}
-          disabled={disabled}
-          onClick={() => setActiveTarget('pickup')}
-          type="button"
-          variant={activeTarget === 'pickup' ? 'primary' : 'ghost'}
-        >
-          Marcar recogida
-        </Button>
-        <Button
-          className={activeTarget === 'dropoff' ? 'trip-request-map-target-active' : undefined}
-          disabled={disabled}
-          onClick={() => setActiveTarget('dropoff')}
-          type="button"
-          variant={activeTarget === 'dropoff' ? 'primary' : 'ghost'}
-        >
-          Marcar destino
-        </Button>
+      <div className="trip-request-routing-rule">
+        <strong>Recogida institucional fija</strong>
+        <p>
+          La recogida siempre parte desde la institucion. En este viaje solo puedes ajustar el
+          destino dentro del rango permitido para desvio.
+        </p>
       </div>
 
       <div className="form-grid form-grid-2">
+        <InputField disabled label="Recogida" value={originLabel} />
         {isMapsEnabled ? (
-          <>
-            <PlaceAutocompleteField
-              disabled={disabled}
-              label="Recogida"
-              onClear={() => {
-                onChange('requestedPickupLabel', '');
-                onChange('requestedPickupLatitude', '');
-                onChange('requestedPickupLongitude', '');
-              }}
-              onSelect={(place) => {
-                onChange('requestedPickupLabel', place.label);
-                onChange('requestedPickupLatitude', place.latitude.toFixed(6));
-                onChange('requestedPickupLongitude', place.longitude.toFixed(6));
-              }}
-              onValueChange={(nextValue) => {
-                onChange('requestedPickupLabel', nextValue);
-                onChange('requestedPickupLatitude', '');
-                onChange('requestedPickupLongitude', '');
-              }}
-              placeholder="Buscar punto de recogida"
-              selectedPlace={pickupSelection}
-              value={draft.requestedPickupLabel}
-            />
-            <PlaceAutocompleteField
-              disabled={disabled}
-              label="Destino"
-              onClear={() => {
-                onChange('requestedDropoffLabel', '');
-                onChange('requestedDropoffLatitude', '');
-                onChange('requestedDropoffLongitude', '');
-              }}
-              onSelect={(place) => {
-                onChange('requestedDropoffLabel', place.label);
-                onChange('requestedDropoffLatitude', place.latitude.toFixed(6));
-                onChange('requestedDropoffLongitude', place.longitude.toFixed(6));
-              }}
-              onValueChange={(nextValue) => {
-                onChange('requestedDropoffLabel', nextValue);
-                onChange('requestedDropoffLatitude', '');
-                onChange('requestedDropoffLongitude', '');
-              }}
-              placeholder="Buscar punto de destino"
-              selectedPlace={dropoffSelection}
-              value={draft.requestedDropoffLabel}
-            />
-          </>
+          <PlaceAutocompleteField
+            disabled={disabled}
+            label="Destino solicitado"
+            onClear={() => {
+              onChange('requestedDropoffLabel', '');
+              onChange('requestedDropoffLatitude', '');
+              onChange('requestedDropoffLongitude', '');
+            }}
+            onSelect={(place) => {
+              onChange('requestedDropoffLabel', place.label);
+              onChange('requestedDropoffLatitude', place.latitude.toFixed(6));
+              onChange('requestedDropoffLongitude', place.longitude.toFixed(6));
+            }}
+            onValueChange={(nextValue) => {
+              onChange('requestedDropoffLabel', nextValue);
+              onChange('requestedDropoffLatitude', '');
+              onChange('requestedDropoffLongitude', '');
+            }}
+            placeholder="Buscar punto de destino"
+            selectedPlace={dropoffSelection}
+            value={draft.requestedDropoffLabel}
+          />
         ) : (
-          <>
-            <InputField
-              disabled={disabled}
-              label="Recogida"
-              onChange={(event) => onChange('requestedPickupLabel', event.target.value)}
-              placeholder="Punto de recogida"
-              value={draft.requestedPickupLabel}
-            />
-            <InputField
-              disabled={disabled}
-              label="Destino"
-              onChange={(event) => onChange('requestedDropoffLabel', event.target.value)}
-              placeholder="Punto de destino"
-              value={draft.requestedDropoffLabel}
-            />
-          </>
+          <InputField
+            disabled={disabled}
+            label="Destino solicitado"
+            onChange={(event) => onChange('requestedDropoffLabel', event.target.value)}
+            placeholder="Punto de destino"
+            value={draft.requestedDropoffLabel}
+          />
         )}
       </div>
 
       {isMapsEnabled ? (
-        <section className="trip-map-card trip-request-map-card" aria-label="Mapa para solicitud con desvio">
+        <section
+          className="trip-map-card trip-request-map-card"
+          aria-label="Mapa para solicitud con desvio"
+        >
           <div className="trip-map-card-header">
             <div>
-              <strong className="trip-map-card-title">Mapa de desvio</strong>
+              <strong className="trip-map-card-title">Mapa del destino solicitado</strong>
+              <p className="panel-text">
+                Haz clic sobre el mapa para marcar el destino solicitado dentro del rango permitido.
+              </p>
             </div>
-            <span className="topbar-badge">
-              {activeTarget === 'pickup' ? 'Editando recogida' : 'Editando destino'}
-            </span>
+            <span className="topbar-badge">Desvio disponible</span>
           </div>
 
           <TripRouteMap
-            destination={null}
+            destination={destinationSelection}
             dropoff={dropoffSelection}
             onMapSelect={handleMapSelect}
-            origin={null}
-            pickup={pickupSelection}
-            selectionMode={activeTarget}
+            origin={originSelection}
+            selectionMode="dropoff"
           />
 
           <div className="trip-location-grid trip-request-location-grid">
             <TripRequestLocationCard
-              emptyMessage="Selecciona o marca un punto para la recogida."
+              emptyMessage="La recogida siempre se mantiene en la institucion."
               label="Recogida"
-              latitude={draft.requestedPickupLatitude}
-              locationLabel={draft.requestedPickupLabel}
-              longitude={draft.requestedPickupLongitude}
+              latitude={originLatitude}
+              locationLabel={originLabel}
+              longitude={originLongitude}
             />
             <TripRequestLocationCard
-              emptyMessage="Selecciona o marca un punto para el destino."
-              label="Destino"
+              emptyMessage="Si no ajustas el destino, se usara el destino original del viaje."
+              label="Destino solicitado"
               latitude={draft.requestedDropoffLatitude}
               locationLabel={draft.requestedDropoffLabel}
               longitude={draft.requestedDropoffLongitude}
@@ -201,23 +156,9 @@ export function TripRequestDetourPlanner({
       ) : (
         <>
           <div className="form-helper">{getGeoapifySetupMessage()}</div>
-          <div className="form-grid form-grid-4 compact-grid">
-            <InputField
-              disabled={disabled}
-              label="Lat. recogida"
-              onChange={(event) => onChange('requestedPickupLatitude', event.target.value)}
-              step="any"
-              type="number"
-              value={draft.requestedPickupLatitude}
-            />
-            <InputField
-              disabled={disabled}
-              label="Long. recogida"
-              onChange={(event) => onChange('requestedPickupLongitude', event.target.value)}
-              step="any"
-              type="number"
-              value={draft.requestedPickupLongitude}
-            />
+          <div className="form-grid form-grid-2 compact-grid">
+            <InputField disabled label="Lat. recogida" value={originLatitude} />
+            <InputField disabled label="Long. recogida" value={originLongitude} />
             <InputField
               disabled={disabled}
               label="Lat. destino"

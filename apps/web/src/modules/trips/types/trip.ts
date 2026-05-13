@@ -20,6 +20,10 @@ export type TripRecord = {
   routeMode: TripRouteMode;
   originLabel: string;
   destinationLabel: string;
+  originLatitude: number | null;
+  originLongitude: number | null;
+  destinationLatitude: number | null;
+  destinationLongitude: number | null;
   departureAt: string;
   estimatedArrivalAt: string;
   seatCount: number;
@@ -37,10 +41,6 @@ export type TripRecord = {
 };
 
 export type TripDetailRecord = TripRecord & {
-  originLatitude: number | null;
-  originLongitude: number | null;
-  destinationLatitude: number | null;
-  destinationLongitude: number | null;
   isOwner: boolean;
   isAcceptedPassenger: boolean;
   canViewPreciseRoute: boolean;
