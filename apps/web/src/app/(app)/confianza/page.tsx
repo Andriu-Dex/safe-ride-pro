@@ -130,6 +130,19 @@ function formatAverageScore(score: number | null): string {
   return score === null ? 'Sin datos' : `${score.toFixed(1)}/5`;
 }
 
+function getBadgeClass(tone: string): string {
+  switch (tone) {
+    case 'success':
+      return styles.heroBadgeSuccess;
+    case 'warning':
+      return styles.heroBadgeWarning;
+    case 'danger':
+      return styles.heroBadgeDanger;
+    default:
+      return styles.heroBadgeNeutral;
+  }
+}
+
 function sortByDepartureDateDescending<T extends { tripDepartureAt: string }>(items: T[]): T[] {
   return items.sort(
     (left, right) =>
@@ -933,33 +946,33 @@ export default function TrustPage() {
 
   if (isLoading) {
     return (
-      <>
+      <section className={styles.page}>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.loadingShell}>
-          <article className={styles.loadingCard}>
+        <div className={styles.loadingShell}>
+          <article className={styles.stateCard}>
             <div aria-hidden="true" className={styles.loadingPulse} />
             <h1 className={styles.loadingTitle}>Cargando confianza</h1>
             <p className={styles.loadingText}>
               Estamos preparando tus calificaciones, reportes y restricciones.
             </p>
           </article>
-        </section>
-      </>
+        </div>
+      </section>
     );
   }
 
   if (!operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message) {
     return (
-      <>
+      <section className={styles.page}>
         <ToastStack onDismiss={dismissToast} toasts={toasts} />
-        <section className={styles.lockedShell}>
+        <div className={styles.lockedShell}>
           <article className={styles.lockedCard}>
             <div className={styles.lockedHeader}>
-              <div>
-                <p className={styles.kicker}>Confianza</p>
-                <h1 className={styles.lockedTitle}>Operaci&oacute;n no disponible</h1>
+              <p className={styles.kicker}>Confianza</p>
+              <h1 className={styles.lockedTitle}>Operaci&oacute;n no disponible</h1>
+              <div className={styles.lockedActions}>
+                <StatusPill label="Operaci&oacute;n bloqueada" tone="warning" />
               </div>
-              <StatusPill label="Operaci&oacute;n bloqueada" tone="warning" />
             </div>
             <div className={styles.lockedBody}>
               <OperationalAccessCard
@@ -968,49 +981,51 @@ export default function TrustPage() {
               />
             </div>
           </article>
-        </section>
-      </>
+        </div>
+      </section>
     );
   }
 
   return (
-      <section className={styles.trustShell}>
-        <ToastStack onDismiss={dismissToast} toasts={toasts} />
+    <section className={styles.page}>
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
 
-        <header className={`${styles.hero} ${styles.reveal}`}>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Confianza</p>
-            <h1 className={styles.heroTitle}>Reputaci&oacute;n y seguridad</h1>
-            <p className={styles.heroLead}>
-              Resuelve pendientes, revisa restricciones y conserva un historial claro.
-            </p>
-          </div>
-          <div className={styles.heroActions}>
-            <StatusPill
-              label={`${totalPendingActions} pendientes`}
-              tone={totalPendingActions ? 'warning' : 'success'}
-            />
-            {trustSummary ? (
-              <StatusPill
-                label={getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
-                tone={getVisibleReputationTone(trustSummary.visibleReputationState)}
-              />
-            ) : null}
-            <Button
-              disabled={isRefreshingData}
-              onClick={() => void refreshData(true)}
-              variant="secondary"
+      <header className={styles.heroHeader}>
+        <div className={styles.heroCopy}>
+          <p className={styles.kicker}>Confianza</p>
+          <h1 className={styles.heroTitle}>Reputaci&oacute;n y seguridad</h1>
+          <p className={styles.heroLead}>
+            Resuelve pendientes, revisa restricciones y conserva un historial claro.
+          </p>
+        </div>
+        <div className={styles.heroActions}>
+          <span className={`${styles.heroBadge} ${getBadgeClass(totalPendingActions ? 'warning' : 'success')}`}>
+            {totalPendingActions} pendientes
+          </span>
+          {trustSummary ? (
+            <span
+              className={`${styles.heroBadge} ${getBadgeClass(getVisibleReputationTone(trustSummary.visibleReputationState))}`}
             >
-              {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
-            </Button>
-          </div>
+              {getVisibleReputationStateLabel(trustSummary.visibleReputationState)}
+            </span>
+          ) : null}
+          <button
+            className={styles.heroBtnSecondary}
+            disabled={isRefreshingData}
+            onClick={() => void refreshData(true)}
+            type="button"
+          >
+            {isRefreshingData ? 'Actualizando...' : 'Actualizar'}
+          </button>
+        </div>
       </header>
 
-      <div className={styles.pageLayout}>
+      <div className={styles.content}>
+        <div className={styles.workspaceLayout}>
         
         {trustSummary ? (
           <aside className={styles.trustSidebar}>
-              <article className={styles.surfaceCardDark}>
+              <article className={styles.surfaceCard}>
                 <div className={styles.surfaceHeader}>
                   <div>
                     <h3 className={styles.surfaceTitle}>Tu Estado</h3>
@@ -1023,7 +1038,7 @@ export default function TrustPage() {
                     <StatusPill
                       label={getAdministrativeRiskStateLabel(trustSummary.administrativeRiskState)}
                       tone={getAdministrativeRiskTone(trustSummary.administrativeRiskState)}
-                    />
+                    /> 
                   </div>
                 </div>
 
@@ -1182,7 +1197,6 @@ export default function TrustPage() {
           <section className={styles.sectionBlock}>
             <header className={styles.sectionHeader}>
               <div className={styles.sectionHeaderTitleGroup}>
-                <span className={styles.sectionKicker}>Acciones</span>
                 <h2 className={styles.sectionTitle}>Pendientes de cierre</h2>
               </div>
               <StatusPill
@@ -1203,7 +1217,7 @@ export default function TrustPage() {
                   <div className={styles.stackList}>
                     {pendingRatingOpportunities.map((opportunity) => (
                       <div 
-                        key={opportunity.id} 
+                        key={opportunity.id}
                         className={`${styles.recordCard} ${highlightedRatingOpportunityIds.has(opportunity.id) ? styles.recordCardAccent : ''}`}
                         id={buildClosureOpportunityElementId('rating', opportunity.id)}
                       >
@@ -1285,34 +1299,33 @@ export default function TrustPage() {
         <section className={styles.sectionBlock}>
           <header className={styles.sectionHeader}>
             <div className={styles.sectionHeaderTitleGroup}>
-              <span className={styles.sectionKicker}>Historial</span>
               <h2 className={styles.sectionTitle}>Registro de actividad</h2>
             </div>
           </header>
 
           <article className={styles.surfaceCard}>
-            <div className={styles.tabContainer}>
+            <nav className={styles.dashboardTabs}>
               <button
-                className={activeHistoryTab === 'given' ? styles.activeTab : styles.tab}
+                className={[styles.dashboardTab, activeHistoryTab === 'given' ? styles.dashboardTabActive : ''].join(' ')}
                 onClick={() => setActiveHistoryTab('given')}
               >
                 Calificaciones emitidas ({ratings.given.length})
               </button>
               <button
-                className={activeHistoryTab === 'received' ? styles.activeTab : styles.tab}
+                className={[styles.dashboardTab, activeHistoryTab === 'received' ? styles.dashboardTabActive : ''].join(' ')}
                 onClick={() => setActiveHistoryTab('received')}
               >
                 Calificaciones recibidas ({ratings.received.length})
               </button>
               <button
-                className={activeHistoryTab === 'reports' ? styles.activeTab : styles.tab}
+                className={[styles.dashboardTab, activeHistoryTab === 'reports' ? styles.dashboardTabActive : ''].join(' ')}
                 onClick={() => setActiveHistoryTab('reports')}
               >
                 Reportes emitidos ({reports.length})
               </button>
-            </div>
+            </nav>
 
-            <div className={styles.tabContent}>
+            <div>
               {activeHistoryTab === 'given' && (
                 ratings.given.length ? (
                   <div className={styles.scrollArea}>
@@ -1419,6 +1432,8 @@ export default function TrustPage() {
           </article>
         </section>
       </div>
+      </div>
+      </div>
 
         {activeRatingOpportunity && (
           <div className={styles.modalOverlay} role="presentation">
@@ -1492,7 +1507,6 @@ export default function TrustPage() {
             </div>
           </div>
         )}
-      </div>
     </section>
   );
 }
