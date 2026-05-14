@@ -6,11 +6,14 @@ export async function signInThroughUi(page: Page, email: string, password: strin
   await page.getByLabel(/Clave de acceso|Contrasena|Contraseña/i).fill(password);
   await page.getByRole('button', { name: 'Iniciar sesion' }).click();
   await expect(page).toHaveURL(/\/(inicio|dashboard)$/);
-  await expect(page.locator('.app-sidebar')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Principal' })).toBeVisible();
 }
 
 export async function openSidebarSection(page: Page, label: string): Promise<void> {
-  await page.locator('.app-sidebar').getByRole('link', { name: new RegExp(label, 'i') }).click();
+  await page
+    .getByRole('navigation', { name: 'Principal' })
+    .getByRole('link', { name: new RegExp(label, 'i') })
+    .click();
 }
 
 export async function waitForSectionHeading(
@@ -22,7 +25,7 @@ export async function waitForSectionHeading(
     await page.getByText(loadingText).waitFor({ state: 'hidden' });
   }
 
-  await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: heading, exact: true }).first()).toBeVisible();
 }
 
 export function listCardByText(page: Page, text: string): Locator {

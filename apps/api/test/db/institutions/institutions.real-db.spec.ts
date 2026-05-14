@@ -106,10 +106,11 @@ describe('Institutions real DB integration', () => {
   });
 
   it('suspends an institution and degrades an already open user session', async () => {
-    const uniqueSuffix = `${Date.now()}-suspend`;
-    const institutionName = `Institucion Suspendible ${uniqueSuffix.slice(-4)}`;
-    const institutionCode = `SP${uniqueSuffix.slice(-4)}`;
-    const primaryDomain = `suspendible${uniqueSuffix.slice(-4)}.edu.ec`;
+    const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 10_000)}`;
+    const shortSuffix = uniqueSuffix.slice(-6);
+    const institutionName = `Institucion Suspendible ${shortSuffix}`;
+    const institutionCode = `SP${shortSuffix}`;
+    const primaryDomain = `suspendible${shortSuffix}.edu.ec`;
     const adminSession = await loginSeedAdmin(app);
 
     const createInstitutionResponse = await request(app.getHttpServer())
@@ -128,8 +129,8 @@ describe('Institutions real DB integration', () => {
       email: `session.${uniqueSuffix}@${primaryDomain}`,
       password: 'Suspend123!',
       fullName: 'Usuario Suspendido',
-      documentNumber: `87${uniqueSuffix.replace(/\D/g, '').slice(-8)}`,
-      studentCode: `SUS-${uniqueSuffix.slice(-6)}`,
+      documentNumber: shortSuffix,
+      studentCode: `SUS-${shortSuffix}`,
     });
 
     const accessToken = registeredUser.login.accessToken as string;

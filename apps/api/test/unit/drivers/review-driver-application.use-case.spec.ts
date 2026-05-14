@@ -22,6 +22,7 @@ function createDriversRepositoryMock(): jest.Mocked<DriversRepository> {
   return {
     findDefaultMembershipByUserId: jest.fn(),
     findMembershipById: jest.fn(),
+    listInstitutionAdminMembershipIds: jest.fn(),
     findDriverProfileByMembershipId: jest.fn(),
     listReviewableDriverApplications: jest.fn(),
     submitDriverApplication: jest.fn(),

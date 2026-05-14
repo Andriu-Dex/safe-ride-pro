@@ -56,6 +56,15 @@ describe('Operational sanctions real DB integration', () => {
     const institutionId = passengerSession.login.user.memberships[0].institutionId as string;
     const passengerToken = passengerSession.login.accessToken as string;
 
+    await prisma.user.update({
+      where: { id: passengerSession.login.user.id as string },
+      data: {
+        termsAcceptedAt: new Date(),
+        privacyAcceptedAt: new Date(),
+        safetyRulesAcceptedAt: new Date(),
+      },
+    });
+
     const vehicle = await prisma.vehicle.create({
       data: {
         membershipId: driverMembershipId,
@@ -177,6 +186,7 @@ describe('Operational sanctions real DB integration', () => {
       .set('Authorization', `Bearer ${passengerToken}`)
       .send({
         tripId: futureTrip.id,
+        acceptReservationCommitment: true,
         requestMessage: 'Intento de prueba bloqueado por sancion.',
       })
       .expect(403);

@@ -73,8 +73,23 @@ describe('Critical MVP flow real DB integration', () => {
     const passengerToken = passengerSession.login.accessToken as string;
     const waitingPassengerToken = waitingPassengerSession.login.accessToken as string;
     const adminToken = adminSession.body.accessToken as string;
+    const passengerUserId = passengerSession.login.user.id as string;
+    const waitingPassengerUserId = waitingPassengerSession.login.user.id as string;
     const driverMembershipId = driverSession.login.user.memberships[0].id as string;
     const passengerMembershipId = passengerSession.login.user.memberships[0].id as string;
+
+    await prisma.user.updateMany({
+      where: {
+        id: {
+          in: [passengerUserId, waitingPassengerUserId],
+        },
+      },
+      data: {
+        termsAcceptedAt: new Date(),
+        privacyAcceptedAt: new Date(),
+        safetyRulesAcceptedAt: new Date(),
+      },
+    });
 
     const licenseTypesResponse = await request(app.getHttpServer())
       .get('/api/vehicles/catalogs/license-types')
@@ -180,6 +195,7 @@ describe('Critical MVP flow real DB integration', () => {
       .set('Authorization', `Bearer ${passengerToken}`)
       .send({
         tripId,
+        acceptReservationCommitment: true,
         requestMessage: 'Puedo esperar en la entrada principal.',
       })
       .expect(201);
@@ -190,6 +206,7 @@ describe('Critical MVP flow real DB integration', () => {
       .set('Authorization', `Bearer ${waitingPassengerToken}`)
       .send({
         tripId,
+        acceptReservationCommitment: true,
         requestMessage: 'Quedo pendiente para la misma ruta.',
       })
       .expect(201);

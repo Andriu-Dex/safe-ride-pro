@@ -59,7 +59,11 @@ function buildTripRequestRecord(overrides: Partial<TripRequestRecord> = {}): Tri
     tripStatus: TripStatus.InProgress,
     tripRouteMode: TripRouteMode.DirectRoute,
     tripOriginLabel: 'Huachi',
+    tripOriginLatitude: -1.25,
+    tripOriginLongitude: -78.62,
     tripDestinationLabel: 'Centro',
+    tripDestinationLatitude: -1.24,
+    tripDestinationLongitude: -78.61,
     tripDepartureAt: new Date('2030-01-01T10:00:00.000Z'),
     tripEstimatedArrivalAt: new Date('2030-01-01T10:30:00.000Z'),
     tripCompletedAt: null,
@@ -106,7 +110,7 @@ describe('MarkTripRequestNoShowUseCase', () => {
       'El pasajero no llego al punto acordado.',
     );
 
-    expect(response.message).toBe('No-show registrado correctamente.');
+    expect(response.message).toBe('Ausencia registrada correctamente.');
     expect(repository.markTripRequestAsNoShow).toHaveBeenCalledWith(
       'request-1',
       'El pasajero no llego al punto acordado.',
@@ -136,29 +140,29 @@ describe('MarkTripRequestNoShowUseCase', () => {
     );
 
     await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
-      new ForbiddenException('Solo el conductor del viaje puede registrar un no-show.'),
+      new ForbiddenException('Solo el conductor del viaje puede registrar una ausencia.'),
     );
 
     await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
       new BadRequestException(
-        'Solo las solicitudes aceptadas pueden marcarse como no-show.',
+        'Solo las solicitudes aceptadas pueden marcarse como ausencia.',
       ),
     );
 
     await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
       new BadRequestException(
-        'Solo puedes marcar no-show cuando el viaje ya inicio o finalizo.',
+        'Solo puedes registrar una ausencia cuando el viaje ya inicio o finalizo.',
       ),
     );
 
     await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
       new BadRequestException(
-        'No puedes registrar no-show para un pasajero que ya fue abordado o finalizado.',
+        'No puedes registrar una ausencia para un pasajero que ya fue abordado o finalizado.',
       ),
     );
 
     await expect(useCase.execute('driver-1', 'request-1', '   ')).rejects.toThrow(
-      new BadRequestException('Debes indicar una nota para registrar el no-show.'),
+      new BadRequestException('Debes indicar una nota para registrar la ausencia.'),
     );
   });
 });

@@ -21,8 +21,10 @@ function createUsersRepositoryMock(): jest.Mocked<UsersRepository> {
     findById: jest.fn(),
     findProfilePhotoRecordById: jest.fn(),
     updateProfile: jest.fn(),
+    updateAccountStatus: jest.fn(),
     updateProfilePhoto: jest.fn(),
     getTrustSummary: jest.fn(),
+    listAdminUserDirectory: jest.fn(),
   };
 }
 

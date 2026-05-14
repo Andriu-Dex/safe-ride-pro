@@ -33,6 +33,7 @@ corepack pnpm qa:verify:web
 
 Este comando ejecuta:
 
+- typecheck de API
 - build de API
 - typecheck de Web
 - build de Web
@@ -46,14 +47,24 @@ corepack pnpm qa:release:web
 
 Este comando agrega ademas:
 
-- pruebas API de reportes/evidencia
+- pruebas unitarias e integracion HTTP completas del API
+- pruebas real-db del API con migraciones y seed
+- pruebas unitarias de Web con Vitest
+- verificacion tecnica web completa (`qa:verify:web`)
 
 ### Smoke E2E directo
 
 Si solo quieres correr la pasada transversal de interfaz:
 
 ```powershell
-corepack pnpm --filter web test:e2e:smoke
+corepack pnpm --filter @saferidepro/web test:e2e:smoke
+```
+
+Si Docker ya esta saludable, el smoke reutiliza el stack. Para forzar reconstruccion:
+
+```powershell
+$env:PLAYWRIGHT_FORCE_QA_REBUILD="true"
+corepack pnpm --filter @saferidepro/web test:e2e:smoke
 ```
 
 ---

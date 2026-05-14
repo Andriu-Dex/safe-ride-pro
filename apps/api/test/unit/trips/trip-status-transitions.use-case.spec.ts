@@ -36,6 +36,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
       async (_tripId: string): Promise<string[]> => [],
     ),
     findLatestReusableTripByDriverMembershipId: jest.fn(),
+    listRecentReusableTripsByDriverMembershipId: jest.fn(),
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
     updateTripStatus: jest.fn(),

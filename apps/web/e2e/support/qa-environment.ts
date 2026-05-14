@@ -55,7 +55,7 @@ export async function ensureQaEnvironment(): Promise<void> {
   ensureQaEnvFile();
 
   const canReuseQaEnvironment =
-    process.env.PLAYWRIGHT_REUSE_QA === 'true' &&
+    process.env.PLAYWRIGHT_FORCE_QA_REBUILD !== 'true' &&
     (await Promise.all(qaHealthUrls.map((url) => isUrlHealthy(url)))).every(Boolean);
 
   if (!canReuseQaEnvironment) {

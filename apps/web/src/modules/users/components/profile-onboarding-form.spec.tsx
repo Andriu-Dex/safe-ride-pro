@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AccountStatus,
@@ -19,6 +18,44 @@ const { persistToastMock } = vi.hoisted(() => ({
 
 const replaceMock = vi.fn();
 const refreshSessionMock = vi.fn();
+const authSessionMock = {
+  accessToken: 'access-token',
+  refreshToken: 'refresh-token',
+  user: {
+    id: 'user-1',
+    email: 'user@uta.edu.ec',
+    fullName: 'Usuario Uno',
+    career: 'Software',
+    phone: '0999999999',
+    referenceNeighborhood: 'Ficoa',
+    documentType: 'NATIONAL_ID',
+    documentNumber: '1710034065',
+    profilePhotoUrl: null,
+    globalRole: GlobalUserRole.User,
+    accountStatus: AccountStatus.Active,
+    emailVerifiedAt: '2030-01-01T08:00:00.000Z',
+    termsAcceptedAt: '2030-01-01T08:10:00.000Z',
+    privacyAcceptedAt: '2030-01-01T08:10:00.000Z',
+    safetyRulesAcceptedAt: '2030-01-01T08:10:00.000Z',
+    onboardingCompletedAt: '2030-01-01T08:12:00.000Z',
+    onboardingStatus: UserOnboardingStatus.Complete,
+    missingOnboardingRequirements: [],
+    requiresOnboarding: false,
+    memberships: [
+      {
+        id: 'membership-1',
+        institutionId: 'institution-1',
+        institutionName: 'UTA',
+        institutionIsActive: true,
+        role: InstitutionMembershipRole.Student,
+        membershipStatus: MembershipStatus.Active,
+        studentCode: 'STU-001',
+        isDefault: true,
+        driverVerificationStatus: DriverVerificationStatus.NotRequested,
+      },
+    ],
+  },
+};
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -29,59 +66,31 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+vi.mock('next/link', () => ({
+  default: ({
+    children,
+    href,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    href: string;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 vi.mock('../../auth/hooks/use-auth', () => ({
   useAuth: () => ({
-    authSession: {
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
-      user: {
-        id: 'user-1',
-        email: 'user@uta.edu.ec',
-        fullName: 'Usuario Uno',
-        career: 'Software',
-        phone: '0999999999',
-        referenceNeighborhood: 'Ficoa',
-        documentType: 'NATIONAL_ID',
-        documentNumber: '1710034065',
-        profilePhotoUrl: null,
-        globalRole: GlobalUserRole.User,
-        accountStatus: AccountStatus.Active,
-        emailVerifiedAt: '2030-01-01T08:00:00.000Z',
-        termsAcceptedAt: '2030-01-01T08:10:00.000Z',
-        privacyAcceptedAt: '2030-01-01T08:10:00.000Z',
-        safetyRulesAcceptedAt: '2030-01-01T08:10:00.000Z',
-        onboardingCompletedAt: '2030-01-01T08:12:00.000Z',
-        onboardingStatus: UserOnboardingStatus.Complete,
-        missingOnboardingRequirements: [],
-        requiresOnboarding: false,
-        memberships: [
-          {
-            id: 'membership-1',
-            institutionId: 'institution-1',
-            institutionName: 'UTA',
-            institutionIsActive: true,
-            role: InstitutionMembershipRole.Student,
-            membershipStatus: MembershipStatus.Active,
-            studentCode: 'STU-001',
-            isDefault: true,
-            driverVerificationStatus: DriverVerificationStatus.NotRequested,
-          },
-        ],
-      },
-    },
+    authSession: authSessionMock,
     refreshSession: refreshSessionMock,
   }),
 }));
 
-vi.mock('../lib/user-api', async () => {
-  const actual = await vi.importActual<typeof import('../lib/user-api')>('../lib/user-api');
-
-  return {
-    ...actual,
-    updateCurrentUserProfile: vi.fn(),
-    uploadCurrentUserProfilePhoto: vi.fn(),
-  };
-});
+vi.mock('../lib/user-api', () => ({
+  updateCurrentUserProfile: vi.fn(),
+  uploadCurrentUserProfilePhoto: vi.fn(),
+}));
 
 vi.mock('../../../components/ui/flash-toast', () => ({
   persistToast: persistToastMock,
@@ -90,6 +99,8 @@ vi.mock('../../../components/ui/flash-toast', () => ({
 describe('ProfileOnboardingForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    URL.createObjectURL = vi.fn(() => 'blob:avatar-preview');
+    URL.revokeObjectURL = vi.fn();
   });
 
   it('opens the edit modal, submits profile changes and shows a success toast', async () => {
@@ -100,25 +111,21 @@ describe('ProfileOnboardingForm', () => {
 
     render(<ProfileOnboardingForm />);
 
-    const user = userEvent.setup();
-
-    await user.click(screen.getByRole('button', { name: 'Editar perfil' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Editar perfil' }));
 
     const fullNameInput = screen.getByLabelText('Nombre completo');
     const careerInput = screen.getByLabelText('Carrera');
     const phoneInput = screen.getByLabelText('Celular');
     const neighborhoodInput = screen.getByLabelText('Zona o barrio de referencia');
 
-    await user.clear(fullNameInput);
-    await user.type(fullNameInput, 'Usuario Editado');
-    await user.clear(careerInput);
-    await user.type(careerInput, 'Tecnologias de la Informacion');
-    await user.clear(phoneInput);
-    await user.type(phoneInput, '0988888888');
-    await user.clear(neighborhoodInput);
-    await user.type(neighborhoodInput, 'Miraflores');
+    fireEvent.change(fullNameInput, { target: { value: 'Usuario Editado' } });
+    fireEvent.change(careerInput, {
+      target: { value: 'Tecnologias de la Informacion' },
+    });
+    fireEvent.change(phoneInput, { target: { value: '0988888888' } });
+    fireEvent.change(neighborhoodInput, { target: { value: 'Miraflores' } });
 
-    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
     await waitFor(() => {
       expect(updateCurrentUserProfile).toHaveBeenCalledWith('access-token', {
@@ -134,9 +141,7 @@ describe('ProfileOnboardingForm', () => {
     });
 
     expect(refreshSessionMock).toHaveBeenCalled();
-    expect(
-      await screen.findByText('Tu perfil se actualizo correctamente.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Perfil actualizado')).toBeInTheDocument();
     expect(persistToastMock).not.toHaveBeenCalled();
   });
 
@@ -147,10 +152,8 @@ describe('ProfileOnboardingForm', () => {
 
     render(<ProfileOnboardingForm />);
 
-    const user = userEvent.setup();
-
-    await user.click(screen.getByRole('button', { name: 'Editar perfil' }));
-    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Editar perfil' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
     expect(
       await screen.findByText('No fue posible actualizar el perfil.'),
@@ -166,15 +169,17 @@ describe('ProfileOnboardingForm', () => {
 
     render(<ProfileOnboardingForm />);
 
-    const user = userEvent.setup();
-
-    await user.click(screen.getByRole('button', { name: 'Cambiar avatar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Subir imagen' }));
 
     const file = new File(['avatar'], 'avatar.png', { type: 'image/png' });
-    const input = screen.getByLabelText('Seleccionar imagen de perfil');
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
 
-    await user.upload(input, file);
-    await user.click(screen.getByRole('button', { name: 'Guardar avatar' }));
+    if (!input) {
+      throw new Error('No se encontro el input de archivo del avatar.');
+    }
+
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar avatar' }));
 
     await waitFor(() => {
       expect(uploadCurrentUserProfilePhoto).toHaveBeenCalledWith('access-token', file);

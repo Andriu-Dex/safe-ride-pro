@@ -58,10 +58,38 @@ type TripMutationResponse = {
   };
 };
 
+type TripRequestMutationResponse = {
+  message: string;
+  tripRequest: {
+    id: string;
+    tripId: string;
+    passengerMembershipId: string;
+    driverMembershipId: string;
+  };
+};
+
+type RatingMutationResponse = {
+  message: string;
+  rating: {
+    id: string;
+  };
+};
+
+type ReportMutationResponse = {
+  message: string;
+  report: {
+    id: string;
+  };
+};
+
 const apiBaseUrl = process.env.E2E_API_BASE_URL ?? 'http://localhost:3001/api';
 const seededAdminEmail = process.env.E2E_ADMIN_EMAIL ?? 'admin@uta.edu.ec';
 const seededAdminPassword = process.env.E2E_ADMIN_PASSWORD ?? 'Admin12345';
 const repoRoot = path.resolve(__dirname, '../../../..');
+const qaEnvironment = {
+  postgresUser: process.env.POSTGRES_USER ?? 'postgres',
+  postgresDatabase: process.env.POSTGRES_DB ?? 'safe_ride_pro_qa',
+};
 
 function createSuffix(): string {
   return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
@@ -137,9 +165,9 @@ function finalizeE2EUserStateInQaDatabase(email: string): void {
       'postgres',
       'psql',
       '-U',
-      'postgres',
+      qaEnvironment.postgresUser,
       '-d',
-      'safe_ride_pro_qa',
+      qaEnvironment.postgresDatabase,
       '-c',
       sql,
     ],
@@ -301,4 +329,123 @@ export async function createPublishedTrip(accessToken: string, vehicleId: string
   });
 
   return tripResponse;
+}
+
+export async function createTripRequest(
+  accessToken: string,
+  tripId: string,
+  suffix: string,
+): Promise<TripRequestMutationResponse> {
+  return apiRequest<TripRequestMutationResponse>('/trip-requests', {
+    method: 'POST',
+    accessToken,
+    body: {
+      tripId,
+      paymentProvider: 'CASH',
+      requestMessage: `Solicitud E2E ${suffix}`,
+      acceptReservationCommitment: true,
+    },
+  });
+}
+
+export async function acceptTripRequest(
+  accessToken: string,
+  requestId: string,
+): Promise<TripRequestMutationResponse> {
+  return apiRequest<TripRequestMutationResponse>(`/trip-requests/${requestId}/accept`, {
+    method: 'PATCH',
+    accessToken,
+    body: {
+      reviewNote: 'Aceptado automaticamente para pruebas E2E.',
+    },
+  });
+}
+
+export async function startTrip(accessToken: string, tripId: string): Promise<TripMutationResponse> {
+  return apiRequest<TripMutationResponse>(`/trips/${tripId}/start`, {
+    method: 'PATCH',
+    accessToken,
+  });
+}
+
+export async function markTripRequestBoarded(
+  accessToken: string,
+  requestId: string,
+): Promise<TripRequestMutationResponse> {
+  return apiRequest<TripRequestMutationResponse>(`/trip-requests/${requestId}/boarded`, {
+    method: 'PATCH',
+    accessToken,
+  });
+}
+
+export async function markTripRequestDroppedOff(
+  accessToken: string,
+  requestId: string,
+): Promise<TripRequestMutationResponse> {
+  return apiRequest<TripRequestMutationResponse>(`/trip-requests/${requestId}/dropped-off`, {
+    method: 'PATCH',
+    accessToken,
+  });
+}
+
+export async function completeTrip(
+  accessToken: string,
+  tripId: string,
+): Promise<TripMutationResponse> {
+  return apiRequest<TripMutationResponse>(`/trips/${tripId}/complete`, {
+    method: 'PATCH',
+    accessToken,
+    body: {},
+  });
+}
+
+export async function createRating(
+  accessToken: string,
+  tripId: string,
+  targetMembershipId: string,
+  suffix: string,
+): Promise<RatingMutationResponse> {
+  return apiRequest<RatingMutationResponse>('/ratings', {
+    method: 'POST',
+    accessToken,
+    body: {
+      tripId,
+      targetMembershipId,
+      score: 5,
+      comment: `Calificacion E2E ${suffix}`,
+    },
+  });
+}
+
+export async function createReport(
+  accessToken: string,
+  tripId: string,
+  reportedMembershipId: string,
+  suffix: string,
+): Promise<ReportMutationResponse> {
+  return apiRequest<ReportMutationResponse>('/reports', {
+    method: 'POST',
+    accessToken,
+    body: {
+      tripId,
+      reportedMembershipId,
+      reason: 'UNSAFE_DRIVING',
+      description: `Reporte E2E ${suffix}`,
+    },
+  });
+}
+
+export async function markReportUnderReview(
+  accessToken: string,
+  reportId: string,
+  suffix: string,
+): Promise<ReportMutationResponse> {
+  return apiRequest<ReportMutationResponse>(`/reports/${reportId}/review`, {
+    method: 'PATCH',
+    accessToken,
+    body: {
+      status: 'UNDER_REVIEW',
+      reviewNote: `Revision E2E ${suffix}`,
+    },
+  });
 }

@@ -162,7 +162,7 @@ describe('CreateTripRequestUseCase', () => {
       }),
     ).rejects.toThrow(
       new BadRequestException(
-        'Las rutas directas no admiten puntos personalizados de recogida o destino.',
+        'El punto de recogida siempre corresponde a la institucion y no puede modificarse.',
       ),
     );
 

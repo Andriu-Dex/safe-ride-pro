@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-Este documento deja definido un entorno inicial de `QA/deploy` para `SafeRidePro` usando herramientas gratuitas y reproducibles.
+Este documento deja definido el entorno `QA local final` de `SafeRidePro` usando herramientas gratuitas y reproducibles.
 
-El objetivo no es desplegar todavia a produccion final, sino contar con una forma estable de:
+El objetivo no es reemplazar un despliegue productivo administrado, sino contar con una forma estable de:
 
 - levantar el sistema completo fuera del entorno local manual
 - validar el MVP con una configuracion cercana a produccion
@@ -64,8 +64,7 @@ Healthchecks:
 
 Al iniciar el contenedor de `api`, el entorno:
 
-- genera Prisma Client
-- aplica migraciones con `db:deploy`
+- aplica migraciones con `migrate deploy`
 - ejecuta el seed inicial
 - levanta el backend
 
@@ -77,14 +76,45 @@ El archivo `docker-compose.qa.yml` ahora incluye `healthchecks` para:
 
 Esto permite que `web` espere a que `api` este realmente lista antes de iniciar.
 
-Esto permite tener el entorno listo para pruebas sin pasos manuales extra.
+Esto permite tener el entorno listo para pruebas sin pasos manuales extra. Si el stack ya esta saludable, los smoke E2E reutilizan los contenedores existentes; si necesitas forzar reconstruccion, ejecuta:
+
+```powershell
+$env:PLAYWRIGHT_FORCE_QA_REBUILD="true"
+corepack pnpm --filter @saferidepro/web test:e2e:smoke
+```
 
 ## Credenciales iniciales
 
 Si usas los valores del archivo de ejemplo:
 
-- correo: `admin@uta.edu.ec`
-- contrasena: `Admin12345`
+- admin: `admin@uta.edu.ec` / `Admin12345`
+- pasajero: `pasajero@uta.edu.ec` / `Passenger123!`
+- conductor aprobado: `conductor@uta.edu.ec` / `Driver123!`
+- conductor pendiente: `conductor-pendiente@uta.edu.ec` / `Driver123!`
+
+## Flujo QA recomendado
+
+Desde la raiz del proyecto:
+
+```powershell
+corepack pnpm qa:up:build
+corepack pnpm qa:ps
+corepack pnpm qa:verify:web
+corepack pnpm qa:release:web
+```
+
+Para apagar sin borrar datos:
+
+```powershell
+corepack pnpm qa:down
+```
+
+Para reiniciar el entorno desde cero con volumen limpio:
+
+```powershell
+corepack pnpm qa:reset
+corepack pnpm qa:up:build
+```
 
 ## Alcance de esta fase
 
@@ -95,7 +125,7 @@ Este entorno esta pensado para:
 - validacion academica
 - pruebas funcionales del MVP
 
-No reemplaza todavia una estrategia final de produccion.
+No reemplaza una estrategia final de produccion con dominios, TLS, backups, observabilidad y gestion de secretos.
 
 ## Buenas practicas incluidas
 

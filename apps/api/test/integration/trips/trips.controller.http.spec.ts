@@ -17,7 +17,7 @@ import { CancelTripUseCase } from '../../../src/modules/trips/application/use-ca
 import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-cases/complete-trip.use-case';
 import { CreateTripUseCase } from '../../../src/modules/trips/application/use-cases/create-trip.use-case';
 import { GetTripByIdUseCase } from '../../../src/modules/trips/application/use-cases/get-trip-by-id.use-case';
-import { GetLatestTripRouteTemplateUseCase } from '../../../src/modules/trips/application/use-cases/get-latest-trip-route-template.use-case';
+import { ListRecentTripRouteTemplatesUseCase } from '../../../src/modules/trips/application/use-cases/list-recent-trip-route-templates.use-case';
 import { GetTripLiveTrackingUseCase } from '../../../src/modules/trips/application/use-cases/get-trip-live-tracking.use-case';
 import { ListTripsUseCase } from '../../../src/modules/trips/application/use-cases/list-trips.use-case';
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
@@ -39,7 +39,7 @@ describe('TripsController HTTP', () => {
   const getTripByIdUseCase = {
     execute: jest.fn(),
   };
-  const getLatestTripRouteTemplateUseCase = {
+  const listRecentTripRouteTemplatesUseCase = {
     execute: jest.fn(),
   };
   const getTripLiveTrackingUseCase = {
@@ -102,8 +102,8 @@ describe('TripsController HTTP', () => {
           useValue: getTripByIdUseCase,
         },
         {
-          provide: GetLatestTripRouteTemplateUseCase,
-          useValue: getLatestTripRouteTemplateUseCase,
+          provide: ListRecentTripRouteTemplatesUseCase,
+          useValue: listRecentTripRouteTemplatesUseCase,
         },
         {
           provide: GetTripLiveTrackingUseCase,
@@ -151,19 +151,21 @@ describe('TripsController HTTP', () => {
     authenticatedHttpContext.applyAuthenticatedUser();
   });
 
-  it('returns the latest reusable route template for the authenticated driver', async () => {
-    getLatestTripRouteTemplateUseCase.execute.mockResolvedValue({
-      sourceTripId: 'trip-1',
-      originLabel: 'Campus Huachi',
-      destinationLabel: 'Ficoa',
-    });
+  it('returns recent reusable route templates for the authenticated driver', async () => {
+    listRecentTripRouteTemplatesUseCase.execute.mockResolvedValue([
+      {
+        sourceTripId: 'trip-1',
+        originLabel: 'Campus Huachi',
+        destinationLabel: 'Ficoa',
+      },
+    ]);
 
     await request(app.getHttpServer())
-      .get('/api/trips/templates/latest')
+      .get('/api/trips/templates/recent')
       .set('Authorization', 'Bearer test-token')
       .expect(200);
 
-    expect(getLatestTripRouteTemplateUseCase.execute).toHaveBeenCalledWith('user-1');
+    expect(listRecentTripRouteTemplatesUseCase.execute).toHaveBeenCalledWith('user-1');
   });
 
   it('creates a trip through HTTP using the authenticated user context', async () => {
@@ -234,14 +236,22 @@ describe('TripsController HTTP', () => {
     expect(createTripUseCase.execute).not.toHaveBeenCalled();
   });
 
-  it('rejects publish requests with invalid UUID route params', async () => {
+  it('passes route params to publish without UUID-only assumptions', async () => {
+    publishTripUseCase.execute.mockResolvedValue({
+      message: 'Viaje publicado correctamente.',
+      trip: {
+        id: 'seed-trip-1',
+        status: TripStatus.Published,
+      },
+    });
+
     await request(app.getHttpServer())
-      .patch('/api/trips/not-a-uuid/publish')
+      .patch('/api/trips/seed-trip-1/publish')
       .set('Authorization', 'Bearer test-token')
       .send({})
-      .expect(400);
+      .expect(200);
 
-    expect(publishTripUseCase.execute).not.toHaveBeenCalled();
+    expect(publishTripUseCase.execute).toHaveBeenCalledWith('user-1', 'seed-trip-1');
   });
 
   it('updates a trip through HTTP using the authenticated user context', async () => {

@@ -8,7 +8,7 @@ import {
   VehicleType,
 } from '@saferidepro/shared-types';
 
-import { GetLatestTripRouteTemplateUseCase } from '../../../src/modules/trips/application/use-cases/get-latest-trip-route-template.use-case';
+import { ListRecentTripRouteTemplatesUseCase } from '../../../src/modules/trips/application/use-cases/list-recent-trip-route-templates.use-case';
 import type { TripRecord, TripsRepository } from '../../../src/modules/trips/application/ports/trips.repository';
 
 function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
@@ -23,6 +23,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     hasAcceptedTripRequest: jest.fn(),
     findAcceptedPassengerMembershipIds: jest.fn(),
     findLatestReusableTripByDriverMembershipId: jest.fn(),
+    listRecentReusableTripsByDriverMembershipId: jest.fn(),
     listTrips: jest.fn(),
     findOverlappingTrips: jest.fn(),
     updateTripStatus: jest.fn(),
@@ -72,10 +73,10 @@ function buildTrip(): TripRecord {
   };
 }
 
-describe('GetLatestTripRouteTemplateUseCase', () => {
-  it('returns the latest reusable route template for the active membership', async () => {
+describe('ListRecentTripRouteTemplatesUseCase', () => {
+  it('returns recent reusable route templates for the active membership', async () => {
     const repository = createTripsRepositoryMock();
-    const useCase = new GetLatestTripRouteTemplateUseCase(repository);
+    const useCase = new ListRecentTripRouteTemplatesUseCase(repository);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue({
       id: 'membership-1',
@@ -84,34 +85,40 @@ describe('GetLatestTripRouteTemplateUseCase', () => {
       membershipStatus: MembershipStatus.Active,
       driverVerificationStatus: DriverVerificationStatus.Approved,
     });
-    repository.findLatestReusableTripByDriverMembershipId.mockResolvedValue(buildTrip());
+    repository.listRecentReusableTripsByDriverMembershipId.mockResolvedValue([buildTrip()]);
 
     const response = await useCase.execute('user-1');
 
-    expect(response).toEqual({
-      sourceTripId: 'trip-1',
-      vehicleId: 'vehicle-1',
-      routeMode: TripRouteMode.DirectRoute,
-      originLabel: 'Huachi',
-      destinationLabel: 'Ficoa',
-      originLatitude: -1.255,
-      originLongitude: -78.615,
-      destinationLatitude: -1.243,
-      destinationLongitude: -78.621,
-      seatCount: 3,
-      basePriceReference: 2.5,
-      detourSurchargeReference: null,
-      notes: 'Ruta habitual',
-      createdAt: new Date('2030-01-01T12:00:00.000Z'),
-      departureAt: new Date('2030-01-02T13:00:00.000Z'),
-      vehicleDisplayName: 'Kia Soluto',
-      vehiclePlate: 'ABC-123',
-    });
+    expect(response).toEqual([
+      {
+        sourceTripId: 'trip-1',
+        vehicleId: 'vehicle-1',
+        routeMode: TripRouteMode.DirectRoute,
+        originLabel: 'Huachi',
+        destinationLabel: 'Ficoa',
+        originLatitude: -1.255,
+        originLongitude: -78.615,
+        destinationLatitude: -1.243,
+        destinationLongitude: -78.621,
+        seatCount: 3,
+        basePriceReference: 2.5,
+        detourSurchargeReference: null,
+        notes: 'Ruta habitual',
+        createdAt: new Date('2030-01-01T12:00:00.000Z'),
+        departureAt: new Date('2030-01-02T13:00:00.000Z'),
+        vehicleDisplayName: 'Kia Soluto',
+        vehiclePlate: 'ABC-123',
+      },
+    ]);
+    expect(repository.listRecentReusableTripsByDriverMembershipId).toHaveBeenCalledWith(
+      'membership-1',
+      5,
+    );
   });
 
   it('rejects users without active membership context', async () => {
     const repository = createTripsRepositoryMock();
-    const useCase = new GetLatestTripRouteTemplateUseCase(repository);
+    const useCase = new ListRecentTripRouteTemplatesUseCase(repository);
 
     repository.findDefaultMembershipByUserId.mockResolvedValue(null);
 
