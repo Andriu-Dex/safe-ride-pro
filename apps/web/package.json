@@ -15,8 +15,11 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test e2e/specs/auth-admin.spec.ts e2e/specs/driver-onboarding-trip.spec.ts e2e/specs/passenger-trust-audit.spec.ts",
+    "test:e2e:smoke:local": "set PLAYWRIGHT_ENV=local&& playwright test e2e/specs/auth-admin.spec.ts e2e/specs/driver-onboarding-trip.spec.ts e2e/specs/passenger-trust-audit.spec.ts",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:headed:local": "set PLAYWRIGHT_ENV=local&& playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:ui:local": "set PLAYWRIGHT_ENV=local&& playwright test --ui",
     "test:e2e:install": "playwright install chromium",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "format": "prettier --check \"src/**/*.{ts,tsx,css}\""
