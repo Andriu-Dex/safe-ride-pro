@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -15,6 +16,7 @@ import { JwtAuthGuard } from '../../../auth/presentation/guards/jwt-auth.guard';
 import { CancelTripUseCase } from '../../application/use-cases/cancel-trip.use-case';
 import { CompleteTripUseCase } from '../../application/use-cases/complete-trip.use-case';
 import { CreateTripUseCase } from '../../application/use-cases/create-trip.use-case';
+import { DeleteDraftTripUseCase } from '../../application/use-cases/delete-draft-trip.use-case';
 import { GetTripByIdUseCase } from '../../application/use-cases/get-trip-by-id.use-case';
 import { ListRecentTripRouteTemplatesUseCase } from '../../application/use-cases/list-recent-trip-route-templates.use-case';
 import { GetTripLiveTrackingUseCase } from '../../application/use-cases/get-trip-live-tracking.use-case';
@@ -43,6 +45,7 @@ export class TripsController {
     private readonly updateTripUseCase: UpdateTripUseCase,
     private readonly completeTripUseCase: CompleteTripUseCase,
     private readonly cancelTripUseCase: CancelTripUseCase,
+    private readonly deleteDraftTripUseCase: DeleteDraftTripUseCase,
     private readonly updateTripLiveTrackingUseCase: UpdateTripLiveTrackingUseCase,
   ) {}
 
@@ -168,6 +171,14 @@ export class TripsController {
     @Param('tripId') tripId: string,
   ) {
     return this.cancelTripUseCase.execute(currentUser.id, tripId);
+  }
+
+  @Delete(':tripId')
+  deleteDraftTrip(
+    @CurrentUser() currentUser: CurrentUserContext,
+    @Param('tripId') tripId: string,
+  ) {
+    return this.deleteDraftTripUseCase.execute(currentUser.id, tripId);
   }
 
   @Post(':tripId/live-tracking/positions')

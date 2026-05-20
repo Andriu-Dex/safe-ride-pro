@@ -15,6 +15,10 @@ type TripMutationResponse = {
   trip: TripRecord;
 };
 
+type TripDeleteResponse = {
+  message: string;
+};
+
 function mapTripFilters(filters?: TripFilters): Record<string, string | undefined> {
   return {
     origin: filters?.origin?.trim() || undefined,
@@ -137,6 +141,16 @@ export async function completeTripWithClosure(
 export async function cancelTrip(accessToken: string, tripId: string): Promise<TripMutationResponse> {
   return apiRequest<TripMutationResponse>(`/trips/${tripId}/cancel`, {
     method: 'PATCH',
+    accessToken,
+  });
+}
+
+export async function deleteDraftTrip(
+  accessToken: string,
+  tripId: string,
+): Promise<TripDeleteResponse> {
+  return apiRequest<TripDeleteResponse>(`/trips/${tripId}`, {
+    method: 'DELETE',
     accessToken,
   });
 }

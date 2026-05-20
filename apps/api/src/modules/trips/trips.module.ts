@@ -6,6 +6,7 @@ import { TRIPS_REPOSITORY } from './application/ports/trips.repository';
 import { CancelTripUseCase } from './application/use-cases/cancel-trip.use-case';
 import { CompleteTripUseCase } from './application/use-cases/complete-trip.use-case';
 import { CreateTripUseCase } from './application/use-cases/create-trip.use-case';
+import { DeleteDraftTripUseCase } from './application/use-cases/delete-draft-trip.use-case';
 import { GetTripByIdUseCase } from './application/use-cases/get-trip-by-id.use-case';
 import { ListRecentTripRouteTemplatesUseCase } from './application/use-cases/list-recent-trip-route-templates.use-case';
 import { GetTripLiveTrackingUseCase } from './application/use-cases/get-trip-live-tracking.use-case';
@@ -36,6 +37,7 @@ import { TripsController } from './presentation/controllers/trips.controller';
     UpdateTripUseCase,
     CompleteTripUseCase,
     CancelTripUseCase,
+    DeleteDraftTripUseCase,
     UpdateTripLiveTrackingUseCase,
     TripLifecycleMaintenanceService,
   ],

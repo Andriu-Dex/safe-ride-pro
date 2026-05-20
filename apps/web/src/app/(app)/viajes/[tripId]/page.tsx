@@ -17,6 +17,7 @@ import { useAuth } from '../../../../modules/auth/hooks/use-auth';
 import { TripRouteMap } from '../../../../modules/trips/components/trip-route-map';
 import {
   cancelTrip,
+  deleteDraftTrip,
   getTripById,
 } from '../../../../modules/trips/lib/trip-api';
 import {
@@ -58,7 +59,6 @@ function formatCurrency(value: number) {
 
 function canShowLateCancellationWarning(trip: TripDetailRecord) {
   if (
-    trip.status !== TripStatus.Draft &&
     trip.status !== TripStatus.Published &&
     trip.status !== TripStatus.Full
   ) {
@@ -178,9 +178,12 @@ export default function TripDetailPage() {
     setIsCancelling(true);
 
     try {
-      const response = await cancelTrip(authSession.accessToken, trip.id);
+      const isDraftTrip = trip.status === TripStatus.Draft;
+      const response = isDraftTrip
+        ? await deleteDraftTrip(authSession.accessToken, trip.id)
+        : await cancelTrip(authSession.accessToken, trip.id);
       persistToast({
-        title: 'Viaje eliminado',
+        title: isDraftTrip ? 'Viaje eliminado' : 'Viaje cancelado',
         description: response.message,
         tone: 'success',
       });
@@ -191,8 +194,15 @@ export default function TripDetailPage() {
       }
 
       pushToast(
-        'El viaje no pudo eliminarse',
-        getApiErrorMessage(error, 'No fue posible eliminar este viaje.'),
+        trip.status === TripStatus.Draft
+          ? 'El viaje no pudo eliminarse'
+          : 'El viaje no pudo cancelarse',
+        getApiErrorMessage(
+          error,
+          trip.status === TripStatus.Draft
+            ? 'No fue posible eliminar este viaje.'
+            : 'No fue posible cancelar este viaje.',
+        ),
         'error',
       );
     } finally {
@@ -220,6 +230,7 @@ export default function TripDetailPage() {
           longitude: trip.destinationLongitude,
         }
       : null;
+  const isDraftTrip = trip?.status === TripStatus.Draft;
 
   if (isLoading) {
     return (
@@ -301,7 +312,7 @@ export default function TripDetailPage() {
               onClick={() => setIsDeletePromptOpen(true)}
               type="button"
             >
-              Eliminar
+              {isDraftTrip ? 'Eliminar' : 'Cancelar'}
             </button>
           ) : null}
         </div>
@@ -310,9 +321,9 @@ export default function TripDetailPage() {
       <div className={styles.content}>
         {lateCancellationWarning ? (
           <div className={`${styles.noticeCard} ${styles.warning}`}>
-            <strong>Atencion: Eliminaci&oacute;n cercana a la salida</strong>
+            <strong>Atencion: Cancelaci&oacute;n cercana a la salida</strong>
             <p>
-              Si eliminas este viaje dentro de los {CANCELLATION_LATE_WINDOW_MINUTES} minutos previos a la salida, 
+              Si cancelas este viaje dentro de los {CANCELLATION_LATE_WINDOW_MINUTES} minutos previos a la salida, 
               el sistema puede registrar una incidencia operativa para control interno.
             </p>
           </div>
@@ -412,17 +423,23 @@ export default function TripDetailPage() {
           >
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle} id="trip-delete-title">
-                Esta acci&oacute;n no borra el historial
+                {isDraftTrip ? 'Eliminar borrador' : 'Cancelar viaje publicado'}
               </h2>
               <p className={styles.modalSubtitle}>
-                El viaje ser&aacute; cancelado l&oacute;gicamente para mantener auditor&iacute;a.
+                {isDraftTrip
+                  ? 'El viaje saldra de tu lista, conservando trazabilidad interna.'
+                  : 'El viaje sera cancelado logicamente para mantener auditoria.'}
               </p>
             </div>
 
             <div className={styles.modalBody}>
               <div className={`${styles.noticeCard} ${styles.info}`} style={{ margin: 0 }}>
-                <strong>Trazabilidad protegida</strong>
-                <p>Si ya existen pagos, solicitudes o pasajeros vinculados, el sistema dejar&aacute; registro y aplicar&aacute; las reglas operativas correspondientes.</p>
+                <strong>{isDraftTrip ? 'Borrador no publicado' : 'Trazabilidad protegida'}</strong>
+                <p>
+                  {isDraftTrip
+                    ? 'Como aun no fue publicado, no hay pasajeros expuestos a este viaje.'
+                    : 'Si ya existen pagos, solicitudes o pasajeros vinculados, el sistema dejara registro y aplicara las reglas operativas correspondientes.'}
+                </p>
               </div>
               
               {lateCancellationWarning ? (
@@ -450,7 +467,9 @@ export default function TripDetailPage() {
                 onClick={() => void handleCancelTrip()}
                 type="button"
               >
-                {isCancelling ? 'Eliminando...' : 'Eliminar lógicamente'}
+                {isCancelling
+                  ? isDraftTrip ? 'Eliminando...' : 'Cancelando...'
+                  : isDraftTrip ? 'Eliminar' : 'Cancelar viaje'}
               </button>
             </div>
             </div>

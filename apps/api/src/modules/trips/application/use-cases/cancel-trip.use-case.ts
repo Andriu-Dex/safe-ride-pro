@@ -67,7 +67,10 @@ export class CancelTripUseCase {
       },
     });
 
-    if (updatedTrip.cancellationTiming === CancellationTiming.Late) {
+    if (
+      trip.status !== TripStatus.Draft &&
+      updatedTrip.cancellationTiming === CancellationTiming.Late
+    ) {
       await this.operationalSanctionsService.synchronizeAutomaticSanctions(membership.id);
     }
 
@@ -106,7 +109,10 @@ export class CancelTripUseCase {
     }
 
     return {
-      message: 'Viaje cancelado correctamente.',
+      message:
+        trip.status === TripStatus.Draft
+          ? 'Viaje eliminado correctamente.'
+          : 'Viaje cancelado correctamente.',
       trip: updatedTrip,
     };
   }

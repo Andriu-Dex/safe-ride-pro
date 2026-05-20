@@ -18,6 +18,7 @@ import { OperationalSanctionsService } from '../../../src/modules/sanctions/appl
 import { TripLifecycleMaintenanceService } from '../../../src/modules/trips/application/services/trip-lifecycle-maintenance.service';
 import { CancelTripUseCase } from '../../../src/modules/trips/application/use-cases/cancel-trip.use-case';
 import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-cases/complete-trip.use-case';
+import { DeleteDraftTripUseCase } from '../../../src/modules/trips/application/use-cases/delete-draft-trip.use-case';
 import { PublishTripUseCase } from '../../../src/modules/trips/application/use-cases/publish-trip.use-case';
 import { StartTripUseCase } from '../../../src/modules/trips/application/use-cases/start-trip.use-case';
 import type { TripRecord, TripsRepository } from '../../../src/modules/trips/application/ports/trips.repository';
@@ -42,6 +43,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     updateTripStatus: jest.fn(),
     completeTrip: jest.fn(),
     autoCancelTripForDriverAbsence: jest.fn(),
+    deleteDraftTrip: jest.fn(),
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
     getTripLiveTrackingByTripId: jest.fn(),
@@ -619,6 +621,76 @@ describe('Trip status transition use cases', () => {
       },
     });
     expect(sanctionsService.synchronizeAutomaticSanctions).not.toHaveBeenCalled();
+  });
+
+  it('deletes an unpublished draft without recalculating operational sanctions', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CancelTripUseCase(repository, auditService, sanctionsService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Draft));
+    repository.cancelTripAndActiveRequests.mockResolvedValue(
+      buildTrip(TripStatus.Cancelled, {
+        cancellationTiming: CancellationTiming.Late,
+        cancelledAt: new Date('2030-01-01T09:40:00.000Z'),
+      }),
+    );
+
+    const response = await useCase.execute('user-1', 'trip-1');
+
+    expect(response.message).toBe('Viaje eliminado correctamente.');
+    expect(repository.cancelTripAndActiveRequests).toHaveBeenCalledWith('trip-1');
+    expect(sanctionsService.synchronizeAutomaticSanctions).not.toHaveBeenCalled();
+  });
+
+  it('physically deletes a draft trip before publication', async () => {
+    const repository = createTripsRepositoryMock();
+    const useCase = new DeleteDraftTripUseCase(repository);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Draft));
+    repository.countActiveRequestsForTrip.mockResolvedValue(0);
+
+    const response = await useCase.execute('user-1', 'trip-1');
+
+    expect(response.message).toBe('Viaje eliminado correctamente.');
+    expect(repository.deleteDraftTrip).toHaveBeenCalledWith('trip-1');
+    expect(repository.cancelTripAndActiveRequests).not.toHaveBeenCalled();
+  });
+
+  it('does not physically delete a trip after publication', async () => {
+    const repository = createTripsRepositoryMock();
+    const useCase = new DeleteDraftTripUseCase(repository);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Published));
+
+    await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+      'Solo se pueden eliminar viajes que aun no han sido publicados.',
+    );
+    expect(repository.deleteDraftTrip).not.toHaveBeenCalled();
   });
 
   it('recalculates sanctions when a trip is cancelled late by the driver', async () => {

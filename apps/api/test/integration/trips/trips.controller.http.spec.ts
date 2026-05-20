@@ -16,6 +16,7 @@ import { CurrentUserContext } from '../../../src/modules/auth/application/types/
 import { CancelTripUseCase } from '../../../src/modules/trips/application/use-cases/cancel-trip.use-case';
 import { CompleteTripUseCase } from '../../../src/modules/trips/application/use-cases/complete-trip.use-case';
 import { CreateTripUseCase } from '../../../src/modules/trips/application/use-cases/create-trip.use-case';
+import { DeleteDraftTripUseCase } from '../../../src/modules/trips/application/use-cases/delete-draft-trip.use-case';
 import { GetTripByIdUseCase } from '../../../src/modules/trips/application/use-cases/get-trip-by-id.use-case';
 import { ListRecentTripRouteTemplatesUseCase } from '../../../src/modules/trips/application/use-cases/list-recent-trip-route-templates.use-case';
 import { GetTripLiveTrackingUseCase } from '../../../src/modules/trips/application/use-cases/get-trip-live-tracking.use-case';
@@ -58,6 +59,9 @@ describe('TripsController HTTP', () => {
     execute: jest.fn(),
   };
   const cancelTripUseCase = {
+    execute: jest.fn(),
+  };
+  const deleteDraftTripUseCase = {
     execute: jest.fn(),
   };
   const updateTripLiveTrackingUseCase = {
@@ -128,6 +132,10 @@ describe('TripsController HTTP', () => {
         {
           provide: CancelTripUseCase,
           useValue: cancelTripUseCase,
+        },
+        {
+          provide: DeleteDraftTripUseCase,
+          useValue: deleteDraftTripUseCase,
         },
         {
           provide: UpdateTripLiveTrackingUseCase,

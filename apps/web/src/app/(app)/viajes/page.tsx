@@ -57,6 +57,7 @@ import type { TripRequestRecord } from '../../../modules/trip-requests/types/tri
 import {
   cancelTrip,
   completeTripWithClosure,
+  deleteDraftTrip,
   listAvailableTrips,
   listMyTrips,
   publishTrip,
@@ -642,7 +643,7 @@ export default function TripsPage() {
 
   const handleTripAction = async (
     tripId: string,
-    action: 'publish' | 'start' | 'complete' | 'cancel',
+    action: 'publish' | 'start' | 'complete' | 'cancel' | 'delete',
     options?: {
       closureNote?: string;
     },
@@ -661,8 +662,10 @@ export default function TripsPage() {
           ? await completeTripWithClosure(authSession.accessToken, tripId, options?.closureNote)
           : action === 'publish'
             ? await publishTrip(authSession.accessToken, tripId)
-            : action === 'start'
-              ? await startTrip(authSession.accessToken, tripId)
+          : action === 'start'
+            ? await startTrip(authSession.accessToken, tripId)
+            : action === 'delete'
+              ? await deleteDraftTrip(authSession.accessToken, tripId)
               : await cancelTrip(authSession.accessToken, tripId);
 
       await reloadData();

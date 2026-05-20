@@ -209,6 +209,29 @@ export function TripRouteMap({
   }, [cappedHistory, destination, dropoff, livePosition, origin, pickup, shouldMountMap]);
 
   useEffect(() => {
+    const shellElement = mapShellRef.current;
+
+    if (!shellElement) {
+      return;
+    }
+
+    const preventPageScrollWhileZooming = (event: WheelEvent) => {
+      event.preventDefault();
+    };
+
+    shellElement.addEventListener('wheel', preventPageScrollWhileZooming, {
+      capture: true,
+      passive: false,
+    });
+
+    return () => {
+      shellElement.removeEventListener('wheel', preventPageScrollWhileZooming, {
+        capture: true,
+      });
+    };
+  }, []);
+
+  useEffect(() => {
     const bundle = bundleRef.current;
 
     if (!bundle || !isMapReady || lastGeometryKeyRef.current === geometryKey) {
@@ -270,18 +293,32 @@ export function TripRouteMap({
     }
 
     event.preventDefault();
+    event.stopPropagation();
 
-    const delegatedWheelEvent = new WheelEvent('wheel', {
-      deltaX: event.deltaX,
-      deltaY: event.deltaY,
-      deltaMode: event.deltaMode,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      bubbles: true,
-      cancelable: true,
+    const shellElement = mapShellRef.current;
+
+    if (!shellElement || event.deltaY === 0) {
+      return;
+    }
+
+    const bounds = shellElement.getBoundingClientRect();
+    const containerPoint: [number, number] = [
+      event.clientX - bounds.left,
+      event.clientY - bounds.top,
+    ];
+    const currentZoom = bundle.map.getZoom();
+    const minZoom = bundle.map.getMinZoom();
+    const maxZoom = bundle.map.getMaxZoom();
+    const requestedZoom = currentZoom + (event.deltaY < 0 ? 1 : -1);
+    const nextZoom = Math.max(minZoom, Math.min(maxZoom, requestedZoom));
+
+    if (nextZoom === currentZoom) {
+      return;
+    }
+
+    bundle.map.setZoomAround(containerPoint, nextZoom, {
+      animate: false,
     });
-
-    bundle.map.getContainer().dispatchEvent(delegatedWheelEvent);
   };
 
   return (

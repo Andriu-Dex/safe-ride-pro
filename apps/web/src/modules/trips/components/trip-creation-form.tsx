@@ -93,7 +93,6 @@ export function TripCreationForm({
     ? Number.parseFloat(values.detourSurchargeReference)
     : 0;
   const validationIssues: string[] = [];
-  const validationWarnings: string[] = [];
   const lastCalcTriggerRef = useRef({
     departure: values.departureAt,
     origLat: originLatitude,
@@ -162,16 +161,6 @@ export function TripCreationForm({
     validationIssues.push('El recargo por desvio no puede ser negativo.');
   }
 
-  if (
-    values.routeMode === TripRouteMode.DirectRoute &&
-    values.detourSurchargeReference &&
-    detourSurchargeReference > 0
-  ) {
-    validationWarnings.push(
-      'El viaje es directo, por lo que el recargo por desvio no se utilizara aunque este cargado.',
-    );
-  }
-
   const handleMapSelect = ({
     latitude,
     longitude,
@@ -193,6 +182,22 @@ export function TripCreationForm({
     onChange('destinationLongitude', longitude.toFixed(6));
     onChange('destinationLabel', 'Punto de destino en el mapa');
   };
+
+  const handleRouteModeChange = (nextRouteMode: TripRouteMode) => {
+    onChange('routeMode', nextRouteMode);
+
+    if (nextRouteMode === TripRouteMode.DirectRoute && values.detourSurchargeReference !== '0') {
+      onChange('detourSurchargeReference', '0');
+    }
+  };
+
+  useEffect(() => {
+    if (disabled || values.vehicleId || vehicles.length !== 1) {
+      return;
+    }
+
+    onChange('vehicleId', vehicles[0].id);
+  }, [disabled, onChange, values.vehicleId, vehicles]);
 
   useEffect(() => {
     if (
@@ -337,7 +342,7 @@ export function TripCreationForm({
             <SelectField
               disabled={disabled}
               label="Modo de ruta"
-              onChange={(event) => onChange('routeMode', event.target.value)}
+              onChange={(event) => handleRouteModeChange(event.target.value as TripRouteMode)}
               required
               value={values.routeMode}
             >
@@ -605,20 +610,22 @@ export function TripCreationForm({
               type="number"
               value={values.basePriceReference}
             />
-            <InputField
-              disabled={disabled || values.routeMode === TripRouteMode.DirectRoute}
-              label="Recargo por desvio"
-              onChange={(event) => onChange('detourSurchargeReference', event.target.value)}
-              onFocus={() => {
-                if (values.detourSurchargeReference === '0' || values.detourSurchargeReference === '0.00') {
-                  onChange('detourSurchargeReference', '');
-                }
-              }}
-              placeholder="0.00"
-              step="0.01"
-              type="number"
-              value={values.detourSurchargeReference}
-            />
+            {values.routeMode === TripRouteMode.PlannedDetour ? (
+              <InputField
+                disabled={disabled}
+                label="Recargo por desvio"
+                onChange={(event) => onChange('detourSurchargeReference', event.target.value)}
+                onFocus={() => {
+                  if (values.detourSurchargeReference === '0' || values.detourSurchargeReference === '0.00') {
+                    onChange('detourSurchargeReference', '');
+                  }
+                }}
+                placeholder="0.00"
+                step="0.01"
+                type="number"
+                value={values.detourSurchargeReference}
+              />
+            ) : null}
           </div>
 
           <div className={styles.miniGrid}>
@@ -628,7 +635,7 @@ export function TripCreationForm({
             />
             <TripMiniInfoCard
               description={
-                Number.isNaN(seatCount) ? 'Ingresa un valor valido para los cupos.' : `${seatCount} cupo(s) visibles para pasajeros`
+                Number.isNaN(seatCount) ? 'Ingresa un valor valido para los cupos.' : `${seatCount} cupo(s) disponibles`
               }
               label="Oferta inicial"
             />
@@ -638,9 +645,9 @@ export function TripCreationForm({
                   ? `Total referencial con desvio: $${formatCurrency(
                       basePriceReference + detourSurchargeReference,
                     )}`
-                  : `Precio referencial: $${formatCurrency(basePriceReference)}`
+                  : `$${formatCurrency(basePriceReference)}`
               }
-              label="Referencia economica"
+              label="Precio referencial:"
             />
           </div>
         </section>
@@ -657,7 +664,6 @@ export function TripCreationForm({
             hint="Opcional. Puedes incluir detalles de recogida, restricciones o equipaje."
             label="Notas"
             onChange={(event) => onChange('notes', event.target.value)}
-            placeholder="Ejemplo: punto de encuentro junto al ingreso principal, equipaje pequeno, salida puntual."
             rows={4}
             value={values.notes}
           />

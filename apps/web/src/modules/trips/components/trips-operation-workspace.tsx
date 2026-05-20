@@ -31,6 +31,7 @@ import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
 import { TripFinalizationModal } from './trip-finalization-modal';
 import { TripsListPagination } from './trips-list-pagination';
 import { TripExecutionCommandCenter } from './trip-execution-command-center';
+import { TripDeleteConfirmationModal } from './trip-delete-confirmation-modal';
 import { TripOverviewCard } from './trip-overview-card';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
 
@@ -44,7 +45,7 @@ type TripsOperationWorkspaceProps = {
   tripClosureNotes: Record<string, string>;
   onTripAction: (
     tripId: string,
-    action: 'publish' | 'start' | 'complete' | 'cancel',
+    action: 'publish' | 'start' | 'complete' | 'cancel' | 'delete',
     options?: {
       closureNote?: string;
     },
@@ -87,6 +88,7 @@ export function TripsOperationWorkspace({
 }: TripsOperationWorkspaceProps) {
   const [page, setPage] = useState(1);
   const [selectedTripIdForClosure, setSelectedTripIdForClosure] = useState<string | null>(null);
+  const [selectedDraftTripIdForDelete, setSelectedDraftTripIdForDelete] = useState<string | null>(null);
   const pageSize = 6;
   const paginatedTrips = useMemo(
     () => myTrips.slice((page - 1) * pageSize, page * pageSize),
@@ -107,6 +109,10 @@ export function TripsOperationWorkspace({
   const selectedTripForClosure = useMemo(
     () => myTrips.find((trip) => trip.id === selectedTripIdForClosure) ?? null,
     [myTrips, selectedTripIdForClosure],
+  );
+  const selectedDraftTripForDelete = useMemo(
+    () => myTrips.find((trip) => trip.id === selectedDraftTripIdForDelete) ?? null,
+    [myTrips, selectedDraftTripIdForDelete],
   );
   const selectedTripRequestsForClosure = useMemo(
     () =>
@@ -162,6 +168,21 @@ export function TripsOperationWorkspace({
           selectedTripForClosure ? tripClosureNotes[selectedTripForClosure.id] ?? '' : ''
         }
       />
+      <TripDeleteConfirmationModal
+        isDeleting={Boolean(
+          selectedDraftTripIdForDelete && isMutatingTripId === selectedDraftTripIdForDelete,
+        )}
+        onClose={() => setSelectedDraftTripIdForDelete(null)}
+        onConfirm={() => {
+          if (!selectedDraftTripForDelete) {
+            return;
+          }
+
+          onTripAction(selectedDraftTripForDelete.id, 'delete');
+          setSelectedDraftTripIdForDelete(null);
+        }}
+        trip={selectedDraftTripForDelete}
+      />
 
       <section className="trips-workspace-grid trips-operation-stack">
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="operation" /> : null}
@@ -212,6 +233,7 @@ export function TripsOperationWorkspace({
                 trip.estimatedArrivalAt,
               );
               const lateRemovalWarning = getLateRemovalWarning(trip);
+              const isDraftTrip = trip.status === TripStatus.Draft;
               const relatedRequests = requestsByTrip.get(trip.id) ?? [];
               const acceptedPassengersCount = relatedRequests.filter(
                 (request) => request.status === TripRequestStatus.Accepted,
@@ -311,11 +333,22 @@ export function TripsOperationWorkspace({
                     trip.status === TripStatus.Full ? (
                       <Button
                         disabled={isMutatingTripId === trip.id}
-                        onClick={() => onTripAction(trip.id, 'cancel')}
-                        title={lateRemovalWarning ?? 'Cancelar viaje'}
+                        onClick={() => {
+                          if (isDraftTrip) {
+                            setSelectedDraftTripIdForDelete(trip.id);
+                            return;
+                          }
+
+                          onTripAction(trip.id, 'cancel');
+                        }}
+                        title={
+                          isDraftTrip
+                            ? 'Eliminar borrador'
+                            : lateRemovalWarning ?? 'Cancelar viaje'
+                        }
                         variant="ghost"
                       >
-                        Cancelar
+                        {isDraftTrip ? 'Eliminar' : 'Cancelar'}
                       </Button>
                     ) : null}
                     {trip.status === TripStatus.Draft ? (
@@ -418,7 +451,6 @@ export function TripsOperationWorkspace({
 
 function getLateRemovalWarning(trip: TripRecord): string | null {
   if (
-    trip.status !== TripStatus.Draft &&
     trip.status !== TripStatus.Published &&
     trip.status !== TripStatus.Full
   ) {
@@ -433,7 +465,7 @@ function getLateRemovalWarning(trip: TripRecord): string | null {
   }
 
   if (millisecondsUntilDeparture <= CANCELLATION_LATE_WINDOW_MINUTES * 60_000) {
-    return `Eliminar este viaje dentro de los ${CANCELLATION_LATE_WINDOW_MINUTES} minutos previos a la salida puede generar una incidencia operativa.`;
+    return `Cancelar este viaje dentro de los ${CANCELLATION_LATE_WINDOW_MINUTES} minutos previos a la salida puede generar una incidencia operativa.`;
   }
 
   return null;

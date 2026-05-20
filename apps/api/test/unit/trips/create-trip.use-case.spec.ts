@@ -37,6 +37,7 @@ function createTripsRepositoryMock(): jest.Mocked<TripsRepository> {
     updateTripStatus: jest.fn(),
     completeTrip: jest.fn(),
     autoCancelTripForDriverAbsence: jest.fn(),
+    deleteDraftTrip: jest.fn(),
     cancelTripAndActiveRequests: jest.fn(),
     startTripAndClosePendingRequests: jest.fn(),
     getTripLiveTrackingByTripId: jest.fn(),

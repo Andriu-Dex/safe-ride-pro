@@ -206,6 +206,7 @@ export interface TripsRepository {
   updateTripStatus(tripId: string, status: TripStatus): Promise<TripRecord>;
   completeTrip(input: CompleteTripInput): Promise<TripRecord>;
   autoCancelTripForDriverAbsence(tripId: string): Promise<TripRecord | null>;
+  deleteDraftTrip(tripId: string): Promise<void>;
   cancelTripAndActiveRequests(tripId: string): Promise<TripRecord>;
   startTripAndClosePendingRequests(tripId: string, autoReviewNote: string): Promise<TripRecord>;
   getTripLiveTrackingByTripId(

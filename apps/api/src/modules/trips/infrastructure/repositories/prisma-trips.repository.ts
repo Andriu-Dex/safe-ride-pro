@@ -445,6 +445,12 @@ export class PrismaTripsRepository implements TripsRepository {
     return trip ? this.mapTrip(trip) : null;
   }
 
+  async deleteDraftTrip(tripId: string): Promise<void> {
+    await this.prisma.trip.delete({
+      where: { id: tripId },
+    });
+  }
+
   async cancelTripAndActiveRequests(tripId: string): Promise<TripRecord> {
     const trip = await this.prisma.$transaction(async (transaction) => {
       const cancellationDate = new Date();
