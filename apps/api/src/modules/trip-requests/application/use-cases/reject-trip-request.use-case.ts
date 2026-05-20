@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
 
+import { TripPaymentsOrchestratorService } from '../../../payments/application/services/trip-payments-orchestrator.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import {
   TRIP_REQUESTS_REPOSITORY,
@@ -19,6 +20,13 @@ export class RejectTripRequestUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
+    @Optional()
+    private readonly tripPaymentsOrchestratorService: Pick<
+      TripPaymentsOrchestratorService,
+      'cancelTripRequestPayment'
+    > = {
+      cancelTripRequestPayment: async () => null,
+    },
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
@@ -46,6 +54,11 @@ export class RejectTripRequestUseCase {
         'La solicitud ya no puede rechazarse porque el viaje cambio de estado.',
       );
     }
+
+    await this.tripPaymentsOrchestratorService.cancelTripRequestPayment(
+      tripRequest.id,
+      'Pago reembolsado porque la solicitud fue rechazada por el conductor.',
+    );
 
     const updatedTripRequest = await this.tripRequestsRepository.rejectTripRequest(
       requestId,

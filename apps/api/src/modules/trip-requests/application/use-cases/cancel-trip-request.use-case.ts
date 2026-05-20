@@ -64,6 +64,11 @@ export class CancelTripRequestUseCase {
       );
     }
 
+    await this.tripPaymentsOrchestratorService.cancelTripRequestPayment(
+      tripRequest.id,
+      'Pago cancelado porque la solicitud fue cancelada por el pasajero.',
+    );
+
     const updatedTripRequest = await this.tripRequestsRepository.cancelTripRequest(requestId);
 
     if (!updatedTripRequest) {
@@ -77,11 +82,6 @@ export class CancelTripRequestUseCase {
         updatedTripRequest.passengerMembershipId,
       );
     }
-
-    await this.tripPaymentsOrchestratorService.cancelTripRequestPayment(
-      updatedTripRequest.id,
-      'Pago cancelado porque la solicitud fue cancelada por el pasajero.',
-    );
 
     this.realtimeEventsService.publishTripRequestChanged({
       actorUserId: userId,

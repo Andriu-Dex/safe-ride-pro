@@ -59,6 +59,7 @@ export class RefreshPaymentStatusUseCase {
         orderStatus: providerState.providerOrderStatus,
         paymentStatus: providerState.providerPaymentStatus,
       }),
+      providerPaymentLinkId: providerState.providerCaptureId,
       providerOrderStatus: providerState.providerOrderStatus,
       providerPaymentStatus: providerState.providerPaymentStatus,
       paidAt: providerState.paidAt,

@@ -61,6 +61,7 @@ export type RecordPaymentCheckoutInput = {
 export type SyncPaymentStatusInput = {
   paymentId: string;
   status: TripPaymentStatus;
+  providerPaymentLinkId?: string | null;
   providerOrderStatus: string | null;
   providerPaymentStatus: string | null;
   paidAt: Date | null;
@@ -68,9 +69,21 @@ export type SyncPaymentStatusInput = {
   responsePayload: unknown;
 };
 
+export type MarkPaymentRefundedInput = {
+  paymentId: string;
+  failureReason?: string;
+  providerPaymentLinkId?: string | null;
+  providerOrderStatus?: string | null;
+  providerPaymentStatus?: string | null;
+  refundedAt?: Date | null;
+  responsePayload?: unknown;
+};
+
 export interface PaymentsRepository {
   findPaymentById(paymentId: string): Promise<TripPaymentRecord | null>;
+  findPaymentByTripRequestId(tripRequestId: string): Promise<TripPaymentRecord | null>;
   findPaymentByProviderOrderToken(providerOrderToken: string): Promise<TripPaymentRecord | null>;
+  listPaymentsByTripId(tripId: string): Promise<TripPaymentRecord[]>;
   upsertAcceptedTripRequestPayment(
     input: UpsertAcceptedTripRequestPaymentInput,
   ): Promise<TripPaymentRecord | null>;
@@ -80,6 +93,7 @@ export interface PaymentsRepository {
     tripRequestId: string,
     failureReason?: string,
   ): Promise<TripPaymentRecord | null>;
+  markPaymentRefunded(input: MarkPaymentRefundedInput): Promise<TripPaymentRecord | null>;
   markPaymentsCancelledByTripId(tripId: string, failureReason?: string): Promise<number>;
   markCashPaymentPaid(paymentId: string): Promise<TripPaymentRecord | null>;
   markCashPaymentFailed(paymentId: string, failureReason: string): Promise<TripPaymentRecord | null>;

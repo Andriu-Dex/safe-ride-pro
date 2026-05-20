@@ -13,6 +13,8 @@ import type {
   FetchPaymentStatusInput,
   FetchPaymentStatusResult,
   PaymentProviderPort,
+  RefundPaymentInput,
+  RefundPaymentResult,
 } from '../../application/ports/payment-provider';
 
 type PaypalAccessTokenResponse = {
@@ -94,6 +96,7 @@ export class PaypalPaymentProvider implements PaymentProviderPort {
     return {
       provider: this.name,
       providerOrderToken: input.providerOrderToken,
+      providerCaptureId: readString(response, ['purchase_units', '0', 'payments', 'captures', '0', 'id']),
       providerOrderStatus: readString(response, ['status']),
       providerPaymentStatus: readString(response, ['purchase_units', '0', 'payments', 'captures', '0', 'status']),
       paidAt: readDate(response, ['purchase_units', '0', 'payments', 'captures', '0', 'create_time']),
@@ -111,12 +114,49 @@ export class PaypalPaymentProvider implements PaymentProviderPort {
     return {
       provider: this.name,
       providerOrderToken: input.providerOrderToken,
+      providerCaptureId: readString(response, ['purchase_units', '0', 'payments', 'captures', '0', 'id']),
       providerOrderStatus: readString(response, ['status']),
       providerPaymentStatus: readString(response, ['purchase_units', '0', 'payments', 'captures', '0', 'status']),
       paidAt: readDate(response, ['purchase_units', '0', 'payments', 'captures', '0', 'create_time']),
       expiresAt: null,
       rawResponse: response,
     };
+  }
+
+  async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
+    const captureId = input.providerCaptureId
+      ?? (input.providerOrderToken
+        ? await this.resolveCaptureIdFromOrder(input.providerOrderToken)
+        : null);
+
+    if (!captureId) {
+      throw new InternalServerErrorException(
+        'PayPal no devolvio un identificador de captura para reembolsar.',
+      );
+    }
+
+    const response = await this.request(`/v2/payments/captures/${captureId}/refund`, {
+      method: 'POST',
+      body: {},
+    });
+
+    return {
+      provider: this.name,
+      providerOrderToken: input.providerOrderToken,
+      providerCaptureId: captureId,
+      providerOrderStatus: null,
+      providerPaymentStatus: readString(response, ['status']),
+      refundedAt: readDate(response, ['update_time']) ?? readDate(response, ['create_time']),
+      rawResponse: response,
+    };
+  }
+
+  private async resolveCaptureIdFromOrder(providerOrderToken: string): Promise<string | null> {
+    const response = await this.request(`/v2/checkout/orders/${providerOrderToken}`, {
+      method: 'GET',
+    });
+
+    return readString(response, ['purchase_units', '0', 'payments', 'captures', '0', 'id']);
   }
 
   private buildRedirectUrls(paymentId: string) {

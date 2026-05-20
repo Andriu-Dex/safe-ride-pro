@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../../../shared/infrastructure/database/prisma.service';
 import type {
   PaymentsRepository,
+  MarkPaymentRefundedInput,
   RecordPaymentCheckoutInput,
   SyncPaymentStatusInput,
   TripPaymentRecord,
@@ -26,6 +27,15 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
     return payment ? this.mapPayment(payment) : null;
   }
 
+  async findPaymentByTripRequestId(tripRequestId: string): Promise<TripPaymentRecord | null> {
+    const payment = await this.prisma.tripPayment.findUnique({
+      where: { tripRequestId },
+      include: this.paymentInclude(),
+    });
+
+    return payment ? this.mapPayment(payment) : null;
+  }
+
   async findPaymentByProviderOrderToken(
     providerOrderToken: string,
   ): Promise<TripPaymentRecord | null> {
@@ -35,6 +45,15 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
     });
 
     return payment ? this.mapPayment(payment) : null;
+  }
+
+  async listPaymentsByTripId(tripId: string): Promise<TripPaymentRecord[]> {
+    const payments = await this.prisma.tripPayment.findMany({
+      where: { tripId },
+      include: this.paymentInclude(),
+    });
+
+    return payments.map((payment) => this.mapPayment(payment));
   }
 
   async upsertAcceptedTripRequestPayment(
@@ -160,6 +179,10 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
         where: { id: input.paymentId },
         data: {
           status: input.status,
+          providerPaymentLinkId:
+            input.providerPaymentLinkId === undefined
+              ? currentPayment.providerPaymentLinkId
+              : input.providerPaymentLinkId,
           providerOrderStatus: input.providerOrderStatus,
           providerPaymentStatus: input.providerPaymentStatus,
           paidAt:
@@ -225,6 +248,66 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
     });
 
     return this.findPaymentById(payment.id);
+  }
+
+  async markPaymentRefunded(
+    input: MarkPaymentRefundedInput,
+  ): Promise<TripPaymentRecord | null> {
+    const payment = await this.prisma.$transaction(async (transaction) => {
+      const currentPayment = await transaction.tripPayment.findUnique({
+        where: { id: input.paymentId },
+      });
+
+      if (!currentPayment) {
+        return null;
+      }
+
+      await transaction.tripPayment.update({
+        where: { id: input.paymentId },
+        data: {
+          status: TripPaymentStatus.Refunded,
+          providerPaymentLinkId:
+            input.providerPaymentLinkId === undefined
+              ? currentPayment.providerPaymentLinkId
+              : input.providerPaymentLinkId,
+          providerOrderStatus:
+            input.providerOrderStatus === undefined
+              ? currentPayment.providerOrderStatus
+              : input.providerOrderStatus,
+          providerPaymentStatus:
+            input.providerPaymentStatus === undefined
+              ? currentPayment.providerPaymentStatus
+              : input.providerPaymentStatus,
+          cancelledAt: input.refundedAt ?? new Date(),
+          failureReason: input.failureReason ?? 'Pago reembolsado.',
+          lastSyncedAt: new Date(),
+        },
+      });
+
+      await transaction.tripPaymentAttempt.create({
+        data: {
+          paymentId: input.paymentId,
+          provider: currentPayment.provider,
+          status: TripPaymentStatus.Refunded,
+          checkoutUrl: currentPayment.providerPaymentLinkUrl,
+          providerOrderToken: currentPayment.providerOrderToken,
+          providerPaymentLinkId:
+            input.providerPaymentLinkId === undefined
+              ? currentPayment.providerPaymentLinkId
+              : input.providerPaymentLinkId,
+          providerOrderStatus: input.providerOrderStatus,
+          providerPaymentStatus: input.providerPaymentStatus,
+          responsePayload: input.responsePayload as never,
+        },
+      });
+
+      return transaction.tripPayment.findUnique({
+        where: { id: input.paymentId },
+        include: this.paymentInclude(),
+      });
+    });
+
+    return payment ? this.mapPayment(payment) : null;
   }
 
   async markPaymentsCancelledByTripId(tripId: string, failureReason?: string): Promise<number> {

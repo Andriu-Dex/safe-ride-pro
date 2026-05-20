@@ -32,6 +32,7 @@ export type FetchPaymentStatusInput = {
 export type FetchPaymentStatusResult = {
   provider: PaymentProvider;
   providerOrderToken: string;
+  providerCaptureId: string | null;
   providerOrderStatus: string | null;
   providerPaymentStatus: string | null;
   paidAt: Date | null;
@@ -46,10 +47,26 @@ export type CapturePaymentInput = {
 export type CapturePaymentResult = {
   provider: PaymentProvider;
   providerOrderToken: string;
+  providerCaptureId: string | null;
   providerOrderStatus: string | null;
   providerPaymentStatus: string | null;
   paidAt: Date | null;
   expiresAt: Date | null;
+  rawResponse: unknown;
+};
+
+export type RefundPaymentInput = {
+  providerOrderToken: string | null;
+  providerCaptureId: string | null;
+};
+
+export type RefundPaymentResult = {
+  provider: PaymentProvider;
+  providerOrderToken: string | null;
+  providerCaptureId: string;
+  providerOrderStatus: string | null;
+  providerPaymentStatus: string | null;
+  refundedAt: Date | null;
   rawResponse: unknown;
 };
 
@@ -59,4 +76,5 @@ export interface PaymentProviderPort {
   createCheckout(input: CreatePaymentCheckoutInput): Promise<CreatePaymentCheckoutResult>;
   fetchPaymentStatus(input: FetchPaymentStatusInput): Promise<FetchPaymentStatusResult>;
   capturePayment(input: CapturePaymentInput): Promise<CapturePaymentResult>;
+  refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult>;
 }

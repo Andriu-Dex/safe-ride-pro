@@ -35,6 +35,7 @@ import {
 import { getTripStatusLabel, getTripStatusTone } from '../lib/trip-labels';
 import type { TripClosureActionItem } from './trip-closure-action-center';
 import { PassengerActiveRidePanel } from './passenger-active-ride-panel';
+import { TripRequestCancelConfirmationModal } from './trip-request-cancel-confirmation-modal';
 import { TripRequestDetailModal } from './trip-request-detail-modal';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
@@ -96,6 +97,7 @@ export function TripsRequestsWorkspace({
 }: TripsRequestsWorkspaceProps) {
   const [selectedRequest, setSelectedRequest] = useState<TripRequestRecord | null>(null);
   const [selectedRequestPerspective, setSelectedRequestPerspective] = useState<'driver' | 'passenger'>('driver');
+  const [selectedRequestForCancel, setSelectedRequestForCancel] = useState<TripRequestRecord | null>(null);
   const incomingSectionTitle =
     showIncomingRequestsSection && !showMyRequestsSection
       ? 'Aprobar solicitudes'
@@ -110,6 +112,21 @@ export function TripsRequestsWorkspace({
         onClose={() => setSelectedRequest(null)}
         perspective={selectedRequestPerspective}
         request={selectedRequest}
+      />
+      <TripRequestCancelConfirmationModal
+        isCancelling={Boolean(
+          selectedRequestForCancel && isMutatingRequestId === selectedRequestForCancel.id,
+        )}
+        onClose={() => setSelectedRequestForCancel(null)}
+        onConfirm={() => {
+          if (!selectedRequestForCancel) {
+            return;
+          }
+
+          onCancelMyRequest(selectedRequestForCancel.id);
+          setSelectedRequestForCancel(null);
+        }}
+        request={selectedRequestForCancel}
       />
 
       <section className="trips-workspace-grid">
@@ -386,7 +403,7 @@ export function TripsRequestsWorkspace({
                     </Button>
                     <Button
                       disabled={isMutatingRequestId === request.id}
-                      onClick={() => onCancelMyRequest(request.id)}
+                      onClick={() => setSelectedRequestForCancel(request)}
                       variant="ghost"
                     >
                       Cancelar solicitud
