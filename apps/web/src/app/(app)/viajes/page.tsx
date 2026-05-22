@@ -716,6 +716,15 @@ export default function TripsPage() {
     setRequestErrorMessage(null);
     setRequestSuccessMessage(null);
 
+    const paypalWindow =
+      paymentProvider === PaymentProvider.Paypal
+        ? window.open('about:blank', '_blank')
+        : null;
+
+    if (paypalWindow) {
+      paypalWindow.opener = null;
+    }
+
     try {
       const response = await createTripRequest(authSession.accessToken, {
         tripId: trip.id,
@@ -740,8 +749,11 @@ export default function TripsPage() {
         );
 
         if (checkoutResponse.checkoutUrl) {
-          window.location.assign(checkoutResponse.checkoutUrl);
-          return;
+          if (paypalWindow) {
+            paypalWindow.location.href = checkoutResponse.checkoutUrl;
+          } else {
+            setPaymentErrorMessage('El navegador bloqueo la ventana de PayPal.');
+          }
         }
       }
 
@@ -752,6 +764,8 @@ export default function TripsPage() {
         [trip.id]: EMPTY_REQUEST_DRAFT,
       }));
     } catch (error) {
+      paypalWindow?.close();
+
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
       }
@@ -986,7 +1000,7 @@ export default function TripsPage() {
         const newWindow = window.open(response.checkoutUrl, '_blank', 'noopener,noreferrer');
 
         if (!newWindow) {
-          window.location.href = response.checkoutUrl;
+          setPaymentErrorMessage('El navegador bloqueo la ventana de PayPal.');
         }
       }
     } catch (error) {

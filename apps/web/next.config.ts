@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ['10.79.19.12'],
   turbopack: {
     root: path.resolve(__dirname, '../..'),
   },

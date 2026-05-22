@@ -8,7 +8,7 @@ import {
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
@@ -38,7 +38,9 @@ import { PassengerActiveRidePanel } from './passenger-active-ride-panel';
 import { TripRequestCancelConfirmationModal } from './trip-request-cancel-confirmation-modal';
 import { TripRequestDetailModal } from './trip-request-detail-modal';
 import { TripsEditorialEmptyState } from './trips-editorial-empty-state';
+import { TripsListPagination } from './trips-list-pagination';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
+import styles from './trips-requests-workspace.module.css';
 
 type TripsRequestsWorkspaceProps = {
   incomingRequests: TripRequestRecord[];
@@ -104,7 +106,21 @@ export function TripsRequestsWorkspace({
       : 'Solicitudes recibidas';
   const incomingResultsCount = incomingRequestsCountOverride ?? incomingRequests.length;
   const myRequestsResultsCount = myRequestsCountOverride ?? myRequests.length;
+  const myRequestsPageSize = 8;
+  const [myRequestsPage, setMyRequestsPage] = useState(1);
+  const paginatedMyRequests = useMemo(
+    () => myRequests.slice((myRequestsPage - 1) * myRequestsPageSize, myRequestsPage * myRequestsPageSize),
+    [myRequests, myRequestsPage],
+  );
   const closureItems = buildPassengerClosureItems(myRequests);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(myRequests.length / myRequestsPageSize));
+
+    if (myRequestsPage > totalPages) {
+      setMyRequestsPage(totalPages);
+    }
+  }, [myRequests.length, myRequestsPage]);
 
   return (
     <>
@@ -129,7 +145,7 @@ export function TripsRequestsWorkspace({
         request={selectedRequestForCancel}
       />
 
-      <section className="trips-workspace-grid">
+      <section className={styles.requestsStack}>
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="requests" /> : null}
 
       {showActiveRidePanel ? (
@@ -153,143 +169,155 @@ export function TripsRequestsWorkspace({
             <p className="section-heading-meta">{incomingResultsCount} resultados</p>
           </div>
           {incomingRequests.length ? (
-            <div className="list-stack">
-              {incomingRequests.map((request) => (
-                <div key={request.id} className="list-card trip-request-card trip-request-card-incoming">
-                  <div className="list-card-header">
-                    <strong>{request.passengerFullName}</strong>
-                    <div className="trip-request-status-group">
-                      <StatusPill
-                        label={getTripRequestStatusLabel(request.status)}
-                        tone={getTripRequestStatusTone(request.status)}
-                      />
-                      {request.status === TripRequestStatus.Accepted || request.status === TripRequestStatus.NoShow ? (
-                        <StatusPill
-                          label={getTripRequestExecutionStatusLabel(request.executionStatus)}
-                          tone={getTripRequestExecutionStatusTone(request.executionStatus)}
-                        />
-                      ) : null}
-                      {request.payment ? (
-                        <StatusPill
-                          label={getTripPaymentStatusLabel(request.payment.status)}
-                          tone={getTripPaymentStatusTone(request.payment.status)}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
+            <div className={styles.tableContainer}>
+              <table className={styles.compactTable}>
+                <thead>
+                  <tr>
+                    <th>Ruta del viaje</th>
+                    <th>Salida</th>
+                    <th>Pasajero</th>
+                    <th>Estado</th>
+                    <th>Pago</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {incomingRequests.map((request) => (
+                    <tr key={request.id}>
+                      <td>
+                        <div className={styles.cellRoute}>
+                          <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
+                          {request.requestMessage ? (
+                            <small title={request.requestMessage}>Mensaje: {request.requestMessage}</small>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(request.tripDepartureAt)}</td>
+                      <td>{request.passengerFullName}</td>
+                      <td>
+                        <div className={styles.cellStatus}>
+                          <StatusPill
+                            label={getTripRequestStatusLabel(request.status)}
+                            tone={getTripRequestStatusTone(request.status)}
+                          />
+                          {request.status === TripRequestStatus.Accepted || request.status === TripRequestStatus.NoShow ? (
+                            <StatusPill
+                              label={getTripRequestExecutionStatusLabel(request.executionStatus)}
+                              tone={getTripRequestExecutionStatusTone(request.executionStatus)}
+                            />
+                          ) : null}
+                          {request.status === TripRequestStatus.Pending && request.tripStatus === TripStatus.Full ? (
+                            <span className={styles.warningText}>Viaje sin cupos</span>
+                          ) : null}
+                          {request.status === TripRequestStatus.Pending && request.tripStatus !== TripStatus.Published && request.tripStatus !== TripStatus.Full ? (
+                            <span className={styles.warningText}>Solicitud desactualizada</span>
+                          ) : null}
+                          {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
+                            <StatusPill
+                              label={getTripRequestCancellationTimingLabel(request.cancellationTiming) ?? 'Cancelacion'}
+                              tone={request.cancellationTiming === CancellationTiming.Late ? 'warning' : 'neutral'}
+                            />
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.cellPayment}>
+                          {request.payment ? (
+                            <>
+                              <StatusPill
+                                label={getTripPaymentStatusLabel(request.payment.status)}
+                                tone={getTripPaymentStatusTone(request.payment.status)}
+                              />
+                              <small>
+                                {formatTripPaymentAmount(request.payment.amount, request.payment.currencyCode)}
+                                {' | '}
+                                {getPaymentProviderLabel(request.payment.provider)}
+                              </small>
+                            </>
+                          ) : (
+                            <span className={styles.emptyText}>Sin cargo</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.cellActions}>
+                          {request.payment?.provider === PaymentProvider.Cash &&
+                          request.payment.status === TripPaymentStatus.Pending &&
+                          request.status === TripRequestStatus.Accepted ? (
+                            <>
+                              <button
+                                className={`${styles.iconBtn} ${styles.accept}`}
+                                disabled={isMutatingPaymentId === request.payment.id}
+                                onClick={() => onConfirmCashPayment(request.payment!.id)}
+                                title="Pago recibido"
+                                type="button"
+                              >
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </button>
+                              <button
+                                className={`${styles.iconBtn} ${styles.reject}`}
+                                disabled={isMutatingPaymentId === request.payment.id}
+                                onClick={() => onReportCashPaymentIssue(request.payment!.id)}
+                                title="Reportar novedad de pago"
+                                type="button"
+                              >
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                              </button>
+                            </>
+                          ) : null}
 
-                  <div className="trip-request-route-line">
-                    <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
-                  </div>
+                          <button
+                            className={styles.iconBtn}
+                            onClick={() => {
+                              setSelectedRequestPerspective('driver');
+                              setSelectedRequest(request);
+                            }}
+                            title="Ver solicitud"
+                            type="button"
+                          >
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
 
-                  <div className="trip-request-meta-grid">
-                    <RequestMetaItem label="Salida" value={formatDateTime(request.tripDepartureAt)} />
-                    <RequestMetaItem label="Viaje" value={getTripStatusLabel(request.tripStatus)} />
-                    <RequestMetaItem label="Solicitud" value={getTripRequestStatusLabel(request.status)} />
-                    <RequestMetaItem
-                      label="Ejecucion"
-                      value={getTripRequestExecutionStatusLabel(request.executionStatus)}
-                    />
-                    <RequestMetaItem label="Pasajero" value={request.passengerFullName} />
-                    <RequestMetaItem
-                      label="Pago"
-                      value={
-                        request.payment
-                          ? getTripPaymentStatusLabel(request.payment.status)
-                          : 'Aun no generado'
-                      }
-                    />
-                  </div>
+                          {canAcceptIncomingRequest(request) ? (
+                            <button
+                              className={`${styles.iconBtn} ${styles.accept}`}
+                              disabled={isMutatingRequestId === request.id}
+                              onClick={() => onIncomingRequestAction(request.id, 'accept')}
+                              title="Aceptar solicitud"
+                              type="button"
+                            >
+                              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                          ) : null}
 
-                  {request.requestMessage ? (
-                    <div className="trip-request-note">
-                      <strong>Mensaje</strong>
-                      <p>{request.requestMessage}</p>
-                    </div>
-                  ) : null}
-                  {request.status === TripRequestStatus.Pending
-                  && request.tripStatus === TripStatus.Full ? (
-                    <p className="panel-text">Viaje sin cupos.</p>
-                  ) : null}
-                  {request.status === TripRequestStatus.Pending
-                  && request.tripStatus !== TripStatus.Published
-                  && request.tripStatus !== TripStatus.Full ? (
-                    <p className="panel-text">Solicitud desactualizada.</p>
-                  ) : null}
-                  {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
-                    <div className="button-row">
-                      <StatusPill
-                        label={
-                          getTripRequestCancellationTimingLabel(request.cancellationTiming)
-                          ?? 'Cancelacion'
-                        }
-                        tone={
-                          request.cancellationTiming === CancellationTiming.Late
-                            ? 'warning'
-                            : 'neutral'
-                        }
-                      />
-                    </div>
-                  ) : null}
-                  {request.payment ? (
-                    <div className="trip-request-note trip-request-note-muted">
-                      <strong>Pago del pasajero</strong>
-                      <p>
-                        {formatTripPaymentAmount(request.payment.amount, request.payment.currencyCode)}
-                        {' | '}
-                        {getPaymentProviderLabel(request.payment.provider)}
-                      </p>
-                    </div>
-                  ) : null}
-                  {request.payment?.provider === PaymentProvider.Cash &&
-                  request.payment.status === TripPaymentStatus.Pending &&
-                  request.status === TripRequestStatus.Accepted ? (
-                    <div className="button-row trip-request-action-row">
-                      <Button
-                        disabled={isMutatingPaymentId === request.payment.id}
-                        onClick={() => onConfirmCashPayment(request.payment!.id)}
-                      >
-                        Pago recibido
-                      </Button>
-                      <Button
-                        disabled={isMutatingPaymentId === request.payment.id}
-                        onClick={() => onReportCashPaymentIssue(request.payment!.id)}
-                        variant="secondary"
-                      >
-                        Reportar novedad
-                      </Button>
-                    </div>
-                  ) : null}
-                  <div className="button-row trip-request-action-row">
-                    <Button
-                      onClick={() => {
-                        setSelectedRequestPerspective('driver');
-                        setSelectedRequest(request);
-                      }}
-                      variant="ghost"
-                    >
-                      Ver solicitud
-                    </Button>
-                    {canAcceptIncomingRequest(request) ? (
-                      <Button
-                        disabled={isMutatingRequestId === request.id}
-                        onClick={() => onIncomingRequestAction(request.id, 'accept')}
-                      >
-                        Aceptar
-                      </Button>
-                    ) : null}
-                    {canRejectIncomingRequest(request) ? (
-                      <Button
-                        disabled={isMutatingRequestId === request.id}
-                        onClick={() => onIncomingRequestAction(request.id, 'reject')}
-                        variant="secondary"
-                      >
-                        Rechazar
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                          {canRejectIncomingRequest(request) ? (
+                            <button
+                              className={`${styles.iconBtn} ${styles.reject}`}
+                              disabled={isMutatingRequestId === request.id}
+                              onClick={() => onIncomingRequestAction(request.id, 'reject')}
+                              title="Rechazar solicitud"
+                              type="button"
+                            >
+                              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <TripsEditorialEmptyState
@@ -307,149 +335,162 @@ export function TripsRequestsWorkspace({
             <p className="section-heading-meta">{myRequestsResultsCount} resultados</p>
           </div>
           {myRequests.length ? (
-            <div className="list-stack">
-              {myRequests.map((request) => (
-                <div key={request.id} className="list-card trip-request-card trip-request-card-own">
-                  <div className="list-card-header">
-                    <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
-                    <div className="trip-request-status-group">
-                    <StatusPill
-                      label={getTripRequestStatusLabel(request.status)}
-                      tone={getTripRequestStatusTone(request.status)}
-                    />
-                    {request.status === TripRequestStatus.Accepted || request.status === TripRequestStatus.NoShow ? (
-                      <StatusPill
-                        label={getTripRequestExecutionStatusLabel(request.executionStatus)}
-                        tone={getTripRequestExecutionStatusTone(request.executionStatus)}
-                      />
-                    ) : null}
-                    {request.payment ? (
-                      <StatusPill
-                        label={getTripPaymentStatusLabel(request.payment.status)}
-                        tone={getTripPaymentStatusTone(request.payment.status)}
-                      />
-                    ) : null}
-                  </div>
-                </div>
+            <>
+              <div className={styles.tableContainer}>
+                <table className={styles.compactTable}>
+                  <thead>
+                    <tr>
+                      <th>Ruta del viaje</th>
+                      <th>Salida</th>
+                      <th>Conductor</th>
+                      <th>Estado</th>
+                      <th>Pago</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedMyRequests.map((request) => {
+                      const canCancel = canCancelOwnRequest(request);
+                      const canPayWithPaypal =
+                        request.payment?.provider === PaymentProvider.Paypal
+                        && !isTripPaymentSettled(request.payment.status)
+                        && !isTripPaymentClosed(request.payment.status);
+                      const canRefreshPaypal =
+                        request.payment?.provider === PaymentProvider.Paypal
+                        && !isTripPaymentSettled(request.payment.status);
 
-                <div className="trip-request-meta-grid">
-                  <RequestMetaItem label="Conductor" value={request.driverFullName} />
-                  <RequestMetaItem label="Salida" value={formatDateTime(request.tripDepartureAt)} />
-                  <RequestMetaItem label="Viaje" value={getTripStatusLabel(request.tripStatus)} />
-                  <RequestMetaItem label="Solicitud" value={getTripRequestStatusLabel(request.status)} />
-                  <RequestMetaItem
-                    label="Ejecucion"
-                    value={getTripRequestExecutionStatusLabel(request.executionStatus)}
-                  />
-                  <RequestMetaItem
-                    label="Pago"
-                    value={
-                      request.payment
-                        ? formatTripPaymentAmount(request.payment.amount, request.payment.currencyCode)
-                        : 'Sin cargo'
-                    }
-                  />
-                </div>
+                      return (
+                        <tr key={request.id}>
+                          <td>
+                            <div className={styles.cellRoute}>
+                              <strong>{request.tripOriginLabel} -&gt; {request.tripDestinationLabel}</strong>
+                              {request.reviewNote ? (
+                                <small title={request.reviewNote}>Nota: {request.reviewNote}</small>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(request.tripDepartureAt)}</td>
+                          <td>{request.driverFullName}</td>
+                          <td>
+                            <div className={styles.cellStatus}>
+                              <StatusPill
+                                label={getTripRequestStatusLabel(request.status)}
+                                tone={getTripRequestStatusTone(request.status)}
+                              />
+                              {request.status === TripRequestStatus.Accepted || request.status === TripRequestStatus.NoShow ? (
+                                <StatusPill
+                                  label={getTripRequestExecutionStatusLabel(request.executionStatus)}
+                                  tone={getTripRequestExecutionStatusTone(request.executionStatus)}
+                                />
+                              ) : null}
+                              {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
+                                <StatusPill
+                                  label={
+                                    getTripRequestCancellationTimingLabel(request.cancellationTiming)
+                                    ?? 'Cancelacion'
+                                  }
+                                  tone={
+                                    request.cancellationTiming === CancellationTiming.Late
+                                      ? 'warning'
+                                      : 'neutral'
+                                  }
+                                />
+                              ) : null}
+                            </div>
+                          </td>
+                          <td>
+                        <div className={styles.cellPayment}>
+                              {request.payment ? (
+                                <>
+                                  <StatusPill
+                                    label={getTripPaymentStatusLabel(request.payment.status)}
+                                    tone={getTripPaymentStatusTone(request.payment.status)}
+                                  />
+                                  <small>
+                                    {formatTripPaymentAmount(request.payment.amount, request.payment.currencyCode)}
+                                    {' | '}
+                                    {getPaymentProviderLabel(request.payment.provider)}
+                                  </small>
+                                </>
+                              ) : (
+                            <span className={styles.emptyText}>Sin cargo</span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div className={styles.cellActions}>
+                              <button
+                                className={styles.iconBtn}
+                                onClick={() => {
+                                  setSelectedRequestPerspective('passenger');
+                                  setSelectedRequest(request);
+                                }}
+                                title="Ver detalle"
+                                type="button"
+                              >
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
 
-                {request.reviewNote ? (
-                  <div className="trip-request-note trip-request-note-muted">
-                    <strong>Revision</strong>
-                    <p>{request.reviewNote}</p>
-                  </div>
-                ) : null}
-                {request.payment ? (
-                  <div className="trip-request-note trip-request-note-muted">
-                    <strong>Estado de pago</strong>
-                    <p>
-                      {getTripPaymentStatusLabel(request.payment.status)}
-                      {' | '}
-                      {getPaymentProviderLabel(request.payment.provider)}
-                    </p>
-                    {request.payment.paidAt ? (
-                      <p>Confirmado {formatDateTime(request.payment.paidAt)}</p>
-                    ) : null}
-                  </div>
-                ) : null}
-                {request.status === TripRequestStatus.Cancelled && request.cancellationTiming ? (
-                  <div className="button-row">
-                    <StatusPill
-                      label={
-                        getTripRequestCancellationTimingLabel(request.cancellationTiming)
-                        ?? 'Cancelacion'
-                      }
-                      tone={
-                        request.cancellationTiming === CancellationTiming.Late
-                          ? 'warning'
-                          : 'neutral'
-                      }
-                    />
-                  </div>
-                ) : null}
-                {(request.status === TripRequestStatus.Pending
-                  || request.status === TripRequestStatus.Accepted)
-                && !canCancelOwnRequest(request) ? (
-                  <p className="panel-text">Ya no se puede cancelar.</p>
-                ) : null}
-                {canCancelOwnRequest(request) ? (
-                  <div className="button-row trip-request-action-row">
-                    <Button
-                      onClick={() => {
-                        setSelectedRequestPerspective('passenger');
-                        setSelectedRequest(request);
-                      }}
-                      variant="secondary"
-                    >
-                      Ver solicitud
-                    </Button>
-                    <Button
-                      disabled={isMutatingRequestId === request.id}
-                      onClick={() => setSelectedRequestForCancel(request)}
-                      variant="ghost"
-                    >
-                      Cancelar solicitud
-                    </Button>
-                  </div>
-                ) : null}
-                {!canCancelOwnRequest(request) ? (
-                  <div className="button-row trip-request-action-row">
-                    <Button
-                      onClick={() => {
-                        setSelectedRequestPerspective('passenger');
-                        setSelectedRequest(request);
-                      }}
-                      variant="ghost"
-                    >
-                      Ver solicitud
-                    </Button>
-                  </div>
-                ) : null}
-                {request.payment ? (
-                  <div className="button-row trip-request-action-row">
-                    {request.payment.provider === PaymentProvider.Paypal &&
-                    !isTripPaymentSettled(request.payment.status) &&
-                    !isTripPaymentClosed(request.payment.status) ? (
-                      <Button
-                        disabled={isMutatingPaymentId === request.payment.id}
-                        onClick={() => onCreatePaymentCheckout(request.payment!.id)}
-                      >
-                        {request.payment.checkoutUrl ? 'Abrir pago' : 'Pagar con PayPal'}
-                      </Button>
-                    ) : null}
-                    {request.payment.provider === PaymentProvider.Paypal &&
-                    !isTripPaymentSettled(request.payment.status) ? (
-                      <Button
-                        disabled={isMutatingPaymentId === request.payment.id}
-                        onClick={() => onRefreshPaymentStatus(request.payment!.id)}
-                        variant="secondary"
-                      >
-                        Actualizar pago
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
+                              {canCancel ? (
+                                <button
+                                  className={`${styles.iconBtn} ${styles.reject}`}
+                                  disabled={isMutatingRequestId === request.id}
+                                  onClick={() => setSelectedRequestForCancel(request)}
+                                  title="Cancelar reserva"
+                                  type="button"
+                                >
+                                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              ) : null}
+
+                              {canRefreshPaypal && request.payment ? (
+                                <button
+                                  className={styles.iconBtn}
+                                  disabled={isMutatingPaymentId === request.payment.id}
+                                  onClick={() => onRefreshPaymentStatus(request.payment!.id)}
+                                  title="Actualizar pago"
+                                  type="button"
+                                >
+                                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                </button>
+                              ) : null}
+
+                              {canPayWithPaypal && request.payment ? (
+                                <button
+                                  className={`${styles.iconBtn} ${styles.primary}`}
+                                  disabled={isMutatingPaymentId === request.payment.id}
+                                  onClick={() => onCreatePaymentCheckout(request.payment!.id)}
+                                  title={request.payment.checkoutUrl ? 'Continuar pago' : 'Pagar reserva'}
+                                  type="button"
+                                >
+                                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                  </svg>
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              ))}
-            </div>
+
+              <TripsListPagination
+                onPageChange={setMyRequestsPage}
+                page={myRequestsPage}
+                pageSize={myRequestsPageSize}
+                totalItems={myRequests.length}
+              />
+            </>
           ) : (
             <TripsEditorialEmptyState
               actionLabel="Explorar viajes"
@@ -616,4 +657,3 @@ function buildTrustClosureHref({
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
 }
-

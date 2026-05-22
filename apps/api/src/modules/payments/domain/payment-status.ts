@@ -7,7 +7,7 @@ export function mapPaypalStatusesToTripPaymentStatus(input: {
   const orderStatus = input.orderStatus?.trim().toUpperCase() ?? '';
   const paymentStatus = input.paymentStatus?.trim().toUpperCase() ?? '';
 
-  if (orderStatus === 'COMPLETED' || paymentStatus === 'COMPLETED') {
+  if (paymentStatus === 'COMPLETED') {
     return TripPaymentStatus.Paid;
   }
 

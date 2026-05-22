@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 .page {
-  width: min(100%, 1200px);
+  width: min(100%, 1400px);
   margin: 0 auto;
   font-family: 'Manrope', system-ui, -apple-system, sans-serif;
   color: #0f1f24;
