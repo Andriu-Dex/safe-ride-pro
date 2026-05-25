@@ -5,41 +5,21 @@
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  background: rgba(13, 48, 61, 0.8); /* Tono cian oscuro para el fondo */
-  backdrop-filter: blur(10px);
+  background: rgba(9, 20, 24, 0.56);
+  backdrop-filter: blur(8px);
   animation: fadeIn 0.25s ease-out;
 }
 
 .card {
-  text-align: center;
-    background: #004c46;
-    border: 1px solid #000000;
-    border-radius: 1.5rem;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.25rem;
-    width: min(100%, 34rem);
-    padding: 2rem;
-    animation: .3s cubic-bezier(.16, 1, .3, 1) trip-delete-confirmation-modal-module__Ryo1ha__slideUp;
-    display: flex;
-    box-shadow: 0 25px 50px -12px #0009;
-}
-
-.iconWrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 4rem;
-  height: 4rem;
-  border-radius: 50%;
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
-}
-
-.warningIcon {
-  width: 2rem;
-  height: 2rem;
+  width: min(100%, 28rem);
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(22, 47, 58, 0.08);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 24px 64px rgba(9, 20, 24, 0.26);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .header {
@@ -49,119 +29,57 @@
 
 .title {
   margin: 0;
-  color: #f8fafc;
-  font-size: 1.25rem;
+  color: #12252d;
+  font-size: 1.35rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .lead {
   margin: 0;
-  color: #94a3b8;
+  color: #5f747a;
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
 .routeBox {
-  width: 100%;
   display: grid;
-  gap: 1.25rem;
-  padding: 1.25rem;
-  border-radius: 1rem;
-  border: 1px solid #155e75; /* Borde cian oscuro */
-  background: #023e39; /* Fondo de caja de ruta aún más oscuro */
-  text-align: left;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border-left: 4px solid #b42318;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: #fef2f2;
 }
 
 .routeLabel {
-  color: #64748b;
+  color: #991b1b;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
-.routePath {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.routePoint {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  position: relative;
-  z-index: 2;
-}
-
-.dotOrigin {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #3b82f6; /* Se mantiene azul para contraste */
-  border: 3px solid #082129; /* Ajustado al nuevo fondo de routeBox */
-  box-shadow: 0 0 0 1px #3b82f6;
-}
-
-.dotDestination {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #ef4444; /* Se mantiene rojo para contraste */
-  border: 3px solid #082129; /* Ajustado al nuevo fondo de routeBox */
-  box-shadow: 0 0 0 1px #ef4444;
-}
-
-.routeLine {
-  position: absolute;
-  left: 6px;
-  top: 14px;
-  bottom: 14px;
-  width: 2px;
-  background: #155e75; /* Línea de conexión cian oscuro */
-  z-index: 1;
-}
-
-.pointLabel {
-  color: #e2e8f0;
+.routeBox strong {
+  color: #7f1d1d;
   font-size: 0.95rem;
-  font-weight: 500;
+  line-height: 1.35;
 }
 
 .actions {
-  width: 100%;
   display: flex;
+  justify-content: flex-end;
   gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.actions button {
-  flex: 1;
-}
-
-.cancelButton {
-  background: transparent;
-  color: #94a3b8;
-  border: 1px solid #155e75; /* Borde cian oscuro */
-}
-
-.cancelButton:hover:not(:disabled) {
-  background: #155e75; /* Fondo cian oscuro al pasar el mouse */
-  color: #f8fafc;
-  border-color: #0e7490; /* Borde cian más brillante al pasar el mouse */
 }
 
 .dangerButton {
-  background: #ef4444;
-  border-color: #ef4444;
+  background: #b42318;
+  border-color: #b42318;
   color: #fff;
 }
 
 .dangerButton:hover:not(:disabled) {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: #8f1d14;
+  border-color: #8f1d14;
 }
 
 @keyframes fadeIn {
@@ -176,6 +94,6 @@
 
 @media (max-width: 560px) {
   .actions {
-    flex-direction: column;
+    display: grid;
   }
 }

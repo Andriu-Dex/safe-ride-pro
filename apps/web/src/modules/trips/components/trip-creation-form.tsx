@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TripRouteMode } from '@saferidepro/shared-types';
 
 import { Button } from '../../../components/ui/button';
@@ -85,7 +85,10 @@ export function TripCreationForm({
     destinationLatitude,
     destinationLongitude,
   );
-  const routePath = parseRoutePathJson(values.routePathJson);
+  const routePath = useMemo(
+    () => parseRoutePathJson(values.routePathJson),
+    [values.routePathJson],
+  );
   const departureDate = values.departureAt ? new Date(values.departureAt) : null;
   const estimatedArrivalDate = values.estimatedArrivalAt
     ? new Date(values.estimatedArrivalAt)
@@ -305,7 +308,6 @@ export function TripCreationForm({
     originSelection?.latitude,
     originSelection?.longitude,
     values.departureAt,
-    values.estimatedArrivalAt,
   ]);
 
   const canSubmit = !disabled && !isSubmitting && validationIssues.length === 0;

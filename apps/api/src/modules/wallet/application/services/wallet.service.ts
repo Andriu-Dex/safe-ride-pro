@@ -7,6 +7,7 @@ import {
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import {
   MembershipStatus,
   PaymentProvider,
@@ -326,15 +327,31 @@ export class WalletService {
   }
 
   private async ensureWallet(membershipId: string, institutionId: string, currencyCode: string) {
-    return this.prisma.walletAccount.upsert({
+    const existingWallet = await this.prisma.walletAccount.findUnique({
       where: { membershipId },
-      create: {
-        membershipId,
-        institutionId,
-        currencyCode,
-      },
-      update: {},
     });
+
+    if (existingWallet) {
+      return existingWallet;
+    }
+
+    try {
+      return await this.prisma.walletAccount.create({
+        data: {
+          membershipId,
+          institutionId,
+          currencyCode,
+        },
+      });
+    } catch (error) {
+      if (isMembershipUniqueConstraintError(error)) {
+        return this.prisma.walletAccount.findUniqueOrThrow({
+          where: { membershipId },
+        });
+      }
+
+      throw error;
+    }
   }
 
   private async findTopUpForUser(userId: string, topUpId: string) {
@@ -444,4 +461,13 @@ function mapWalletTopUpStatus(status: TripPaymentStatus): WalletTopUpStatus {
     default:
       return 'PENDING';
   }
+}
+
+function isMembershipUniqueConstraintError(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002' &&
+    Array.isArray(error.meta?.target) &&
+    error.meta.target.includes('membershipId')
+  );
 }

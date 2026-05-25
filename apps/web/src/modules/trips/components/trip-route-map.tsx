@@ -60,6 +60,7 @@ export function TripRouteMap({
   const bundleRef = useRef<MapBundle | null>(null);
   const invalidateFrameRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const lastSelectionWheelAtRef = useRef(0);
   const lastGeometryKeyRef = useRef<string>('');
   const lastFitKeyRef = useRef<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -154,7 +155,9 @@ export function TripRouteMap({
           zoomAnimation: false,
           fadeAnimation: false,
           markerZoomAnimation: false,
-          scrollWheelZoom: false,
+          scrollWheelZoom: true,
+          wheelDebounceTime: 80,
+          wheelPxPerZoomLevel: 120,
         });
 
         leafletModule.tileLayer(
@@ -177,18 +180,7 @@ export function TripRouteMap({
         setIsMapReady(true);
 
         lastGeometryKeyRef.current = '';
-        syncMapBundle(
-          bundleRef.current,
-          origin,
-          destination,
-          routePath,
-          pickup,
-          dropoff,
-          livePosition,
-          cappedHistory,
-          true,
-        );
-        lastFitKeyRef.current = fitKey;
+        lastFitKeyRef.current = '';
         scheduleMapInvalidate(() => bundleRef.current?.map, mapRef, invalidateFrameRef);
         setErrorMessage(null);
 
@@ -234,37 +226,7 @@ export function TripRouteMap({
       }
       bundleRef.current = null;
     };
-  }, [cappedHistory, destination, dropoff, fitKey, livePosition, origin, pickup, routePath, shouldMountMap]);
-
-  useEffect(() => {
-    const shellElement = mapShellRef.current;
-
-    if (!shellElement) {
-      return;
-    }
-
-    const preventPageScrollWhileZooming = (event: WheelEvent) => {
-      event.preventDefault();
-      zoomMapAtClientPoint(
-        bundleRef.current?.map,
-        shellElement,
-        event.clientX,
-        event.clientY,
-        event.deltaY,
-      );
-    };
-
-    shellElement.addEventListener('wheel', preventPageScrollWhileZooming, {
-      capture: true,
-      passive: false,
-    });
-
-    return () => {
-      shellElement.removeEventListener('wheel', preventPageScrollWhileZooming, {
-        capture: true,
-      });
-    };
-  }, []);
+  }, [shouldMountMap]);
 
   useEffect(() => {
     const bundle = bundleRef.current;
@@ -348,6 +310,14 @@ export function TripRouteMap({
     if (!shellElement || event.deltaY === 0) {
       return;
     }
+
+    const now = window.performance.now();
+
+    if (now - lastSelectionWheelAtRef.current < 120) {
+      return;
+    }
+
+    lastSelectionWheelAtRef.current = now;
 
     zoomMapAtClientPoint(
       bundle.map,
@@ -603,6 +573,7 @@ function zoomMapAtClientPoint(
     clientX - bounds.left,
     clientY - bounds.top,
   ];
+  const latLng = map.containerPointToLatLng(containerPoint);
   const currentZoom = map.getZoom();
   const minZoom = map.getMinZoom();
   const maxZoom = map.getMaxZoom();
@@ -613,7 +584,7 @@ function zoomMapAtClientPoint(
     return;
   }
 
-  map.setZoomAround(containerPoint, nextZoom, {
+  map.setZoomAround(latLng, nextZoom, {
     animate: false,
   });
 }
@@ -624,7 +595,7 @@ function setMapInteractionMode(map: Leaflet.Map, isSelectionActive: boolean) {
   toggleMapHandler(map.boxZoom, isSelectionActive);
   toggleMapHandler(map.keyboard, isSelectionActive);
   toggleMapHandler(map.touchZoom, isSelectionActive);
-  toggleMapHandler(map.scrollWheelZoom, true);
+  toggleMapHandler(map.scrollWheelZoom, isSelectionActive);
 }
 
 function toggleMapHandler(

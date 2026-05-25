@@ -32,12 +32,12 @@ export function TripDeleteConfirmationModal({
           <h2 className={styles.title} id="delete-draft-trip-title">
             Eliminar viaje
           </h2>
-          <p className={styles.lead}>Esta seguro de que desea eliminar este viaje?</p>
+          <p className={styles.lead}>¿Estás seguro de que deseas eliminar este viaje? Esta acción no se puede deshacer.</p>
         </div>
 
         <div className={styles.routeBox}>
-          <span className={styles.routeLabel}>Ruta</span>
-          <strong>{trip.originLabel} -&gt; {trip.destinationLabel}</strong>
+          <span className={styles.routeLabel}>Ruta a eliminar</span>
+          <strong>{trip.originLabel} &rarr; {trip.destinationLabel}</strong>
         </div>
 
         <div className={styles.actions}>

@@ -4116,6 +4116,8 @@ main {
   max-height: 450px;
   border-radius: 18px;
   overflow: hidden;
+  overscroll-behavior: contain;
+  touch-action: none;
   border: 1px solid rgba(15, 118, 110, 0.16);
   background: linear-gradient(135deg, rgba(10, 31, 34, 0.9), rgba(15, 118, 110, 0.72));
 }
