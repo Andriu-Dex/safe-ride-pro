@@ -7,8 +7,10 @@ import { SelectField } from '../../../components/ui/select-field';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import type { VehicleRecord } from '../../vehicles/types/vehicle';
 import {
+  fetchGeoapifyRouteRecommendation,
   getGeoapifySetupMessage,
   isGeoapifyConfigured,
+  type GeoapifyRoutePoint,
 } from '../lib/geoapify';
 import { getTripRouteModeLabel } from '../lib/trip-labels';
 import type { RecentTripRouteTemplate } from '../types/trip';
@@ -83,6 +85,7 @@ export function TripCreationForm({
     destinationLatitude,
     destinationLongitude,
   );
+  const routePath = parseRoutePathJson(values.routePathJson);
   const departureDate = values.departureAt ? new Date(values.departureAt) : null;
   const estimatedArrivalDate = values.estimatedArrivalAt
     ? new Date(values.estimatedArrivalAt)
@@ -240,6 +243,69 @@ export function TripCreationForm({
     destinationLatitude,
     destinationLongitude,
     onChange,
+  ]);
+
+  useEffect(() => {
+    if (!isMapsEnabled || !originSelection || !destinationSelection) {
+      if (values.routePathJson || values.routeDistanceMeters || values.routeDurationSeconds) {
+        onChange('routePathJson', '');
+        onChange('routeDistanceMeters', '');
+        onChange('routeDurationSeconds', '');
+      }
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void fetchGeoapifyRouteRecommendation(originSelection, destinationSelection, controller.signal)
+        .then((recommendation) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          if (!recommendation) {
+            onChange('routePathJson', '');
+            onChange('routeDistanceMeters', '');
+            onChange('routeDurationSeconds', '');
+            return;
+          }
+
+          onChange('routePathJson', JSON.stringify(recommendation.path.slice(0, 400)));
+          onChange('routeDistanceMeters', recommendation.distanceMeters?.toString() ?? '');
+          onChange('routeDurationSeconds', recommendation.durationSeconds?.toString() ?? '');
+
+          if (values.departureAt && recommendation.durationSeconds) {
+            const estimated = addSecondsToLocalDateTime(
+              values.departureAt,
+              recommendation.durationSeconds,
+            );
+
+            if (estimated && values.estimatedArrivalAt !== estimated) {
+              onChange('estimatedArrivalAt', estimated);
+            }
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            onChange('routePathJson', '');
+            onChange('routeDistanceMeters', '');
+            onChange('routeDurationSeconds', '');
+          }
+        });
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [
+    destinationSelection?.latitude,
+    destinationSelection?.longitude,
+    isMapsEnabled,
+    originSelection?.latitude,
+    originSelection?.longitude,
+    values.departureAt,
+    values.estimatedArrivalAt,
   ]);
 
   const canSubmit = !disabled && !isSubmitting && validationIssues.length === 0;
@@ -495,9 +561,17 @@ export function TripCreationForm({
                       destination={destinationSelection} 
                       onMapSelect={handleMapSelect}
                       origin={originSelection} 
+                      routePath={routePath}
                       selectionMode={effectiveSelectionTarget}
                     />
                   </div>
+
+                  {routePath.length > 1 ? (
+                    <div className={styles.routeSummary}>
+                      <strong>Ruta recomendada</strong>
+                      <span>{formatRouteMetric(values.routeDistanceMeters, values.routeDurationSeconds)}</span>
+                    </div>
+                  ) : null}
 
                   <div className={styles.coordinateGrid}>
                     <TripCoordinateCard
@@ -695,6 +769,74 @@ export function TripCreationForm({
       </form>
     </article>
   );
+}
+
+function parseRoutePathJson(value: string): GeoapifyRoutePoint[] {
+  if (!value.trim()) {
+    return [];
+  }
+
+  try {
+    const parsedValue = JSON.parse(value) as unknown;
+
+    if (!Array.isArray(parsedValue)) {
+      return [];
+    }
+
+    return parsedValue
+      .map((point) => {
+        if (!point || typeof point !== 'object') {
+          return null;
+        }
+
+        const candidate = point as { latitude?: unknown; longitude?: unknown };
+
+        if (
+          typeof candidate.latitude !== 'number' ||
+          typeof candidate.longitude !== 'number' ||
+          !Number.isFinite(candidate.latitude) ||
+          !Number.isFinite(candidate.longitude)
+        ) {
+          return null;
+        }
+
+        return {
+          latitude: candidate.latitude,
+          longitude: candidate.longitude,
+        };
+      })
+      .filter((point): point is GeoapifyRoutePoint => point !== null);
+  } catch {
+    return [];
+  }
+}
+
+function formatRouteMetric(distance: string, duration: string): string {
+  const distanceMeters = Number.parseInt(distance, 10);
+  const durationSeconds = Number.parseInt(duration, 10);
+  const distanceLabel =
+    Number.isFinite(distanceMeters) && distanceMeters > 0
+      ? `${(distanceMeters / 1000).toFixed(1)} km`
+      : 'Ruta calculada';
+  const durationLabel =
+    Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? `${Math.max(1, Math.round(durationSeconds / 60))} min`
+      : '';
+
+  return durationLabel ? `${distanceLabel} | ${durationLabel}` : distanceLabel;
+}
+
+function addSecondsToLocalDateTime(value: string, seconds: number): string | null {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  date.setSeconds(date.getSeconds() + seconds);
+
+  const timezoneOffset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
 }
 
 function buildPlaceSelection(

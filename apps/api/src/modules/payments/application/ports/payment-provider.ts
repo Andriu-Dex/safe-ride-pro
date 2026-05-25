@@ -12,6 +12,11 @@ export type CreatePaymentCheckoutInput = {
   tripOriginLabel: string;
   tripDestinationLabel: string;
   tripDepartureAt: Date;
+  description?: string;
+  successPath?: string;
+  cancelPath?: string;
+  successParams?: Record<string, string>;
+  cancelParams?: Record<string, string>;
 };
 
 export type CreatePaymentCheckoutResult = {

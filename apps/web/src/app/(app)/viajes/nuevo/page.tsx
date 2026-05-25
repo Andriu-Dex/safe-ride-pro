@@ -204,7 +204,7 @@ export default function NewTripPage() {
     && activeVehicles.length > 0;
   const selectedVehicle = activeVehicles.find((vehicle) => vehicle.id === tripForm.vehicleId) ?? null;
 
-  const handleTripFormChange = (field: keyof TripFormValues, value: string) => {
+  const handleTripFormChange = useCallback((field: keyof TripFormValues, value: string) => {
     setTripForm((currentForm) => ({
       ...currentForm,
       [field]: value,
@@ -212,7 +212,7 @@ export default function NewTripPage() {
         ? { detourSurchargeReference: '0' }
         : {}),
     }));
-  };
+  }, []);
 
   const handleResetTripForm = useCallback(() => {
     setTripForm(EMPTY_TRIP_FORM);
@@ -240,6 +240,9 @@ export default function NewTripPage() {
       originLongitude: routeTemplate.originLongitude.toFixed(6),
       destinationLatitude: routeTemplate.destinationLatitude.toFixed(6),
       destinationLongitude: routeTemplate.destinationLongitude.toFixed(6),
+      routePathJson: routeTemplate.routePath ? JSON.stringify(routeTemplate.routePath) : '',
+      routeDistanceMeters: routeTemplate.routeDistanceMeters?.toString() ?? '',
+      routeDurationSeconds: routeTemplate.routeDurationSeconds?.toString() ?? '',
       seatCount: String(routeTemplate.seatCount),
       basePriceReference: String(routeTemplate.basePriceReference),
       detourSurchargeReference: String(routeTemplate.detourSurchargeReference ?? 0),
@@ -283,6 +286,9 @@ export default function NewTripPage() {
         originLongitude: Number.parseFloat(tripForm.originLongitude),
         destinationLatitude: Number.parseFloat(tripForm.destinationLatitude),
         destinationLongitude: Number.parseFloat(tripForm.destinationLongitude),
+        routePath: parseRoutePathJson(tripForm.routePathJson),
+        routeDistanceMeters: parseOptionalInteger(tripForm.routeDistanceMeters),
+        routeDurationSeconds: parseOptionalInteger(tripForm.routeDurationSeconds),
         departureAt: toIsoString(tripForm.departureAt),
         estimatedArrivalAt: toIsoString(tripForm.estimatedArrivalAt),
         seatCount: Number.parseInt(tripForm.seatCount, 10),
@@ -441,4 +447,52 @@ export default function NewTripPage() {
       </div>
     </section>
   );
+}
+
+function parseRoutePathJson(value: string) {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  try {
+    const parsedValue = JSON.parse(value) as unknown;
+
+    if (!Array.isArray(parsedValue)) {
+      return undefined;
+    }
+
+    const routePath = parsedValue
+      .map((point) => {
+        if (!point || typeof point !== 'object') {
+          return null;
+        }
+
+        const candidate = point as { latitude?: unknown; longitude?: unknown };
+
+        if (
+          typeof candidate.latitude !== 'number' ||
+          typeof candidate.longitude !== 'number' ||
+          !Number.isFinite(candidate.latitude) ||
+          !Number.isFinite(candidate.longitude)
+        ) {
+          return null;
+        }
+
+        return {
+          latitude: candidate.latitude,
+          longitude: candidate.longitude,
+        };
+      })
+      .filter((point): point is { latitude: number; longitude: number } => point !== null);
+
+    return routePath.length > 1 ? routePath : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseOptionalInteger(value: string): number | undefined {
+  const parsedValue = Number.parseInt(value, 10);
+
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : undefined;
 }

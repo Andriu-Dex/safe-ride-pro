@@ -2,6 +2,8 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   MembershipStatus,
   PaymentProvider,
+  TripPaymentStatus,
+  TripRequestStatus,
   TripRouteMode,
   TripStatus,
 } from '@saferidepro/shared-types';
@@ -9,7 +11,10 @@ import {
 import type { InstitutionsRepository } from '../../../src/modules/institutions/application/ports/institutions.repository';
 import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 import { CreateTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/create-trip-request.use-case';
-import type { TripRequestsRepository } from '../../../src/modules/trip-requests/application/ports/trip-requests.repository';
+import {
+  WALLET_INSUFFICIENT_BALANCE,
+  type TripRequestsRepository,
+} from '../../../src/modules/trip-requests/application/ports/trip-requests.repository';
 
 function createTripRequestsRepositoryMock(): jest.Mocked<TripRequestsRepository> {
   return {
@@ -309,5 +314,196 @@ describe('CreateTripRequestUseCase', () => {
         'Esta institucion desactivo temporalmente PayPal para nuevas reservas.',
       ),
     );
+  });
+
+  it('creates a request with wallet balance when wallet payments are enabled', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      privacyAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      safetyRulesAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+      allowPaypalPayments: true,
+      allowWalletPayments: true,
+      termsDocumentUrl: null,
+      privacyPolicyUrl: null,
+      safetyRulesTitle: 'Reglas',
+      safetyRulesSummary: 'Resumen',
+      safetyRulesBody: 'Detalle',
+      createdAt: null,
+      updatedAt: null,
+    });
+    repository.createTripRequest.mockResolvedValue({
+      id: 'request-wallet-1',
+      tripId: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      passengerMembershipId: 'membership-2',
+      passengerUserId: 'user-2',
+      passengerFullName: 'Pasajero Dos',
+      status: TripRequestStatus.Pending,
+      executionStatus: null,
+      tripStatus: TripStatus.Published,
+      tripRouteMode: TripRouteMode.DirectRoute,
+      tripOriginLabel: 'Ficoa',
+      tripOriginLatitude: null,
+      tripOriginLongitude: null,
+      tripDestinationLabel: 'Izamba',
+      tripDestinationLatitude: null,
+      tripDestinationLongitude: null,
+      tripDepartureAt: new Date('2030-01-01T10:00:00.000Z'),
+      tripEstimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      tripCompletedAt: null,
+      tripClosureNote: null,
+      tripCancelledAt: null,
+      tripSeatCount: 4,
+      tripAvailableSeats: 2,
+      requestedPickupLatitude: null,
+      requestedPickupLongitude: null,
+      requestedDropoffLatitude: null,
+      requestedDropoffLongitude: null,
+      requestMessage: null,
+      reviewNote: null,
+      executionStatusUpdatedAt: null,
+      boardedAt: null,
+      droppedOffAt: null,
+      createdAt: new Date('2030-01-01T08:05:00.000Z'),
+      reviewedAt: null,
+      cancelledAt: null,
+      cancellationTiming: null,
+      payment: {
+        id: 'payment-wallet-1',
+        provider: PaymentProvider.Wallet,
+        status: TripPaymentStatus.Paid,
+        currencyCode: 'USD',
+        amount: 4,
+        checkoutUrl: null,
+        paidAt: new Date('2030-01-01T08:05:00.000Z'),
+        expiresAt: null,
+        updatedAt: new Date('2030-01-01T08:05:00.000Z'),
+      },
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+        paymentProvider: PaymentProvider.Wallet,
+      }),
+    ).resolves.toMatchObject({
+      message: 'Solicitud enviada con saldo retenido.',
+      tripRequest: {
+        payment: {
+          provider: PaymentProvider.Wallet,
+        },
+      },
+    });
+
+    expect(repository.createTripRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentProvider: PaymentProvider.Wallet,
+      }),
+    );
+  });
+
+  it('shows a clear error when wallet balance is insufficient', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      privacyAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      safetyRulesAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+      allowPaypalPayments: true,
+      allowWalletPayments: true,
+      termsDocumentUrl: null,
+      privacyPolicyUrl: null,
+      safetyRulesTitle: 'Reglas',
+      safetyRulesSummary: 'Resumen',
+      safetyRulesBody: 'Detalle',
+      createdAt: null,
+      updatedAt: null,
+    });
+    repository.createTripRequest.mockRejectedValue(new Error(WALLET_INSUFFICIENT_BALANCE));
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+        paymentProvider: PaymentProvider.Wallet,
+      }),
+    ).rejects.toThrow(new BadRequestException('Saldo insuficiente en la billetera.'));
   });
 });

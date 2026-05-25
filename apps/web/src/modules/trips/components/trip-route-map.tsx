@@ -22,6 +22,7 @@ export type TripRouteMapSelectionMode = 'pickup' | 'dropoff' | 'origin' | 'desti
 type TripRouteMapProps = {
   origin: PlaceSelection | null;
   destination: PlaceSelection | null;
+  routePath?: Array<{ latitude: number; longitude: number }> | null;
   pickup?: PlaceSelection | null;
   dropoff?: PlaceSelection | null;
   livePosition?: PlaceSelection | null;
@@ -46,6 +47,7 @@ let leafletModulePromise: Promise<typeof Leaflet> | null = null;
 export function TripRouteMap({
   origin,
   destination,
+  routePath = null,
   pickup = null,
   dropoff = null,
   livePosition = null,
@@ -59,6 +61,7 @@ export function TripRouteMap({
   const invalidateFrameRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const lastGeometryKeyRef = useRef<string>('');
+  const lastFitKeyRef = useRef<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [shouldMountMap, setShouldMountMap] = useState(false);
@@ -72,12 +75,24 @@ export function TripRouteMap({
       JSON.stringify({
         origin: serializePlace(origin),
         destination: serializePlace(destination),
+        routePath: serializeRoutePath(routePath),
         pickup: serializePlace(pickup),
         dropoff: serializePlace(dropoff),
         livePosition: serializePlace(livePosition),
         history: cappedHistory.map(serializePlace),
       }),
-    [cappedHistory, destination, dropoff, livePosition, origin, pickup],
+    [cappedHistory, destination, dropoff, livePosition, origin, pickup, routePath],
+  );
+  const fitKey = useMemo(
+    () =>
+      JSON.stringify({
+        origin: serializePlace(origin),
+        destination: serializePlace(destination),
+        routePath: serializeRoutePath(routePath),
+        pickup: serializePlace(pickup),
+        dropoff: serializePlace(dropoff),
+      }),
+    [destination, dropoff, origin, pickup, routePath],
   );
 
   useEffect(() => {
@@ -139,6 +154,7 @@ export function TripRouteMap({
           zoomAnimation: false,
           fadeAnimation: false,
           markerZoomAnimation: false,
+          scrollWheelZoom: false,
         });
 
         leafletModule.tileLayer(
@@ -161,7 +177,18 @@ export function TripRouteMap({
         setIsMapReady(true);
 
         lastGeometryKeyRef.current = '';
-        syncMapBundle(bundleRef.current, origin, destination, pickup, dropoff, livePosition, cappedHistory);
+        syncMapBundle(
+          bundleRef.current,
+          origin,
+          destination,
+          routePath,
+          pickup,
+          dropoff,
+          livePosition,
+          cappedHistory,
+          true,
+        );
+        lastFitKeyRef.current = fitKey;
         scheduleMapInvalidate(() => bundleRef.current?.map, mapRef, invalidateFrameRef);
         setErrorMessage(null);
 
@@ -194,6 +221,7 @@ export function TripRouteMap({
       }
       setIsMapReady(false);
       lastGeometryKeyRef.current = '';
+      lastFitKeyRef.current = '';
       if (bundleRef.current) {
         try {
           bundleRef.current.overlayGroup.clearLayers();
@@ -206,7 +234,7 @@ export function TripRouteMap({
       }
       bundleRef.current = null;
     };
-  }, [cappedHistory, destination, dropoff, livePosition, origin, pickup, shouldMountMap]);
+  }, [cappedHistory, destination, dropoff, fitKey, livePosition, origin, pickup, routePath, shouldMountMap]);
 
   useEffect(() => {
     const shellElement = mapShellRef.current;
@@ -217,6 +245,13 @@ export function TripRouteMap({
 
     const preventPageScrollWhileZooming = (event: WheelEvent) => {
       event.preventDefault();
+      zoomMapAtClientPoint(
+        bundleRef.current?.map,
+        shellElement,
+        event.clientX,
+        event.clientY,
+        event.deltaY,
+      );
     };
 
     shellElement.addEventListener('wheel', preventPageScrollWhileZooming, {
@@ -238,10 +273,23 @@ export function TripRouteMap({
       return;
     }
 
-    syncMapBundle(bundle, origin, destination, pickup, dropoff, livePosition, cappedHistory);
+    const shouldFit = lastFitKeyRef.current !== fitKey;
+
+    syncMapBundle(
+      bundle,
+      origin,
+      destination,
+      routePath,
+      pickup,
+      dropoff,
+      livePosition,
+      cappedHistory,
+      shouldFit,
+    );
     lastGeometryKeyRef.current = geometryKey;
+    lastFitKeyRef.current = fitKey;
     scheduleMapInvalidate(() => bundleRef.current?.map, mapRef, invalidateFrameRef);
-  }, [cappedHistory, destination, dropoff, geometryKey, isMapReady, livePosition, origin, pickup]);
+  }, [cappedHistory, destination, dropoff, fitKey, geometryKey, isMapReady, livePosition, origin, pickup, routePath]);
 
   useEffect(() => {
     const bundle = bundleRef.current;
@@ -301,24 +349,13 @@ export function TripRouteMap({
       return;
     }
 
-    const bounds = shellElement.getBoundingClientRect();
-    const containerPoint: [number, number] = [
-      event.clientX - bounds.left,
-      event.clientY - bounds.top,
-    ];
-    const currentZoom = bundle.map.getZoom();
-    const minZoom = bundle.map.getMinZoom();
-    const maxZoom = bundle.map.getMaxZoom();
-    const requestedZoom = currentZoom + (event.deltaY < 0 ? 1 : -1);
-    const nextZoom = Math.max(minZoom, Math.min(maxZoom, requestedZoom));
-
-    if (nextZoom === currentZoom) {
-      return;
-    }
-
-    bundle.map.setZoomAround(containerPoint, nextZoom, {
-      animate: false,
-    });
+    zoomMapAtClientPoint(
+      bundle.map,
+      shellElement,
+      event.clientX,
+      event.clientY,
+      event.deltaY,
+    );
   };
 
   return (
@@ -347,12 +384,7 @@ export function TripRouteMap({
         ) : null}
         {!shouldMountMap || !isMapReady ? (
           <div className="trip-map-placeholder">
-            <strong>{!shouldMountMap ? 'Preparando mapa' : 'Cargando ruta'}</strong>
-            <span>
-              {!shouldMountMap
-                ? 'El mapa se activara en cuanto entre en pantalla.'
-                : 'Sincronizando tiles y puntos del trayecto.'}
-            </span>
+            <strong>{!shouldMountMap ? 'Mapa' : 'Cargando'}</strong>
           </div>
         ) : null}
       </div>
@@ -396,20 +428,24 @@ function syncMapBundle(
   bundle: MapBundle,
   origin: PlaceSelection | null,
   destination: PlaceSelection | null,
+  routePath: Array<{ latitude: number; longitude: number }> | null,
   pickup: PlaceSelection | null,
   dropoff: PlaceSelection | null,
   livePosition: PlaceSelection | null,
   history: PlaceSelection[],
+  shouldFit: boolean,
 ) {
   const { leaflet, map, overlayGroup } = bundle;
 
   overlayGroup.clearLayers();
 
   const points: Array<[number, number]> = [];
+  const fitPoints: Array<[number, number]> = [];
 
   if (origin) {
     const position: [number, number] = [origin.latitude, origin.longitude];
     points.push(position);
+    fitPoints.push(position);
     leaflet
       .marker(position, {
         icon: buildMarkerIcon(leaflet, 'O', 'trip-map-marker-origin'),
@@ -420,6 +456,7 @@ function syncMapBundle(
   if (destination) {
     const position: [number, number] = [destination.latitude, destination.longitude];
     points.push(position);
+    fitPoints.push(position);
     leaflet
       .marker(position, {
         icon: buildMarkerIcon(leaflet, 'D', 'trip-map-marker-destination'),
@@ -430,6 +467,7 @@ function syncMapBundle(
   if (pickup) {
     const position: [number, number] = [pickup.latitude, pickup.longitude];
     points.push(position);
+    fitPoints.push(position);
     leaflet
       .marker(position, {
         icon: buildMarkerIcon(leaflet, 'R', 'trip-map-marker-pickup'),
@@ -440,6 +478,7 @@ function syncMapBundle(
   if (dropoff) {
     const position: [number, number] = [dropoff.latitude, dropoff.longitude];
     points.push(position);
+    fitPoints.push(position);
     leaflet
       .marker(position, {
         icon: buildMarkerIcon(leaflet, 'B', 'trip-map-marker-dropoff'),
@@ -447,7 +486,19 @@ function syncMapBundle(
       .addTo(overlayGroup);
   }
 
-  if (points.length > 1) {
+  if (routePath && routePath.length > 1) {
+    const routePositions = routePath.map(
+      (point) => [point.latitude, point.longitude] as [number, number],
+    );
+    fitPoints.push(...routePositions);
+    leaflet
+      .polyline(routePositions, {
+        color: '#0f766e',
+        opacity: 0.92,
+        weight: 5,
+      })
+      .addTo(overlayGroup);
+  } else if (points.length > 1) {
     leaflet
       .polyline(points, {
         color: '#0f766e',
@@ -481,7 +532,11 @@ function syncMapBundle(
       .addTo(overlayGroup);
   }
 
-  if (points.length === 0) {
+  if (!shouldFit) {
+    return;
+  }
+
+  if (fitPoints.length === 0) {
     map.setView(
       [DEFAULT_TRIP_MAP_CENTER.latitude, DEFAULT_TRIP_MAP_CENTER.longitude],
       DEFAULT_TRIP_MAP_ZOOM,
@@ -490,8 +545,8 @@ function syncMapBundle(
     return;
   }
 
-  if (points.length === 1) {
-    map.setView(points[0], 15, { animate: false });
+  if (fitPoints.length === 1) {
+    map.setView(fitPoints[0], 15, { animate: false });
     return;
   }
 
@@ -522,12 +577,54 @@ function serializePlace(place: PlaceSelection | null): string | null {
   return `${place.latitude.toFixed(6)}:${place.longitude.toFixed(6)}:${place.label}`;
 }
 
+function serializeRoutePath(routePath: Array<{ latitude: number; longitude: number }> | null): string | null {
+  if (!routePath?.length) {
+    return null;
+  }
+
+  return routePath
+    .map((point) => `${point.latitude.toFixed(6)}:${point.longitude.toFixed(6)}`)
+    .join('|');
+}
+
+function zoomMapAtClientPoint(
+  map: Leaflet.Map | undefined,
+  shellElement: HTMLDivElement | null,
+  clientX: number,
+  clientY: number,
+  deltaY: number,
+) {
+  if (!map || !shellElement || deltaY === 0) {
+    return;
+  }
+
+  const bounds = shellElement.getBoundingClientRect();
+  const containerPoint: [number, number] = [
+    clientX - bounds.left,
+    clientY - bounds.top,
+  ];
+  const currentZoom = map.getZoom();
+  const minZoom = map.getMinZoom();
+  const maxZoom = map.getMaxZoom();
+  const requestedZoom = currentZoom + (deltaY < 0 ? 1 : -1);
+  const nextZoom = Math.max(minZoom, Math.min(maxZoom, requestedZoom));
+
+  if (nextZoom === currentZoom) {
+    return;
+  }
+
+  map.setZoomAround(containerPoint, nextZoom, {
+    animate: false,
+  });
+}
+
 function setMapInteractionMode(map: Leaflet.Map, isSelectionActive: boolean) {
   toggleMapHandler(map.dragging, isSelectionActive);
   toggleMapHandler(map.doubleClickZoom, isSelectionActive);
   toggleMapHandler(map.boxZoom, isSelectionActive);
   toggleMapHandler(map.keyboard, isSelectionActive);
   toggleMapHandler(map.touchZoom, isSelectionActive);
+  toggleMapHandler(map.scrollWheelZoom, true);
 }
 
 function toggleMapHandler(

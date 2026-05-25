@@ -59,6 +59,9 @@ function mapTripToFormValues(trip: TripDetailRecord): TripFormValues {
     originLongitude: trip.originLongitude?.toFixed(6) ?? '',
     destinationLatitude: trip.destinationLatitude?.toFixed(6) ?? '',
     destinationLongitude: trip.destinationLongitude?.toFixed(6) ?? '',
+    routePathJson: trip.routePath ? JSON.stringify(trip.routePath) : '',
+    routeDistanceMeters: trip.routeDistanceMeters?.toString() ?? '',
+    routeDurationSeconds: trip.routeDurationSeconds?.toString() ?? '',
     departureAt: toLocalDateTimeInput(trip.departureAt),
     estimatedArrivalAt: toLocalDateTimeInput(trip.estimatedArrivalAt),
     seatCount: String(trip.seatCount),
@@ -168,7 +171,7 @@ export default function EditTripPage() {
     driverStatus === DriverVerificationStatus.Approved &&
     licenseStatus !== DriverLicenseStatus.Expired;
 
-  const handleTripFormChange = (field: keyof TripFormValues, value: string) => {
+  const handleTripFormChange = useCallback((field: keyof TripFormValues, value: string) => {
     setTripForm((currentForm) => ({
       ...currentForm,
       [field]: value,
@@ -176,7 +179,7 @@ export default function EditTripPage() {
         ? { detourSurchargeReference: '0' }
         : {}),
     }));
-  };
+  }, []);
 
   const handleResetTripForm = useCallback(() => {
     setTripForm(initialForm);
@@ -202,6 +205,9 @@ export default function EditTripPage() {
         originLongitude: Number.parseFloat(tripForm.originLongitude),
         destinationLatitude: Number.parseFloat(tripForm.destinationLatitude),
         destinationLongitude: Number.parseFloat(tripForm.destinationLongitude),
+        routePath: parseRoutePathJson(tripForm.routePathJson),
+        routeDistanceMeters: parseOptionalInteger(tripForm.routeDistanceMeters),
+        routeDurationSeconds: parseOptionalInteger(tripForm.routeDurationSeconds),
         departureAt: toIsoString(tripForm.departureAt),
         estimatedArrivalAt: toIsoString(tripForm.estimatedArrivalAt),
         seatCount: Number.parseInt(tripForm.seatCount, 10),
@@ -315,4 +321,52 @@ export default function EditTripPage() {
       </article>
     </section>
   );
+}
+
+function parseRoutePathJson(value: string) {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  try {
+    const parsedValue = JSON.parse(value) as unknown;
+
+    if (!Array.isArray(parsedValue)) {
+      return undefined;
+    }
+
+    const routePath = parsedValue
+      .map((point) => {
+        if (!point || typeof point !== 'object') {
+          return null;
+        }
+
+        const candidate = point as { latitude?: unknown; longitude?: unknown };
+
+        if (
+          typeof candidate.latitude !== 'number' ||
+          typeof candidate.longitude !== 'number' ||
+          !Number.isFinite(candidate.latitude) ||
+          !Number.isFinite(candidate.longitude)
+        ) {
+          return null;
+        }
+
+        return {
+          latitude: candidate.latitude,
+          longitude: candidate.longitude,
+        };
+      })
+      .filter((point): point is { latitude: number; longitude: number } => point !== null);
+
+    return routePath.length > 1 ? routePath : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseOptionalInteger(value: string): number | undefined {
+  const parsedValue = Number.parseInt(value, 10);
+
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : undefined;
 }

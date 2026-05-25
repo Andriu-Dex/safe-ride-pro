@@ -14,6 +14,9 @@ export class UpdateInstitutionSettingsRequestDto {
   @IsBoolean()
   allowPaypalPayments!: boolean;
 
+  @IsBoolean()
+  allowWalletPayments!: boolean;
+
   @IsOptional()
   @Transform(({ value }) =>
     typeof value === 'string' ? value.trim() || undefined : value,

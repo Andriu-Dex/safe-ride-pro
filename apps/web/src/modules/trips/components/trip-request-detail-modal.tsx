@@ -173,6 +173,7 @@ export function TripRequestDetailModal({
                   destination={destinationSelection}
                   dropoff={requestedDropoffSelection}
                   origin={originSelection}
+                  routePath={request.tripRoutePath}
                 />
               </div>
             </section>

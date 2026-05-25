@@ -9,7 +9,10 @@ import {
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import type { TripRoutePathPoint } from '../../../trips/application/ports/trips.repository';
+
 export const TRIP_REQUESTS_REPOSITORY = Symbol('TRIP_REQUESTS_REPOSITORY');
+export const WALLET_INSUFFICIENT_BALANCE = 'WALLET_INSUFFICIENT_BALANCE';
 
 export type TripRequestMembershipRecord = {
   id: string;
@@ -34,6 +37,9 @@ export type TripRequestTripRecord = {
   routeMode: TripRouteMode;
   originLabel: string;
   destinationLabel: string;
+  routePath?: TripRoutePathPoint[] | null;
+  routeDistanceMeters?: number | null;
+  routeDurationSeconds?: number | null;
   departureAt: Date;
   estimatedArrivalAt: Date;
   seatCount: number;
@@ -61,6 +67,9 @@ export type TripRequestRecord = {
   tripDestinationLabel: string;
   tripDestinationLatitude: number | null;
   tripDestinationLongitude: number | null;
+  tripRoutePath?: TripRoutePathPoint[] | null;
+  tripRouteDistanceMeters?: number | null;
+  tripRouteDurationSeconds?: number | null;
   tripDepartureAt: Date;
   tripEstimatedArrivalAt: Date;
   tripCompletedAt: Date | null;

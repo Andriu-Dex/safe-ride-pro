@@ -18,7 +18,7 @@ import { AuditService } from '../../../audit/application/services/audit.service'
 import { AuditAction, AuditEntityType } from '../../../audit/domain/audit.types';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
-import { TRIPS_REPOSITORY, TripsRepository } from '../ports/trips.repository';
+import { TRIPS_REPOSITORY, TripsRepository, type TripRoutePathPoint } from '../ports/trips.repository';
 
 export type UpdateTripCommand = {
   userId: string;
@@ -31,6 +31,9 @@ export type UpdateTripCommand = {
   originLongitude: number;
   destinationLatitude: number;
   destinationLongitude: number;
+  routePath?: TripRoutePathPoint[];
+  routeDistanceMeters?: number;
+  routeDurationSeconds?: number;
   departureAt: string;
   estimatedArrivalAt: string;
   seatCount: number;
@@ -174,6 +177,9 @@ export class UpdateTripUseCase {
       originLongitude: command.originLongitude,
       destinationLatitude: command.destinationLatitude,
       destinationLongitude: command.destinationLongitude,
+      routePath: normalizeRoutePath(command.routePath),
+      routeDistanceMeters: command.routeDistanceMeters,
+      routeDurationSeconds: command.routeDurationSeconds,
       departureAt,
       estimatedArrivalAt,
       seatCount: command.seatCount,
@@ -211,4 +217,21 @@ export class UpdateTripUseCase {
       trip: updatedTrip,
     };
   }
+}
+
+function normalizeRoutePath(routePath: TripRoutePathPoint[] | undefined): TripRoutePathPoint[] | undefined {
+  if (!routePath?.length) {
+    return undefined;
+  }
+
+  return routePath
+    .filter((point) =>
+      Number.isFinite(point.latitude) &&
+      Number.isFinite(point.longitude) &&
+      point.latitude >= -90 &&
+      point.latitude <= 90 &&
+      point.longitude >= -180 &&
+      point.longitude <= 180,
+    )
+    .slice(0, 400);
 }

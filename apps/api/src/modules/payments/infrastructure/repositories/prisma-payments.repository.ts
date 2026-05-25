@@ -310,6 +310,193 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
     return payment ? this.mapPayment(payment) : null;
   }
 
+  async captureWalletPayment(paymentId: string): Promise<TripPaymentRecord | null> {
+    const payment = await this.prisma.$transaction(async (transaction) => {
+      const currentPayment = await transaction.tripPayment.findUnique({
+        where: { id: paymentId },
+      });
+
+      if (
+        !currentPayment ||
+        currentPayment.provider !== PaymentProvider.Wallet ||
+        currentPayment.status !== TripPaymentStatus.Paid
+      ) {
+        return null;
+      }
+
+      const existingCapture = await transaction.walletLedgerEntry.findFirst({
+        where: {
+          tripPaymentId: paymentId,
+          type: 'HOLD_CAPTURED',
+        },
+      });
+
+      if (existingCapture) {
+        return transaction.tripPayment.findUnique({
+          where: { id: paymentId },
+          include: this.paymentInclude(),
+        });
+      }
+
+      const hold = await transaction.walletLedgerEntry.findFirst({
+        where: {
+          tripPaymentId: paymentId,
+          type: 'HOLD_CREATED',
+        },
+        include: {
+          wallet: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+
+      if (!hold) {
+        return transaction.tripPayment.findUnique({
+          where: { id: paymentId },
+          include: this.paymentInclude(),
+        });
+      }
+
+      const amount = Number.parseFloat(hold.amount.toString());
+      const updatedWallet = await transaction.walletAccount.update({
+        where: { id: hold.walletId },
+        data: {
+          heldBalance: {
+            decrement: amount,
+          },
+        },
+      });
+
+      await transaction.walletLedgerEntry.create({
+        data: {
+          walletId: hold.walletId,
+          type: 'HOLD_CAPTURED',
+          amount,
+          availableBalanceAfter: updatedWallet.availableBalance,
+          heldBalanceAfter: updatedWallet.heldBalance,
+          tripPaymentId: paymentId,
+          note: 'Saldo capturado por solicitud aceptada.',
+        },
+      });
+
+      return transaction.tripPayment.findUnique({
+        where: { id: paymentId },
+        include: this.paymentInclude(),
+      });
+    });
+
+    return payment ? this.mapPayment(payment) : null;
+  }
+
+  async refundWalletPayment(
+    paymentId: string,
+    failureReason?: string,
+  ): Promise<TripPaymentRecord | null> {
+    const payment = await this.prisma.$transaction(async (transaction) => {
+      const currentPayment = await transaction.tripPayment.findUnique({
+        where: { id: paymentId },
+      });
+
+      if (!currentPayment || currentPayment.provider !== PaymentProvider.Wallet) {
+        return null;
+      }
+
+      if (currentPayment.status === TripPaymentStatus.Refunded) {
+        return transaction.tripPayment.findUnique({
+          where: { id: paymentId },
+          include: this.paymentInclude(),
+        });
+      }
+
+      const hold = await transaction.walletLedgerEntry.findFirst({
+        where: {
+          tripPaymentId: paymentId,
+          type: 'HOLD_CREATED',
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+
+      const alreadyRefunded = await transaction.walletLedgerEntry.findFirst({
+        where: {
+          tripPaymentId: paymentId,
+          type: {
+            in: ['HOLD_RELEASED', 'REFUND_CREDIT'],
+          },
+        },
+      });
+
+      if (hold && !alreadyRefunded) {
+        const capture = await transaction.walletLedgerEntry.findFirst({
+          where: {
+            tripPaymentId: paymentId,
+            type: 'HOLD_CAPTURED',
+          },
+        });
+        const amount = Number.parseFloat(hold.amount.toString());
+        const updatedWallet = await transaction.walletAccount.update({
+          where: { id: hold.walletId },
+          data: capture
+            ? {
+                availableBalance: {
+                  increment: amount,
+                },
+              }
+            : {
+                availableBalance: {
+                  increment: amount,
+                },
+                heldBalance: {
+                  decrement: amount,
+                },
+              },
+        });
+
+        await transaction.walletLedgerEntry.create({
+          data: {
+            walletId: hold.walletId,
+            type: capture ? 'REFUND_CREDIT' : 'HOLD_RELEASED',
+            amount,
+            availableBalanceAfter: updatedWallet.availableBalance,
+            heldBalanceAfter: updatedWallet.heldBalance,
+            tripPaymentId: paymentId,
+            note: failureReason ?? 'Saldo devuelto a la billetera.',
+          },
+        });
+      }
+
+      await transaction.tripPayment.update({
+        where: { id: paymentId },
+        data: {
+          status: TripPaymentStatus.Refunded,
+          cancelledAt: new Date(),
+          failureReason: failureReason ?? 'Saldo devuelto a la billetera.',
+          lastSyncedAt: new Date(),
+        },
+      });
+
+      await transaction.tripPaymentAttempt.create({
+        data: {
+          paymentId,
+          provider: PaymentProvider.Wallet,
+          status: TripPaymentStatus.Refunded,
+          responsePayload: {
+            reason: failureReason ?? 'Saldo devuelto a la billetera.',
+          },
+        },
+      });
+
+      return transaction.tripPayment.findUnique({
+        where: { id: paymentId },
+        include: this.paymentInclude(),
+      });
+    });
+
+    return payment ? this.mapPayment(payment) : null;
+  }
+
   async markPaymentsCancelledByTripId(tripId: string, failureReason?: string): Promise<number> {
     const result = await this.prisma.tripPayment.updateMany({
       where: {

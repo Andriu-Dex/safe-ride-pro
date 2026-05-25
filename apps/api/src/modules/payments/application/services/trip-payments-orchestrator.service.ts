@@ -23,10 +23,19 @@ export class TripPaymentsOrchestratorService {
   ) {}
 
   async ensureAcceptedTripRequestPayment(tripRequestId: string, currencyCode: string) {
-    return this.paymentsRepository.upsertAcceptedTripRequestPayment({
+    const payment = await this.paymentsRepository.upsertAcceptedTripRequestPayment({
       tripRequestId,
       currencyCode,
     });
+
+    if (
+      payment?.provider === PaymentProvider.Wallet &&
+      payment.status === TripPaymentStatus.Paid
+    ) {
+      return this.paymentsRepository.captureWalletPayment(payment.id);
+    }
+
+    return payment;
   }
 
   async cancelTripRequestPayment(tripRequestId: string, failureReason: string) {
@@ -81,6 +90,13 @@ export class TripPaymentsOrchestratorService {
         refundedAt: refund.refundedAt,
         responsePayload: refund.rawResponse,
       });
+    }
+
+    if (
+      payment.provider === PaymentProvider.Wallet &&
+      payment.status === TripPaymentStatus.Paid
+    ) {
+      return this.paymentsRepository.refundWalletPayment(payment.id, failureReason);
     }
 
     if (payment.status === TripPaymentStatus.Paid) {

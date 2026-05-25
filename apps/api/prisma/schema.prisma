@@ -94,6 +94,25 @@ enum TripRequestExecutionStatus {
 enum PaymentProvider {
   PAYPAL
   CASH
+  WALLET
+}
+
+enum WalletLedgerEntryType {
+  TOP_UP_CAPTURED
+  HOLD_CREATED
+  HOLD_RELEASED
+  HOLD_CAPTURED
+  REFUND_CREDIT
+}
+
+enum WalletTopUpStatus {
+  PENDING
+  CHECKOUT_READY
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  EXPIRED
 }
 
 enum TripPaymentStatus {
@@ -219,6 +238,7 @@ model Institution {
   memberships   UserInstitutionMembership[]
   trips         Trip[]
   tripPayments  TripPayment[]
+  walletAccounts WalletAccount[]
   auditEvents   AuditEvent[]
   notifications AppNotification[]
 
@@ -244,6 +264,7 @@ model InstitutionSettings {
   institutionId                 String      @unique
   allowCashPayments             Boolean     @default(true)
   allowPaypalPayments           Boolean     @default(true)
+  allowWalletPayments           Boolean     @default(true)
   termsDocumentUrl              String?
   privacyPolicyUrl              String?
   safetyRulesTitle              String      @default("Reglas minimas de seguridad")
@@ -313,6 +334,7 @@ model UserInstitutionMembership {
   passengerTripRequests    TripRequest[]
   passengerTripPayments    TripPayment[]            @relation("TripPaymentPassenger")
   driverTripPayments       TripPayment[]            @relation("TripPaymentDriver")
+  walletAccount            WalletAccount?
   ratingsGiven             Rating[]                 @relation("RatingAuthor")
   ratingsReceived          Rating[]                 @relation("RatingTarget")
   reportsCreated           Report[]                 @relation("ReportReporter")
@@ -470,6 +492,9 @@ model Trip {
   originLongitude          Float                     @db.DoublePrecision
   destinationLatitude      Float                     @db.DoublePrecision
   destinationLongitude     Float                     @db.DoublePrecision
+  routePath                Json?
+  routeDistanceMeters      Int?
+  routeDurationSeconds     Int?
   departureAt              DateTime
   estimatedArrivalAt       DateTime
   seatCount                Int
@@ -595,6 +620,7 @@ model TripPayment {
   passengerMembership    UserInstitutionMembership @relation("TripPaymentPassenger", fields: [passengerMembershipId], references: [id], onDelete: Cascade)
   driverMembership       UserInstitutionMembership @relation("TripPaymentDriver", fields: [driverMembershipId], references: [id], onDelete: Cascade)
   attempts               TripPaymentAttempt[]
+  walletLedgerEntries    WalletLedgerEntry[]
 
   @@index([institutionId, status, createdAt])
   @@index([tripId, status, createdAt])
@@ -622,6 +648,74 @@ model TripPaymentAttempt {
   @@index([paymentId, createdAt])
   @@index([providerOrderToken])
   @@map("trip_payment_attempts")
+}
+
+model WalletAccount {
+  id               String                    @id @default(uuid())
+  institutionId    String
+  membershipId     String                    @unique
+  currencyCode     String                    @default("USD")
+  availableBalance Decimal                   @default(0) @db.Decimal(10, 2)
+  heldBalance      Decimal                   @default(0) @db.Decimal(10, 2)
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  institution      Institution               @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  membership       UserInstitutionMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  ledgerEntries    WalletLedgerEntry[]
+  topUps           WalletTopUp[]
+
+  @@index([institutionId])
+  @@map("wallet_accounts")
+}
+
+model WalletLedgerEntry {
+  id                    String                @id @default(uuid())
+  walletId              String
+  type                  WalletLedgerEntryType
+  amount                Decimal               @db.Decimal(10, 2)
+  availableBalanceAfter Decimal               @db.Decimal(10, 2)
+  heldBalanceAfter      Decimal               @db.Decimal(10, 2)
+  tripPaymentId         String?
+  topUpId               String?
+  note                  String?
+  metadata              Json?
+  createdAt             DateTime              @default(now())
+  wallet                WalletAccount         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  tripPayment           TripPayment?          @relation(fields: [tripPaymentId], references: [id], onDelete: SetNull)
+  topUp                 WalletTopUp?          @relation(fields: [topUpId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, createdAt])
+  @@index([tripPaymentId, type])
+  @@index([topUpId, type])
+  @@map("wallet_ledger_entries")
+}
+
+model WalletTopUp {
+  id                     String                @id @default(uuid())
+  walletId               String
+  provider               PaymentProvider       @default(PAYPAL)
+  status                 WalletTopUpStatus     @default(PENDING)
+  currencyCode           String                @default("USD")
+  amount                 Decimal               @db.Decimal(10, 2)
+  merchantOrderReference String                @unique
+  providerOrderToken     String?               @unique
+  providerPaymentLinkId  String?
+  providerPaymentLinkUrl String?
+  providerOrderStatus    String?
+  providerPaymentStatus  String?
+  failureReason          String?
+  paidAt                 DateTime?
+  cancelledAt            DateTime?
+  expiresAt              DateTime?
+  lastSyncedAt           DateTime?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  wallet                 WalletAccount         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  ledgerEntries          WalletLedgerEntry[]
+
+  @@index([walletId, status, createdAt])
+  @@index([providerOrderToken])
+  @@map("wallet_top_ups")
 }
 
 model Rating {

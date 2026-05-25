@@ -15,6 +15,7 @@ import { TripsModule } from './modules/trips/trips.module';
 import { TripRequestsModule } from './modules/trip-requests/trip-requests.module';
 import { UsersModule } from './modules/users/users.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 import { EnvironmentModule } from './shared/infrastructure/config/environment.module';
 import { DatabaseModule } from './shared/infrastructure/database/database.module';
 
@@ -32,6 +33,7 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
     NotificationsModule,
     SanctionsModule,
     PaymentsModule,
+    WalletModule,
     TripsModule,
     TripRequestsModule,
     RatingsModule,

@@ -36,7 +36,7 @@ export class PaypalPaymentProvider implements PaymentProviderPort {
   }
 
   async createCheckout(input: CreatePaymentCheckoutInput): Promise<CreatePaymentCheckoutResult> {
-    const redirectUrls = this.buildRedirectUrls(input.paymentId);
+    const redirectUrls = this.buildRedirectUrls(input);
     const response = await this.request('/v2/checkout/orders', {
       method: 'POST',
       body: {
@@ -46,7 +46,9 @@ export class PaypalPaymentProvider implements PaymentProviderPort {
             reference_id: input.paymentId,
             custom_id: input.paymentId,
             invoice_id: input.merchantOrderReference,
-            description: `Cupo de viaje ${input.tripOriginLabel} - ${input.tripDestinationLabel}`,
+            description:
+              input.description ??
+              `Cupo de viaje ${input.tripOriginLabel} - ${input.tripDestinationLabel}`,
             amount: {
               currency_code: input.currencyCode,
               value: input.amount.toFixed(2),
@@ -159,16 +161,26 @@ export class PaypalPaymentProvider implements PaymentProviderPort {
     return readString(response, ['purchase_units', '0', 'payments', 'captures', '0', 'id']);
   }
 
-  private buildRedirectUrls(paymentId: string) {
+  private buildRedirectUrls(input: CreatePaymentCheckoutInput) {
     const webOrigin = this.environment.webAppOrigins[0] ?? 'http://localhost:3000';
-    const successUrl = new URL('/viajes', webOrigin);
-    successUrl.searchParams.set('paymentId', paymentId);
-    successUrl.searchParams.set('paymentProvider', 'paypal');
+    const successUrl = new URL(input.successPath ?? '/viajes', webOrigin);
+    const successParams = input.successParams ?? {
+      paymentId: input.paymentId,
+      paymentProvider: 'paypal',
+    };
+    Object.entries(successParams).forEach(([key, value]) => {
+      successUrl.searchParams.set(key, value);
+    });
 
-    const cancelUrl = new URL('/viajes', webOrigin);
-    cancelUrl.searchParams.set('paymentId', paymentId);
-    cancelUrl.searchParams.set('paymentProvider', 'paypal');
-    cancelUrl.searchParams.set('paymentResult', 'cancel');
+    const cancelUrl = new URL(input.cancelPath ?? input.successPath ?? '/viajes', webOrigin);
+    const cancelParams = input.cancelParams ?? {
+      paymentId: input.paymentId,
+      paymentProvider: 'paypal',
+      paymentResult: 'cancel',
+    };
+    Object.entries(cancelParams).forEach(([key, value]) => {
+      cancelUrl.searchParams.set(key, value);
+    });
 
     return {
       success: successUrl.toString(),

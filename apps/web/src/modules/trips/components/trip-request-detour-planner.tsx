@@ -15,6 +15,7 @@ type TripRequestDetourPlannerProps = {
   destinationLabel: string;
   destinationLatitude: string;
   destinationLongitude: string;
+  routePath?: Array<{ latitude: number; longitude: number }> | null;
   disabled?: boolean;
   originLabel: string;
   originLatitude: string;
@@ -27,6 +28,7 @@ export function TripRequestDetourPlanner({
   destinationLabel,
   destinationLatitude,
   destinationLongitude,
+  routePath = null,
   disabled = false,
   originLabel,
   originLatitude,
@@ -133,6 +135,7 @@ export function TripRequestDetourPlanner({
             dropoff={dropoffSelection}
             onMapSelect={handleMapSelect}
             origin={originSelection}
+            routePath={routePath}
             selectionMode="dropoff"
           />
 

@@ -7,6 +7,7 @@ import {
   TripRouteMode,
   TripStatus,
 } from '@saferidepro/shared-types';
+import type { TripRoutePathPoint } from '../../trips/types/trip';
 
 export type TripRequestRecord = {
   id: string;
@@ -29,6 +30,9 @@ export type TripRequestRecord = {
   tripDestinationLabel: string;
   tripDestinationLatitude: number | null;
   tripDestinationLongitude: number | null;
+  tripRoutePath: TripRoutePathPoint[] | null;
+  tripRouteDistanceMeters: number | null;
+  tripRouteDurationSeconds: number | null;
   tripDepartureAt: string;
   tripEstimatedArrivalAt: string;
   tripCompletedAt: string | null;

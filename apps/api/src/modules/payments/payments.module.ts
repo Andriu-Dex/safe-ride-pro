@@ -33,6 +33,6 @@ import { PaymentsController } from './presentation/controllers/payments.controll
     RefreshPaymentStatusUseCase,
     ReportCashPaymentIssueUseCase,
   ],
-  exports: [TripPaymentsOrchestratorService],
+  exports: [TripPaymentsOrchestratorService, PAYMENT_PROVIDER],
 })
 export class PaymentsModule {}

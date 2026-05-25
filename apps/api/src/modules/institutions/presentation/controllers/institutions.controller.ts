@@ -70,6 +70,7 @@ export class InstitutionsController {
       institutionId: query.institutionId,
       allowCashPayments: body.allowCashPayments,
       allowPaypalPayments: body.allowPaypalPayments,
+      allowWalletPayments: body.allowWalletPayments,
       termsDocumentUrl: body.termsDocumentUrl,
       privacyPolicyUrl: body.privacyPolicyUrl,
       safetyRulesTitle: body.safetyRulesTitle,

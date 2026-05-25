@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import {
   CancellationTiming,
   DriverLicenseStatus,
@@ -126,6 +127,9 @@ export class PrismaTripsRepository implements TripsRepository {
         originLongitude: input.originLongitude,
         destinationLatitude: input.destinationLatitude,
         destinationLongitude: input.destinationLongitude,
+        routePath: toPrismaRoutePath(input.routePath),
+        routeDistanceMeters: input.routeDistanceMeters,
+        routeDurationSeconds: input.routeDurationSeconds,
         departureAt: input.departureAt,
         estimatedArrivalAt: input.estimatedArrivalAt,
         seatCount: input.seatCount,
@@ -159,6 +163,9 @@ export class PrismaTripsRepository implements TripsRepository {
         originLongitude: input.originLongitude,
         destinationLatitude: input.destinationLatitude,
         destinationLongitude: input.destinationLongitude,
+        routePath: toPrismaRoutePath(input.routePath) ?? Prisma.JsonNull,
+        routeDistanceMeters: input.routeDistanceMeters ?? null,
+        routeDurationSeconds: input.routeDurationSeconds ?? null,
         departureAt: input.departureAt,
         estimatedArrivalAt: input.estimatedArrivalAt,
         seatCount: input.seatCount,
@@ -724,6 +731,9 @@ export class PrismaTripsRepository implements TripsRepository {
     originLongitude: number;
     destinationLatitude: number;
     destinationLongitude: number;
+    routePath: unknown;
+    routeDistanceMeters: number | null;
+    routeDurationSeconds: number | null;
     departureAt: Date;
     estimatedArrivalAt: Date;
     seatCount: number;
@@ -766,6 +776,9 @@ export class PrismaTripsRepository implements TripsRepository {
       originLongitude: trip.originLongitude,
       destinationLatitude: trip.destinationLatitude,
       destinationLongitude: trip.destinationLongitude,
+      routePath: mapRoutePath(trip.routePath),
+      routeDistanceMeters: trip.routeDistanceMeters,
+      routeDurationSeconds: trip.routeDurationSeconds,
       departureAt: trip.departureAt,
       estimatedArrivalAt: trip.estimatedArrivalAt,
       seatCount: trip.seatCount,
@@ -843,4 +856,49 @@ export class PrismaTripsRepository implements TripsRepository {
         })),
     };
   }
+}
+
+function mapRoutePath(value: unknown): Array<{ latitude: number; longitude: number }> | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const routePath = value
+    .map((point) => {
+      if (!point || typeof point !== 'object') {
+        return null;
+      }
+
+      const candidate = point as { latitude?: unknown; longitude?: unknown };
+
+      if (
+        typeof candidate.latitude !== 'number' ||
+        typeof candidate.longitude !== 'number' ||
+        !Number.isFinite(candidate.latitude) ||
+        !Number.isFinite(candidate.longitude)
+      ) {
+        return null;
+      }
+
+      return {
+        latitude: candidate.latitude,
+        longitude: candidate.longitude,
+      };
+    })
+    .filter((point): point is { latitude: number; longitude: number } => point !== null);
+
+  return routePath.length > 1 ? routePath : null;
+}
+
+function toPrismaRoutePath(
+  routePath: Array<{ latitude: number; longitude: number }> | null | undefined,
+): Prisma.InputJsonValue | undefined {
+  if (!routePath || routePath.length < 2) {
+    return undefined;
+  }
+
+  return routePath.map((point) => ({
+    latitude: point.latitude,
+    longitude: point.longitude,
+  }));
 }

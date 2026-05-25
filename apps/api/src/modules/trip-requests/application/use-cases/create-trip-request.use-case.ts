@@ -25,6 +25,7 @@ import { OperationalSanctionsService } from '../../../sanctions/application/serv
 import {
   TRIP_REQUESTS_REPOSITORY,
   TripRequestsRepository,
+  WALLET_INSUFFICIENT_BALANCE,
 } from '../ports/trip-requests.repository';
 
 export type CreateTripRequestCommand = {
@@ -121,6 +122,15 @@ export class CreateTripRequestUseCase {
       );
     }
 
+    if (
+      selectedPaymentProvider === PaymentProvider.Wallet &&
+      !institutionSettings.allowWalletPayments
+    ) {
+      throw new BadRequestException(
+        'Esta institucion desactivo temporalmente la billetera para nuevas reservas.',
+      );
+    }
+
     this.validateDetourPoints(trip.routeMode, command);
 
     const activeRequest = await this.tripRequestsRepository.findActiveRequestForTripAndPassenger(
@@ -132,17 +142,7 @@ export class CreateTripRequestUseCase {
       throw new BadRequestException('Ya tienes una solicitud activa para este viaje.');
     }
 
-    const tripRequest = await this.tripRequestsRepository.createTripRequest({
-      tripId: trip.id,
-      passengerMembershipId: membership.id,
-      paymentProvider: selectedPaymentProvider,
-      currencyCode: getAppEnvironment().paymentsCurrency,
-      requestedPickupLatitude: command.requestedPickupLatitude,
-      requestedPickupLongitude: command.requestedPickupLongitude,
-      requestedDropoffLatitude: command.requestedDropoffLatitude,
-      requestedDropoffLongitude: command.requestedDropoffLongitude,
-      requestMessage: command.requestMessage?.trim() || undefined,
-    });
+    const tripRequest = await this.createTripRequest(command, trip.id, membership.id, selectedPaymentProvider);
 
     this.realtimeEventsService.publishTripRequestChanged({
       actorUserId: command.userId,
@@ -180,9 +180,38 @@ export class CreateTripRequestUseCase {
       message:
         tripRequest.payment?.provider === PaymentProvider.Paypal
           ? 'Solicitud creada. Completa el pago para enviarla al conductor.'
+          : tripRequest.payment?.provider === PaymentProvider.Wallet
+            ? 'Solicitud enviada con saldo retenido.'
           : 'Solicitud enviada correctamente.',
       tripRequest,
     };
+  }
+
+  private async createTripRequest(
+    command: CreateTripRequestCommand,
+    tripId: string,
+    passengerMembershipId: string,
+    selectedPaymentProvider: PaymentProvider,
+  ) {
+    try {
+      return await this.tripRequestsRepository.createTripRequest({
+        tripId,
+        passengerMembershipId,
+        paymentProvider: selectedPaymentProvider,
+        currencyCode: getAppEnvironment().paymentsCurrency,
+        requestedPickupLatitude: command.requestedPickupLatitude,
+        requestedPickupLongitude: command.requestedPickupLongitude,
+        requestedDropoffLatitude: command.requestedDropoffLatitude,
+        requestedDropoffLongitude: command.requestedDropoffLongitude,
+        requestMessage: command.requestMessage?.trim() || undefined,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === WALLET_INSUFFICIENT_BALANCE) {
+        throw new BadRequestException('Saldo insuficiente en la billetera.');
+      }
+
+      throw error;
+    }
   }
 
   private validateDetourPoints(

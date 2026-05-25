@@ -31,6 +31,7 @@ function getApiErrorMessage(error: unknown, fallbackMessage: string) {
 const EMPTY_FORM: SettingsFormState = {
   allowCashPayments: true,
   allowPaypalPayments: true,
+  allowWalletPayments: true,
   termsDocumentUrl: '',
   privacyPolicyUrl: '',
   safetyRulesTitle: '',
@@ -107,6 +108,7 @@ export default function ConfigurationPage() {
       const nextState: SettingsFormState = {
         allowCashPayments: response.settings.allowCashPayments,
         allowPaypalPayments: response.settings.allowPaypalPayments,
+        allowWalletPayments: response.settings.allowWalletPayments,
         termsDocumentUrl: response.settings.termsDocumentUrl ?? '',
         privacyPolicyUrl: response.settings.privacyPolicyUrl ?? '',
         safetyRulesTitle: response.settings.safetyRulesTitle,
@@ -153,7 +155,7 @@ export default function ConfigurationPage() {
   }, [errorMessage, pushToast]);
 
   const handleTextChange = (
-    field: keyof Omit<SettingsFormState, 'allowCashPayments' | 'allowPaypalPayments'>,
+    field: keyof Omit<SettingsFormState, 'allowCashPayments' | 'allowPaypalPayments' | 'allowWalletPayments'>,
     value: string,
   ) => {
     setFormState((currentState) => ({
@@ -163,7 +165,7 @@ export default function ConfigurationPage() {
   };
 
   const handleToggleChange = (
-    field: 'allowCashPayments' | 'allowPaypalPayments',
+    field: 'allowCashPayments' | 'allowPaypalPayments' | 'allowWalletPayments',
     checked: boolean,
   ) => {
     setFormState((currentState) => ({
@@ -190,6 +192,7 @@ export default function ConfigurationPage() {
         {
           allowCashPayments: formState.allowCashPayments,
           allowPaypalPayments: formState.allowPaypalPayments,
+          allowWalletPayments: formState.allowWalletPayments,
           termsDocumentUrl: (formState.termsDocumentUrl ?? '').trim(),
           privacyPolicyUrl: (formState.privacyPolicyUrl ?? '').trim(),
           safetyRulesTitle: formState.safetyRulesTitle.trim(),
@@ -202,6 +205,7 @@ export default function ConfigurationPage() {
       const nextState: SettingsFormState = {
         allowCashPayments: response.settings.allowCashPayments,
         allowPaypalPayments: response.settings.allowPaypalPayments,
+        allowWalletPayments: response.settings.allowWalletPayments,
         termsDocumentUrl: response.settings.termsDocumentUrl ?? '',
         privacyPolicyUrl: response.settings.privacyPolicyUrl ?? '',
         safetyRulesTitle: response.settings.safetyRulesTitle,
@@ -330,6 +334,17 @@ export default function ConfigurationPage() {
               <input
                 checked={formState.allowPaypalPayments}
                 onChange={(event) => handleToggleChange('allowPaypalPayments', event.target.checked)}
+                type="checkbox"
+              />
+            </label>
+            <label className={styles.toggleRow}>
+              <div className={styles.toggleInfo}>
+                <strong>Billetera</strong>
+                <span>Saldo interno recargado con PayPal.</span>
+              </div>
+              <input
+                checked={formState.allowWalletPayments}
+                onChange={(event) => handleToggleChange('allowWalletPayments', event.target.checked)}
                 type="checkbox"
               />
             </label>

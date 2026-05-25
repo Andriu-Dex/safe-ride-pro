@@ -9,6 +9,9 @@ export type TripFormValues = {
   originLongitude: string;
   destinationLatitude: string;
   destinationLongitude: string;
+  routePathJson: string;
+  routeDistanceMeters: string;
+  routeDurationSeconds: string;
   departureAt: string;
   estimatedArrivalAt: string;
   seatCount: string;
@@ -26,6 +29,9 @@ export const EMPTY_TRIP_FORM: TripFormValues = {
   originLongitude: '',
   destinationLatitude: '',
   destinationLongitude: '',
+  routePathJson: '',
+  routeDistanceMeters: '',
+  routeDurationSeconds: '',
   departureAt: '',
   estimatedArrivalAt: '',
   seatCount: '1',

@@ -6,6 +6,7 @@ import {
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
+import Link from 'next/link';
 
 import { Button } from '../../../components/ui/button';
 import { StatusPill } from '../../../components/ui/status-pill';
@@ -328,6 +329,11 @@ export function PassengerActiveRidePanel({
               >
                 Cancelar mi solicitud
               </Button>
+            ) : null}
+            {activeRide.tripStatus === TripStatus.InProgress ? (
+              <Link className="button button-secondary" href={`/viajes/${activeRide.tripId}/seguimiento`}>
+                Seguimiento
+              </Link>
             ) : null}
           </div>
         </div>

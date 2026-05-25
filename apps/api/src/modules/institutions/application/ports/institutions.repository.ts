@@ -12,6 +12,7 @@ export type InstitutionSettingsRecord = {
   institutionId: string;
   allowCashPayments: boolean;
   allowPaypalPayments: boolean;
+  allowWalletPayments?: boolean;
   termsDocumentUrl: string | null;
   privacyPolicyUrl: string | null;
   safetyRulesTitle: string;
@@ -31,6 +32,7 @@ export type UpdateInstitutionSettingsInput = {
   institutionId: string;
   allowCashPayments: boolean;
   allowPaypalPayments: boolean;
+  allowWalletPayments: boolean;
   termsDocumentUrl?: string | null;
   privacyPolicyUrl?: string | null;
   safetyRulesTitle: string;

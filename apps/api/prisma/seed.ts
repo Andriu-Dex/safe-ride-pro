@@ -26,6 +26,8 @@ import {
   TripRouteMode,
   TripStatus,
   VehicleType,
+  WalletLedgerEntryType,
+  WalletTopUpStatus,
 } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -125,7 +127,41 @@ const staticIds = {
   appealPassenger: 'seed-appeal-passenger',
   notificationDriverRequest: 'seed-notification-driver-request',
   notificationPassengerAccepted: 'seed-notification-passenger-accepted',
+  walletPassenger: 'seed-wallet-passenger',
+  walletPassengerTwo: 'seed-wallet-passenger-2',
+  walletTopUpPassenger: 'seed-wallet-topup-passenger',
+  walletLedgerPassengerTopUp: 'seed-wallet-ledger-passenger-topup',
+  walletLedgerPassengerTwoTopUp: 'seed-wallet-ledger-passenger-2-topup',
 } as const;
+
+const routePaths = {
+  ficoaToHuachi: [
+    { latitude: -1.24252, longitude: -78.61577 },
+    { latitude: -1.24782, longitude: -78.61738 },
+    { latitude: -1.25394, longitude: -78.61991 },
+    { latitude: -1.26085, longitude: -78.62244 },
+    { latitude: -1.26764, longitude: -78.62592 },
+  ],
+  atochaToCentro: [
+    { latitude: -1.25333, longitude: -78.62125 },
+    { latitude: -1.25142, longitude: -78.61988 },
+    { latitude: -1.25018, longitude: -78.61774 },
+    { latitude: -1.24894, longitude: -78.61629 },
+  ],
+  huachiChicoToFisei: [
+    { latitude: -1.2661, longitude: -78.6312 },
+    { latitude: -1.26718, longitude: -78.62884 },
+    { latitude: -1.26846, longitude: -78.62602 },
+    { latitude: -1.2699, longitude: -78.6238 },
+  ],
+  izambaToHuachi: [
+    { latitude: -1.2334, longitude: -78.6038 },
+    { latitude: -1.2392, longitude: -78.6081 },
+    { latitude: -1.2474, longitude: -78.6147 },
+    { latitude: -1.2572, longitude: -78.6204 },
+    { latitude: -1.26764, longitude: -78.62592 },
+  ],
+} satisfies Record<string, Prisma.InputJsonValue>;
 
 const licenseTypeSeeds = [
   { code: 'A', name: 'Licencia tipo A' },
@@ -467,6 +503,7 @@ async function main(): Promise<void> {
       id: staticIds.settings,
       allowCashPayments: true,
       allowPaypalPayments: true,
+      allowWalletPayments: true,
       termsDocumentUrl: 'https://example.com/terminos-saferidepro',
       privacyPolicyUrl: 'https://example.com/privacidad-saferidepro',
       safetyRulesTitle: 'Compromiso de viaje seguro',
@@ -480,6 +517,7 @@ async function main(): Promise<void> {
       institutionId: institutionSeed.id,
       allowCashPayments: true,
       allowPaypalPayments: true,
+      allowWalletPayments: true,
       termsDocumentUrl: 'https://example.com/terminos-saferidepro',
       privacyPolicyUrl: 'https://example.com/privacidad-saferidepro',
       safetyRulesTitle: 'Compromiso de viaje seguro',
@@ -640,6 +678,9 @@ async function main(): Promise<void> {
       originLongitude: -78.61577,
       destinationLatitude: -1.26764,
       destinationLongitude: -78.62592,
+      routePath: routePaths.ficoaToHuachi,
+      routeDistanceMeters: 4300,
+      routeDurationSeconds: 1320,
       departureAt: new Date('2030-01-10T22:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-10T22:30:00.000Z'),
       seatCount: 3,
@@ -660,6 +701,9 @@ async function main(): Promise<void> {
       originLongitude: -78.61577,
       destinationLatitude: -1.26764,
       destinationLongitude: -78.62592,
+      routePath: routePaths.ficoaToHuachi,
+      routeDistanceMeters: 4300,
+      routeDurationSeconds: 1320,
       departureAt: new Date('2030-01-10T22:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-10T22:30:00.000Z'),
       seatCount: 3,
@@ -680,6 +724,9 @@ async function main(): Promise<void> {
       originLongitude: -78.62125,
       destinationLatitude: -1.24894,
       destinationLongitude: -78.61629,
+      routePath: routePaths.atochaToCentro,
+      routeDistanceMeters: 1400,
+      routeDurationSeconds: 540,
       departureAt: new Date('2030-01-11T07:15:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-11T07:35:00.000Z'),
       seatCount: 4,
@@ -700,6 +747,9 @@ async function main(): Promise<void> {
       originLongitude: -78.62125,
       destinationLatitude: -1.24894,
       destinationLongitude: -78.61629,
+      routePath: routePaths.atochaToCentro,
+      routeDistanceMeters: 1400,
+      routeDurationSeconds: 540,
       departureAt: new Date('2030-01-11T07:15:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-11T07:35:00.000Z'),
       seatCount: 4,
@@ -720,6 +770,9 @@ async function main(): Promise<void> {
       originLongitude: -78.6312,
       destinationLatitude: -1.2699,
       destinationLongitude: -78.6238,
+      routePath: routePaths.huachiChicoToFisei,
+      routeDistanceMeters: 1300,
+      routeDurationSeconds: 480,
       departureAt: new Date('2030-01-05T18:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-05T18:25:00.000Z'),
       seatCount: 2,
@@ -740,6 +793,9 @@ async function main(): Promise<void> {
       originLongitude: -78.6312,
       destinationLatitude: -1.2699,
       destinationLongitude: -78.6238,
+      routePath: routePaths.huachiChicoToFisei,
+      routeDistanceMeters: 1300,
+      routeDurationSeconds: 480,
       departureAt: new Date('2030-01-05T18:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-05T18:25:00.000Z'),
       seatCount: 2,
@@ -762,6 +818,9 @@ async function main(): Promise<void> {
       originLongitude: -78.6038,
       destinationLatitude: -1.26764,
       destinationLongitude: -78.62592,
+      routePath: routePaths.izambaToHuachi,
+      routeDistanceMeters: 5100,
+      routeDurationSeconds: 1560,
       departureAt: new Date('2030-01-10T20:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-10T20:35:00.000Z'),
       seatCount: 3,
@@ -782,6 +841,9 @@ async function main(): Promise<void> {
       originLongitude: -78.6038,
       destinationLatitude: -1.26764,
       destinationLongitude: -78.62592,
+      routePath: routePaths.izambaToHuachi,
+      routeDistanceMeters: 5100,
+      routeDurationSeconds: 1560,
       departureAt: new Date('2030-01-10T20:00:00.000Z'),
       estimatedArrivalAt: new Date('2030-01-10T20:35:00.000Z'),
       seatCount: 3,
@@ -1056,6 +1118,129 @@ async function main(): Promise<void> {
     },
   });
 
+  await prisma.walletAccount.upsert({
+    where: { membershipId: qaUserSeeds.passenger.membershipId },
+    update: {
+      id: staticIds.walletPassenger,
+      institutionId: institutionSeed.id,
+      currencyCode: 'USD',
+      availableBalance: new Prisma.Decimal('20.00'),
+      heldBalance: new Prisma.Decimal('0.00'),
+    },
+    create: {
+      id: staticIds.walletPassenger,
+      institutionId: institutionSeed.id,
+      membershipId: qaUserSeeds.passenger.membershipId,
+      currencyCode: 'USD',
+      availableBalance: new Prisma.Decimal('20.00'),
+      heldBalance: new Prisma.Decimal('0.00'),
+    },
+  });
+
+  await prisma.walletTopUp.upsert({
+    where: { id: staticIds.walletTopUpPassenger },
+    update: {
+      walletId: staticIds.walletPassenger,
+      provider: PaymentProvider.PAYPAL,
+      status: WalletTopUpStatus.PAID,
+      currencyCode: 'USD',
+      amount: new Prisma.Decimal('20.00'),
+      merchantOrderReference: 'seed-wallet-topup-passenger-001',
+      providerOrderToken: 'seed-wallet-order-passenger-001',
+      providerPaymentLinkId: 'seed-wallet-capture-passenger-001',
+      providerPaymentLinkUrl: null,
+      providerOrderStatus: 'COMPLETED',
+      providerPaymentStatus: 'COMPLETED',
+      failureReason: null,
+      paidAt: new Date('2030-01-01T09:00:00.000Z'),
+      cancelledAt: null,
+      expiresAt: null,
+      lastSyncedAt: new Date('2030-01-01T09:00:00.000Z'),
+    },
+    create: {
+      id: staticIds.walletTopUpPassenger,
+      walletId: staticIds.walletPassenger,
+      provider: PaymentProvider.PAYPAL,
+      status: WalletTopUpStatus.PAID,
+      currencyCode: 'USD',
+      amount: new Prisma.Decimal('20.00'),
+      merchantOrderReference: 'seed-wallet-topup-passenger-001',
+      providerOrderToken: 'seed-wallet-order-passenger-001',
+      providerPaymentLinkId: 'seed-wallet-capture-passenger-001',
+      providerOrderStatus: 'COMPLETED',
+      providerPaymentStatus: 'COMPLETED',
+      paidAt: new Date('2030-01-01T09:00:00.000Z'),
+      lastSyncedAt: new Date('2030-01-01T09:00:00.000Z'),
+    },
+  });
+
+  await prisma.walletLedgerEntry.upsert({
+    where: { id: staticIds.walletLedgerPassengerTopUp },
+    update: {
+      walletId: staticIds.walletPassenger,
+      type: WalletLedgerEntryType.TOP_UP_CAPTURED,
+      amount: new Prisma.Decimal('20.00'),
+      availableBalanceAfter: new Prisma.Decimal('20.00'),
+      heldBalanceAfter: new Prisma.Decimal('0.00'),
+      topUpId: staticIds.walletTopUpPassenger,
+      note: 'Recarga seed QA.',
+      metadata: { source: 'seed' },
+    },
+    create: {
+      id: staticIds.walletLedgerPassengerTopUp,
+      walletId: staticIds.walletPassenger,
+      type: WalletLedgerEntryType.TOP_UP_CAPTURED,
+      amount: new Prisma.Decimal('20.00'),
+      availableBalanceAfter: new Prisma.Decimal('20.00'),
+      heldBalanceAfter: new Prisma.Decimal('0.00'),
+      topUpId: staticIds.walletTopUpPassenger,
+      note: 'Recarga seed QA.',
+      metadata: { source: 'seed' },
+    },
+  });
+
+  await prisma.walletAccount.upsert({
+    where: { membershipId: qaUserSeeds.passengerTwo.membershipId },
+    update: {
+      id: staticIds.walletPassengerTwo,
+      institutionId: institutionSeed.id,
+      currencyCode: 'USD',
+      availableBalance: new Prisma.Decimal('3.00'),
+      heldBalance: new Prisma.Decimal('0.00'),
+    },
+    create: {
+      id: staticIds.walletPassengerTwo,
+      institutionId: institutionSeed.id,
+      membershipId: qaUserSeeds.passengerTwo.membershipId,
+      currencyCode: 'USD',
+      availableBalance: new Prisma.Decimal('3.00'),
+      heldBalance: new Prisma.Decimal('0.00'),
+    },
+  });
+
+  await prisma.walletLedgerEntry.upsert({
+    where: { id: staticIds.walletLedgerPassengerTwoTopUp },
+    update: {
+      walletId: staticIds.walletPassengerTwo,
+      type: WalletLedgerEntryType.TOP_UP_CAPTURED,
+      amount: new Prisma.Decimal('3.00'),
+      availableBalanceAfter: new Prisma.Decimal('3.00'),
+      heldBalanceAfter: new Prisma.Decimal('0.00'),
+      note: 'Saldo minimo seed QA.',
+      metadata: { source: 'seed' },
+    },
+    create: {
+      id: staticIds.walletLedgerPassengerTwoTopUp,
+      walletId: staticIds.walletPassengerTwo,
+      type: WalletLedgerEntryType.TOP_UP_CAPTURED,
+      amount: new Prisma.Decimal('3.00'),
+      availableBalanceAfter: new Prisma.Decimal('3.00'),
+      heldBalanceAfter: new Prisma.Decimal('0.00'),
+      note: 'Saldo minimo seed QA.',
+      metadata: { source: 'seed' },
+    },
+  });
+
   await prisma.rating.upsert({
     where: {
       tripId_authorMembershipId_targetMembershipId: {
@@ -1266,7 +1451,7 @@ async function main(): Promise<void> {
   console.log(`Passenger 2: ${qaUserSeeds.passengerTwo.email} / ${qaUserSeeds.passengerTwo.password}`);
   console.log(`Approved driver: ${qaUserSeeds.driverApproved.email} / ${qaUserSeeds.driverApproved.password}`);
   console.log(`Pending driver: ${qaUserSeeds.driverPending.email} / ${qaUserSeeds.driverPending.password}`);
-  console.log('Seeded modules: institution settings, driver profiles, vehicle, trips, requests, payments, ratings, reports, sanctions, appeals, notifications and audit.');
+  console.log('Seeded modules: institution settings, driver profiles, vehicle, trips, requests, payments, wallet, ratings, reports, sanctions, appeals, notifications and audit.');
 }
 
 main()

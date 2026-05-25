@@ -19,6 +19,7 @@ import {
   TripRequestRecord,
   TripRequestTripRecord,
   TripRequestsRepository,
+  WALLET_INSUFFICIENT_BALANCE,
 } from '../../application/ports/trip-requests.repository';
 
 const TRIP_REQUEST_CONFLICT = 'TRIP_REQUEST_CONFLICT';
@@ -129,7 +130,14 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
           ? Number.parseFloat(trip.detourSurchargeReference.toString())
           : 0);
 
-      await transaction.tripPayment.create({
+      const paymentStatus =
+        input.paymentProvider === PaymentProvider.Wallet
+          ? TripPaymentStatus.Paid
+          : TripPaymentStatus.Pending;
+      const paymentPaidAt =
+        input.paymentProvider === PaymentProvider.Wallet ? new Date() : null;
+
+      const payment = await transaction.tripPayment.create({
         data: {
           institutionId: trip.institutionId,
           tripId: trip.id,
@@ -137,12 +145,55 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
           passengerMembershipId: input.passengerMembershipId,
           driverMembershipId: trip.driverMembershipId,
           provider: input.paymentProvider,
-          status: TripPaymentStatus.Pending,
+          status: paymentStatus,
           currencyCode: input.currencyCode,
           amount,
           merchantOrderReference: `SRP-${createdTripRequest.id}`,
+          paidAt: paymentPaidAt,
         },
       });
+
+      if (input.paymentProvider === PaymentProvider.Wallet) {
+        const wallet = await transaction.walletAccount.upsert({
+          where: { membershipId: input.passengerMembershipId },
+          create: {
+            institutionId: trip.institutionId,
+            membershipId: input.passengerMembershipId,
+            currencyCode: input.currencyCode,
+          },
+          update: {},
+        });
+
+        const availableBalance = Number.parseFloat(wallet.availableBalance.toString());
+
+        if (availableBalance < amount) {
+          throw new Error(WALLET_INSUFFICIENT_BALANCE);
+        }
+
+        const updatedWallet = await transaction.walletAccount.update({
+          where: { id: wallet.id },
+          data: {
+            availableBalance: {
+              decrement: amount,
+            },
+            heldBalance: {
+              increment: amount,
+            },
+          },
+        });
+
+        await transaction.walletLedgerEntry.create({
+          data: {
+            walletId: wallet.id,
+            type: 'HOLD_CREATED',
+            amount,
+            availableBalanceAfter: updatedWallet.availableBalance,
+            heldBalanceAfter: updatedWallet.heldBalance,
+            tripPaymentId: payment.id,
+            note: 'Saldo retenido para solicitud de viaje.',
+          },
+        });
+      }
 
       const createdTripRequestWithRelations = await transaction.tripRequest.findUnique({
         where: { id: createdTripRequest.id },
@@ -191,6 +242,12 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
           {
             payment: {
               provider: PaymentProvider.Paypal,
+              status: TripPaymentStatus.Paid,
+            },
+          },
+          {
+            payment: {
+              provider: PaymentProvider.Wallet,
               status: TripPaymentStatus.Paid,
             },
           },
@@ -606,6 +663,9 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
     routeMode: string;
     originLabel: string;
     destinationLabel: string;
+    routePath: unknown;
+    routeDistanceMeters: number | null;
+    routeDurationSeconds: number | null;
     departureAt: Date;
     estimatedArrivalAt: Date;
     seatCount: number;
@@ -628,6 +688,9 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       routeMode: trip.routeMode as TripRouteMode,
       originLabel: trip.originLabel,
       destinationLabel: trip.destinationLabel,
+      routePath: mapRoutePath(trip.routePath),
+      routeDistanceMeters: trip.routeDistanceMeters,
+      routeDurationSeconds: trip.routeDurationSeconds,
       departureAt: trip.departureAt,
       estimatedArrivalAt: trip.estimatedArrivalAt,
       seatCount: trip.seatCount,
@@ -672,6 +735,9 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       destinationLabel: string;
       destinationLatitude: number | null;
       destinationLongitude: number | null;
+      routePath: unknown;
+      routeDistanceMeters: number | null;
+      routeDurationSeconds: number | null;
       departureAt: Date;
       estimatedArrivalAt: Date;
       completedAt: Date | null;
@@ -717,6 +783,9 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
       tripDestinationLabel: tripRequest.trip.destinationLabel,
       tripDestinationLatitude: tripRequest.trip.destinationLatitude,
       tripDestinationLongitude: tripRequest.trip.destinationLongitude,
+      tripRoutePath: mapRoutePath(tripRequest.trip.routePath),
+      tripRouteDistanceMeters: tripRequest.trip.routeDistanceMeters,
+      tripRouteDurationSeconds: tripRequest.trip.routeDurationSeconds,
       tripDepartureAt: tripRequest.trip.departureAt,
       tripEstimatedArrivalAt: tripRequest.trip.estimatedArrivalAt,
       tripCompletedAt: tripRequest.trip.completedAt,
@@ -755,4 +824,36 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
         : null,
     };
   }
+}
+
+function mapRoutePath(value: unknown): Array<{ latitude: number; longitude: number }> | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const routePath = value
+    .map((point) => {
+      if (!point || typeof point !== 'object') {
+        return null;
+      }
+
+      const candidate = point as { latitude?: unknown; longitude?: unknown };
+
+      if (
+        typeof candidate.latitude !== 'number' ||
+        typeof candidate.longitude !== 'number' ||
+        !Number.isFinite(candidate.latitude) ||
+        !Number.isFinite(candidate.longitude)
+      ) {
+        return null;
+      }
+
+      return {
+        latitude: candidate.latitude,
+        longitude: candidate.longitude,
+      };
+    })
+    .filter((point): point is { latitude: number; longitude: number } => point !== null);
+
+  return routePath.length > 1 ? routePath : null;
 }

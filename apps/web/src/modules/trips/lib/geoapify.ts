@@ -25,12 +25,36 @@ type GeoapifyAutocompleteResponse = {
   }>;
 };
 
+type GeoapifyRouteResponse = {
+  features?: Array<{
+    geometry?: {
+      type?: string;
+      coordinates?: unknown;
+    };
+    properties?: {
+      distance?: number;
+      time?: number;
+    };
+  }>;
+};
+
 export type GeoapifyPlaceSuggestion = {
   id: string;
   label: string;
   address: string | null;
   latitude: number;
   longitude: number;
+};
+
+export type GeoapifyRoutePoint = {
+  latitude: number;
+  longitude: number;
+};
+
+export type GeoapifyRouteRecommendation = {
+  path: GeoapifyRoutePoint[];
+  distanceMeters: number | null;
+  durationSeconds: number | null;
 };
 
 export function isGeoapifyConfigured(): boolean {
@@ -58,6 +82,72 @@ export function buildGeoapifyAutocompleteUrl(query: string): string {
   url.searchParams.set('apiKey', GEOAPIFY_API_KEY);
 
   return url.toString();
+}
+
+export function buildGeoapifyRoutingUrl(
+  origin: GeoapifyRoutePoint,
+  destination: GeoapifyRoutePoint,
+): string {
+  if (!isGeoapifyConfigured()) {
+    throw new Error(getGeoapifySetupMessage());
+  }
+
+  const url = new URL('https://api.geoapify.com/v1/routing');
+  url.searchParams.set(
+    'waypoints',
+    `${origin.latitude},${origin.longitude}|${destination.latitude},${destination.longitude}`,
+  );
+  url.searchParams.set('mode', 'drive');
+  url.searchParams.set('type', 'balanced');
+  url.searchParams.set('lang', 'es');
+  url.searchParams.set('apiKey', GEOAPIFY_API_KEY);
+
+  return url.toString();
+}
+
+export async function fetchGeoapifyRouteRecommendation(
+  origin: GeoapifyRoutePoint,
+  destination: GeoapifyRoutePoint,
+  signal?: AbortSignal,
+): Promise<GeoapifyRouteRecommendation | null> {
+  const response = await fetch(buildGeoapifyRoutingUrl(origin, destination), {
+    signal,
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = (await response.json().catch(() => null)) as GeoapifyRouteResponse | null;
+
+  if (!payload) {
+    return null;
+  }
+
+  return mapGeoapifyRouteRecommendation(payload);
+}
+
+export function mapGeoapifyRouteRecommendation(
+  payload: GeoapifyRouteResponse,
+): GeoapifyRouteRecommendation | null {
+  const feature = payload.features?.[0];
+  const path = mapRouteCoordinates(feature?.geometry?.coordinates);
+
+  if (path.length < 2) {
+    return null;
+  }
+
+  return {
+    path,
+    distanceMeters:
+      typeof feature?.properties?.distance === 'number'
+        ? Math.round(feature.properties.distance)
+        : null,
+    durationSeconds:
+      typeof feature?.properties?.time === 'number'
+        ? Math.round(feature.properties.time)
+        : null,
+  };
 }
 
 export function mapGeoapifySuggestions(
@@ -108,4 +198,43 @@ export function getGeoapifyTileLayerConfig() {
     ].join(' | '),
     maxZoom: 20,
   } as const;
+}
+
+function mapRouteCoordinates(coordinates: unknown): GeoapifyRoutePoint[] {
+  if (!Array.isArray(coordinates)) {
+    return [];
+  }
+
+  const flattened =
+    isCoordinatePair(coordinates[0])
+      ? coordinates
+      : Array.isArray(coordinates[0])
+        ? coordinates.flat(1)
+        : [];
+
+  return flattened
+    .map((coordinate) => {
+      if (!isCoordinatePair(coordinate)) {
+        return null;
+      }
+
+      const [longitude, latitude] = coordinate;
+
+      return {
+        latitude,
+        longitude,
+      };
+    })
+    .filter((point): point is GeoapifyRoutePoint => point !== null);
+}
+
+function isCoordinatePair(value: unknown): value is [number, number] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    typeof value[0] === 'number' &&
+    typeof value[1] === 'number' &&
+    Number.isFinite(value[0]) &&
+    Number.isFinite(value[1])
+  );
 }

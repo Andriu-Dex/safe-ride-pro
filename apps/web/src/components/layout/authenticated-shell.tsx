@@ -44,6 +44,14 @@ const NAV_ITEMS = [
     audience: 'all',
   },
   {
+    href: '/billetera',
+    label: 'Billetera',
+    subtitle: 'Saldo',
+    requiresOperationalMembership: true,
+    icon: 'wallet',
+    audience: 'all',
+  },
+  {
     href: '/conductor',
     label: 'Conductor',
     subtitle: 'Conducir',
@@ -168,6 +176,14 @@ function NavIcon({ name }: { name: NavIconName }) {
         <svg aria-hidden="true" className={iconClass} {...strokeProps} viewBox="0 0 24 24">
           <path d="M12 4 5 7v4.8c0 4.4 2.8 7.6 7 8.9 4.2-1.3 7-4.5 7-8.9V7l-7-3Z" />
           <path d="m9 12.2 2 2 4-4" />
+        </svg>
+      );
+    case 'wallet':
+      return (
+        <svg aria-hidden="true" className={iconClass} {...strokeProps} viewBox="0 0 24 24">
+          <path d="M4 7.5h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 17V6.8A2.3 2.3 0 0 1 5.3 4.5H18" />
+          <path d="M16.5 13.5h4.5" />
+          <circle cx="17.4" cy="13.5" r=".6" />
         </svg>
       );
     case 'audit':

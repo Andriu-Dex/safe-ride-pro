@@ -10,6 +10,8 @@ import { Button } from '../../../components/ui/button';
 import { DisclosurePanel } from '../../../components/ui/disclosure-panel';
 import { StatusPill } from '../../../components/ui/status-pill';
 import type { InstitutionSettingsRecord } from '../../institutions/types/institution-settings';
+import { formatWalletAmount } from '../../wallet/lib/wallet-labels';
+import type { WalletRecord } from '../../wallet/types/wallet';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
 import type { TripFilters, TripRecord } from '../types/trip';
@@ -31,6 +33,7 @@ type TripsDiscoverWorkspaceProps = {
   requestDrafts: Record<string, TripRequestDraft>;
   myRequests: TripRequestRecord[];
   reservationSettings: InstitutionSettingsRecord | null;
+  wallet: WalletRecord | null;
   isMutatingRequestId: string | null;
   isPassengerOperationBlocked: boolean;
   onFilterChange: (field: keyof TripFilters, value: string) => void;
@@ -56,6 +59,7 @@ export function TripsDiscoverWorkspace({
   requestDrafts,
   myRequests,
   reservationSettings,
+  wallet,
   isMutatingRequestId,
   isPassengerOperationBlocked,
   onFilterChange,
@@ -134,7 +138,13 @@ export function TripsDiscoverWorkspace({
                 reservationSettings?.allowCashPayments ?? true;
               const canUsePaypalPayment =
                 reservationSettings?.allowPaypalPayments ?? true;
-              const hasEnabledPaymentOption = canUseCashPayment || canUsePaypalPayment;
+              const requestAmount = trip.basePriceReference + (trip.detourSurchargeReference ?? 0);
+              const canUseWalletPayment =
+                (reservationSettings?.allowWalletPayments ?? true) &&
+                Boolean(wallet) &&
+                (wallet?.account.availableBalance ?? 0) >= requestAmount;
+              const hasEnabledPaymentOption =
+                canUseCashPayment || canUsePaypalPayment || canUseWalletPayment;
               const draft =
                 requestDrafts[trip.id] ??
                 ({
@@ -142,6 +152,8 @@ export function TripsDiscoverWorkspace({
                   paymentProvider:
                     !canUseCashPayment && canUsePaypalPayment
                       ? PaymentProvider.Paypal
+                      : !canUseCashPayment && !canUsePaypalPayment && canUseWalletPayment
+                        ? PaymentProvider.Wallet
                       : PaymentProvider.Cash,
                 } satisfies TripRequestDraft);
 
@@ -185,6 +197,7 @@ export function TripsDiscoverWorkspace({
                             destinationLabel={trip.destinationLabel}
                             destinationLatitude={trip.destinationLatitude?.toFixed(6) ?? ''}
                             destinationLongitude={trip.destinationLongitude?.toFixed(6) ?? ''}
+                            routePath={trip.routePath}
                             disabled={
                               isPassengerOperationBlocked
                               || isMutatingRequestId === trip.id
@@ -266,6 +279,34 @@ export function TripsDiscoverWorkspace({
                               <span>
                                 <strong>PayPal</strong>
                                 <small>Debes pagar antes de enviar al conductor.</small>
+                              </span>
+                            </label>
+                          ) : null}
+                          {(reservationSettings?.allowWalletPayments ?? true) ? (
+                            <label className="trip-payment-option">
+                              <input
+                                checked={draft.paymentProvider === PaymentProvider.Wallet}
+                                disabled={
+                                  hasActiveRequest ||
+                                  isMutatingRequestId === trip.id ||
+                                  !canUseWalletPayment
+                                }
+                                name={`payment-${trip.id}`}
+                                onChange={() =>
+                                  onRequestDraftChange(
+                                    trip.id,
+                                    'paymentProvider',
+                                    PaymentProvider.Wallet,
+                                  )}
+                                type="radio"
+                              />
+                              <span>
+                                <strong>Billetera</strong>
+                                <small>
+                                  {wallet
+                                    ? `${formatWalletAmount(wallet.account.availableBalance, wallet.account.currencyCode)} disponible`
+                                    : 'Sin saldo disponible'}
+                                </small>
                               </span>
                             </label>
                           ) : null}

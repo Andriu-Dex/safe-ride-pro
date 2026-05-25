@@ -305,6 +305,11 @@ export default function TripDetailPage() {
               Editar
             </Link>
           ) : null}
+          {(trip.isOwner || trip.isAcceptedPassenger) && trip.status === TripStatus.InProgress ? (
+            <Link className={styles.heroBtnSecondary} href={`/viajes/${trip.id}/seguimiento`}>
+              Seguimiento
+            </Link>
+          ) : null}
           {trip.canCancel ? (
             <button
               className={styles.heroBtnDanger}
@@ -346,7 +351,11 @@ export default function TripDetailPage() {
 
           {canViewPreciseRoute && origin && destination ? (
             <div className={styles.mapSection}>
-              <TripRouteMap destination={destination} origin={origin} />
+              <TripRouteMap
+                destination={destination}
+                origin={origin}
+                routePath={trip.routePath}
+              />
             </div>
           ) : (
             <div className={`${styles.noticeCard} ${styles.info}`} style={{ margin: 0 }}>

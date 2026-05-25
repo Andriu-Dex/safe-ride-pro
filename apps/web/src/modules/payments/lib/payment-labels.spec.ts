@@ -21,6 +21,7 @@ describe('payment labels', () => {
 
   it('formats provider and amount for es-EC', () => {
     expect(getPaymentProviderLabel(PaymentProvider.Paypal)).toBe('PayPal');
+    expect(getPaymentProviderLabel(PaymentProvider.Wallet)).toBe('Billetera');
     expect(formatTripPaymentAmount(2.5, 'USD')).toContain('2,50');
   });
 });

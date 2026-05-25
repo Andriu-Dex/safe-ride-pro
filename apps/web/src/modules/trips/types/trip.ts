@@ -24,6 +24,9 @@ export type TripRecord = {
   originLongitude: number | null;
   destinationLatitude: number | null;
   destinationLongitude: number | null;
+  routePath: TripRoutePathPoint[] | null;
+  routeDistanceMeters: number | null;
+  routeDurationSeconds: number | null;
   departureAt: string;
   estimatedArrivalAt: string;
   seatCount: number;
@@ -38,6 +41,11 @@ export type TripRecord = {
   completedAt: string | null;
   cancellationTiming: CancellationTiming | null;
   createdAt: string;
+};
+
+export type TripRoutePathPoint = {
+  latitude: number;
+  longitude: number;
 };
 
 export type TripDetailRecord = TripRecord & {
@@ -103,6 +111,9 @@ export type CreateTripInput = {
   originLongitude: number;
   destinationLatitude: number;
   destinationLongitude: number;
+  routePath?: TripRoutePathPoint[];
+  routeDistanceMeters?: number;
+  routeDurationSeconds?: number;
   departureAt: string;
   estimatedArrivalAt: string;
   seatCount: number;
@@ -125,6 +136,9 @@ export type RecentTripRouteTemplate = {
   originLongitude: number;
   destinationLatitude: number;
   destinationLongitude: number;
+  routePath: TripRoutePathPoint[] | null;
+  routeDistanceMeters: number | null;
+  routeDurationSeconds: number | null;
   seatCount: number;
   basePriceReference: number;
   detourSurchargeReference: number | null;

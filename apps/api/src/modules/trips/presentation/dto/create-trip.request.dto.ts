@@ -9,10 +9,22 @@ import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  IsArray,
+  ValidateNested,
   IsString,
   MaxLength,
   Min,
 } from 'class-validator';
+
+class TripRoutePathPointDto {
+  @Type(() => Number)
+  @IsLatitude()
+  latitude!: number;
+
+  @Type(() => Number)
+  @IsLongitude()
+  longitude!: number;
+}
 
 export class CreateTripRequestDto {
   @IsString()
@@ -47,6 +59,24 @@ export class CreateTripRequestDto {
   @Type(() => Number)
   @IsLongitude()
   destinationLongitude!: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TripRoutePathPointDto)
+  routePath?: TripRoutePathPointDto[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  routeDistanceMeters?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  routeDurationSeconds?: number;
 
   @IsDateString()
   departureAt!: string;

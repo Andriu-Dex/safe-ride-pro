@@ -1,0 +1,149 @@
+.page {
+  min-height: calc(100vh - 104px);
+  padding: clamp(1rem, 2vw, 2rem);
+  background:
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.16), transparent 34rem),
+    #edf3f4;
+  color: #102b31;
+}
+
+.hero,
+.mapPanel,
+.statusGrid,
+.stateCard {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1.2rem 1.35rem;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  box-shadow: 0 18px 42px rgba(17, 44, 49, 0.1);
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 3rem);
+  letter-spacing: -0.055em;
+}
+
+.kicker {
+  margin: 0 0 0.35rem;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.linkButton {
+  display: inline-flex;
+  min-height: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
+  border: 1px solid rgba(16, 43, 49, 0.14);
+  background: #fff;
+  color: #102b31;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.mapPanel {
+  overflow: hidden;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 24px 55px rgba(17, 44, 49, 0.12);
+}
+
+.mapPanel :global(.trip-map-shell) {
+  min-height: min(62vh, 620px);
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.statusGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.tile,
+.stateCard {
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 42px rgba(17, 44, 49, 0.09);
+}
+
+.tile {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+}
+
+.tile span {
+  color: #607981;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tile strong {
+  font-size: 1.1rem;
+}
+
+.stateCard {
+  display: grid;
+  min-height: 22rem;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.loadingPulse {
+  width: 3rem;
+  height: 3rem;
+  border: 4px solid rgba(15, 118, 110, 0.16);
+  border-top-color: #0f766e;
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .heroActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .statusGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .statusGrid {
+    grid-template-columns: 1fr;
+  }
+}

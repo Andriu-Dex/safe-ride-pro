@@ -51,6 +51,8 @@ export function getPaymentProviderLabel(provider: PaymentProvider): string {
       return 'PayPal';
     case PaymentProvider.Cash:
       return 'Efectivo';
+    case PaymentProvider.Wallet:
+      return 'Billetera';
     default:
       return provider;
   }

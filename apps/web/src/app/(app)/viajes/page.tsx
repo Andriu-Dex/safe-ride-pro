@@ -81,6 +81,8 @@ import {
 } from '../../../modules/users/lib/trust-labels';
 import type { TrustSummary } from '../../../modules/users/types/trust-summary';
 import type { InstitutionSettingsRecord } from '../../../modules/institutions/types/institution-settings';
+import { getWallet } from '../../../modules/wallet/lib/wallet-api';
+import type { WalletRecord } from '../../../modules/wallet/types/wallet';
 import { TripsWorkspaceSkeleton } from '../../../modules/trips/components/trips-workspace-skeleton';
 import { TripFiltersPanel } from '../../../modules/trips/components/trip-filters-panel';
 import {
@@ -200,6 +202,50 @@ function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof ApiError ? error.message : fallbackMessage;
 }
 
+function resolveAvailablePaymentProvider(
+  requestedProvider: PaymentProvider,
+  settings: InstitutionSettingsRecord | null,
+  wallet: WalletRecord | null,
+  trip: TripRecord,
+): PaymentProvider | null {
+  const canUseCash = settings?.allowCashPayments ?? true;
+  const canUsePaypal = settings?.allowPaypalPayments ?? true;
+  const canUseWallet =
+    (settings?.allowWalletPayments ?? true) &&
+    Boolean(wallet) &&
+    (wallet?.account.availableBalance ?? 0) >= getTripRequestAmount(trip);
+
+  if (requestedProvider === PaymentProvider.Cash && canUseCash) {
+    return PaymentProvider.Cash;
+  }
+
+  if (requestedProvider === PaymentProvider.Paypal && canUsePaypal) {
+    return PaymentProvider.Paypal;
+  }
+
+  if (requestedProvider === PaymentProvider.Wallet && canUseWallet) {
+    return PaymentProvider.Wallet;
+  }
+
+  if (canUseWallet) {
+    return PaymentProvider.Wallet;
+  }
+
+  if (canUseCash) {
+    return PaymentProvider.Cash;
+  }
+
+  if (canUsePaypal) {
+    return PaymentProvider.Paypal;
+  }
+
+  return null;
+}
+
+function getTripRequestAmount(trip: TripRecord): number {
+  return trip.basePriceReference + (trip.detourSurchargeReference ?? 0);
+}
+
 function getTripStatusFilterLabel(status: DriverTripStatusFilter): string {
   switch (status) {
     case 'draft':
@@ -283,6 +329,7 @@ export default function TripsPage() {
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
   const [reservationSettings, setReservationSettings] =
     useState<InstitutionSettingsRecord | null>(null);
+  const [wallet, setWallet] = useState<WalletRecord | null>(null);
   const [myTrips, setMyTrips] = useState<TripRecord[]>([]);
   const [availableTrips, setAvailableTrips] = useState<TripRecord[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<TripRequestRecord[]>([]);
@@ -331,7 +378,7 @@ export default function TripsPage() {
   }, []);
 
   const loadTripsData = useCallback(async (accessToken: string, filters: TripFilters) => {
-    const [vehicleData, trustSummaryData, myTripsData, availableTripsData, myTripRequestsData, incomingTripRequestsData, institutionSettingsData] = await Promise.all([
+    const [vehicleData, trustSummaryData, myTripsData, availableTripsData, myTripRequestsData, incomingTripRequestsData, institutionSettingsData, walletData] = await Promise.all([
       getVehicleOverview(accessToken),
       getCurrentUserTrustSummary(accessToken),
       listMyTrips(accessToken, filters),
@@ -341,11 +388,13 @@ export default function TripsPage() {
       currentMembership?.institutionId
         ? getInstitutionSettings(accessToken, currentMembership.institutionId)
         : Promise.resolve(null),
+      getWallet(accessToken).catch(() => null),
     ]);
 
     setVehicleOverview(vehicleData);
     setTrustSummary(trustSummaryData);
     setReservationSettings(institutionSettingsData?.settings ?? null);
+    setWallet(walletData);
     setMyTrips(myTripsData);
     setAvailableTrips(availableTripsData);
     setMyRequests(myTripRequestsData);
@@ -385,6 +434,7 @@ export default function TripsPage() {
       setVehicleOverview(null);
       setTrustSummary(null);
       setReservationSettings(null);
+      setWallet(null);
       setMyTrips([]);
       setAvailableTrips([]);
       setIncomingRequests([]);
@@ -670,6 +720,10 @@ export default function TripsPage() {
 
       await reloadData();
       setTripSuccessMessage(response.message);
+
+      if (action === 'start') {
+        router.push(`/viajes/${tripId}/seguimiento`);
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
@@ -702,16 +756,18 @@ export default function TripsPage() {
     }
 
     const draft = requestDrafts[trip.id] ?? EMPTY_REQUEST_DRAFT;
-    const paymentProvider =
-      draft.paymentProvider === PaymentProvider.Cash &&
-      reservationSettings?.allowCashPayments === false &&
-      reservationSettings.allowPaypalPayments
-        ? PaymentProvider.Paypal
-        : draft.paymentProvider === PaymentProvider.Paypal &&
-            reservationSettings?.allowPaypalPayments === false &&
-            reservationSettings.allowCashPayments
-          ? PaymentProvider.Cash
-          : draft.paymentProvider;
+    const paymentProvider = resolveAvailablePaymentProvider(
+      draft.paymentProvider,
+      reservationSettings,
+      wallet,
+      trip,
+    );
+
+    if (!paymentProvider) {
+      setRequestErrorMessage('No hay una forma de pago disponible para este viaje.');
+      return;
+    }
+
     setIsMutatingRequestId(trip.id);
     setRequestErrorMessage(null);
     setRequestSuccessMessage(null);
@@ -792,18 +848,33 @@ export default function TripsPage() {
         if (
           nextPaymentProvider === PaymentProvider.Cash &&
           !reservationSettings.allowCashPayments &&
-          reservationSettings.allowPaypalPayments
+          (reservationSettings.allowWalletPayments || reservationSettings.allowPaypalPayments)
         ) {
-          nextPaymentProvider = PaymentProvider.Paypal;
+          nextPaymentProvider = reservationSettings.allowWalletPayments
+            ? PaymentProvider.Wallet
+            : PaymentProvider.Paypal;
           hasChanges = true;
         }
 
         if (
           nextPaymentProvider === PaymentProvider.Paypal &&
           !reservationSettings.allowPaypalPayments &&
-          reservationSettings.allowCashPayments
+          (reservationSettings.allowWalletPayments || reservationSettings.allowCashPayments)
         ) {
-          nextPaymentProvider = PaymentProvider.Cash;
+          nextPaymentProvider = reservationSettings.allowWalletPayments
+            ? PaymentProvider.Wallet
+            : PaymentProvider.Cash;
+          hasChanges = true;
+        }
+
+        if (
+          nextPaymentProvider === PaymentProvider.Wallet &&
+          !reservationSettings.allowWalletPayments &&
+          (reservationSettings.allowCashPayments || reservationSettings.allowPaypalPayments)
+        ) {
+          nextPaymentProvider = reservationSettings.allowCashPayments
+            ? PaymentProvider.Cash
+            : PaymentProvider.Paypal;
           hasChanges = true;
         }
 
@@ -1614,6 +1685,7 @@ export default function TripsPage() {
                       onResetFilters={handleResetFilters}
                       requestDrafts={requestDrafts}
                       reservationSettings={reservationSettings}
+                      wallet={wallet}
                       visibleAvailableTrips={visibleAvailableTrips}
                   />
                 )}

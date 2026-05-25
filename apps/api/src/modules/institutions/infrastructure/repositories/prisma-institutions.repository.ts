@@ -143,6 +143,7 @@ export class PrismaInstitutionsRepository implements InstitutionsRepository {
         institutionId: input.institutionId,
         allowCashPayments: input.allowCashPayments,
         allowPaypalPayments: input.allowPaypalPayments,
+        allowWalletPayments: input.allowWalletPayments,
         termsDocumentUrl: input.termsDocumentUrl ?? null,
         privacyPolicyUrl: input.privacyPolicyUrl ?? null,
         safetyRulesTitle: input.safetyRulesTitle,
@@ -152,6 +153,7 @@ export class PrismaInstitutionsRepository implements InstitutionsRepository {
       update: {
         allowCashPayments: input.allowCashPayments,
         allowPaypalPayments: input.allowPaypalPayments,
+        allowWalletPayments: input.allowWalletPayments,
         termsDocumentUrl: input.termsDocumentUrl ?? null,
         privacyPolicyUrl: input.privacyPolicyUrl ?? null,
         safetyRulesTitle: input.safetyRulesTitle,
@@ -168,6 +170,7 @@ export class PrismaInstitutionsRepository implements InstitutionsRepository {
     settings: {
       allowCashPayments: boolean;
       allowPaypalPayments: boolean;
+      allowWalletPayments: boolean;
       termsDocumentUrl: string | null;
       privacyPolicyUrl: string | null;
       safetyRulesTitle: string;
@@ -181,6 +184,7 @@ export class PrismaInstitutionsRepository implements InstitutionsRepository {
       institutionId,
       allowCashPayments: settings?.allowCashPayments ?? true,
       allowPaypalPayments: settings?.allowPaypalPayments ?? true,
+      allowWalletPayments: settings?.allowWalletPayments ?? true,
       termsDocumentUrl: settings?.termsDocumentUrl ?? null,
       privacyPolicyUrl: settings?.privacyPolicyUrl ?? null,
       safetyRulesTitle: settings?.safetyRulesTitle ?? DEFAULT_SAFETY_RULES_TITLE,

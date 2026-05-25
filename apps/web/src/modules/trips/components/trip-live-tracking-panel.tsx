@@ -317,6 +317,7 @@ export function TripLiveTrackingPanel({
               history={liveHistory}
               livePosition={livePosition}
               origin={routeMapOrigin}
+              routePath={tripDetail?.routePath ?? null}
             />
           ) : (
             <div className="trip-live-map-placeholder">

@@ -317,6 +317,24 @@ export function TripsOperationWorkspace({
                           <span>Editar</span>
                         </Link>
                       ) : null}
+                      {trip.status === TripStatus.InProgress ? (
+                        <Link
+                          aria-label="Abrir seguimiento del viaje"
+                          className="trip-card-icon-action"
+                          href={`/viajes/${trip.id}/seguimiento`}
+                          title="Seguimiento"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24">
+                            <path d="M12 3v3" />
+                            <path d="M12 18v3" />
+                            <path d="M3 12h3" />
+                            <path d="M18 12h3" />
+                            <circle cx="12" cy="12" r="4" />
+                            <path d="m14 10-1.2 3.1L10 14l1.2-3.1L14 10Z" />
+                          </svg>
+                          <span>Seguimiento</span>
+                        </Link>
+                      ) : null}
                     </div>
                     <div className="trip-card-actions-main">
                     {(trip.status === TripStatus.Published || trip.status === TripStatus.Full) && pendingPassengersCount > 0 ? (

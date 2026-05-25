@@ -13,6 +13,7 @@ export type UpdateInstitutionSettingsCommand = {
   institutionId?: string;
   allowCashPayments: boolean;
   allowPaypalPayments: boolean;
+  allowWalletPayments: boolean;
   termsDocumentUrl?: string | null;
   privacyPolicyUrl?: string | null;
   safetyRulesTitle: string;
@@ -40,6 +41,7 @@ export class UpdateInstitutionSettingsUseCase {
       institutionId,
       allowCashPayments: command.allowCashPayments,
       allowPaypalPayments: command.allowPaypalPayments,
+      allowWalletPayments: command.allowWalletPayments,
       termsDocumentUrl: normalizeOptionalUrl(command.termsDocumentUrl),
       privacyPolicyUrl: normalizeOptionalUrl(command.privacyPolicyUrl),
       safetyRulesTitle: command.safetyRulesTitle.trim(),
@@ -58,6 +60,7 @@ export class UpdateInstitutionSettingsUseCase {
       metadata: {
         allowCashPayments: settings.allowCashPayments,
         allowPaypalPayments: settings.allowPaypalPayments,
+        allowWalletPayments: settings.allowWalletPayments ?? normalizedSettings.allowWalletPayments,
         hasTermsDocumentUrl: Boolean(settings.termsDocumentUrl),
         hasPrivacyPolicyUrl: Boolean(settings.privacyPolicyUrl),
       },

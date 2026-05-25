@@ -126,6 +126,9 @@ export class CreateTripUseCase {
       originLongitude: command.originLongitude,
       destinationLatitude: command.destinationLatitude,
       destinationLongitude: command.destinationLongitude,
+      routePath: normalizeRoutePath(command.routePath),
+      routeDistanceMeters: command.routeDistanceMeters,
+      routeDurationSeconds: command.routeDurationSeconds,
       departureAt,
       estimatedArrivalAt,
       seatCount: command.seatCount,
@@ -161,4 +164,23 @@ export class CreateTripUseCase {
       trip,
     };
   }
+}
+
+function normalizeRoutePath(
+  routePath: CreateTripCommand['routePath'],
+): CreateTripCommand['routePath'] {
+  if (!routePath?.length) {
+    return undefined;
+  }
+
+  return routePath
+    .filter((point) =>
+      Number.isFinite(point.latitude) &&
+      Number.isFinite(point.longitude) &&
+      point.latitude >= -90 &&
+      point.latitude <= 90 &&
+      point.longitude >= -180 &&
+      point.longitude <= 180,
+    )
+    .slice(0, 400);
 }
