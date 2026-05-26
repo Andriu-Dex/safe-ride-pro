@@ -645,92 +645,66 @@ export default function DriverTripRequestsPage() {
           </div>
         </section>
 
-        <section className={styles.layout}>
-          <aside className={styles.sidebar}>
-            <section className={styles.sidebarSection}>
-              <div className={styles.sidebarSectionHeader}>
-                <strong>Atajos</strong>
-              </div>
+        <section className={styles.topboard}>
+          <div className={styles.metricsRow}>
+            <div className={styles.metricCard}>
+              <span>Pendientes</span>
+              <strong>{pendingCount}</strong>
+            </div>
+            <div className={styles.metricCard}>
+              <span>Efectivo por confirmar</span>
+              <strong>{awaitingCashConfirmationCount}</strong>
+            </div>
+            <div className={styles.metricCard}>
+              <span>Resultados filtrados</span>
+              <strong>{filteredRequests.length}</strong>
+            </div>
+          </div>
 
-              <div className={styles.sidebarActions}>
-                <Link className={styles.sidebarLink} href="/viajes">
-                  Mis viajes
-                </Link>
-                <Link className={styles.sidebarLink} href="/viajes/nuevo">
-                  Crear viaje
-                </Link>
-                <Link className={styles.sidebarLink} href="/conductor">
-                  Estado conductor
-                </Link>
-              </div>
-            </section>
-
-            <section className={styles.sidebarSection}>
-              <div className={styles.sidebarSectionHeader}>
-                <strong>Filtros</strong>
-                {(selectedStatuses.length !== 2 || selectedPayments.length > 0) ? (
-                  <button className={styles.clearButton} onClick={clearFilters} type="button">
-                    Restablecer
-                  </button>
-                ) : null}
-              </div>
-
+          <div className={styles.filtersToolbar}>
+            <div className={styles.filterGroups}>
               <div className={styles.filterGroup}>
-                <span className={styles.filterLabel}>Estado de solicitud</span>
+                <span className={styles.filterLabel}>Estado</span>
                 <div className={styles.filterOptions}>
                   {REQUEST_STATUS_FILTERS.map((filter) => (
-                    <label key={filter.key} className={styles.checkboxRow}>
-                      <input
-                        checked={selectedStatuses.includes(filter.key)}
-                        onChange={() => toggleStatusFilter(filter.key)}
-                        type="checkbox"
-                      />
-                      <span>{filter.label}</span>
-                    </label>
+                    <button
+                      key={filter.key}
+                      className={`${styles.filterPill} ${selectedStatuses.includes(filter.key) ? styles.filterPillActive : ''}`}
+                      onClick={() => toggleStatusFilter(filter.key)}
+                      type="button"
+                    >
+                      {filter.label}
+                    </button>
                   ))}
                 </div>
               </div>
 
               <div className={styles.filterGroup}>
-                <span className={styles.filterLabel}>Estado de pago</span>
+                <span className={styles.filterLabel}>Pago</span>
                 <div className={styles.filterOptions}>
                   {PAYMENT_FILTERS.map((filter) => (
-                    <label key={filter.key} className={styles.checkboxRow}>
-                      <input
-                        checked={selectedPayments.includes(filter.key)}
-                        onChange={() => togglePaymentFilter(filter.key)}
-                        type="checkbox"
-                      />
-                      <span>{filter.label}</span>
-                    </label>
+                    <button
+                      key={filter.key}
+                      className={`${styles.filterPill} ${selectedPayments.includes(filter.key) ? styles.filterPillActive : ''}`}
+                      onClick={() => togglePaymentFilter(filter.key)}
+                      type="button"
+                    >
+                      {filter.label}
+                    </button>
                   ))}
                 </div>
               </div>
-            </section>
+            </div>
 
-            <section className={styles.sidebarSection}>
-              <div className={styles.sidebarSectionHeader}>
-                <strong>En foco</strong>
-              </div>
+            {(selectedStatuses.length !== 2 || selectedPayments.length > 0) ? (
+              <button className={styles.clearButton} onClick={clearFilters} type="button">
+                Restablecer filtros
+              </button>
+            ) : null}
+          </div>
+        </section>
 
-              <ul className={styles.focusList}>
-                <li>
-                  <span>Pendientes</span>
-                  <strong>{pendingCount}</strong>
-                </li>
-                <li>
-                  <span>Efectivo por confirmar</span>
-                  <strong>{awaitingCashConfirmationCount}</strong>
-                </li>
-                <li>
-                  <span>Resultados filtrados</span>
-                  <strong>{filteredRequests.length}</strong>
-                </li>
-              </ul>
-            </section>
-          </aside>
-
-          <div className={styles.mainStage}>
+        <div className={styles.mainStage}>
             <div className={styles.workspaceHeader}>
               <div>
                 <h2>Solicitudes recibidas</h2>
@@ -777,8 +751,7 @@ export default function DriverTripRequestsPage() {
               pageSize={PAGE_SIZE}
               totalItems={filteredRequests.length}
             />
-          </div>
-        </section>
+        </div>
       </main>
     </section>
   );

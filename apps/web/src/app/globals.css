@@ -2661,7 +2661,7 @@ main {
 
 .trips-stream-panel {
   background:
-    radial-gradient(circle at top left, rgba(25, 163, 148, 0.07), transparent 32%),
+    radial-gradient(circle at top left, rgba(25, 99, 163, 0.07), transparent 32%),
     rgba(255, 255, 255, 0.77);
 }
 
