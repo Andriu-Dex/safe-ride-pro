@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  await app.listen(environment.port);
+  await app.listen(environment.port, '0.0.0.0');
 }
 
 void bootstrap();
