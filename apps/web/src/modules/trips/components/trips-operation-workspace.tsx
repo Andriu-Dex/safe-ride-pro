@@ -15,10 +15,15 @@ import {
   getCancellationTimingLabel,
   getCancellationTimingTone,
   getTripCompletionOverdueMessage,
+  getTripRouteModeLabel,
   getTripStartAvailabilityMessage,
   getTripStatusLabel,
   getTripStatusTone,
 } from '../lib/trip-labels';
+import {
+  getLuggagePolicyLabel,
+  getVehicleTypeLabel,
+} from '../../vehicles/lib/vehicle-labels';
 import type { TripRequestRecord } from '../../trip-requests/types/trip-request';
 import type { TripRecord } from '../types/trip';
 import {
@@ -32,8 +37,8 @@ import { TripFinalizationModal } from './trip-finalization-modal';
 import { TripsListPagination } from './trips-list-pagination';
 import { TripExecutionCommandCenter } from './trip-execution-command-center';
 import { TripDeleteConfirmationModal } from './trip-delete-confirmation-modal';
-import { TripOverviewCard } from './trip-overview-card';
 import { TripsWorkspaceSkeleton } from './trips-workspace-skeleton';
+import styles from './trips-operation-workspace.module.css';
 
 type TripsOperationWorkspaceProps = {
   myTrips: TripRecord[];
@@ -89,7 +94,7 @@ export function TripsOperationWorkspace({
   const [page, setPage] = useState(1);
   const [selectedTripIdForClosure, setSelectedTripIdForClosure] = useState<string | null>(null);
   const [selectedDraftTripIdForDelete, setSelectedDraftTripIdForDelete] = useState<string | null>(null);
-  const pageSize = 6;
+  const pageSize = 10;
   const paginatedTrips = useMemo(
     () => myTrips.slice((page - 1) * pageSize, page * pageSize),
     [myTrips, page],
@@ -207,11 +212,11 @@ export function TripsOperationWorkspace({
         />
       ) : null}
 
-      <article className="panel panel-stack trips-stream-panel">
-        <div className="section-heading">
+      <article className={styles.tripBoardPanel}>
+        <div className={styles.tripBoardHeader}>
           <div>
-            <h2 className="panel-title">Mis viajes</h2>
-            <p className="section-heading-meta">{myTrips.length} resultados</p>
+            <h2>Mis viajes</h2>
+            <span>{myTrips.length} resultados</span>
           </div>
           <Button
             onClick={onNavigateToCreateTrip}
@@ -221,7 +226,7 @@ export function TripsOperationWorkspace({
           </Button>
         </div>
         {myTrips.length ? (
-          <div className="list-stack">
+          <div className={styles.tripList}>
             {paginatedTrips.map((trip) => {
               const startAvailabilityMessage = getTripStartAvailabilityMessage(
                 trip.departureAt,
@@ -242,55 +247,93 @@ export function TripsOperationWorkspace({
               ).length;
 
               return (
-                <TripOverviewCard
-                  key={trip.id}
-                  helperContent={
-                    <>
-                      <div className="trip-card-inline-meta">
-                        <span className="trip-card-inline-chip">
-                          {acceptedPassengersCount} confirmados
-                        </span>
-                        {pendingPassengersCount > 0 ? (
-                          <span className="trip-card-inline-chip trip-card-inline-chip-accent">
-                            {pendingPassengersCount} pendientes
-                          </span>
-                        ) : null}
-                      </div>
-                      {trip.status === TripStatus.Cancelled && trip.cancellationTiming ? (
-                        <StatusPill
-                          label={getCancellationTimingLabel(trip.cancellationTiming) ?? 'Cancelacion'}
-                          tone={getCancellationTimingTone(trip.cancellationTiming)}
-                        />
+                <article className={styles.tripRow} key={trip.id}>
+                  <div className={styles.tripRouteCell}>
+                    <div className={styles.tripRouteTopline}>
+                      <span className={styles.tripKicker}>{getTripRouteModeLabel(trip.routeMode)}</span>
+                      <StatusPill
+                        label={getTripStatusLabel(trip.status)}
+                        tone={getTripStatusTone(trip.status)}
+                      />
+                    </div>
+                    <h3 className={styles.tripRoute}>
+                      {trip.originLabel} <span aria-hidden="true">&rarr;</span> {trip.destinationLabel}
+                    </h3>
+                    <div className={styles.tripMetaStrip}>
+                      <span>{getVehicleTypeLabel(trip.vehicleTypeSnapshot)}</span>
+                      <span>{getLuggagePolicyLabel(trip.luggagePolicySnapshot)}</span>
+                      {trip.detourSurchargeReference ? (
+                        <span>Desvio {formatCurrency(trip.detourSurchargeReference)}</span>
                       ) : null}
-                      {licenseStatus === DriverLicenseStatus.Expired
-                      && (trip.status === TripStatus.Draft
-                        || trip.status === TripStatus.Published
-                        || trip.status === TripStatus.Full) ? (
-                        <p className="panel-text">
-                          Licencia vencida.
-                        </p>
-                      ) : null}
-                      {(trip.status === TripStatus.Published || trip.status === TripStatus.Full)
-                      && startAvailabilityMessage ? (
-                        <p className="panel-text">{startAvailabilityMessage}</p>
-                      ) : null}
-                      {lateRemovalWarning ? (
-                        <p className="panel-text">{lateRemovalWarning}</p>
-                      ) : null}
-                      {completionOverdueMessage ? (
-                        <p className="panel-text">
-                          {completionOverdueMessage}
-                        </p>
-                      ) : null}
-                    </>
-                  }
-                  trip={trip}
-                >
-                  <div className="trip-card-actions-shell">
-                    <div className="trip-card-actions-compact">
+                    </div>
+                  </div>
+
+                  <div className={styles.tripCell}>
+                    <span>Salida</span>
+                    <strong>{formatTripDeparture(trip.departureAt)}</strong>
+                  </div>
+
+                  <div className={styles.tripCell}>
+                    <span>Vehiculo</span>
+                    <strong>{trip.vehicleDisplayName}</strong>
+                    <small>{trip.vehiclePlate}</small>
+                  </div>
+
+                  <div className={styles.tripCell}>
+                    <span>Cupos</span>
+                    <strong>{trip.availableSeats}/{trip.seatCount}</strong>
+                    <small>{acceptedPassengersCount} confirmados</small>
+                  </div>
+
+                  <div className={styles.tripCell}>
+                    <span>Precio</span>
+                    <strong>{formatCurrency(trip.basePriceReference)}</strong>
+                  </div>
+
+                  <div className={styles.tripSignals}>
+                    {pendingPassengersCount > 0 ? (
+                      <button
+                        className={`${styles.signalChip} ${styles.signalChipAction}`}
+                        onClick={onOpenRequests}
+                        type="button"
+                      >
+                        {pendingPassengersCount} pendientes
+                      </button>
+                    ) : null}
+                    {trip.status === TripStatus.Cancelled && trip.cancellationTiming ? (
+                      <StatusPill
+                        label={getCancellationTimingLabel(trip.cancellationTiming) ?? 'Cancelacion'}
+                        tone={getCancellationTimingTone(trip.cancellationTiming)}
+                      />
+                    ) : null}
+                    {licenseStatus === DriverLicenseStatus.Expired
+                    && (trip.status === TripStatus.Draft
+                      || trip.status === TripStatus.Published
+                      || trip.status === TripStatus.Full) ? (
+                      <span className={styles.warningText}>Licencia vencida</span>
+                    ) : null}
+                    {(trip.status === TripStatus.Published || trip.status === TripStatus.Full)
+                    && startAvailabilityMessage ? (
+                      <span className={styles.warningText} title={startAvailabilityMessage}>
+                        Inicio no disponible
+                      </span>
+                    ) : null}
+                    {lateRemovalWarning ? (
+                      <span className={styles.warningText} title={lateRemovalWarning}>
+                        Cancelacion tardia
+                      </span>
+                    ) : null}
+                    {completionOverdueMessage ? (
+                      <span className={styles.warningText} title={completionOverdueMessage}>
+                        Revisar cierre
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className={styles.tripActions}>
                       <Link
                         aria-label="Ver detalle del viaje"
-                        className="trip-card-icon-action"
+                        className={styles.tripAction}
                         href={`/viajes/${trip.id}`}
                         title="Ver detalle"
                       >
@@ -305,7 +348,7 @@ export function TripsOperationWorkspace({
                       trip.status === TripStatus.Full ? (
                         <Link
                           aria-label="Editar viaje"
-                          className="trip-card-icon-action"
+                          className={styles.tripAction}
                           href={`/viajes/${trip.id}/editar`}
                           title="Editar"
                         >
@@ -319,7 +362,7 @@ export function TripsOperationWorkspace({
                       {trip.status === TripStatus.InProgress ? (
                         <Link
                           aria-label="Abrir seguimiento del viaje"
-                          className="trip-card-icon-action"
+                          className={styles.tripAction}
                           href={`/viajes/${trip.id}/seguimiento`}
                           title="Seguimiento"
                         >
@@ -334,8 +377,6 @@ export function TripsOperationWorkspace({
                           <span>Seguimiento</span>
                         </Link>
                       ) : null}
-                    </div>
-                    <div className="trip-card-actions-main">
                     {(trip.status === TripStatus.Published || trip.status === TripStatus.Full) && pendingPassengersCount > 0 ? (
                       <Button
                         onClick={onOpenRequests}
@@ -405,9 +446,8 @@ export function TripsOperationWorkspace({
                         Gestionar cierre
                       </Button>
                     ) : null}
-                    </div>
                   </div>
-                </TripOverviewCard>
+                </article>
               );
             })}
           </div>
@@ -486,6 +526,30 @@ function getLateRemovalWarning(trip: TripRecord): string | null {
   }
 
   return null;
+}
+
+function formatTripDeparture(value: string): string {
+  const date = new Date(value);
+  const formattedDate = new Intl.DateTimeFormat('es-EC', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+  const formattedTime = new Intl.DateTimeFormat('es-EC', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+
+  return `${formattedDate} | ${formattedTime}`;
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('es-EC', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(value);
 }
 
 function buildDriverClosureItems(
