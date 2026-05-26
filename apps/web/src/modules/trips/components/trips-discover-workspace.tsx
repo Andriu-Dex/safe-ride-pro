@@ -183,7 +183,7 @@ export function TripsDiscoverWorkspace({
 
                     <DisclosurePanel
                       className="trip-request-composer"
-                      defaultOpen={trip.routeMode === TripRouteMode.PlannedDetour}
+                      defaultOpen={false}
                       meta={
                         trip.routeMode === TripRouteMode.PlannedDetour
                           ? 'Personalizable'

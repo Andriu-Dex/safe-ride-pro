@@ -127,12 +127,12 @@ const EMPTY_TRIP_FILTERS: TripFilters = {
 const DEFAULT_NO_SHOW_NOTE = 'El pasajero no se presento al punto acordado.';
 
 type PassengerWorkspace = 'discover' | 'requests';
-type DriverTripStatusFilter = 'all' | 'draft' | 'published' | 'full' | 'in_progress' | 'completed' | 'cancelled';
+type DriverTripStatusFilter = 'draft' | 'published' | 'full' | 'in_progress' | 'completed' | 'cancelled';
 type DriverTripSortOption = 'recent' | 'departure-asc' | 'departure-desc' | 'created-asc';
 
 type DriverWorkspaceFilters = {
   query: string;
-  status: DriverTripStatusFilter;
+  statuses: DriverTripStatusFilter[];
   dateFrom: string;
   dateTo: string;
   onlyWithPendingRequests: boolean;
@@ -141,12 +141,21 @@ type DriverWorkspaceFilters = {
 
 const EMPTY_DRIVER_WORKSPACE_FILTERS: DriverWorkspaceFilters = {
   query: '',
-  status: 'all',
+  statuses: ['draft', 'published', 'full', 'in_progress'],
   dateFrom: '',
   dateTo: '',
   onlyWithPendingRequests: false,
   sortBy: 'recent',
 };
+
+const DRIVER_TRIP_STATUS_OPTIONS: Array<{ value: DriverTripStatusFilter; label: string }> = [
+  { value: 'draft', label: 'Borrador' },
+  { value: 'published', label: 'Publicado' },
+  { value: 'full', label: 'Lleno' },
+  { value: 'in_progress', label: 'En curso' },
+  { value: 'completed', label: 'Finalizado' },
+  { value: 'cancelled', label: 'Cancelado' },
+];
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-EC');
@@ -1254,7 +1263,9 @@ export default function TripsPage() {
       : null;
 
     const nextTrips = myTrips.filter((trip) => {
-      if (driverWorkspaceFilters.status !== 'all' && trip.status !== driverWorkspaceFilters.status.toUpperCase()) {
+      const normalizedStatus = trip.status.toLowerCase() as DriverTripStatusFilter;
+
+      if (!driverWorkspaceFilters.statuses.includes(normalizedStatus)) {
         return false;
       }
 
@@ -1311,8 +1322,8 @@ export default function TripsPage() {
   const activeFiltersCount = countActiveFilters(tripFilters);
   const activeFilterLabels = buildTripFilterLabels(tripFilters);
   const driverActiveFilterLabels = [
-    driverWorkspaceFilters.status !== 'all'
-      ? `Estado: ${getTripStatusFilterLabel(driverWorkspaceFilters.status)}`
+    driverWorkspaceFilters.statuses.length < 6
+      ? `Estados: ${driverWorkspaceFilters.statuses.map(getTripStatusFilterLabel).join(', ')}`
       : null,
     driverWorkspaceFilters.query.trim()
       ? `Buscar: ${driverWorkspaceFilters.query.trim()}`
@@ -1499,7 +1510,7 @@ export default function TripsPage() {
               <details className={styles.filterSidebar}>
                 <summary className={styles.filterSidebarHeader}>
                   <strong>
-                    Gestion de lista
+                    Gestión de lista
                     {driverActiveFilterLabels.length > 0 && ` (${driverActiveFilterLabels.length} filtros activos)`}
                   </strong>
                   {driverActiveFilterLabels.length ? (
@@ -1546,27 +1557,29 @@ export default function TripsPage() {
                     </div>
 
                     <div className={styles.driverFilterGroup}>
-                      <label className={styles.driverFilterLabel} htmlFor="driver-trip-status">
-                        Estado
-                      </label>
-                      <select
-                        id="driver-trip-status"
-                        className={styles.driverFilterSelect}
-                        onChange={(event) =>
-                          setDriverWorkspaceFilters((currentFilters) => ({
-                            ...currentFilters,
-                            status: event.target.value as DriverTripStatusFilter,
-                          }))}
-                        value={driverWorkspaceFilters.status}
-                      >
-                        <option value="all">Todos</option>
-                        <option value="draft">Borrador</option>
-                        <option value="published">Publicado</option>
-                        <option value="full">Lleno</option>
-                        <option value="in_progress">En curso</option>
-                        <option value="completed">Finalizado</option>
-                        <option value="cancelled">Cancelado</option>
-                      </select>
+                      <span className={styles.driverFilterLabel}>Estado</span>
+                      <div className={styles.driverStatusChecks}>
+                        {DRIVER_TRIP_STATUS_OPTIONS.map((option) => (
+                          <label className={styles.driverFilterCheck} key={option.value}>
+                            <input
+                              checked={driverWorkspaceFilters.statuses.includes(option.value)}
+                              onChange={(event) =>
+                                setDriverWorkspaceFilters((currentFilters) => {
+                                  const nextStatuses = event.target.checked
+                                    ? [...currentFilters.statuses, option.value]
+                                    : currentFilters.statuses.filter((status) => status !== option.value);
+
+                                  return {
+                                    ...currentFilters,
+                                    statuses: nextStatuses.length ? nextStatuses : [option.value],
+                                  };
+                                })}
+                              type="checkbox"
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
 
                     <div className={styles.driverFilterGroup}>

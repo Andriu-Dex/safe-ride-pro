@@ -100,6 +100,7 @@ export function TripsRequestsWorkspace({
   const [selectedRequest, setSelectedRequest] = useState<TripRequestRecord | null>(null);
   const [selectedRequestPerspective, setSelectedRequestPerspective] = useState<'driver' | 'passenger'>('driver');
   const [selectedRequestForCancel, setSelectedRequestForCancel] = useState<TripRequestRecord | null>(null);
+  const [passengerSection, setPassengerSection] = useState<'active' | 'requests' | 'closure'>('requests');
   const incomingSectionTitle =
     showIncomingRequestsSection && !showMyRequestsSection
       ? 'Aprobar solicitudes'
@@ -113,6 +114,14 @@ export function TripsRequestsWorkspace({
     [myRequests, myRequestsPage],
   );
   const closureItems = buildPassengerClosureItems(myRequests);
+  const showPassengerTabs = showMyRequestsSection && !showIncomingRequestsSection;
+  const activeRideCount = myRequests.filter(
+    (request) =>
+      request.status === TripRequestStatus.Accepted &&
+      (request.tripStatus === TripStatus.Published ||
+        request.tripStatus === TripStatus.Full ||
+        request.tripStatus === TripStatus.InProgress),
+  ).length;
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(myRequests.length / myRequestsPageSize));
@@ -148,7 +157,36 @@ export function TripsRequestsWorkspace({
       <section className={styles.requestsStack}>
       {isRefreshingData ? <TripsWorkspaceSkeleton variant="requests" /> : null}
 
-      {showActiveRidePanel ? (
+      {showPassengerTabs ? (
+        <div className={styles.sectionTabs} role="tablist" aria-label="Secciones de solicitudes">
+          <button
+            className={`${styles.sectionTab} ${passengerSection === 'requests' ? styles.sectionTabActive : ''}`}
+            onClick={() => setPassengerSection('requests')}
+            type="button"
+          >
+            Mis solicitudes
+            <span>{myRequestsResultsCount}</span>
+          </button>
+          <button
+            className={`${styles.sectionTab} ${passengerSection === 'active' ? styles.sectionTabActive : ''}`}
+            onClick={() => setPassengerSection('active')}
+            type="button"
+          >
+            Trayecto activo
+            <span>{activeRideCount}</span>
+          </button>
+          <button
+            className={`${styles.sectionTab} ${passengerSection === 'closure' ? styles.sectionTabActive : ''}`}
+            onClick={() => setPassengerSection('closure')}
+            type="button"
+          >
+            Post-viaje
+            <span>{closureItems.length}</span>
+          </button>
+        </div>
+      ) : null}
+
+      {showActiveRidePanel && (!showPassengerTabs || passengerSection === 'active') ? (
         <div className="trip-live-panel-span">
           <PassengerActiveRidePanel
             canCancelOwnRequest={canCancelOwnRequest}
@@ -328,7 +366,7 @@ export function TripsRequestsWorkspace({
         </article>
       ) : null}
 
-      {showMyRequestsSection ? (
+      {showMyRequestsSection && (!showPassengerTabs || passengerSection === 'requests') ? (
         <article className="panel panel-stack trips-stream-panel">
           <div className="section-heading">
             <h2 className="panel-title">Mis solicitudes</h2>
@@ -502,7 +540,7 @@ export function TripsRequestsWorkspace({
         </article>
       ) : null}
 
-      {showMyRequestsSection && closureItems.length ? (
+      {showMyRequestsSection && closureItems.length && (!showPassengerTabs || passengerSection === 'closure') ? (
         <article className="panel panel-stack trips-stream-panel">
           <div className="section-heading">
             <h2 className="panel-title">Pendientes post-viaje</h2>

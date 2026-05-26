@@ -316,6 +316,17 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       isDriverExperienceActive,
     ],
   );
+  const desktopPrimaryItems = visibleNavItems.filter((item) => {
+    if (isAdminWorkspace) {
+      return item.href === '/inicio';
+    }
+
+    return item.audience === 'all' || item.audience === 'passenger';
+  });
+  const desktopDriverItems = visibleNavItems.filter((item) =>
+    item.audience === 'driver' || item.audience === 'dashboard');
+  const desktopAdminItems = visibleNavItems.filter((item) =>
+    item.audience === 'admin' || (isAdminWorkspace && item.href === '/dashboard'));
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -453,6 +464,73 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       </li>
     );
   };
+  const renderDesktopNavGroup = (
+    label: string,
+    icon: NavIconName,
+    items: typeof visibleNavItems,
+  ) => {
+    if (!items.length) {
+      return null;
+    }
+
+    const isActive = items.some((item) => pathname === item.href);
+
+    return (
+      <li className={styles.desktopNavGroup} key={`desktop-group-${label}`}>
+        <button
+          className={[
+            styles.desktopNavLink,
+            styles.desktopNavGroupTrigger,
+            isActive ? styles.desktopNavLinkActive : null,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          type="button"
+        >
+          <NavIcon name={icon} />
+          <span>{label}</span>
+          {/* <span aria-hidden="true" className={styles.desktopNavChevron}>⌄</span> */}
+        </button>
+        <div className={styles.desktopNavDropdown}>
+          {items.map((item) => {
+            const itemIsActive = pathname === item.href;
+            const isDisabled =
+              requiresOnboarding ||
+              (item.requiresOperationalMembership && !operationalAccess.hasOperationalMembership);
+
+            if (isDisabled) {
+              return (
+                <div
+                  aria-disabled="true"
+                  className={`${styles.desktopDropdownItem} ${styles.desktopDropdownItemDisabled}`}
+                  key={`desktop-dropdown-${item.href}`}
+                >
+                  <NavIcon name={item.icon} />
+                  <span>{item.label}</span>
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                className={[
+                  styles.desktopDropdownItem,
+                  itemIsActive ? styles.desktopDropdownItemActive : null,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                href={item.href}
+                key={`desktop-dropdown-${item.href}`}
+              >
+                <NavIcon name={item.icon} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </li>
+    );
+  };
 
   return (
     <div className={styles.shell}>
@@ -486,7 +564,9 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
 
         <nav aria-label="Principal" className={styles.desktopNav}>
           <ul className={styles.desktopNavList}>
-            {visibleNavItems.map((item) => renderNavItem(item, 'desktop'))}
+            {desktopPrimaryItems.map((item) => renderNavItem(item, 'desktop'))}
+            {renderDesktopNavGroup('Conductor', 'driver', desktopDriverItems)}
+            {renderDesktopNavGroup('Admin', 'settings', desktopAdminItems)}
           </ul>
         </nav>
 

@@ -1,8 +1,62 @@
 .requestsStack {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
   width: 100%;
+}
+
+.sectionTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.45rem;
+  border: 1px solid rgba(0, 97, 165, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 24px rgba(13, 48, 61, 0.06);
+}
+
+.sectionTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.65rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: #334155;
+  padding: 0.65rem 0.9rem;
+  font-weight: 800;
+}
+
+.sectionTab span {
+  display: inline-grid;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(0, 97, 165, 0.1);
+  color: #0061a5;
+  font-size: 0.78rem;
+}
+
+.sectionTab:hover,
+.sectionTab:focus-visible {
+  border-color: rgba(0, 97, 165, 0.2);
+  background: rgba(0, 97, 165, 0.08);
+  outline: none;
+}
+
+.sectionTabActive {
+  background: linear-gradient(135deg, #003a70, #0061a5);
+  color: #ffffff;
+  box-shadow: 0 14px 26px rgba(0, 97, 165, 0.22);
+}
+
+.sectionTabActive span {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 .tableContainer {
@@ -55,7 +109,7 @@
 }
 
 .compactTable td {
-  padding: 1rem 1.25rem;
+  padding: 0.78rem 0.95rem;
   border-bottom: 1px solid rgba(0, 97, 165, 0.12);
   color: #0f1f24;
   vertical-align: middle;
@@ -73,7 +127,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  min-width: 16rem; /* Un poco más despacio para evitar que la ruta se corte tanto */
+  min-width: 15rem;
 }
 
 .cellRoute strong {

@@ -2725,11 +2725,25 @@ main {
 }
 
 .trip-request-composer {
+  position: relative;
   border-radius: 20px;
   border-color: rgba(0, 97, 165, 0.14);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(244, 251, 249, 0.86));
   box-shadow: none;
+}
+
+.trip-request-composer.disclosure-panel-open {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  z-index: 1450;
+  width: min(58rem, calc(100vw - 2rem));
+  max-height: min(82vh, 52rem);
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  border-color: rgba(0, 58, 112, 0.22);
+  background: #ffffff;
+  box-shadow: 0 34px 90px rgba(2, 20, 40, 0.34);
 }
 
 .trip-request-composer .disclosure-summary {
@@ -2808,13 +2822,13 @@ main {
 
 .trip-overview-card {
   display: grid;
-  gap: 1rem;
+  gap: 0.78rem;
   border: 1px solid rgba(0, 97, 165, 0.12);
-  border-radius: 22px;
+  border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(250, 246, 239, 0.88));
-  padding: 1.15rem;
-  box-shadow: 0 16px 32px rgba(23, 51, 56, 0.08);
+  padding: 0.9rem;
+  box-shadow: 0 10px 22px rgba(23, 51, 56, 0.07);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -2835,12 +2849,12 @@ main {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .trip-overview-route-block {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.22rem;
 }
 
 .trip-overview-kicker {
@@ -2853,22 +2867,22 @@ main {
 
 .trip-overview-route {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1rem;
   line-height: 1.2;
 }
 
 .trip-overview-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.55rem;
 }
 
 .trip-overview-stat {
   display: grid;
-  gap: 0.2rem;
-  padding: 0.9rem 1rem;
+  gap: 0.12rem;
+  padding: 0.62rem 0.72rem;
   border: 1px solid rgba(0, 97, 165, 0.09);
-  border-radius: 18px;
+  border-radius: 13px;
   background: rgba(255, 255, 255, 0.76);
 }
 
@@ -2878,25 +2892,25 @@ main {
 }
 
 .trip-overview-stat span {
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .trip-overview-stat strong {
-  font-size: 0.98rem;
+  font-size: 0.88rem;
   line-height: 1.35;
 }
 
 .trip-overview-stat small {
-  font-size: 0.84rem;
+  font-size: 0.74rem;
 }
 
 .trip-overview-highlight,
 .trip-overview-helper {
-  padding: 0.9rem 1rem;
-  border-radius: 16px;
+  padding: 0.65rem 0.75rem;
+  border-radius: 13px;
 }
 
 .trip-overview-highlight {
