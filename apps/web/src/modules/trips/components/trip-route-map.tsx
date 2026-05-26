@@ -61,6 +61,14 @@ export function TripRouteMap({
   const invalidateFrameRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const lastSelectionWheelAtRef = useRef(0);
+  const selectionDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+    hasDragged: boolean;
+  } | null>(null);
   const lastGeometryKeyRef = useRef<string>('');
   const lastFitKeyRef = useRef<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -269,15 +277,81 @@ export function TripRouteMap({
     };
   }, [isMapReady, onMapSelect, selectionMode]);
 
+  const handleSelectionPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!selectionMode || !onMapSelect) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    selectionDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      hasDragged: false,
+    };
+  };
+
+  const handleSelectionPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const dragState = selectionDragRef.current;
+    const bundle = bundleRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId || !bundle) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const movementX = event.clientX - dragState.lastX;
+    const movementY = event.clientY - dragState.lastY;
+    const totalMovement = Math.hypot(
+      event.clientX - dragState.startX,
+      event.clientY - dragState.startY,
+    );
+
+    if (totalMovement > 6) {
+      dragState.hasDragged = true;
+    }
+
+    if (dragState.hasDragged && (movementX !== 0 || movementY !== 0)) {
+      bundle.map.panBy([-movementX, -movementY], { animate: false });
+    }
+
+    dragState.lastX = event.clientX;
+    dragState.lastY = event.clientY;
+  };
+
   const handleSelectionPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!selectionMode || !onMapSelect) {
       return;
     }
 
+    event.preventDefault();
+    event.stopPropagation();
+
     const bundle = bundleRef.current;
     const shellElement = mapShellRef.current;
+    const dragState = selectionDragRef.current;
+
+    if (dragState?.pointerId === event.pointerId) {
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture may already be released by the browser.
+      }
+
+      selectionDragRef.current = null;
+    }
 
     if (!bundle || !shellElement) {
+      return;
+    }
+
+    if (dragState?.hasDragged) {
       return;
     }
 
@@ -293,6 +367,12 @@ export function TripRouteMap({
       longitude: latlng.lng,
       target: selectionMode,
     });
+  };
+
+  const handleSelectionPointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (selectionDragRef.current?.pointerId === event.pointerId) {
+      selectionDragRef.current = null;
+    }
   };
 
   const handleSelectionWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
@@ -347,6 +427,9 @@ export function TripRouteMap({
           <div
             aria-label="Capa de selección de puntos en el mapa"
             className="trip-map-selection-overlay"
+            onPointerCancel={handleSelectionPointerCancel}
+            onPointerDown={handleSelectionPointerDown}
+            onPointerMove={handleSelectionPointerMove}
             onPointerUp={handleSelectionPointerUp}
             onWheel={handleSelectionWheel}
             role="presentation"

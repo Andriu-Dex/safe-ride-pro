@@ -62,6 +62,36 @@ function formatDateTime(value: string): string {
   });
 }
 
+function getTripCreationBlockMessage({
+  activeVehiclesCount,
+  blocksDriver,
+  driverStatus,
+  licenseStatus,
+}: {
+  activeVehiclesCount: number;
+  blocksDriver: boolean;
+  driverStatus: DriverVerificationStatus;
+  licenseStatus: DriverLicenseStatus;
+}) {
+  if (driverStatus !== DriverVerificationStatus.Approved) {
+    return 'Tu solicitud de conductor debe estar aprobada antes de crear viajes.';
+  }
+
+  if (licenseStatus === DriverLicenseStatus.Expired) {
+    return 'Actualiza tu licencia antes de crear viajes.';
+  }
+
+  if (activeVehiclesCount === 0) {
+    return 'Primero registra y activa un vehículo.';
+  }
+
+  if (blocksDriver) {
+    return 'Tu cuenta tiene una restricción activa para operar como conductor.';
+  }
+
+  return 'Revisa tu perfil de conductor antes de crear viajes.';
+}
+
 export default function NewTripPage() {
   const router = useRouter();
   const { authSession, isHydrated, refreshSession } = useAuth();
@@ -269,7 +299,15 @@ export default function NewTripPage() {
     }
 
     if (!canCreateTrips) {
-      setTripErrorMessage('No cumples los requisitos operativos para crear un viaje en este momento.');
+      const message = getTripCreationBlockMessage({
+        activeVehiclesCount: activeVehicles.length,
+        blocksDriver: trustRestrictions.blocksDriver,
+        driverStatus,
+        licenseStatus,
+      });
+
+      pushToast('No puedes crear viajes todavía', message, 'info');
+      setTripErrorMessage(message);
       return;
     }
 
@@ -389,7 +427,6 @@ export default function NewTripPage() {
             {recentRouteTemplates.length ? (
               <button
                 className={styles.heroBtnSecondary}
-                disabled={!canCreateTrips}
                 onClick={() => handleUseRouteTemplate(recentRouteTemplates[0].sourceTripId)}
                 type="button"
               >
@@ -431,11 +468,14 @@ export default function NewTripPage() {
         <div className={styles.contentColumn}>
           <section className={`${styles.mainSurface} ${styles.reveal}`}>
             <TripCreationForm
-              disabled={!canCreateTrips}
+              disabled={isCreatingTrip}
               isSubmitting={isCreatingTrip}
               onChange={handleTripFormChange}
               onReset={handleResetTripForm}
               onSubmit={handleCreateTrip}
+              onValidationError={(issues) => {
+                pushToast('Revisa los datos del viaje', issues[0] ?? 'Faltan datos obligatorios.', 'info');
+              }}
               onUseRouteTemplate={handleUseRouteTemplate}
               recentRouteTemplates={recentRouteTemplates}
               values={tripForm}

@@ -7,11 +7,13 @@ import {
   Optional,
 } from '@nestjs/common';
 import {
+  AppNotificationType,
   CancellationTiming,
   TripRequestStatus,
   TripStatus,
 } from '@saferidepro/shared-types';
 
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { TripPaymentsOrchestratorService } from '../../../payments/application/services/trip-payments-orchestrator.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { OperationalSanctionsService } from '../../../sanctions/application/services/operational-sanctions.service';
@@ -35,6 +37,8 @@ export class CancelTripRequestUseCase {
     },
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async execute(userId: string, requestId: string) {
@@ -91,6 +95,16 @@ export class CancelTripRequestUseCase {
       reason: 'cancelled',
       requestId: updatedTripRequest.id,
       tripId: updatedTripRequest.tripId,
+    });
+
+    await this.notificationsService?.notifyMembership({
+      institutionId: updatedTripRequest.institutionId,
+      recipientMembershipId: updatedTripRequest.driverMembershipId,
+      actorUserId: userId,
+      type: AppNotificationType.TripRequestCancelled,
+      title: 'Cupo cancelado',
+      body: `${updatedTripRequest.passengerFullName} cancelo su solicitud.`,
+      actionUrl: '/viajes/aprobar-solicitudes?experienceMode=driver',
     });
 
     return {

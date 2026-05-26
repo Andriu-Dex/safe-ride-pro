@@ -214,7 +214,6 @@ export function TripsOperationWorkspace({
             <p className="section-heading-meta">{myTrips.length} resultados</p>
           </div>
           <Button
-            disabled={!canCreateTrips}
             onClick={onNavigateToCreateTrip}
             variant="secondary"
           >

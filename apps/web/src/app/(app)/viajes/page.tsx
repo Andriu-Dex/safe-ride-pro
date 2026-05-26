@@ -202,6 +202,36 @@ function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof ApiError ? error.message : fallbackMessage;
 }
 
+function getTripCreationBlockMessage({
+  activeVehiclesCount,
+  blocksDriver,
+  driverStatus,
+  licenseStatus,
+}: {
+  activeVehiclesCount: number;
+  blocksDriver: boolean;
+  driverStatus: DriverVerificationStatus;
+  licenseStatus: DriverLicenseStatus;
+}) {
+  if (driverStatus !== DriverVerificationStatus.Approved) {
+    return 'Tu solicitud de conductor debe estar aprobada antes de crear viajes.';
+  }
+
+  if (licenseStatus === DriverLicenseStatus.Expired) {
+    return 'Actualiza tu licencia antes de crear viajes.';
+  }
+
+  if (activeVehiclesCount === 0) {
+    return 'Primero registra y activa un vehículo.';
+  }
+
+  if (blocksDriver) {
+    return 'Tu cuenta tiene una restricción activa para operar como conductor.';
+  }
+
+  return 'Revisa tu perfil de conductor antes de crear viajes.';
+}
+
 function resolveAvailablePaymentProvider(
   requestedProvider: PaymentProvider,
   settings: InstitutionSettingsRecord | null,
@@ -1163,6 +1193,24 @@ export default function TripsPage() {
     }
   };
 
+  const handleCreateTripNavigation = () => {
+    if (canCreateTrips) {
+      router.push('/viajes/nuevo');
+      return;
+    }
+
+    pushToast(
+      'No puedes crear viajes todavía',
+      getTripCreationBlockMessage({
+        activeVehiclesCount: activeVehicles.length,
+        blocksDriver: trustRestrictions.blocksDriver,
+        driverStatus,
+        licenseStatus,
+      }),
+      'info',
+    );
+  };
+
   const defaultMembership = selectOperationalMembership(authSession?.user.memberships);
   const defaultMembershipId =
     defaultMembership && isOperationalMembership(defaultMembership)
@@ -1345,7 +1393,7 @@ export default function TripsPage() {
 
         <div className={styles.heroActions}>
           {showDriverWorkspace ? (
-            <button className={styles.heroBtnPrimary} disabled={!canCreateTrips} onClick={() => router.push('/viajes/nuevo')} type="button">
+            <button className={styles.heroBtnPrimary} onClick={handleCreateTripNavigation} type="button">
               Crear viaje
             </button>
           ) : null}
@@ -1656,7 +1704,7 @@ export default function TripsPage() {
                     onMarkPassengerBoarded={(requestId) => void handleMarkPassengerBoarded(requestId)}
                     onMarkPassengerDroppedOff={(requestId) =>
                       void handleMarkPassengerDroppedOff(requestId)}
-                    onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
+                    onNavigateToCreateTrip={handleCreateTripNavigation}
                     onNoShowNoteChange={handleNoShowNoteChange}
                     onOpenRequests={() => router.push('/viajes/aprobar-solicitudes')}
                     onTripAction={(tripId, action, options) =>
@@ -1710,7 +1758,7 @@ export default function TripsPage() {
                   onMarkPassengerBoarded={(requestId) => void handleMarkPassengerBoarded(requestId)}
                   onMarkPassengerDroppedOff={(requestId) =>
                     void handleMarkPassengerDroppedOff(requestId)}
-                  onNavigateToCreateTrip={() => router.push('/viajes/nuevo')}
+                  onNavigateToCreateTrip={handleCreateTripNavigation}
                   onNoShowNoteChange={handleNoShowNoteChange}
                   onOpenRequests={() => router.push('/viajes/aprobar-solicitudes')}
                   onTripAction={(tripId, action, options) =>

@@ -224,7 +224,7 @@ export default function EditTripPage() {
         description: response.message,
         tone: 'success',
       });
-      router.push(`/viajes/${trip.id}`);
+      router.push('/viajes');
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         await refreshSession().catch(() => undefined);
@@ -307,6 +307,9 @@ export default function EditTripPage() {
             onChange={handleTripFormChange}
             onReset={handleResetTripForm}
             onSubmit={handleUpdateTrip}
+            onValidationError={(issues) => {
+              pushToast('Revisa los datos del viaje', issues[0] ?? 'Faltan datos obligatorios.', 'info');
+            }}
             onUseRouteTemplate={() => undefined}
             pendingCopy="Corrige los datos obligatorios antes de guardar."
             readyCopy="Listo para guardar cambios"

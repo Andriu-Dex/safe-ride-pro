@@ -34,6 +34,7 @@ type TripCreationFormProps = {
   pendingCopy?: string;
   onChange: (field: keyof TripFormValues, value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onValidationError?: (issues: string[]) => void;
   recentRouteTemplates: RecentTripRouteTemplate[];
   onUseRouteTemplate: (templateId: string) => void;
   onReset: () => void;
@@ -57,6 +58,7 @@ export function TripCreationForm({
   pendingCopy = 'Completa los datos pendientes',
   onChange,
   onSubmit,
+  onValidationError,
   recentRouteTemplates,
   onUseRouteTemplate,
   onReset,
@@ -198,12 +200,12 @@ export function TripCreationForm({
   };
 
   useEffect(() => {
-    if (disabled || values.vehicleId || vehicles.length !== 1) {
+    if (values.vehicleId || vehicles.length !== 1) {
       return;
     }
 
     onChange('vehicleId', vehicles[0].id);
-  }, [disabled, onChange, values.vehicleId, vehicles]);
+  }, [onChange, values.vehicleId, vehicles]);
 
   useEffect(() => {
     if (
@@ -311,6 +313,20 @@ export function TripCreationForm({
   ]);
 
   const canSubmit = !disabled && !isSubmitting && validationIssues.length === 0;
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    if (disabled || isSubmitting) {
+      event.preventDefault();
+      return;
+    }
+
+    if (validationIssues.length > 0) {
+      event.preventDefault();
+      onValidationError?.(validationIssues);
+      return;
+    }
+
+    onSubmit(event);
+  };
   const durationLabel = getDurationLabel(departureDate, estimatedArrivalDate);
   const routeModeLabel = getTripRouteModeLabel(values.routeMode);
   const referencePriceLabel =
@@ -383,7 +399,7 @@ export function TripCreationForm({
         </section>
       ) : null}
 
-      <form className={styles.formStack} onSubmit={onSubmit}>
+      <form className={styles.formStack} noValidate onSubmit={handleSubmit}>
         <section className={styles.sectionCard}>
           <TripFormSectionHeader
             badge="01"
@@ -763,7 +779,7 @@ export function TripCreationForm({
             >
               Limpiar
             </Button>
-            <Button disabled={!canSubmit} type="submit">
+            <Button disabled={disabled || isSubmitting} type="submit">
               {isSubmitting ? submittingLabel : submitLabel}
             </Button>
           </div>
