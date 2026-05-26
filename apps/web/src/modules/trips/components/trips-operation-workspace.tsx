@@ -65,6 +65,7 @@ type TripsOperationWorkspaceProps = {
   onMarkPassengerDroppedOff: (requestId: string) => void;
   onMarkNoShow: (requestId: string) => void;
   onTripClosureNoteChange: (tripId: string, value: string) => void;
+  onBlockedAction?: (title: string, description: string) => void;
   showCommandCenter?: boolean;
   showClosureItems?: boolean;
 };
@@ -88,6 +89,7 @@ export function TripsOperationWorkspace({
   onMarkPassengerDroppedOff,
   onMarkNoShow,
   onTripClosureNoteChange,
+  onBlockedAction,
   showCommandCenter = true,
   showClosureItems = true,
 }: TripsOperationWorkspaceProps) {
@@ -144,6 +146,10 @@ export function TripsOperationWorkspace({
       setSelectedTripIdForClosure(null);
     }
   }, [selectedTripForClosure]);
+
+  const notifyBlockedAction = (title: string, description: string) => {
+    onBlockedAction?.(title, description);
+  };
 
   return (
     <>
@@ -390,8 +396,12 @@ export function TripsOperationWorkspace({
                     trip.status === TripStatus.Published ||
                     trip.status === TripStatus.Full ? (
                       <Button
-                        disabled={isMutatingTripId === trip.id}
                         onClick={() => {
+                          if (isMutatingTripId === trip.id) {
+                            notifyBlockedAction('Operacion en curso', 'Espera a que termine la accion anterior.');
+                            return;
+                          }
+
                           if (isDraftTrip) {
                             setSelectedDraftTripIdForDelete(trip.id);
                             return;
@@ -411,12 +421,24 @@ export function TripsOperationWorkspace({
                     ) : null}
                     {trip.status === TripStatus.Draft ? (
                       <Button
-                        disabled={
-                          isMutatingTripId === trip.id
-                          || licenseStatus === DriverLicenseStatus.Expired
-                          || blocksDriver
-                        }
-                        onClick={() => onTripAction(trip.id, 'publish')}
+                        onClick={() => {
+                          if (isMutatingTripId === trip.id) {
+                            notifyBlockedAction('Operacion en curso', 'Espera a que termine la accion anterior.');
+                            return;
+                          }
+
+                          if (licenseStatus === DriverLicenseStatus.Expired) {
+                            notifyBlockedAction('No puedes publicar', 'Tu licencia esta vencida.');
+                            return;
+                          }
+
+                          if (blocksDriver) {
+                            notifyBlockedAction('No puedes publicar', 'Tienes una restriccion activa como conductor.');
+                            return;
+                          }
+
+                          onTripAction(trip.id, 'publish');
+                        }}
                         variant="primary"
                       >
                         Publicar
@@ -424,13 +446,32 @@ export function TripsOperationWorkspace({
                     ) : null}
                     {(trip.status === TripStatus.Published || trip.status === TripStatus.Full) ? (
                       <Button
-                        disabled={
-                          isMutatingTripId === trip.id
-                          || licenseStatus === DriverLicenseStatus.Expired
-                          || blocksDriver
-                          || !canStartTripNow(trip.departureAt, trip.estimatedArrivalAt)
-                        }
-                        onClick={() => onTripAction(trip.id, 'start')}
+                        onClick={() => {
+                          if (isMutatingTripId === trip.id) {
+                            notifyBlockedAction('Operacion en curso', 'Espera a que termine la accion anterior.');
+                            return;
+                          }
+
+                          if (licenseStatus === DriverLicenseStatus.Expired) {
+                            notifyBlockedAction('No puedes iniciar', 'Tu licencia esta vencida.');
+                            return;
+                          }
+
+                          if (blocksDriver) {
+                            notifyBlockedAction('No puedes iniciar', 'Tienes una restriccion activa como conductor.');
+                            return;
+                          }
+
+                          if (!canStartTripNow(trip.departureAt, trip.estimatedArrivalAt)) {
+                            notifyBlockedAction(
+                              'No puedes iniciar aun',
+                              startAvailabilityMessage ?? 'Este viaje solo puede iniciarse dentro del horario permitido.',
+                            );
+                            return;
+                          }
+
+                          onTripAction(trip.id, 'start');
+                        }}
                         title={startAvailabilityMessage ?? undefined}
                         variant="secondary"
                       >
@@ -439,8 +480,14 @@ export function TripsOperationWorkspace({
                     ) : null}
                     {trip.status === TripStatus.InProgress ? (
                       <Button
-                        disabled={isMutatingTripId === trip.id}
-                        onClick={() => setSelectedTripIdForClosure(trip.id)}
+                        onClick={() => {
+                          if (isMutatingTripId === trip.id) {
+                            notifyBlockedAction('Operacion en curso', 'Espera a que termine la accion anterior.');
+                            return;
+                          }
+
+                          setSelectedTripIdForClosure(trip.id);
+                        }}
                         variant="secondary"
                       >
                         Gestionar cierre

@@ -1719,6 +1719,7 @@ export default function TripsPage() {
                       void handleMarkPassengerDroppedOff(requestId)}
                     onNavigateToCreateTrip={handleCreateTripNavigation}
                     onNoShowNoteChange={handleNoShowNoteChange}
+                    onBlockedAction={(title, description) => pushToast(title, description, 'info')}
                     onOpenRequests={() => router.push('/viajes/aprobar-solicitudes')}
                     onTripAction={(tripId, action, options) =>
                       void handleTripAction(tripId, action, options)}
@@ -1742,6 +1743,7 @@ export default function TripsPage() {
                       onCreateRequest={(trip) => void handleCreateRequest(trip)}
                       onFilterChange={handleFilterChange}
                       onOpenRequests={() => setPassengerWorkspace('requests')}
+                      onBlockedAction={(title, description) => pushToast(title, description, 'info')}
                       onRequestDraftChange={handleRequestDraftChange}
                       onResetFilters={handleResetFilters}
                       requestDrafts={requestDrafts}
@@ -1773,6 +1775,7 @@ export default function TripsPage() {
                     void handleMarkPassengerDroppedOff(requestId)}
                   onNavigateToCreateTrip={handleCreateTripNavigation}
                   onNoShowNoteChange={handleNoShowNoteChange}
+                  onBlockedAction={(title, description) => pushToast(title, description, 'info')}
                   onOpenRequests={() => router.push('/viajes/aprobar-solicitudes')}
                   onTripAction={(tripId, action, options) =>
                     void handleTripAction(tripId, action, options)}

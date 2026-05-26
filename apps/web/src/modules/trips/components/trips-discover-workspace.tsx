@@ -46,6 +46,7 @@ type TripsDiscoverWorkspaceProps = {
     value: string | boolean,
   ) => void;
   onCreateRequest: (trip: TripRecord) => void;
+  onBlockedAction?: (title: string, description: string) => void;
   canCreateRequestForTrip: (trip: TripRecord, hasActiveRequest: boolean) => boolean;
   isRefreshingData?: boolean;
 };
@@ -68,6 +69,7 @@ export function TripsDiscoverWorkspace({
   onOpenRequests,
   onRequestDraftChange,
   onCreateRequest,
+  onBlockedAction,
   canCreateRequestForTrip,
   isRefreshingData = false,
 }: TripsDiscoverWorkspaceProps) {
@@ -81,6 +83,9 @@ export function TripsDiscoverWorkspace({
   const visibleTripsWithSeatsCount = visibleAvailableTrips.filter(
     (trip) => trip.status === TripStatus.Published && trip.availableSeats > 0,
   ).length;
+  const notifyBlockedAction = (title: string, description: string) => {
+    onBlockedAction?.(title, description);
+  };
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(visibleAvailableTrips.length / pageSize));
@@ -205,8 +210,24 @@ export function TripsDiscoverWorkspace({
                     </Link>
                     <button
                       className={styles.tripAction}
-                      disabled={isPassengerOperationBlocked || trip.status === TripStatus.Full}
-                      onClick={() => setRequestTripModalId(trip.id)}
+                      onClick={() => {
+                        if (isMutatingRequestId === trip.id) {
+                          notifyBlockedAction('Operacion en curso', 'Espera a que termine la accion anterior.');
+                          return;
+                        }
+
+                        if (isPassengerOperationBlocked) {
+                          notifyBlockedAction('No puedes solicitar', 'Tienes una restriccion activa como pasajero.');
+                          return;
+                        }
+
+                        if (!hasActiveRequest && (trip.status === TripStatus.Full || trip.availableSeats <= 0)) {
+                          notifyBlockedAction('Sin cupos disponibles', 'Este viaje ya no tiene cupos libres.');
+                          return;
+                        }
+
+                        setRequestTripModalId(trip.id);
+                      }}
                       style={hasActiveRequest ? { background: '#f0f6ff', borderColor: '#0061a5', color: '#0061a5', cursor: 'pointer' } : { background: '#0061a5', color: '#fff', borderColor: '#0061a5', cursor: 'pointer' }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '0.3rem'}}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
@@ -395,8 +416,37 @@ export function TripsDiscoverWorkspace({
                   Cancelar
                 </button>
                 <Button
-                  disabled={!canSubmitRequest || !draft.acceptReservationCommitment || !hasEnabledPaymentOption || isMutatingRequestId === trip.id || isPassengerOperationBlocked}
                   onClick={() => {
+                    if (isMutatingRequestId === trip.id) {
+                      notifyBlockedAction('Operacion en curso', 'Espera a que termine la accion anterior.');
+                      return;
+                    }
+
+                    if (isPassengerOperationBlocked) {
+                      notifyBlockedAction('No puedes solicitar', 'Tienes una restriccion activa como pasajero.');
+                      return;
+                    }
+
+                    if (!hasEnabledPaymentOption) {
+                      notifyBlockedAction('No puedes solicitar', 'No hay formas de pago habilitadas.');
+                      return;
+                    }
+
+                    if (!draft.acceptReservationCommitment) {
+                      notifyBlockedAction('Falta confirmar reglas', 'Acepta las reglas de reserva antes de continuar.');
+                      return;
+                    }
+
+                    if (!canSubmitRequest) {
+                      notifyBlockedAction(
+                        trip.status === TripStatus.Full ? 'Sin cupos disponibles' : 'No puedes solicitar',
+                        trip.status === TripStatus.Full
+                          ? 'Este viaje ya no tiene cupos libres.'
+                          : 'Este viaje no esta disponible para una nueva solicitud.',
+                      );
+                      return;
+                    }
+
                     onCreateRequest(trip);
                     setRequestTripModalId(null);
                   }}
