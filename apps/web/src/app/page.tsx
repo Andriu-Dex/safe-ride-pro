@@ -27,7 +27,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             alt="Logo de SafeRidePro"
             className="auth-hero-logo"
             loading="eager"
-            src="https://i.imgur.com/7UUGKrJ.png"
+            src="https://i.imgur.com/TYLVfM8.png"
           />
           <div>
             <p className="kicker">Bienvenida a la pagina</p>

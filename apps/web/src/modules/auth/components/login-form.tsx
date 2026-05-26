@@ -8,6 +8,7 @@ import { InputField } from '../../../components/ui/input-field';
 import { PasswordField } from '../../../components/ui/password-field';
 import { ApiError } from '../lib/auth-api';
 import { useAuth } from '../hooks/use-auth';
+import styles from './login-form.module.css';
 
 type LoginFormProps = {
   initialEmail?: string;
@@ -126,11 +127,11 @@ export function LoginForm({
         </Button>
       </form>
 
-      <div className="mt-6 flex flex-col items-center gap-3">
-        <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
+      <div className={styles.footer}>
+        <div className={styles.footerLinks}>
           <button
             type="button"
-            className="hover:text-slate-800 transition-colors"
+            className={styles.footerButton}
             onClick={() => router.push('/register')}
           >
             Registrarse
@@ -138,7 +139,7 @@ export function LoginForm({
           <span>•</span>
           <button
             type="button"
-            className="hover:text-slate-800 transition-colors"
+            className={styles.footerButton}
             onClick={() => router.push('/forgot-password')}
           >
             Olvidé mi clave
@@ -147,7 +148,7 @@ export function LoginForm({
         {email.trim() ? (
           <button
             type="button"
-            className="auth-inline-link text-sm font-medium mt-1"
+            className={styles.inlineLink}
             onClick={() => router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`)}
           >
             Volver a verificación

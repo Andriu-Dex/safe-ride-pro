@@ -2,8 +2,8 @@
   min-height: 100%;
   padding: 2rem 1.5rem 3rem;
   background:
-    radial-gradient(circle at top, rgba(15, 118, 110, 0.08), transparent 32%),
-    #eef3f2;
+    radial-gradient(circle at top, rgba(0, 97, 165, 0.12), transparent 32%),
+    #eef4ff;
 }
 
 .content {
@@ -20,11 +20,11 @@
   gap: 1rem;
   padding: clamp(1.4rem, 2.8vw, 2.2rem);
   border-radius: 28px;
-  background: linear-gradient(150deg, #0d5c56, #12353d 74%);
-  box-shadow: 0 22px 54px rgba(15, 23, 42, 0.14);
-}
-
-.heroCopy {
+  background: linear-gradient(150deg, #002045, #1a365d 74%);
+  box-shadow: 0 22px 54px rgba(2, 20, 40, 0.2);
+  border: 1px solid rgba(2, 20, 40, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 12px 34px rgba(2, 20, 40, 0.08);
   display: grid;
   gap: 0.6rem;
   max-width: 48rem;
@@ -36,7 +36,7 @@
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #91e2d7;
+  color: rgba(173, 199, 247, 0.9);
 }
 
 .pageTitle {
@@ -50,7 +50,7 @@
 .heroLead {
   margin: 0;
   line-height: 1.65;
-  color: rgba(231, 247, 244, 0.86);
+  color: rgba(214, 227, 255, 0.85);
 }
 
 .heroActions {
@@ -113,7 +113,7 @@
 }
 
 .sidebarSectionHeader strong {
-  color: #16343d;
+  color: #0b1c30;
   font-size: 1.05rem;
 }
 
@@ -128,9 +128,9 @@
   justify-content: flex-start;
   padding: 0.8rem 1rem;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid rgba(15, 118, 110, 0.08);
-  color: #0f766e;
+  background: #f1f6ff;
+  border: 1px solid rgba(0, 97, 165, 0.18);
+  color: #0061a5;
   text-decoration: none;
   font-weight: 700;
   font-size: 0.95rem;
@@ -138,15 +138,15 @@
 }
 
 .sidebarLink:hover {
-  background: #f1f5f9;
-  border-color: rgba(15, 118, 110, 0.25);
+  background: #e6efff;
+  border-color: rgba(0, 97, 165, 0.35);
   transform: translateX(2px);
 }
 
 .clearButton {
   border: none;
-  background: rgba(15, 118, 110, 0.1);
-  color: #0f766e;
+  background: rgba(0, 97, 165, 0.12);
+  color: #0061a5;
   font-size: 0.8rem;
   font-weight: 700;
   padding: 0.3rem 0.7rem;
@@ -156,7 +156,7 @@
 }
 
 .clearButton:hover {
-  background: rgba(15, 118, 110, 0.18);
+  background: rgba(0, 97, 165, 0.2);
 }
 
 .filterGroup {
@@ -167,7 +167,7 @@
 .filterGroup + .filterGroup {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(15, 118, 110, 0.1);
+  border-top: 1px solid rgba(0, 97, 165, 0.2);
 }
 
 .filterLabel {
@@ -175,7 +175,7 @@
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #56737a;
+  color: #4a5568;
 }
 
 .filterOptions {
@@ -189,7 +189,7 @@
   gap: 0.7rem;
   padding: 0.4rem 0.5rem;
   border-radius: 8px;
-  color: #16343d;
+  color: #0b1c30;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -197,13 +197,13 @@
 }
 
 .checkboxRow:hover {
-  background: rgba(15, 118, 110, 0.05);
+  background: rgba(0, 97, 165, 0.08);
 }
 
 .checkboxRow input {
   width: 1rem;
   height: 1rem;
-  accent-color: #0f766e;
+  accent-color: #0061a5;
 }
 
 .focusList {
@@ -219,13 +219,13 @@
   flex-direction: column;
   gap: 0.2rem;
   padding: 0.9rem;
-  background: rgba(15, 118, 110, 0.04);
-  border: 1px solid rgba(15, 118, 110, 0.08);
+  background: rgba(0, 97, 165, 0.06);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   border-radius: 14px;
 }
 
 .focusList span {
-  color: #0f766e;
+  color: #0061a5;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -233,7 +233,7 @@
 }
 
 .focusList strong {
-  color: #12333a;
+  color: #0b1c30;
   font-size: 1.5rem;
   font-weight: 800;
   line-height: 1;
@@ -256,14 +256,14 @@
 
 .workspaceHeader h2 {
   margin: 0;
-  color: #16343d;
+  color: #0b1c30;
   font-size: clamp(1.45rem, 2.8vw, 1.8rem);
   letter-spacing: -0.02em;
 }
 
 .workspaceHeader p {
   margin: 0.3rem 0 0;
-  color: #647b81;
+  color: #4a5568;
   line-height: 1.6;
 }
 
@@ -282,7 +282,7 @@
 .lockedCard {
   padding: 1.8rem;
   background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 118, 110, 0.12);
+  border: 1px solid rgba(0, 97, 165, 0.2);
   border-radius: 1.8rem;
   box-shadow: 0 22px 54px rgba(15, 23, 42, 0.08);
 }

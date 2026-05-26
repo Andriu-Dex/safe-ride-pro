@@ -1,13 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 .page {
   width: min(100%, 1400px);
   margin: 0 auto;
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-  color: #0f1f24;
-  background-color: #e6ecef;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: #f1f6ff;
   border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 18px 48px rgba(2, 20, 40, 0.08);
   margin-top: 1rem;
   margin-bottom: 2rem;
   min-height: 85vh;
@@ -17,7 +15,7 @@
 }
 
 .heroHeader {
-  background: linear-gradient(135deg, #0f766e 0%, #0f2a2f 100%);
+  background: linear-gradient(135deg, #002045 0%, #1a365d 100%);
   padding: 2.5rem 3rem;
   color: #ffffff;
   display: flex;
@@ -39,7 +37,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #99f6e4;
+  color: rgba(173, 199, 247, 0.9);
   margin: 0;
 }
 
@@ -58,8 +56,8 @@
 }
 
 .heroBtnPrimary {
-  background: #ffffff;
-  color: #0f2a2f;
+  background: #f1f6ff;
+  color: #0b2a4a;
   border: none;
   font-weight: 700;
   padding: 0.65rem 1.25rem;
@@ -75,8 +73,8 @@
 }
 
 .heroBtnSecondary {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   color: #ffffff;
   font-weight: 700;
   padding: 0.65rem 1.25rem;
@@ -94,9 +92,9 @@
 }
 
 .noticeCard {
-  background: #fdf5f3;
-  border: 1px solid #f9d8d6;
-  border-left: 4px solid #d94b38;
+  background: rgba(214, 227, 255, 0.6);
+  border: 1px solid rgba(0, 97, 165, 0.18);
+  border-left: 4px solid #0061a5;
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   margin: 1.5rem 3rem 0;
@@ -130,7 +128,7 @@
 }
 
 .inlineLink {
-  color: #0f766e;
+  color: var(--color-accent);
   font-weight: 700;
   text-decoration: none;
   font-size: 0.9rem;
@@ -159,7 +157,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
-  background: #d5dfe3;
+  background: rgba(214, 227, 255, 0.7);
   padding: 0.35rem;
   border-radius: 12px;
 }
@@ -187,8 +185,8 @@
 
 .dashboardTabActive {
   color: #ffffff;
-  background: #0f2a2f;
-  box-shadow: 0 4px 10px rgba(15, 42, 47, 0.15);
+  background: var(--color-primary);
+  box-shadow: 0 4px 10px rgba(2, 20, 40, 0.2);
 }
 
 .filterSidebar {
@@ -247,7 +245,7 @@
 
 .filterResetLink {
   font-size: 0.8rem;
-  color: #0f766e;
+  color: var(--color-accent);
   background: transparent;
   border: none;
   font-weight: 700;
@@ -266,8 +264,8 @@
 }
 
 .filterPill {
-  background: #e6ecef;
-  color: #162e33;
+  background: rgba(214, 227, 255, 0.7);
+  color: #0b1c30;
   padding: 0.3rem 0.6rem;
   border-radius: 6px;
   font-size: 0.75rem;
@@ -296,10 +294,10 @@
 .driverFilterInput,
 .driverFilterSelect {
   width: 100%;
-  border: 1px solid rgba(15, 23, 42, 0.12);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: #f8fbfc;
-  color: #162e33;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0b1c30;
   padding: 0.7rem 0.8rem;
   font-size: 0.92rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
@@ -308,8 +306,8 @@
 .driverFilterInput:focus,
 .driverFilterSelect:focus {
   outline: none;
-  border-color: #0f766e;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.16);
   background: #ffffff;
 }
 
@@ -329,7 +327,7 @@
 }
 
 .driverFilterCheck input {
-  accent-color: #0f766e;
+  accent-color: #0061a5;
 }
 
 .driverFilterSummary {
@@ -444,14 +442,14 @@
   height: 3rem;
   border-radius: 50%;
   border: 3px solid #e2e8f0;
-  border-top-color: #0f766e;
+  border-top-color: #0061a5;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
 
 .loadingTitle,
 .lockedTitle {
-  color: #16343d;
+  color: #0b1c30;
   margin: 0.5rem 0;
   font-weight: 800;
   font-size: 1.5rem;
@@ -459,7 +457,7 @@
 
 .loadingText,
 .lockedBody p {
-  color: #61797f;
+  color: #4a5568;
   margin: 0;
   font-size: 0.95rem;
 }

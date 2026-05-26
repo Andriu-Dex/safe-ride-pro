@@ -16,7 +16,7 @@ export function ResetPasswordPageContent({
   sent = false,
 }: ResetPasswordPageContentProps) {
   return (
-    <main className={`${styles.resetShell} grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top,#fdf8ee_0%,#f3ecdf_42%,#eadfcd_100%)] p-4 sm:p-8`}>
+    <main className={styles.resetShell}>
       <section className={styles.resetCard}>
         <aside className={styles.resetShowcase}>
           <div className={styles.reveal}>

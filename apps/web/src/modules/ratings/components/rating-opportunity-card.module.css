@@ -2,11 +2,11 @@
   display: grid;
   gap: 1rem;
   padding-left: 1rem;
-  border-left: 3px solid rgba(15, 118, 110, 0.16);
+  border-left: 3px solid rgba(0, 97, 165, 0.2);
 }
 
 .highlighted {
-  border-left-color: #0f766e;
+  border-left-color: #0061a5;
 }
 
 .header {

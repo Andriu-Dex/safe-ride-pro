@@ -1,14 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 .page {
   width: min(100%, 1200px);
   margin: 0 auto;
   padding: 2rem;
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-  color: #0f1f24;
-  background-color: #e6ecef;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: #f1f6ff;
   border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 18px 48px rgba(2, 20, 40, 0.08);
   margin-top: 1rem;
   margin-bottom: 2rem;
   min-height: 85vh;
@@ -24,7 +22,7 @@
 .headerTitle {
   font-size: 2rem;
   font-weight: 800;
-  color: #162e33;
+  color: #0b1c30;
   margin: 0;
   letter-spacing: -0.02em;
 }
@@ -56,7 +54,7 @@
   padding: 1.25rem 1.5rem;
   border-radius: 14px;
   border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(2, 20, 40, 0.08);
 }
 
 .filterActions {
@@ -85,7 +83,7 @@
 }
 
 .dataTable th {
-  background: #0f2a2f;
+  background: #002045;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -113,18 +111,18 @@
 }
 
 .dataTable tbody tr:hover {
-  background-color: rgba(15, 118, 110, 0.08) !important;
+  background-color: rgba(0, 97, 165, 0.08) !important;
 }
 
 .tdPrimary {
   font-weight: 700;
-  color: #14282e;
+  color: #0b1c30;
   display: block;
 }
 
 .tdSecondary {
   font-size: 0.85rem;
-  color: #5a6c72;
+  color: #4a5568;
   display: block;
   margin-top: 0.2rem;
 }
@@ -147,13 +145,13 @@
 }
 
 .paginationInfo {
-  color: #5a6c72;
+  color: #4a5568;
   font-size: 0.875rem;
   text-align: center;
 }
 
 .paginationInfo strong {
-  color: #0f766e;
+  color: var(--color-accent);
   font-weight: 800;
 }
 
@@ -173,8 +171,8 @@
   font-size: 0.9rem;
   font-weight: 700;
   color: #ffffff;
-  background: linear-gradient(135deg, #0f766e, #115e59);
-  box-shadow: 0 4px 10px rgba(15, 118, 110, 0.3);
+  background: linear-gradient(135deg, #0061a5, #003a70);
+  box-shadow: 0 4px 10px rgba(0, 97, 165, 0.3);
 }
 
 .pageNumberTotal {
@@ -186,7 +184,7 @@
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #5a6c72;
+  color: #4a5568;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
 }
@@ -205,7 +203,7 @@
   padding: 0.5rem 0.85rem;
   border-radius: 8px;
   background: #ffffff;
-  color: #162e33;
+  color: #0b1c30;
   font-size: 0.85rem;
   font-weight: 700;
   border: 1px solid #e2e8f0;
@@ -215,7 +213,7 @@
 
 .paginationBtn:hover:not(:disabled) {
   background: #f8fafc;
-  color: #0f766e;
+  color: var(--color-accent);
   border-color: #cbd5e1;
   transform: translateY(-1px);
 }
@@ -230,13 +228,13 @@
 .emptyState {
   padding: 4rem 2rem;
   text-align: center;
-  color: #5a6c72;
+  color: #4a5568;
 }
 
 .emptyTitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #162e33;
+  color: #0b1c30;
   margin-bottom: 0.5rem;
 }
 
@@ -254,12 +252,12 @@
 }
 
 .stateTitle {
-  color: #16343d;
+  color: #0b1c30;
   margin: 0.5rem 0;
 }
 
 .stateText {
-  color: #61797f;
+  color: #4a5568;
   margin: 0;
 }
 
@@ -268,7 +266,7 @@
   height: 3rem;
   border-radius: 50%;
   border: 3px solid #e2e8f0;
-  border-top-color: #0f766e;
+  border-top-color: #0061a5;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
@@ -292,10 +290,10 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, #159d91, #0d5c56);
+  background: linear-gradient(160deg, #1c6fb5, #003a70);
   color: #ffffff;
   font-weight: 800;
-  box-shadow: 0 4px 10px rgba(11, 93, 85, 0.15);
+  box-shadow: 0 4px 10px rgba(0, 58, 112, 0.25);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -346,7 +344,7 @@
 
 .iconActionBtn:hover:not(:disabled) {
   background: #f4f6f7;
-  color: #0f2a2f;
+  color: #0b1c30;
   border-color: rgba(15, 23, 42, 0.2);
   transform: translateY(-1px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
@@ -368,13 +366,13 @@
 }
 
 .iconActionBtnSuccess {
-  color: #0f766e;
+  color: #0061a5;
 }
 
 .iconActionBtnSuccess:hover:not(:disabled) {
-  background: #ccfbf1;
-  color: #0f5f59;
-  border-color: #99f6e4;
+  background: #dbeafe;
+  color: #003a70;
+  border-color: #bfdbfe;
 }
 
 .statusColumn {
@@ -403,13 +401,13 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(6, 14, 16, 0.65);
+  background: rgba(6, 14, 24, 0.65);
   animation: overlayFadeIn 0.2s ease-out forwards;
 }
 
 .modalCard {
   border-radius: 20px;
-  background: #f0f4f5;
+  background: #f3f6ff;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
   max-width: 850px;
   width: 90vw;
@@ -427,7 +425,7 @@
   padding: 1.5rem 2rem;
   position: sticky;
   top: 0;
-  background: #0f2a2f;
+  background: #002045;
   z-index: 20;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
@@ -528,9 +526,9 @@
   gap: 0.8rem;
   padding: 1rem;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-left: 4px solid #0f766e;
+  border-left: 4px solid #0061a5;
   border-radius: 12px;
-  background: #f7f9fa;
+  background: #f3f6ff;
 }
 
 .membershipCardHeader {
@@ -540,12 +538,12 @@
 }
 
 .membershipCardHeader strong {
-  color: #152b31;
+  color: #0b1c30;
   font-size: 1.05rem;
 }
 
 .membershipCardHeader span {
-  color: #5a6c72;
+  color: #4a5568;
   font-size: 0.85rem;
 }
 

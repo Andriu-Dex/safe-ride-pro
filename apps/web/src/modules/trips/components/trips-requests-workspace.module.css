@@ -8,7 +8,7 @@
 .tableContainer {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid rgba(15, 118, 110, 0.15);
+  border: 1px solid rgba(0, 97, 165, 0.2);
   border-radius: 1rem;
   background: #ffffff;
   box-shadow: 0 4px 15px rgba(13, 48, 61, 0.05);
@@ -45,7 +45,7 @@
   letter-spacing: 0.06em;
   padding: 1rem 1.25rem;
   font-size: 0.75rem;
-  border-bottom: 2px solid rgba(15, 118, 110, 0.08);
+  border-bottom: 2px solid rgba(0, 97, 165, 0.18);
   white-space: nowrap;
   text-align: center;
 }
@@ -56,7 +56,7 @@
 
 .compactTable td {
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(15, 118, 110, 0.06);
+  border-bottom: 1px solid rgba(0, 97, 165, 0.12);
   color: #0f1f24;
   vertical-align: middle;
 }
@@ -66,7 +66,7 @@
 }
 
 .compactTable tr:hover td {
-  background: rgba(15, 118, 110, 0.02); /* Hover verde azulado súper sutil */
+  background: rgba(0, 97, 165, 0.04);
 }
 
 .cellRoute {
@@ -171,9 +171,9 @@
 }
 
 .iconBtn:hover:not(:disabled) {
-  background: rgba(15, 118, 110, 0.1);
-  color: #0f766e;
-  border-color: rgba(15, 118, 110, 0.2);
+  background: rgba(0, 97, 165, 0.12);
+  color: #0061a5;
+  border-color: rgba(0, 97, 165, 0.22);
 }
 
 .iconBtn:disabled {
@@ -194,9 +194,9 @@
 }
 
 .iconBtn.primary:hover:not(:disabled) {
-  background: #0f766e;
+  background: #0061a5;
   color: #ffffff;
-  border-color: #0f766e;
+  border-color: #0061a5;
 }
 
 .iconBtn svg {

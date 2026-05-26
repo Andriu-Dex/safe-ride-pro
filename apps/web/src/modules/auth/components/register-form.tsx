@@ -585,11 +585,11 @@ export function RegisterForm({ initialEmail = '' }: RegisterFormProps) {
           </Button>
         </form>
 
-        <div className="mt-6 flex flex-col items-center gap-3">
-          <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
+        <div className={styles.footerActions}>
+          <div className={styles.navigationActions}>
             <button
               type="button"
-              className="hover:text-slate-800 transition-colors"
+              className={styles.navigationAction}
               onClick={() => router.push('/login')}
             >
               Ya tengo una cuenta
@@ -599,7 +599,7 @@ export function RegisterForm({ initialEmail = '' }: RegisterFormProps) {
                 <span>•</span>
                 <button
                   type="button"
-                  className="hover:text-slate-800 transition-colors"
+                  className={styles.navigationAction}
                   onClick={() => router.push(`/verify-email?email=${encodeURIComponent(values.email.trim().toLowerCase())}`)}
                 >
                   Volver a verificación

@@ -11,9 +11,9 @@ export const metadata: Metadata = {
   title: 'SafeRidePro',
   description: 'Plataforma web para transporte seguro compartido entre estudiantes.',
   icons: {
-    icon: 'https://i.imgur.com/HMtKckK.png',
-    shortcut: 'https://i.imgur.com/HMtKckK.png',
-    apple: 'https://i.imgur.com/HMtKckK.png',
+    icon: 'https://i.imgur.com/ucDoiiZ.png',
+    shortcut: 'https://i.imgur.com/ucDoiiZ.png',
+    apple: 'https://i.imgur.com/ucDoiiZ.png',
   },
 };
 

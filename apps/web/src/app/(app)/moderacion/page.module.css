@@ -1,14 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 .page {
   width: min(100%, 1200px);
   margin: 0 auto;
   padding: 2rem;
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-  color: #0f1f24;
-  background-color: #e6ecef;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: #f1f6ff;
   border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 18px 48px rgba(2, 20, 40, 0.08);
   margin-top: 1rem;
   margin-bottom: 2rem;
   min-height: 85vh;
@@ -24,7 +22,7 @@
 .headerTitle {
   font-size: 2rem;
   font-weight: 800;
-  color: #162e33;
+  color: #0b1c30;
   margin: 0;
   letter-spacing: -0.02em;
 }
@@ -51,7 +49,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 2rem;
-  background: #d5dfe3;
+  background: rgba(214, 227, 255, 0.7);
   padding: 0.35rem;
   border-radius: 12px;
 }
@@ -63,7 +61,7 @@
   border-radius: 8px;
   font-weight: 600;
   font-size: 0.95rem;
-  color: #5a6c72;
+  color: #4a5568;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -73,19 +71,19 @@
 }
 
 .dashboardTab:hover {
-  color: #162e33;
+  color: #0b1c30;
   background: rgba(255, 255, 255, 0.6);
 }
 
 .dashboardTabActive {
   color: #ffffff;
-  background: #0f2a2f;
-  box-shadow: 0 4px 10px rgba(15, 42, 47, 0.15);
+  background: var(--color-primary);
+  box-shadow: 0 4px 10px rgba(2, 20, 40, 0.2);
 }
 
 .tabBadge {
   background: rgba(255, 255, 255, 0.8);
-  color: #0f2a2f;
+  color: #0b2a4a;
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -107,7 +105,7 @@
   padding: 1.25rem 1.5rem;
   border-radius: 14px;
   border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(2, 20, 40, 0.08);
 }
 
 .filterActions {
@@ -125,10 +123,10 @@
 .statCard {
   background: #ffffff;
   border: none;
-  border-top: 4px solid #0f766e;
+  border-top: 4px solid #0061a5;
   border-radius: 14px;
   padding: 1.5rem;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 20px rgba(2, 20, 40, 0.08);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -143,7 +141,7 @@
 .statCardLabel {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #5a6c72;
+  color: #4a5568;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -151,7 +149,7 @@
 .statCardValue {
   font-size: 2rem;
   font-weight: 800;
-  color: #162e33;
+  color: #0b1c30;
 }
 
 .tableContainer {
@@ -175,7 +173,7 @@
 }
 
 .dataTable th {
-  background: #0f2a2f;
+  background: #002045;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -203,22 +201,22 @@
 }
 
 .dataTable tbody tr:hover {
-  background-color: rgba(15, 118, 110, 0.08) !important;
+  background-color: rgba(0, 97, 165, 0.08) !important;
 }
 
 .dataTable tr.rowHighlight {
-  background-color: rgba(15, 118, 110, 0.06);
+  background-color: rgba(0, 97, 165, 0.08);
 }
 
 .tdPrimary {
   font-weight: 700;
-  color: #14282e;
+  color: #0b1c30;
   display: block;
 }
 
 .tdSecondary {
   font-size: 0.85rem;
-  color: #5a6c72;
+  color: #4a5568;
   display: block;
   margin-top: 0.2rem;
 }
@@ -228,7 +226,7 @@
 }
 
 .modalKicker{
-  color: #159a8b;
+  color: var(--color-accent);
   font-weight: bold;
 }
 
@@ -246,13 +244,13 @@
 }
 
 .paginationInfo {
-  color: #5a6c72;
+  color: #4a5568;
   font-size: 0.875rem;
   text-align: center;
 }
 
 .paginationInfo strong {
-  color: #0f766e;
+  color: var(--color-accent);
   font-weight: 800;
 }
 
@@ -272,8 +270,8 @@
   font-size: 0.9rem;
   font-weight: 700;
   color: #ffffff;
-  background: linear-gradient(135deg, #0f766e, #115e59);
-  box-shadow: 0 4px 10px rgba(15, 118, 110, 0.3);
+  background: linear-gradient(135deg, #0061a5, #003a70);
+  box-shadow: 0 4px 10px rgba(0, 97, 165, 0.3);
 }
 
 .pageNumberTotal {
@@ -285,7 +283,7 @@
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #5a6c72;
+  color: #4a5568;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
 }
@@ -304,7 +302,7 @@
   padding: 0.5rem 0.85rem;
   border-radius: 8px;
   background: #ffffff;
-  color: #162e33;
+  color: #0b1c30;
   font-size: 0.85rem;
   font-weight: 700;
   border: 1px solid #e2e8f0;
@@ -314,7 +312,7 @@
 
 .paginationBtn:hover:not(:disabled) {
   background: #f8fafc;
-  color: #0f766e;
+  color: var(--color-accent);
   border-color: #cbd5e1;
   transform: translateY(-1px);
 }
@@ -329,13 +327,13 @@
 .emptyState {
   padding: 4rem 2rem;
   text-align: center;
-  color: #5a6c72;
+  color: #4a5568;
 }
 
 .emptyTitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #162e33;
+  color: #0b1c30;
   margin-bottom: 0.5rem;
 }
 
@@ -350,7 +348,7 @@
   height: 3rem;
   border-radius: 50%;
   border: 3px solid #e2e8f0;
-  border-top-color: #0f766e;
+  border-top-color: #0061a5;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
@@ -364,7 +362,7 @@
 /* Modals */
 .modalCard {
   border-radius: 20px;
-  background: #f0f4f5;
+  background: #f3f6ff;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
   max-width: 800px;
   width: 90vw;
@@ -373,7 +371,7 @@
   display: flex;
   flex-direction: column;
   padding: 0rem 1.4rem 1.4rem 1.4rem;
-  border: 1px solid #12272b;
+  border: 1px solid #0b1c30;
 }
 
 .modalHeader {
@@ -384,7 +382,7 @@
   border-bottom: none;
   position: sticky;
   top: 0;
-  background: #0f2a2f;
+  background: #002045;
   z-index: 20;
   border-top-left-radius: 20px;
   margin: 0px -30px 20px -25px;
@@ -393,7 +391,7 @@
 .modalHeader button {
   color: #ffffff !important;
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.24);
 }
 
 .modalHeader button:hover {

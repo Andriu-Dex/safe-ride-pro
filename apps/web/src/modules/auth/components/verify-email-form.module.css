@@ -16,7 +16,7 @@
 
 .kicker {
   margin: 0;
-  color: #0f766e;
+  color: var(--color-accent);
   font-size: 0.77rem;
   font-weight: 800;
   letter-spacing: 0.11em;
@@ -38,14 +38,14 @@
 .summaryCard {
   display: grid;
   gap: 0.45rem;
-  border: 1px solid rgba(14, 165, 233, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.18);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(240, 249, 255, 0.82), rgba(240, 253, 250, 0.82));
+  background: linear-gradient(135deg, rgba(214, 227, 255, 0.7), rgba(232, 241, 255, 0.9));
   padding: 0.9rem 1rem;
 }
 
 .summaryLabel {
-  color: #0f766e;
+  color: var(--color-accent);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -61,15 +61,15 @@
 }
 
 .developmentCode {
-  border: 1px dashed rgba(14, 165, 233, 0.24);
+  border: 1px dashed rgba(0, 97, 165, 0.26);
   border-radius: 14px;
-  background: rgba(240, 249, 255, 0.75);
+  background: rgba(214, 227, 255, 0.6);
   padding: 0.82rem 0.92rem;
-  color: #1d4f5a;
+  color: #1a365d;
 }
 
 .developmentCode strong {
-  color: #0b7285;
+  color: #00497e;
 }
 
 .validationCard {
@@ -107,8 +107,60 @@
   width: 100%;
 }
 
+.footerActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.inlineAction,
+.navigationAction {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.inlineAction {
+  color: var(--color-accent);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.inlineAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.inlineAction:hover:not(:disabled),
+.inlineAction:focus-visible,
+.navigationAction:hover,
+.navigationAction:focus-visible {
+  color: var(--color-primary);
+  outline: none;
+}
+
+.navigationActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.navigationAction {
+  transition: color 0.2s ease;
+}
+
 @media (max-width: 760px) {
   .actionGrid {
     grid-template-columns: 1fr;
+  }
+
+  .navigationActions {
+    flex-wrap: wrap;
   }
 }

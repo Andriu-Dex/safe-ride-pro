@@ -1,30 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
-  --color-canvas: #f3ecdf;
-  --color-canvas-deep: #e9ddca;
-  --color-badge-standar: #75a7ff63;;
-  --color-badge-warning: #ff64646b;
-  --color-badge-danger: #ff646430;
-  --color-surface: rgba(255, 252, 246, 0.84);
-  --color-surface-strong: #fffaf1;
-  --color-surface-muted: rgba(255, 255, 255, 0.68);
-  --color-sidebar: rgba(18, 39, 43, 0.94);
-  --color-sidebar-accent: rgba(61, 111, 117, 0.22);
-  --color-text: #173338;
-  --color-text-soft: #567176;
-  --color-text-on-dark: #f5efe4;
-  --color-text-warning: #a10000;
-  --color-primary: #0f766e;
-  --color-primary-strong: #0d5c56;
-  --color-primary-soft: rgba(15, 118, 110, 0.14);
-  --color-border: rgba(23, 51, 56, 0.12);
-  --color-border-strong: rgba(23, 51, 56, 0.22);
-  --color-danger: #b5473e;
+  --font-display: 'Sora', 'Manrope', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+
+  --color-canvas: #f8f9ff;
+  --color-canvas-deep: #e5eeff;
+  --color-badge-standar: rgba(173, 199, 247, 0.45);
+  --color-badge-warning: rgba(245, 158, 11, 0.18);
+  --color-badge-danger: rgba(186, 26, 26, 0.15);
+  --color-surface: rgba(255, 255, 255, 0.92);
+  --color-surface-strong: #ffffff;
+  --color-surface-muted: rgba(239, 244, 255, 0.74);
+  --color-sidebar: rgba(11, 28, 48, 0.96);
+  --color-sidebar-accent: rgba(0, 97, 165, 0.18);
+  --color-text: #0b1c30;
+  --color-text-soft: #43474e;
+  --color-text-on-dark: #eaf1ff;
+  --color-text-warning: #8a2c00;
+  --color-primary: #002045;
+  --color-primary-strong: #1a365d;
+  --color-primary-soft: rgba(0, 97, 165, 0.12);
+  --color-accent: #0061a5;
+  --color-accent-strong: #00497e;
+  --color-border: rgba(11, 28, 48, 0.12);
+  --color-border-strong: rgba(11, 28, 48, 0.2);
+  --color-danger: #ba1a1a;
   --color-warning: #b7791f;
-  --color-success: #1f7a4a;
-  --shadow-panel: 0 28px 60px rgba(23, 51, 56, 0.12);
-  --shadow-soft: 0 12px 30px rgba(23, 51, 56, 0.08);
+  --color-success: #0f9d6f;
+  --shadow-panel: 0 26px 60px rgba(2, 32, 69, 0.14);
+  --shadow-soft: 0 12px 30px rgba(2, 32, 69, 0.08);
 
   --radius-lg: 28px;
   --radius-md: 18px;
@@ -43,16 +49,28 @@
 
 html {
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.22), transparent 30%),
-    radial-gradient(circle at right center, rgba(183, 121, 31, 0.12), transparent 22%),
-    linear-gradient(180deg, var(--color-canvas) 0%, #f8f2e9 50%, var(--color-canvas-deep) 100%);
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.16), transparent 34%),
+    radial-gradient(circle at top right, rgba(0, 180, 125, 0.08), transparent 28%),
+    linear-gradient(180deg, var(--color-canvas) 0%, #f1f6ff 52%, var(--color-canvas-deep) 100%);
   color: var(--color-text);
-  font-family: 'Trebuchet MS', 'Gill Sans', 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
 }
 
 a {
@@ -465,8 +483,8 @@ main {
 }
 
 .topbar-badge {
-  background: var(--color-primary-soft);
-  color: var(--color-primary-strong);
+  background: rgba(0, 97, 165, 0.12);
+  color: var(--color-primary);
 }
 
 .status-pill-neutral {
@@ -475,7 +493,7 @@ main {
 }
 
 .status-pill-success {
-  background: rgba(31, 122, 74, 0.14);
+  background: rgba(15, 157, 111, 0.14);
   color: var(--color-success);
 }
 
@@ -485,7 +503,7 @@ main {
 }
 
 .status-pill-danger {
-  background: rgba(181, 71, 62, 0.14);
+  background: rgba(186, 26, 26, 0.14);
   color: var(--color-danger);
 }
 
@@ -567,15 +585,15 @@ main {
 }
 
 .disclosure-summary:hover {
-  border-color: rgba(15, 118, 110, 0.22);
+  border-color: rgba(0, 97, 165, 0.22);
   background: rgba(255, 255, 255, 0.9);
   transform: translateY(-1px);
 }
 
 .disclosure-summary:focus-visible {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.35);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+  border-color: rgba(0, 97, 165, 0.35);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.16);
 }
 
 .disclosure-summary-copy {
@@ -596,7 +614,7 @@ main {
   height: 2rem;
   place-items: center;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.1);
+  background: rgba(0, 97, 165, 0.1);
   color: var(--color-primary-strong);
   font-size: 0.9rem;
   font-weight: 800;
@@ -681,8 +699,8 @@ main {
 .button:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 3px rgba(15, 118, 110, 0.2),
-    0 12px 24px rgba(15, 118, 110, 0.16);
+    0 0 0 3px rgba(0, 97, 165, 0.2),
+    0 12px 24px rgba(0, 97, 165, 0.16);
 }
 
 .button:disabled {
@@ -692,9 +710,9 @@ main {
 }
 
 .button-primary {
-  background: linear-gradient(160deg, #1aa698, #0d5c56);
+  background: linear-gradient(150deg, var(--color-accent), var(--color-primary));
   color: white;
-  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.22);
+  box-shadow: 0 14px 26px rgba(0, 97, 165, 0.26);
 }
 
 .button-secondary {
@@ -711,8 +729,8 @@ main {
 }
 
 .button-ghost:hover {
-  border-color: rgba(15, 118, 110, 0.2);
-  background: rgba(15, 118, 110, 0.08);
+  border-color: rgba(0, 97, 165, 0.24);
+  background: rgba(0, 97, 165, 0.1);
 }
 
 .trip-card-inline-meta {
@@ -736,8 +754,8 @@ main {
 }
 
 .trip-card-inline-chip-accent {
-  border-color: rgba(15, 118, 110, 0.16);
-  background: rgba(15, 118, 110, 0.1);
+  border-color: rgba(0, 97, 165, 0.16);
+  background: rgba(0, 97, 165, 0.1);
   color: var(--color-primary-strong);
 }
 
@@ -745,7 +763,7 @@ main {
   display: grid;
   gap: 0.7rem;
   padding-left: 1rem;
-  border-left: 3px solid rgba(15, 118, 110, 0.22);
+  border-left: 3px solid rgba(0, 97, 165, 0.22);
   color: var(--color-text-soft);
 }
 
@@ -768,7 +786,7 @@ main {
   display: grid;
   gap: 0.25rem;
   padding: 0.9rem 0.95rem;
-  border-left: 3px solid rgba(15, 118, 110, 0.16);
+  border-left: 3px solid rgba(0, 97, 165, 0.16);
   background: rgba(248, 250, 252, 0.88);
 }
 
@@ -819,15 +837,15 @@ main {
 
 .trip-card-icon-action:hover {
   transform: translateY(-1px);
-  border-color: rgba(15, 118, 110, 0.24);
-  background: rgba(15, 118, 110, 0.08);
+  border-color: rgba(0, 97, 165, 0.24);
+  background: rgba(0, 97, 165, 0.08);
   box-shadow: 0 12px 24px rgba(23, 51, 56, 0.1);
 }
 
 .trip-card-icon-action:focus-visible {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.32);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+  border-color: rgba(0, 97, 165, 0.32);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.16);
 }
 
 .trip-card-icon-action svg {
@@ -895,7 +913,7 @@ main {
 .analytics-hero::before {
   background:
     radial-gradient(circle at top right, rgba(21, 154, 139, 0.2), transparent 34%),
-    linear-gradient(90deg, transparent, rgba(15, 118, 110, 0.05));
+    linear-gradient(90deg, transparent, rgba(0, 97, 165, 0.05));
 }
 
 .experience-hero-main,
@@ -1102,7 +1120,7 @@ main {
 
 .quick-link-card:hover,
 .analytics-link-card:hover {
-  border-color: rgba(15, 118, 110, 0.2);
+  border-color: rgba(0, 97, 165, 0.2);
   box-shadow: 0 16px 30px rgba(23, 51, 56, 0.1);
   transform: translateY(-2px);
 }
@@ -1121,8 +1139,8 @@ main {
 
 .quick-link-card-action,
 .analytics-link-card-action {
-  border-color: rgba(15, 118, 110, 0.16);
-  background: rgba(15, 118, 110, 0.08);
+  border-color: rgba(0, 97, 165, 0.16);
+  background: rgba(0, 97, 165, 0.08);
 }
 
 .compact-banner,
@@ -1214,7 +1232,7 @@ main {
   height: 2rem;
   place-items: center;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.1);
+  background: rgba(0, 97, 165, 0.1);
   color: var(--color-primary-strong);
   font-size: 0.92rem;
   font-weight: 800;
@@ -1283,7 +1301,7 @@ main {
   filter: drop-shadow(0 16px 32px rgba(6, 32, 34, 0.2));
   margin: 0 auto;
   border-radius: 25px;
-  box-shadow: 2px 2px 12px #08786d;
+  box-shadow: 2px 2px 12px #1c6fb5;
 }
 
 .feature-list {
@@ -1367,13 +1385,13 @@ main {
 
 .input:focus {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.45);
-  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+  border-color: rgba(0, 97, 165, 0.5);
+  box-shadow: 0 0 0 4px rgba(0, 97, 165, 0.14);
 }
 
 .input-invalid {
-  border-color: rgba(181, 71, 62, 0.38);
-  box-shadow: 0 0 0 4px rgba(181, 71, 62, 0.08);
+  border-color: rgba(186, 26, 26, 0.4);
+  box-shadow: 0 0 0 4px rgba(186, 26, 26, 0.12);
 }
 
 .input-shell {
@@ -1402,15 +1420,15 @@ main {
   height: 2.15rem;
   border: 1px solid transparent;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.08);
-  color: var(--color-primary-strong);
+  background: rgba(0, 97, 165, 0.12);
+  color: var(--color-primary);
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .field-action-button:hover,
 .field-action-button:focus-visible {
-  border-color: rgba(15, 118, 110, 0.16);
-  background: rgba(15, 118, 110, 0.14);
+  border-color: rgba(0, 97, 165, 0.22);
+  background: rgba(0, 97, 165, 0.2);
   outline: none;
 }
 
@@ -1426,20 +1444,20 @@ main {
 }
 
 .form-error {
-  border: 1px solid rgba(181, 71, 62, 0.2);
-  background: rgba(181, 71, 62, 0.08);
+  border: 1px solid rgba(186, 26, 26, 0.2);
+  background: rgba(186, 26, 26, 0.08);
   color: var(--color-danger);
 }
 
 .form-helper {
-  background: rgba(15, 118, 110, 0.08);
+  background: rgba(0, 97, 165, 0.08);
   color: var(--color-text-soft);
 }
 
 .form-helper-strong {
-  border: 1px solid rgba(15, 118, 110, 0.12);
-  background: rgba(15, 118, 110, 0.12);
-  color: var(--color-primary-strong);
+  border: 1px solid rgba(0, 97, 165, 0.18);
+  background: rgba(0, 97, 165, 0.12);
+  color: var(--color-primary);
 }
 
 .register-shell {
@@ -1585,9 +1603,9 @@ main {
 }
 
 .verify-email-summary {
-  border: 1px solid rgba(15, 118, 110, 0.16);
+  border: 1px solid rgba(0, 97, 165, 0.16);
   border-radius: 16px;
-  background: rgba(15, 118, 110, 0.08);
+  background: rgba(0, 97, 165, 0.08);
   padding: 0.95rem 1rem;
   color: var(--color-text-soft);
   line-height: 1.6;
@@ -1728,7 +1746,7 @@ main {
   height: 3rem;
   margin: 0 auto;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(15, 118, 110, 0.9), rgba(15, 118, 110, 0.2));
+  background: radial-gradient(circle, rgba(0, 97, 165, 0.9), rgba(0, 97, 165, 0.2));
   animation: pulse 1.6s ease-in-out infinite;
 }
 
@@ -1763,7 +1781,7 @@ main {
 .auth-loading-shell::before {
   top: -9rem;
   left: -8rem;
-  background: radial-gradient(circle, rgba(15, 118, 110, 0.22), transparent 66%);
+  background: radial-gradient(circle, rgba(0, 97, 165, 0.22), transparent 66%);
   animation: auth-loading-float 9s ease-in-out infinite;
 }
 
@@ -1811,13 +1829,13 @@ main {
   height: 1.2rem;
   margin: auto;
   border-radius: 999px;
-  background: radial-gradient(circle, #16cabb 0%, #0d5c56 100%);
-  box-shadow: 0 0 0 0 rgba(22, 202, 187, 0.36);
+  background: radial-gradient(circle, #7fb5ec 0%, #003a70 100%);
+  box-shadow: 0 0 0 0 rgba(127, 181, 236, 0.36);
   animation: auth-loading-core-pulse 1.8s ease-in-out infinite;
 }
 
 .auth-loading-ring {
-  border: 1px solid rgba(13, 92, 86, 0.22);
+  border: 1px solid rgba(0, 97, 165, 0.22);
   border-radius: 999px;
 }
 
@@ -1835,7 +1853,7 @@ main {
   width: 0.52rem;
   height: 0.52rem;
   border-radius: 999px;
-  background: #0d5c56;
+  background: #0061a5;
   margin: auto;
 }
 
@@ -1857,7 +1875,7 @@ main {
 
 .auth-loading-kicker {
   margin: 0;
-  color: #0f766e;
+  color: #0061a5;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.11em;
@@ -1891,7 +1909,7 @@ main {
   width: 45%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(13, 92, 86, 0.84), rgba(22, 202, 187, 0.92));
+  background: linear-gradient(90deg, rgba(0, 58, 112, 0.84), rgba(22, 202, 187, 0.92));
   animation: auth-loading-progress 1.8s ease-in-out infinite;
 }
 
@@ -2330,9 +2348,9 @@ main {
 }
 
 .text-action {
-  border: 1px solid rgba(15, 118, 110, 0.2);
+  border: 1px solid rgba(0, 97, 165, 0.2);
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.1);
+  background: rgba(0, 97, 165, 0.1);
   color: var(--color-primary-strong);
   font-weight: 700;
   padding: 0.4rem 0.75rem;
@@ -2341,8 +2359,8 @@ main {
 
 .text-action:hover,
 .text-action:focus-visible {
-  border-color: rgba(15, 118, 110, 0.34);
-  background: rgba(15, 118, 110, 0.18);
+  border-color: rgba(0, 97, 165, 0.34);
+  background: rgba(0, 97, 165, 0.18);
   outline: none;
 }
 
@@ -2399,11 +2417,11 @@ main {
 }
 
 .closure-focus-card {
-  border-color: rgba(15, 118, 110, 0.3);
+  border-color: rgba(0, 97, 165, 0.3);
   background:
     radial-gradient(circle at top left, rgba(25, 163, 148, 0.14), transparent 35%),
     rgba(255, 255, 255, 0.88);
-  box-shadow: 0 18px 30px rgba(15, 118, 110, 0.12);
+  box-shadow: 0 18px 30px rgba(0, 97, 165, 0.12);
 }
 
 .trips-command-bar {
@@ -2411,7 +2429,7 @@ main {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.16);
+  border: 1px solid rgba(0, 97, 165, 0.16);
   border-radius: 26px;
   padding: 1.2rem 1.25rem;
   background:
@@ -2452,7 +2470,7 @@ main {
 .trips-kpi-card {
   display: grid;
   gap: 0.45rem;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   border-radius: 20px;
   padding: 1rem 1.05rem;
   background: rgba(255, 255, 255, 0.8);
@@ -2462,7 +2480,7 @@ main {
 
 .trips-kpi-card-operation {
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.17), transparent 34%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.17), transparent 34%),
     rgba(255, 255, 255, 0.84);
 }
 
@@ -2528,8 +2546,8 @@ main {
 
 .trips-workspace-tab:focus-visible {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.35);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+  border-color: rgba(0, 97, 165, 0.35);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.16);
 }
 
 .trips-workspace-tab span {
@@ -2542,12 +2560,12 @@ main {
 }
 
 .trips-workspace-tab-active {
-  border-color: rgba(13, 92, 86, 0.85);
+  border-color: rgba(0, 58, 112, 0.85);
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.22), transparent 38%),
-    linear-gradient(145deg, #14877d, #0d5c56 68%);
+    linear-gradient(145deg, #1c6fb5, #003a70 68%);
   color: #f5fbfa;
-  box-shadow: 0 12px 22px rgba(13, 92, 86, 0.28);
+  box-shadow: 0 12px 22px rgba(0, 58, 112, 0.28);
 }
 
 .trips-workspace-tab-active span {
@@ -2633,7 +2651,7 @@ main {
 }
 
 .trip-discover-insight-card-success {
-  border-color: rgba(15, 118, 110, 0.18);
+  border-color: rgba(0, 97, 165, 0.18);
 }
 
 .trip-discover-insight-card-warning {
@@ -2708,7 +2726,7 @@ main {
 
 .trip-request-composer {
   border-radius: 20px;
-  border-color: rgba(15, 118, 110, 0.14);
+  border-color: rgba(0, 97, 165, 0.14);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(244, 251, 249, 0.86));
   box-shadow: none;
@@ -2731,7 +2749,7 @@ main {
   display: grid;
   gap: 0.8rem;
   padding: 0.95rem 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.78);
 }
@@ -2762,14 +2780,14 @@ main {
 }
 
 .trip-request-map-target-active {
-  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.16);
+  box-shadow: 0 12px 24px rgba(0, 97, 165, 0.16);
 }
 
 .trip-request-map-card {
   display: grid;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   border-radius: 20px;
   background:
     radial-gradient(circle at top left, rgba(25, 163, 148, 0.1), transparent 32%),
@@ -2791,7 +2809,7 @@ main {
 .trip-overview-card {
   display: grid;
   gap: 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.12);
+  border: 1px solid rgba(0, 97, 165, 0.12);
   border-radius: 22px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(250, 246, 239, 0.88));
@@ -2802,12 +2820,12 @@ main {
 
 .trip-overview-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(15, 118, 110, 0.22);
+  border-color: rgba(0, 97, 165, 0.22);
   box-shadow: 0 20px 36px rgba(23, 51, 56, 0.12);
 }
 
 .trip-overview-card-emphasis {
-  border-color: rgba(15, 118, 110, 0.2);
+  border-color: rgba(0, 97, 165, 0.2);
   background:
     radial-gradient(circle at top left, rgba(25, 163, 148, 0.12), transparent 36%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 251, 249, 0.92));
@@ -2849,7 +2867,7 @@ main {
   display: grid;
   gap: 0.2rem;
   padding: 0.9rem 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.09);
+  border: 1px solid rgba(0, 97, 165, 0.09);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.76);
 }
@@ -2882,8 +2900,8 @@ main {
 }
 
 .trip-overview-highlight {
-  border: 1px solid rgba(15, 118, 110, 0.16);
-  background: rgba(15, 118, 110, 0.08);
+  border: 1px solid rgba(0, 97, 165, 0.16);
+  background: rgba(0, 97, 165, 0.08);
 }
 
 .trip-overview-note {
@@ -2917,7 +2935,7 @@ main {
 }
 
 .trip-request-card-own {
-  border-color: rgba(15, 118, 110, 0.16);
+  border-color: rgba(0, 97, 165, 0.16);
 }
 
 .trip-request-status-group {
@@ -2995,11 +3013,11 @@ main {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.18);
+  border: 1px solid rgba(0, 97, 165, 0.18);
   border-radius: 28px;
   padding: clamp(1rem, 1.8vw, 1.35rem);
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.17), transparent 36%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.17), transparent 36%),
     radial-gradient(circle at right center, rgba(183, 121, 31, 0.15), transparent 38%),
     linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(248, 242, 231, 0.92));
   box-shadow: 0 16px 34px rgba(23, 51, 56, 0.1);
@@ -3059,7 +3077,7 @@ main {
 
 .journey-kpi-card-operation {
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 36%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.16), transparent 36%),
     rgba(255, 255, 255, 0.88);
 }
 
@@ -3107,7 +3125,7 @@ main {
   gap: 1rem;
   border-radius: 24px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.1), transparent 38%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.1), transparent 38%),
     rgba(255, 255, 255, 0.84);
 }
 
@@ -3151,16 +3169,16 @@ main {
 .journey-workspace-button:hover,
 .journey-workspace-button:focus-visible {
   transform: translateY(-1px);
-  border-color: rgba(15, 118, 110, 0.26);
+  border-color: rgba(0, 97, 165, 0.26);
   box-shadow: 0 10px 22px rgba(23, 51, 56, 0.08);
   outline: none;
 }
 
 .journey-workspace-button-active {
-  border-color: rgba(13, 92, 86, 0.85);
+  border-color: rgba(0, 58, 112, 0.85);
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.2), transparent 40%),
-    linear-gradient(145deg, #16857b, #0d5c56 72%);
+    linear-gradient(145deg, #1c6fb5, #003a70 72%);
   color: #f5fbfa;
 }
 
@@ -3185,7 +3203,7 @@ main {
   border: 1px solid rgba(23, 51, 56, 0.14);
   border-radius: 18px;
   background:
-    radial-gradient(circle at top right, rgba(15, 118, 110, 0.1), transparent 40%),
+    radial-gradient(circle at top right, rgba(0, 97, 165, 0.1), transparent 40%),
     rgba(255, 255, 255, 0.78);
   padding: 0.85rem;
 }
@@ -3248,19 +3266,19 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid rgba(15, 118, 110, 0.2);
+  border: 1px solid rgba(0, 97, 165, 0.2);
   border-radius: 12px;
   padding: 0.55rem 0.7rem;
   color: var(--color-primary-strong);
   font-weight: 700;
-  background: rgba(15, 118, 110, 0.08);
+  background: rgba(0, 97, 165, 0.08);
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
 .journey-inline-link:hover,
 .journey-inline-link:focus-visible {
-  border-color: rgba(15, 118, 110, 0.35);
-  background: rgba(15, 118, 110, 0.14);
+  border-color: rgba(0, 97, 165, 0.35);
+  background: rgba(0, 97, 165, 0.14);
   transform: translateY(-1px);
   outline: none;
 }
@@ -3277,7 +3295,7 @@ main {
   border: 1px solid rgba(23, 51, 56, 0.14);
   border-radius: 20px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 38%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.08), transparent 38%),
     rgba(255, 255, 255, 0.8);
   padding: 0.95rem;
 }
@@ -3325,9 +3343,9 @@ main {
 .journey-sidebar-route-suggestion {
   display: grid;
   gap: 0.25rem;
-  border: 1px dashed rgba(15, 118, 110, 0.25);
+  border: 1px dashed rgba(0, 97, 165, 0.25);
   border-radius: 16px;
-  background: rgba(15, 118, 110, 0.06);
+  background: rgba(0, 97, 165, 0.06);
   padding: 0.8rem 0.85rem;
 }
 
@@ -3396,10 +3414,10 @@ main {
 .journey-empty-card {
   display: grid;
   gap: 0.8rem;
-  border: 1px dashed rgba(15, 118, 110, 0.3);
+  border: 1px dashed rgba(0, 97, 165, 0.3);
   border-radius: 20px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.11), transparent 36%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.11), transparent 36%),
     rgba(255, 255, 255, 0.82);
   padding: 1rem;
 }
@@ -3413,7 +3431,7 @@ main {
 .journey-empty-illustration span {
   width: 0.42rem;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.38);
+  background: rgba(0, 97, 165, 0.38);
   animation: journey-empty-wave 1.3s ease-in-out infinite;
 }
 
@@ -3585,7 +3603,7 @@ main {
   align-items: center;
   gap: 0.8rem;
   padding: 0.85rem;
-  border: 1px solid rgba(15, 118, 110, 0.16);
+  border: 1px solid rgba(0, 97, 165, 0.16);
   border-radius: 18px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(235, 252, 249, 0.72));
   box-shadow: 0 16px 45px rgba(15, 23, 42, 0.06);
@@ -3595,7 +3613,7 @@ main {
 
 .trip-payment-option:hover {
   border-color: rgba(13, 148, 136, 0.38);
-  box-shadow: 0 20px 54px rgba(15, 118, 110, 0.12);
+  box-shadow: 0 20px 54px rgba(0, 97, 165, 0.12);
   transform: translateY(-1px);
 }
 
@@ -3748,8 +3766,8 @@ main {
 }
 
 .place-autocomplete-shell:focus-within {
-  border-color: rgba(15, 118, 110, 0.45);
-  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+  border-color: rgba(0, 97, 165, 0.45);
+  box-shadow: 0 0 0 4px rgba(0, 97, 165, 0.12);
 }
 
 .place-autocomplete-shell-disabled {
@@ -3776,7 +3794,7 @@ main {
   right: 0;
   display: grid;
   gap: 0.35rem;
-  border: 1px solid rgba(15, 118, 110, 0.18);
+  border: 1px solid rgba(0, 97, 165, 0.18);
   border-radius: 18px;
   background: rgba(255, 250, 241, 0.98);
   padding: 0.45rem;
@@ -3797,8 +3815,8 @@ main {
 
 .place-autocomplete-option:hover,
 .place-autocomplete-option:focus-visible {
-  border-color: rgba(15, 118, 110, 0.22);
-  background: rgba(15, 118, 110, 0.08);
+  border-color: rgba(0, 97, 165, 0.22);
+  background: rgba(0, 97, 165, 0.08);
   outline: none;
 }
 
@@ -3811,9 +3829,9 @@ main {
   display: grid;
   gap: 0.2rem;
   margin-top: 0.55rem;
-  border: 1px solid rgba(15, 118, 110, 0.12);
+  border: 1px solid rgba(0, 97, 165, 0.12);
   border-radius: 14px;
-  background: rgba(15, 118, 110, 0.06);
+  background: rgba(0, 97, 165, 0.06);
   padding: 0.8rem 0.9rem;
 }
 
@@ -3825,7 +3843,7 @@ main {
 .trip-map-card {
   display: grid;
   gap: 0.9rem;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   border-radius: 22px;
   background:
     radial-gradient(circle at top left, rgba(25, 163, 148, 0.08), transparent 34%),
@@ -3836,10 +3854,10 @@ main {
 .trip-template-card {
   display: grid;
   gap: 0.85rem;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   border-radius: 20px;
   background:
-    radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 38%),
+    radial-gradient(circle at top right, rgba(0, 97, 165, 0.08), transparent 38%),
     rgba(255, 255, 255, 0.84);
   padding: 1rem;
 }
@@ -3847,7 +3865,7 @@ main {
 .trip-template-card-prominent {
   border-radius: 24px;
   background:
-    radial-gradient(circle at top right, rgba(15, 118, 110, 0.14), transparent 42%),
+    radial-gradient(circle at top right, rgba(0, 97, 165, 0.14), transparent 42%),
     radial-gradient(circle at bottom left, rgba(183, 121, 31, 0.1), transparent 35%),
     rgba(255, 255, 255, 0.9);
 }
@@ -3945,9 +3963,9 @@ main {
 }
 
 .trip-progress-pill-complete {
-  border-color: rgba(15, 118, 110, 0.26);
+  border-color: rgba(0, 97, 165, 0.26);
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 45%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.14), transparent 45%),
     rgba(255, 255, 255, 0.88);
 }
 
@@ -3964,7 +3982,7 @@ main {
 }
 
 .trip-progress-pill-complete .trip-progress-pill-index {
-  background: linear-gradient(150deg, #18a596, #0d5c56);
+  background: linear-gradient(150deg, #1c6fb5, #003a70);
   color: #f5fbfa;
 }
 
@@ -3990,7 +4008,7 @@ main {
   border: 1px solid rgba(23, 51, 56, 0.12);
   border-radius: 24px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.05), transparent 35%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.06), transparent 35%),
     rgba(255, 255, 255, 0.82);
   padding: 1.1rem;
   box-shadow: 0 14px 28px rgba(23, 51, 56, 0.06);
@@ -4009,7 +4027,7 @@ main {
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 16px;
-  background: linear-gradient(160deg, rgba(24, 165, 150, 0.2), rgba(13, 92, 86, 0.24));
+  background: linear-gradient(160deg, rgba(24, 165, 150, 0.2), rgba(0, 58, 112, 0.24));
   color: var(--color-primary-strong);
   font-size: 0.82rem;
   font-weight: 900;
@@ -4074,10 +4092,10 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.16);
+  border: 1px solid rgba(0, 97, 165, 0.16);
   border-radius: 22px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.1), transparent 35%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.1), transparent 35%),
     rgba(255, 255, 255, 0.88);
   padding: 1rem 1.05rem;
 }
@@ -4118,8 +4136,8 @@ main {
   overflow: hidden;
   overscroll-behavior: contain;
   touch-action: none;
-  border: 1px solid rgba(15, 118, 110, 0.16);
-  background: linear-gradient(135deg, rgba(10, 31, 34, 0.9), rgba(15, 118, 110, 0.72));
+  border: 1px solid rgba(0, 97, 165, 0.16);
+  background: linear-gradient(135deg, rgba(10, 31, 34, 0.9), rgba(0, 97, 165, 0.72));
 }
 
 .trip-map-canvas {
@@ -4145,7 +4163,7 @@ main {
   text-align: center;
   color: rgba(255, 255, 255, 0.92);
   background:
-    linear-gradient(135deg, rgba(10, 31, 34, 0.72), rgba(15, 118, 110, 0.58)),
+    linear-gradient(135deg, rgba(10, 31, 34, 0.72), rgba(0, 97, 165, 0.58)),
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 42%);
 }
 
@@ -4221,7 +4239,7 @@ main {
 }
 
 .trip-map-marker-origin {
-  background: linear-gradient(160deg, #1aa698, #0d5c56);
+  background: linear-gradient(160deg, #1c6fb5, #003a70);
 }
 
 .trip-map-marker-destination {
@@ -4237,7 +4255,7 @@ main {
 }
 
 .trip-map-marker-live {
-  background: radial-gradient(circle at 30% 30%, #9ffcf3, #0f766e 58%, #0a2f31);
+  background: radial-gradient(circle at 30% 30%, #c7dcf5, #0061a5 58%, #0b1c30);
   transform: scale(1.08);
 }
 
@@ -4258,7 +4276,7 @@ main {
 .trip-live-panel {
   display: grid;
   gap: 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.16);
+  border: 1px solid rgba(0, 97, 165, 0.16);
   border-radius: 28px;
   background:
     radial-gradient(circle at top left, rgba(25, 163, 148, 0.14), transparent 34%),
@@ -4340,16 +4358,16 @@ main {
 .trip-live-selector-button:hover,
 .trip-live-selector-button:focus-visible {
   transform: translateY(-1px);
-  border-color: rgba(15, 118, 110, 0.26);
+  border-color: rgba(0, 97, 165, 0.26);
   box-shadow: 0 12px 22px rgba(23, 51, 56, 0.08);
   outline: none;
 }
 
 .trip-live-selector-button-active {
-  border-color: rgba(13, 92, 86, 0.88);
+  border-color: rgba(0, 58, 112, 0.88);
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 40%),
-    linear-gradient(145deg, #16857b, #0d5c56 74%);
+    linear-gradient(145deg, #1c6fb5, #003a70 74%);
   color: #f5fbfa;
 }
 
@@ -4400,8 +4418,8 @@ main {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, #17a398, #0d5c56);
-  box-shadow: 0 10px 20px rgba(15, 118, 110, 0.2);
+  background: linear-gradient(90deg, #3a7dc8, #003a70);
+  box-shadow: 0 10px 20px rgba(0, 97, 165, 0.2);
 }
 
 .trip-live-layout {
@@ -4431,7 +4449,7 @@ main {
   display: grid;
   place-items: center;
   min-height: 320px;
-  border: 1px dashed rgba(15, 118, 110, 0.24);
+  border: 1px dashed rgba(0, 97, 165, 0.24);
   border-radius: 22px;
   background:
     radial-gradient(circle at top, rgba(25, 163, 148, 0.12), transparent 42%),
@@ -4479,7 +4497,7 @@ main {
 }
 
 .trip-live-legend-origin {
-  background: #0f766e;
+  background: #0061a5;
 }
 
 .trip-live-legend-destination {
@@ -4487,11 +4505,11 @@ main {
 }
 
 .trip-live-legend-history {
-  background: #14b8a6;
+  background: #5aa0e6;
 }
 
 .trip-live-legend-live {
-  background: radial-gradient(circle at 30% 30%, #9ffcf3, #0f766e 58%, #0a2f31);
+  background: radial-gradient(circle at 30% 30%, #c7dcf5, #0061a5 58%, #0b1c30);
 }
 
 .trip-live-sidebar {
@@ -4530,7 +4548,7 @@ main {
 
 .trip-live-stat-card-compact {
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 48%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.08), transparent 48%),
     rgba(255, 255, 255, 0.86);
 }
 
@@ -4587,8 +4605,8 @@ main {
 }
 
 .trip-live-step-success .trip-live-step-dot {
-  background: #16857b;
-  box-shadow: 0 0 0 5px rgba(22, 133, 123, 0.14);
+  background: #1c6fb5;
+  box-shadow: 0 0 0 5px rgba(28, 111, 181, 0.16);
 }
 
 .trip-live-step-warning .trip-live-step-dot {
@@ -4634,7 +4652,7 @@ main {
 
 .trip-command-center {
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.15), transparent 34%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.15), transparent 34%),
     radial-gradient(circle at right, rgba(183, 121, 31, 0.11), transparent 32%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(242, 248, 246, 0.92));
 }
@@ -4642,7 +4660,7 @@ main {
 .ride-companion-panel {
   background:
     radial-gradient(circle at top left, rgba(26, 94, 143, 0.12), transparent 35%),
-    radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.1), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(0, 97, 165, 0.1), transparent 34%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.93), rgba(243, 248, 251, 0.92));
 }
 
@@ -4713,14 +4731,14 @@ main {
 }
 
 .trip-command-phase-pill-current {
-  border-color: rgba(15, 118, 110, 0.32);
+  border-color: rgba(0, 97, 165, 0.32);
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 45%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.14), transparent 45%),
     rgba(255, 255, 255, 0.86);
 }
 
 .trip-command-phase-pill-complete {
-  border-color: rgba(15, 118, 110, 0.18);
+  border-color: rgba(0, 97, 165, 0.18);
   background: rgba(241, 250, 248, 0.92);
 }
 
@@ -4781,9 +4799,9 @@ main {
 .ride-companion-guidance {
   display: grid;
   gap: 0.25rem;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   border-radius: 18px;
-  background: rgba(15, 118, 110, 0.07);
+  background: rgba(0, 97, 165, 0.07);
   padding: 0.85rem 0.9rem;
 }
 
@@ -4869,8 +4887,8 @@ main {
 }
 
 .trip-command-alert {
-  border-color: rgba(15, 118, 110, 0.18);
-  background: rgba(15, 118, 110, 0.07);
+  border-color: rgba(0, 97, 165, 0.18);
+  background: rgba(0, 97, 165, 0.07);
 }
 
 .trip-command-alert-warning,
@@ -4892,7 +4910,7 @@ main {
 }
 
 .ride-companion-command-card {
-  border-color: rgba(15, 118, 110, 0.18);
+  border-color: rgba(0, 97, 165, 0.18);
   background: rgba(240, 251, 248, 0.88);
 }
 
@@ -4995,7 +5013,7 @@ main {
 .trip-command-closure-card {
   display: grid;
   gap: 0.8rem;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(240, 253, 250, 0.78), rgba(255, 255, 255, 0.9));
   padding: 1rem;
@@ -5094,7 +5112,7 @@ main {
   gap: 1.25rem;
   padding: 1.5rem;
   border-radius: 1.5rem;
-  border: 1px solid rgba(15, 118, 110, 0.12);
+  border: 1px solid rgba(0, 97, 165, 0.12);
   background:
     linear-gradient(135deg, rgba(255, 251, 245, 0.94), rgba(240, 253, 250, 0.94)),
     rgba(255, 255, 255, 0.94);
@@ -5120,7 +5138,7 @@ main {
   gap: 0.85rem;
   padding: 1.15rem 1.2rem;
   border-radius: 1.15rem;
-  border: 1px solid rgba(15, 118, 110, 0.12);
+  border: 1px solid rgba(0, 97, 165, 0.12);
   background: rgba(255, 255, 255, 0.82);
 }
 
@@ -5179,7 +5197,7 @@ main {
   border-radius: 28px;
   background:
     radial-gradient(circle at top left, rgba(26, 94, 143, 0.14), transparent 34%),
-    radial-gradient(circle at right center, rgba(15, 118, 110, 0.14), transparent 36%),
+    radial-gradient(circle at right center, rgba(0, 97, 165, 0.14), transparent 36%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(241, 248, 251, 0.92));
   padding: 1.15rem 1.25rem;
   box-shadow: 0 18px 34px rgba(23, 51, 56, 0.1);
@@ -5217,7 +5235,7 @@ main {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  border: 1px solid rgba(15, 118, 110, 0.18);
+  border: 1px solid rgba(0, 97, 165, 0.18);
   border-radius: 22px;
   background: rgba(240, 251, 248, 0.88);
   padding: 1rem 1.05rem;
@@ -5491,14 +5509,14 @@ main {
 .document-upload-preview-image {
   max-width: min(100%, 18rem);
   border-radius: 14px;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.14);
   display: block;
 }
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 1300;
   display: grid;
   place-items: center;
   padding: 1.5rem;
@@ -5715,7 +5733,7 @@ main {
   border: 1px solid rgba(23, 51, 56, 0.15);
   border-radius: 26px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 34%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.12), transparent 34%),
     radial-gradient(circle at right, rgba(26, 94, 143, 0.11), transparent 34%),
     linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(237, 247, 246, 0.9));
   padding: 1.1rem 1.2rem;
@@ -5792,7 +5810,7 @@ main {
 
 .profile-form-panel {
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.07), transparent 35%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.07), transparent 35%),
     rgba(255, 255, 255, 0.78);
 }
 
@@ -5844,15 +5862,15 @@ main {
 }
 
 .profile-quick-link:hover {
-  border-color: rgba(15, 118, 110, 0.22);
+  border-color: rgba(0, 97, 165, 0.22);
   transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(23, 51, 56, 0.08);
 }
 
 .profile-quick-link:focus-visible {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.38);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+  border-color: rgba(0, 97, 165, 0.38);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.14);
 }
 
 @media (max-width: 1080px) {
@@ -6141,24 +6159,24 @@ main {
 }
 
 .home-cta:hover {
-  border-color: rgba(15, 118, 110, 0.24);
+  border-color: rgba(0, 97, 165, 0.24);
   transform: translateY(-2px);
   box-shadow: 0 12px 24px rgba(23, 51, 56, 0.1);
 }
 
 .home-cta:focus-visible {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.4);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.16);
+  border-color: rgba(0, 97, 165, 0.4);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.16);
 }
 
 .home-cta-primary {
-  border-color: rgba(13, 92, 86, 0.45);
+  border-color: rgba(0, 58, 112, 0.45);
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.24), transparent 36%),
-    linear-gradient(160deg, #14877d, #0d5c56 68%);
+    linear-gradient(160deg, #1c6fb5, #003a70 68%);
   color: #f5fbfa;
-  box-shadow: 0 14px 24px rgba(13, 92, 86, 0.24);
+  box-shadow: 0 14px 24px rgba(0, 58, 112, 0.24);
 }
 
 .home-cta-primary span {
@@ -6299,7 +6317,7 @@ main {
 }
 
 .home-step:hover {
-  border-color: rgba(15, 118, 110, 0.2);
+  border-color: rgba(0, 97, 165, 0.2);
   background: rgba(255, 255, 255, 0.94);
   transform: translateY(-1px);
 }
@@ -6339,20 +6357,20 @@ main {
 }
 
 .home-link-card:hover {
-  border-color: rgba(15, 118, 110, 0.2);
+  border-color: rgba(0, 97, 165, 0.2);
   transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(23, 51, 56, 0.08);
 }
 
 .home-link-card:focus-visible {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.38);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+  border-color: rgba(0, 97, 165, 0.38);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.14);
 }
 
 .home-link-card-action {
-  border-color: rgba(15, 118, 110, 0.24);
-  background: rgba(15, 118, 110, 0.08);
+  border-color: rgba(0, 97, 165, 0.24);
+  background: rgba(0, 97, 165, 0.08);
   cursor: pointer;
 }
 
@@ -6407,7 +6425,7 @@ main {
   border: 1px solid rgba(23, 51, 56, 0.15);
   border-radius: 26px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 34%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.12), transparent 34%),
     radial-gradient(circle at bottom right, rgba(26, 94, 143, 0.1), transparent 36%),
     linear-gradient(165deg, rgba(255, 255, 255, 0.9), rgba(244, 240, 232, 0.9));
   padding: 1.1rem 1.2rem;
@@ -6498,7 +6516,7 @@ main {
 
 .dash-card-focus {
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.11), transparent 34%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.11), transparent 34%),
     rgba(255, 255, 255, 0.82);
 }
 
@@ -6567,15 +6585,15 @@ main {
 }
 
 .dash-link-card:hover {
-  border-color: rgba(15, 118, 110, 0.2);
+  border-color: rgba(0, 97, 165, 0.2);
   transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(23, 51, 56, 0.08);
 }
 
 .dash-link-card:focus-visible {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.38);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+  border-color: rgba(0, 97, 165, 0.38);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.14);
 }
 
 .dash-link-card-action {
@@ -6618,7 +6636,7 @@ main {
   width: 2rem;
   height: 2rem;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.12);
+  background: rgba(0, 97, 165, 0.12);
   color: var(--color-primary-strong);
   font-size: 0.9rem;
   font-weight: 800;
@@ -6673,7 +6691,7 @@ main {
   border: 1px solid rgba(23, 51, 56, 0.15);
   border-radius: 26px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 34%),
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.12), transparent 34%),
     radial-gradient(circle at right, rgba(183, 121, 31, 0.12), transparent 32%),
     linear-gradient(165deg, rgba(255, 255, 255, 0.9), rgba(246, 240, 230, 0.9));
   padding: 1.1rem 1.2rem;
@@ -6796,15 +6814,15 @@ main {
 }
 
 .driver-quick-link:hover {
-  border-color: rgba(15, 118, 110, 0.22);
+  border-color: rgba(0, 97, 165, 0.22);
   transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(23, 51, 56, 0.08);
 }
 
 .driver-quick-link:focus-visible {
   outline: none;
-  border-color: rgba(15, 118, 110, 0.38);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+  border-color: rgba(0, 97, 165, 0.38);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.14);
 }
 
 @media (max-width: 1080px) {
@@ -7235,7 +7253,7 @@ main {
 }
 
 .vehicle-fleet-btn-edit {
-  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.24);
+  box-shadow: 0 12px 24px rgba(0, 97, 165, 0.24);
 }
 
 .vehicle-fleet-btn-toggle {
@@ -7243,9 +7261,9 @@ main {
 }
 
 .vehicle-fleet-btn-toggle-activate {
-  border-color: rgba(15, 118, 110, 0.3);
-  background: rgba(15, 118, 110, 0.1);
-  color: #0f766e;
+  border-color: rgba(0, 97, 165, 0.3);
+  background: rgba(0, 97, 165, 0.1);
+  color: #0061a5;
 }
 
 .vehicle-fleet-btn-toggle-deactivate {
@@ -8215,3 +8233,4 @@ main {
     grid-column: auto;
   }
 }
+

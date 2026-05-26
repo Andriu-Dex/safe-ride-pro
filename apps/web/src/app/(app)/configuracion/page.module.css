@@ -1,13 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 .page {
   width: min(100%, 1200px);
   margin: 0 auto;
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-  color: #0f1f24;
-  background-color: #e6ecef;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: #f1f6ff;
   border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 18px 48px rgba(2, 20, 40, 0.08);
   margin-top: 1rem;
   margin-bottom: 2rem;
   min-height: 85vh;
@@ -17,7 +15,7 @@
 }
 
 .heroHeader {
-  background: linear-gradient(135deg, #0f766e 0%, #0f2a2f 100%);
+  background: linear-gradient(135deg, #002045 0%, #1a365d 100%);
   padding: 2.5rem 3rem;
   color: #ffffff;
   display: flex;
@@ -29,7 +27,7 @@
 
 .heroHeader button {
   background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   color: #ffffff;
 }
 
@@ -46,7 +44,7 @@
 
 .heroSubtitle {
   margin: 0.5rem 0 0;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 0.95rem;
 }
 
@@ -61,7 +59,7 @@
   background: #ffffff;
   padding: 1.5rem 2rem;
   border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 15px rgba(2, 20, 40, 0.08);
   border: 1px solid rgba(15, 23, 42, 0.04);
   display: flex;
   align-items: center;
@@ -80,7 +78,7 @@
   background: #ffffff;
   padding: 2rem;
   border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 15px rgba(2, 20, 40, 0.08);
   border: 1px solid rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
@@ -100,7 +98,7 @@
 .cardTitle {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #162e33;
+  color: #0b1c30;
   margin: 0;
 }
 
@@ -109,27 +107,27 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.25rem;
-  background: #f7f9fa;
+  background: #f3f6ff;
   border-radius: 12px;
   border: 1px solid rgba(15, 23, 42, 0.04);
 }
 
 .toggleInfo strong {
   display: block;
-  color: #152b31;
+  color: #0b1c30;
   font-weight: 700;
   margin-bottom: 0.2rem;
 }
 
 .toggleInfo span {
-  color: #5a6c72;
+  color: #4a5568;
   font-size: 0.85rem;
 }
 
 .toggleRow input {
   width: 1.25rem;
   height: 1.25rem;
-  accent-color: #0f766e;
+  accent-color: #0061a5;
   cursor: pointer;
 }
 
@@ -165,7 +163,7 @@
   height: 3rem;
   border-radius: 50%;
   border: 3px solid #e2e8f0;
-  border-top-color: #0f766e;
+  border-top-color: #0061a5;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
@@ -179,14 +177,14 @@
 }
 
 .stateTitle {
-  color: #16343d;
+  color: #0b1c30;
   margin: 0.5rem 0;
   font-weight: 800;
   font-size: 1.5rem;
 }
 
 .stateText {
-  color: #61797f;
+  color: #4a5568;
   margin: 0;
 }
 

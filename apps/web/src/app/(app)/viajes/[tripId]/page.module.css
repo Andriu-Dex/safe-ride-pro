@@ -1,13 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 .page {
   width: min(100%, 1200px);
   margin: 0 auto;
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-  color: #0f1f24;
-  background-color: #e6ecef;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: #f1f6ff;
   border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 18px 48px rgba(2, 20, 40, 0.08);
   margin-top: 1rem;
   margin-bottom: 2rem;
   min-height: 85vh;
@@ -17,7 +15,7 @@
 }
 
 .heroHeader {
-  background: linear-gradient(135deg, #0f766e 0%, #0f2a2f 100%);
+  background: linear-gradient(135deg, #002045 0%, #1a365d 100%);
   padding: 2.5rem 3rem;
   color: #ffffff;
   display: flex;
@@ -39,7 +37,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #99f6e4;
+  color: rgba(173, 199, 247, 0.9);
   margin: 0;
 }
 
@@ -51,7 +49,7 @@
 }
 
 .heroLead {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 0.95rem;
   margin: 0;
 }
@@ -108,7 +106,7 @@
 
 .heroBtnSecondary {
   background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   color: #ffffff;
   font-weight: 700;
   padding: 0.65rem 1.25rem;
@@ -151,9 +149,9 @@
 }
 
 .noticeCard {
-  background: #fdf5f3;
-  border: 1px solid #f9d8d6;
-  border-left: 4px solid #d94b38;
+  background: rgba(214, 227, 255, 0.6);
+  border: 1px solid rgba(0, 97, 165, 0.18);
+  border-left: 4px solid #0061a5;
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   display: flex;
@@ -168,19 +166,19 @@
 }
 
 .noticeCard.info {
-  background: #f0fdfa;
-  border: 1px solid #ccfbf1;
-  border-left-color: #0f766e;
+  background: #e6efff;
+  border: 1px solid #c7dcf5;
+  border-left-color: #0061a5;
 }
 
 .noticeCard strong {
-  color: #1a3137;
+  color: #0b1c30;
   font-size: 1.05rem;
   margin-bottom: 0.2rem;
 }
 
 .noticeCard p {
-  color: #5a6c72;
+  color: #4a5568;
   margin: 0;
   font-size: 0.95rem;
   line-height: 1.5;
@@ -190,7 +188,7 @@
   background: #ffffff;
   padding: 2rem;
   border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 15px rgba(2, 20, 40, 0.08);
   border: 1px solid rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
@@ -206,14 +204,14 @@
 .cardTitle {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #162e33;
+  color: #0b1c30;
   margin: 0;
 }
 
 .mapSection {
   overflow: hidden;
   border-radius: 12px;
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  border: 1px solid rgba(0, 97, 165, 0.18);
   height: 380px;
 }
 
@@ -232,7 +230,7 @@
 .infoTile span {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #61747a;
+  color: #4a5568;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -240,7 +238,7 @@
 .infoTile strong {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #1a3137;
+  color: #0b1c30;
 }
 
 .noteBlock {
@@ -248,20 +246,20 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 1.25rem;
-  background: #f7f9fa;
+  background: #f3f6ff;
   border-radius: 12px;
   border: 1px solid rgba(15, 23, 42, 0.04);
 }
 
 .noteBlock strong {
-  color: #162e33;
+  color: #0b1c30;
   font-size: 1rem;
   font-weight: 700;
 }
 
 .noteBlock p {
   margin: 0;
-  color: #5a6c72;
+  color: #4a5568;
   font-size: 0.95rem;
   line-height: 1.5;
 }
@@ -278,7 +276,7 @@
   height: 3rem;
   border-radius: 50%;
   border: 3px solid #e2e8f0;
-  border-top-color: #0f766e;
+  border-top-color: #0061a5;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
@@ -292,14 +290,14 @@
 }
 
 .stateTitle {
-  color: #16343d;
+  color: #0b1c30;
   margin: 0.5rem 0;
   font-weight: 800;
   font-size: 1.5rem;
 }
 
 .stateText {
-  color: #61797f;
+  color: #4a5568;
   margin: 0;
 }
 
@@ -326,13 +324,13 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(6, 14, 16, 0.65);
+  background: rgba(6, 14, 24, 0.65);
   animation: overlayFadeIn 0.2s ease-out forwards;
 }
 
 .modalCard {
   border-radius: 20px;
-  background: #f0f4f5;
+  background: #f3f6ff;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
   max-width: 600px;
   width: 90vw;
@@ -347,7 +345,7 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 1.5rem 2rem;
-  background: #0f2a2f;
+  background: #002045;
   color: #ffffff;
 }
 

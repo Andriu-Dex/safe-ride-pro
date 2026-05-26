@@ -19,8 +19,8 @@
 }
 
 .bellButton:hover {
-  border-color: rgba(15, 118, 110, 0.36);
-  box-shadow: 0 22px 54px rgba(15, 118, 110, 0.14);
+  border-color: rgba(0, 97, 165, 0.36);
+  box-shadow: 0 22px 54px rgba(0, 97, 165, 0.18);
   transform: translateY(-1px);
 }
 
@@ -83,7 +83,7 @@
 .header button {
   border: 0;
   background: transparent;
-  color: #0f766e;
+  color: #0061a5;
   font-weight: 800;
   cursor: pointer;
 }

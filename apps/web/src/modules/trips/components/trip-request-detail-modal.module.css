@@ -16,8 +16,8 @@
   border: 1px solid rgba(23, 51, 56, 0.12);
   border-radius: 28px;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 243, 236, 0.96));
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 248, 255, 0.96));
   box-shadow: 0 30px 80px rgba(15, 23, 42, 0.24);
 }
 
@@ -31,7 +31,7 @@
 .eyebrow,
 .heroEyebrow {
   margin: 0;
-  color: #0f766e;
+  color: #0061a5;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -40,7 +40,7 @@
 
 .title {
   margin: 0;
-  color: #12353d;
+  color: #0b1c30;
   font-size: clamp(1.5rem, 2vw, 1.9rem);
   line-height: 1.08;
   letter-spacing: -0.03em;
@@ -48,7 +48,7 @@
 
 .summary {
   margin: 0;
-  color: #567176;
+  color: #4a5568;
   line-height: 1.6;
 }
 
@@ -65,7 +65,7 @@
   border: 1px solid rgba(23, 51, 56, 0.12);
   border-radius: 22px;
   background:
-    radial-gradient(circle at top right, rgba(15, 118, 110, 0.1), transparent 30%),
+    radial-gradient(circle at top right, rgba(0, 97, 165, 0.12), transparent 30%),
     rgba(255, 255, 255, 0.72);
 }
 
@@ -76,14 +76,14 @@
 
 .heroTitle {
   margin: 0;
-  color: #12353d;
+  color: #0b1c30;
   font-size: clamp(1.2rem, 1.8vw, 1.45rem);
   line-height: 1.1;
 }
 
 .heroText {
   margin: 0;
-  color: #567176;
+  color: #4a5568;
   line-height: 1.6;
 }
 
@@ -117,7 +117,7 @@
 }
 
 .metaItem strong {
-  color: #12353d;
+  color: #0b1c30;
   font-size: 0.98rem;
   line-height: 1.4;
 }
@@ -142,7 +142,7 @@
 .mapHeader h3,
 .section h3 {
   margin: 0;
-  color: #12353d;
+  color: #0b1c30;
   font-size: 1rem;
 }
 
@@ -150,7 +150,7 @@
 .section p,
 .pointNote {
   margin: 0;
-  color: #567176;
+  color: #4a5568;
   line-height: 1.58;
 }
 
@@ -165,8 +165,8 @@
 }
 
 .routeBadge {
-  background: rgba(15, 118, 110, 0.12);
-  color: #0f766e;
+  background: rgba(0, 97, 165, 0.12);
+  color: #0061a5;
 }
 
 .routeBadgeMuted {
@@ -183,7 +183,7 @@
   display: grid;
   gap: 0.65rem;
   padding-left: 1rem;
-  border-left: 3px solid rgba(15, 118, 110, 0.18);
+  border-left: 3px solid rgba(0, 97, 165, 0.2);
 }
 
 .pointGrid {
@@ -210,14 +210,14 @@
 }
 
 .pointCard strong {
-  color: #12353d;
+  color: #0b1c30;
   font-size: 1rem;
   line-height: 1.42;
 }
 
 .coords {
   margin: 0;
-  color: #12353d;
+  color: #0b1c30;
   font-size: 0.88rem;
   font-weight: 700;
 }
@@ -253,14 +253,14 @@
 }
 
 .linkAction:hover {
-  border-color: rgba(15, 118, 110, 0.22);
-  background: rgba(15, 118, 110, 0.08);
+  border-color: rgba(0, 97, 165, 0.22);
+  background: rgba(0, 97, 165, 0.08);
   transform: translateY(-1px);
 }
 
 .linkAction:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.14);
 }
 
 @media (max-width: 720px) {

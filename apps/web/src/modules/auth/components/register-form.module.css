@@ -15,7 +15,7 @@
 
 .kicker {
   margin: 0;
-  color: #0f766e;
+  color: var(--color-accent);
   font-size: 0.77rem;
   font-weight: 800;
   letter-spacing: 0.11em;
@@ -115,4 +115,41 @@
 
 .registerSecondaryAction :global(.button) {
   min-width: 12rem;
+}
+
+.footerActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.navigationActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.navigationAction {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  transition: color 0.2s ease;
+}
+
+.navigationAction:hover,
+.navigationAction:focus-visible {
+  color: var(--color-primary);
+  outline: none;
+}
+
+@media (max-width: 760px) {
+  .navigationActions {
+    flex-wrap: wrap;
+  }
 }

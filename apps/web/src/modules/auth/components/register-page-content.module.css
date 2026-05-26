@@ -2,7 +2,13 @@
   position: relative;
   display: grid;
   place-items: center;
+  min-height: 100vh;
+  padding: clamp(1rem, 2.5vw, 2.5rem);
   overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(0, 97, 165, 0.16), transparent 40%),
+    radial-gradient(circle at bottom right, rgba(0, 180, 125, 0.08), transparent 36%),
+    linear-gradient(180deg, #f8f9ff 0%, #eef4ff 100%);
 }
 
 .registerShell::before,
@@ -19,14 +25,14 @@
 .registerShell::before {
   top: -15rem;
   left: -10rem;
-  background: radial-gradient(circle, rgba(15, 118, 110, 0.24), transparent 62%);
+  background: radial-gradient(circle, rgba(0, 97, 165, 0.2), transparent 62%);
   animation: floatAura 10s ease-in-out infinite;
 }
 
 .registerShell::after {
   right: -8rem;
   bottom: -17rem;
-  background: radial-gradient(circle, rgba(183, 121, 31, 0.2), transparent 64%);
+  background: radial-gradient(circle, rgba(0, 180, 125, 0.14), transparent 64%);
   animation: floatAura 13s ease-in-out infinite reverse;
 }
 
@@ -57,7 +63,7 @@
   padding: clamp(1.5rem, 3vw, 2.65rem);
   border-right: 1px solid rgba(23, 51, 56, 0.12);
   background:
-    radial-gradient(circle at top right, rgba(15, 118, 110, 0.2), transparent 40%),
+    radial-gradient(circle at top right, rgba(0, 97, 165, 0.2), transparent 40%),
     radial-gradient(circle at bottom left, rgba(183, 121, 31, 0.14), transparent 42%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 241, 229, 0.82));
 }
@@ -69,7 +75,7 @@
 
 .kicker {
   margin: 0;
-  color: #0f766e;
+  color: var(--color-accent);
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.13em;
@@ -141,20 +147,20 @@
   height: 1.65rem;
   place-items: center;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.14);
-  color: #0d5c56;
+  background: rgba(0, 97, 165, 0.14);
+  color: #0061a5;
 }
 
 .tipTitle {
   display: block;
   margin-bottom: 0.15rem;
-  color: #173338;
+  color: #0b1c30;
   font-size: 0.95rem;
 }
 
 .tipText {
   margin: 0;
-  color: #567176;
+  color: #4a5568;
   font-size: 0.9rem;
   line-height: 1.45;
 }

@@ -17,14 +17,14 @@ export function LoginPageContent({
   showResetMessage = false,
 }: LoginPageContentProps) {
   return (
-    <main className={`${styles.loginShell} min-h-screen bg-slate-100 p-4 sm:p-8`}>
+    <main className={styles.loginShell}>
       <section className={styles.loginCard}>
         <div className={styles.loginShowcase}>
           <img
             alt="Logo de SafeRidePro"
             className={styles.authHeroLogo}
             loading="eager"
-            src="https://i.imgur.com/7UUGKrJ.png"
+            src="https://i.imgur.com/TYLVfM8.png"
           />
           <div>
             <p className={styles.kicker}>Acceso web</p>

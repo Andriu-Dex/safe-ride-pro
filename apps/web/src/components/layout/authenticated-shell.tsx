@@ -16,7 +16,7 @@ import { getUserInitials } from '../../modules/users/lib/get-user-initials';
 import { NavbarLogo } from '../ui/navbar-logo';
 import styles from './authenticated-shell.module.css';
 
-const COMPANY_LOGO_URL = 'https://i.imgur.com/HMtKckK.png';
+const COMPANY_LOGO_URL = 'https://i.imgur.com/ucDoiiZ.png';
 
 const NAV_ITEMS = [
   {
@@ -124,7 +124,7 @@ type AuthenticatedShellProps = Readonly<{
 }>;
 
 function NavIcon({ name }: { name: NavIconName }) {
-  const iconClass = "w-5 h-5 stroke-current fill-none";
+  const iconClass = styles.navIcon;
   const strokeProps = { strokeWidth: "2.2", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
   switch (name) {
@@ -392,23 +392,36 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       requiresOnboarding ||
       (item.requiresOperationalMembership && !operationalAccess.hasOperationalMembership);
 
+    const desktopClassName = [
+      styles.desktopNavLink,
+      isActive ? styles.desktopNavLinkActive : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const mobileClassName = [
+      styles.mobileNavLink,
+      isActive ? styles.mobileNavLinkActive : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     if (isDisabled) {
       return (
         <li key={`${mode}-${item.href}`} aria-disabled="true">
           <div
             className={
               mode === 'desktop'
-                ? 'flex items-center gap-2 px-3 py-2.5 rounded-xl text-base font-semibold text-teal-100/40 cursor-not-allowed'
-                : 'flex items-center gap-4 px-4 py-3.5 rounded-2xl text-slate-400 opacity-50 cursor-not-allowed bg-slate-50/50'
+                ? styles.desktopNavItemDisabled
+                : styles.mobileNavItemDisabled
             }
           >
             <NavIcon name={item.icon} />
             {mode === 'desktop' ? (
-              <span className="whitespace-nowrap">{item.label}</span>
+              <span>{item.label}</span>
             ) : (
-              <div className="flex flex-col">
-                <strong className="text-lg font-bold">{item.label}</strong>
-                <span className="text-sm font-medium">{item.subtitle}</span>
+              <div className={styles.mobileNavCopy}>
+                <strong>{item.label}</strong>
+                <span>{item.subtitle}</span>
               </div>
             )}
           </div>
@@ -421,27 +434,19 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         <Link
           className={
             mode === 'desktop'
-              ? `flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-base transition-all duration-200 active:scale-95 ${
-                  isActive
-                    ? 'bg-teal-800/80 text-white font-bold shadow-sm ring-1 ring-teal-700/50'
-                    : 'text-teal-100/70 font-semibold hover:bg-white/10 hover:text-white'
-                }`
-              : `flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 active:scale-[0.98] ${
-                  isActive
-                    ? 'bg-teal-50 text-teal-700 border border-teal-100 shadow-sm'
-                    : 'text-slate-600 font-semibold hover:bg-slate-50 hover:text-teal-700 border border-transparent'
-                }`
+              ? desktopClassName
+              : mobileClassName
           }
           href={item.href}
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <NavIcon name={item.icon} />
           {mode === 'desktop' ? (
-            <span className="whitespace-nowrap">{item.label}</span>
+            <span>{item.label}</span>
           ) : (
-            <div className="flex flex-col">
-              <strong className={`text-lg ${isActive ? 'font-bold' : 'font-semibold'}`}>{item.label}</strong>
-              <span className={`text-sm ${isActive ? 'font-semibold text-teal-600/80' : 'font-medium opacity-70'}`}>{item.subtitle}</span>
+            <div className={styles.mobileNavCopy}>
+              <strong>{item.label}</strong>
+              <span>{item.subtitle}</span>
             </div>
           )}
         </Link>
@@ -450,201 +455,187 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      {/* CABECERA (ESCRITORIO Y MÓVIL) */}
-      <header className="sticky top-0 z-40 bg-teal-950 text-white border-b border-teal-900 shadow-md">
-        <div className="w-full px-3 sm:px-4 lg:px-6">
-          <div className="flex justify-between items-center h-16 lg:h-20 transition-all duration-300 relative">
-            
-            {/* Izquierda: Menú móvil y Logo */}
-            <div className="flex items-center gap-2 sm:gap-4 z-20">
-              <button
-                aria-expanded={isMobileMenuOpen}
-                aria-label={isMobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
-                className="lg:hidden p-2 rounded-xl text-teal-100 hover:bg-white/10 hover:text-white transition-colors focus:outline-none"
-                onClick={() => setIsMobileMenuOpen((currentValue) => !currentValue)}
-                type="button"
-              >
-                <svg aria-hidden="true" className="w-6 h-6 stroke-current fill-none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  {isMobileMenuOpen ? (
-                    <path d="M6 6 18 18M18 6 6 18" />
-                  ) : (
-                    <>
-                      <path d="M4 7h16" />
-                      <path d="M4 12h16" />
-                      <path d="M4 17h16" />
-                    </>
-                  )}
-                </svg>
-              </button>
+    <div className={styles.shell}>
+      <header className={styles.topbar}>
+        <span aria-hidden="true" className={styles.topbarGlow} />
+        <div className={styles.topbarLeft}>
+          <button
+            aria-expanded={isMobileMenuOpen}
+            aria-label={isMobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            className={styles.mobileMenuButton}
+            onClick={() => setIsMobileMenuOpen((currentValue) => !currentValue)}
+            type="button"
+          >
+            <svg aria-hidden="true" className={styles.toggleIcon} viewBox="0 0 24 24">
+              {isMobileMenuOpen ? (
+                <path d="M6 6 18 18M18 6 6 18" />
+              ) : (
+                <>
+                  <path d="M4 7h16" />
+                  <path d="M4 12h16" />
+                  <path d="M4 17h16" />
+                </>
+              )}
+            </svg>
+          </button>
 
-              <Link className="flex items-center group outline-none hover:opacity-80 transition-opacity" href="/inicio">
-                <NavbarLogo logoUrl={COMPANY_LOGO_URL} />
-              </Link>
-            </div>
+          <Link className={styles.brandLink} href="/inicio">
+            <NavbarLogo logoUrl={COMPANY_LOGO_URL} />
+          </Link>
+        </div>
 
-            {/* Centro Absoluto: Navegación de Escritorio */}
-            <nav aria-label="Principal" className="hidden lg:flex items-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-max">
-              <ul className="flex items-center gap-1 m-0 p-0 list-none">
-                {visibleNavItems.map((item) => renderNavItem(item, 'desktop'))}
-              </ul>
-            </nav>
+        <nav aria-label="Principal" className={styles.desktopNav}>
+          <ul className={styles.desktopNavList}>
+            {visibleNavItems.map((item) => renderNavItem(item, 'desktop'))}
+          </ul>
+        </nav>
 
-            {/* Derecha: Notificaciones y Perfil */}
-            <div className="flex items-center gap-2 sm:gap-4 z-20">
-              <div className="text-teal-100 hover:text-white transition-colors">
-                <NotificationBell accessToken={authSession?.accessToken} />
-              </div>
+        <div className={styles.topbarRight}>
+          <NotificationBell accessToken={authSession?.accessToken} />
 
-              <div className="relative flex items-center" ref={userMenuRef}>
+          <div className={styles.userMenuWrap} ref={userMenuRef}>
+            <button
+              aria-expanded={isUserMenuOpen}
+              aria-label="Abrir menú de usuario"
+              className={styles.userMenuTrigger}
+              onClick={() => setIsUserMenuOpen((currentValue) => !currentValue)}
+              type="button"
+            >
+              <span className={styles.userMenuIdentity}>
+                <strong>{displayName}</strong>
+              </span>
+              <span className={styles.userMenuAvatar} aria-hidden="true">
+                {authSession?.user.profilePhotoUrl ? (
+                  <img
+                    alt=""
+                    className={styles.userMenuAvatarImage}
+                    src={authSession.user.profilePhotoUrl}
+                  />
+                ) : (
+                  userInitials
+                )}
+              </span>
+            </button>
+
+            {isUserMenuOpen ? (
+              <div className={styles.userMenuDropdown}>
+                <div className={styles.dropdownHeader}>
+                  <strong className={styles.dropdownHeaderName}>{authSession?.user.fullName}</strong>
+                  <span className={styles.dropdownHeaderEmail}>{authSession?.user.email}</span>
+                </div>
+                <Link
+                  className={styles.dropdownItem}
+                  href="/perfil"
+                  onClick={() => setIsUserMenuOpen(false)}
+                >
+                  <svg className={styles.dropdownIcon} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  Mi perfil
+                </Link>
+                {!isAdminWorkspace ? (
+                  <button
+                    className={styles.dropdownItem}
+                    onClick={handleDriverEntry}
+                    type="button"
+                  >
+                    <svg className={styles.dropdownIcon} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 15h14l-1.1-5H6.1L5 15Z" />
+                      <circle cx="8.5" cy="16.8" r="1.4" />
+                      <circle cx="15.5" cy="16.8" r="1.4" />
+                      <path d="M6.2 10 8 6.8h8L17.8 10" />
+                    </svg>
+                    Ser Conductor
+                  </button>
+                ) : null}
                 <button
-                  aria-expanded={isUserMenuOpen}
-                  aria-label="Abrir menú de usuario"
-                  className={`${styles.userProfileButton} group`}
-                  onClick={() => setIsUserMenuOpen((currentValue) => !currentValue)}
+                  className={styles.dropdownItemDanger}
+                  onClick={handleSignOut}
                   type="button"
                 >
-                  <div className="hidden sm:block text-right">
-                    <strong className="block text-base font-bold text-white leading-none group-hover:text-teal-100 transition-colors">{displayName}</strong>
-                  </div>
-
-                  <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm font-bold shadow-inner border border-teal-500 group-hover:shadow-teal-400/50 group-hover:scale-105 transition-all duration-200" aria-hidden="true">
-                    {authSession?.user.profilePhotoUrl ? (
-                      <img
-                        alt=""
-                        className="w-full h-full rounded-xl object-cover"
-                        src={authSession.user.profilePhotoUrl}
-                      />
-                    ) : (
-                      <span>{userInitials}</span>
-                    )}
-                  </div>
+                  <svg className={styles.dropdownIconDanger} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  Cerrar sesión
                 </button>
-
-                {isUserMenuOpen ? (
-                  <div className={styles.userMenuDropdown}>
-                    <div className={styles.dropdownHeader}>
-                      <strong className={styles.dropdownHeaderName}>{authSession?.user.fullName}</strong>
-                      <span className={styles.dropdownHeaderEmail}>{authSession?.user.email}</span>
-                    </div>
-                    <Link
-                      className={styles.dropdownItem}
-                      href="/perfil"
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      <svg className={styles.dropdownIcon} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      Mi perfil
-                    </Link>
-                    {!isAdminWorkspace ? (
-                      <button
-                        className={styles.dropdownItem}
-                        onClick={handleDriverEntry}
-                        type="button"
-                      >
-                        <svg className={styles.dropdownIcon} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 15h14l-1.1-5H6.1L5 15Z" />
-                          <circle cx="8.5" cy="16.8" r="1.4" />
-                          <circle cx="15.5" cy="16.8" r="1.4" />
-                          <path d="M6.2 10 8 6.8h8L17.8 10" />
-                        </svg>
-                        Ser Conductor
-                      </button>
-                    ) : null}
-                    <button 
-                      className={styles.dropdownItemDanger}
-                      onClick={handleSignOut} 
-                      type="button"
-                    >
-                      <svg className={styles.dropdownIconDanger} fill="none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                        <polyline points="16 17 21 12 16 7" />
-                        <line x1="21" y1="12" x2="9" y2="12" />
-                      </svg>
-                      Cerrar sesión
-                    </button>
-                  </div>
-                ) : null}
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </header>
 
-      {/* FONDO OSCURO DEL MENÚ MÓVIL */}
       <div
         aria-hidden={!isMobileMenuOpen}
-        className={`fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
-          isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        className={styles.mobileBackdrop}
         onClick={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* CAJÓN DEL MENÚ MÓVIL */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-full max-w-xs bg-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={[
+          styles.mobileDrawer,
+          isMobileMenuOpen ? styles.mobileDrawerOpen : null,
+        ]
+          .filter(Boolean)
+          .join(' ')}
       >
-        {/* Cabecera de Perfil Móvil */}
-        <div className="p-6 bg-linear-to-b from-slate-50 to-white border-b border-slate-100 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-teal-600 text-white flex items-center justify-center text-xl font-bold shrink-0 shadow-inner border border-teal-700/50">
+        <div className={styles.mobileProfileCard}>
+          <div className={styles.userAvatar}>
             {authSession?.user.profilePhotoUrl ? (
-              <img alt="" className="w-full h-full rounded-2xl object-cover" src={authSession.user.profilePhotoUrl} />
+              <img
+                alt=""
+                className={styles.userAvatarImage}
+                src={authSession.user.profilePhotoUrl}
+              />
             ) : (
-              <span>{userInitials}</span>
+              <span className={styles.userAvatarFallback}>{userInitials}</span>
             )}
           </div>
-          <div className="flex flex-col min-w-0">
-            <strong className="text-slate-900 font-bold truncate text-lg">{authSession?.user.fullName}</strong>
-            <span className="text-slate-500 text-sm truncate font-medium">{currentMembership?.institutionName ?? 'Sin institución'}</span>
+          <div className={styles.mobileProfileCopy}>
+            <strong>{authSession?.user.fullName ?? 'Usuario'}</strong>
+            <p>{currentMembership?.institutionName ?? 'Sin institución'}</p>
           </div>
         </div>
 
-        {/* Navegación Móvil */}
-        <nav aria-label="Navegación móvil" className="flex-1 overflow-y-auto p-4 space-y-2">
-          <ul className="m-0 p-0 list-none space-y-2">
+        <nav aria-label="Navegación móvil" className={styles.mobileNav}>
+          <ul className={styles.mobileNavList}>
             {visibleNavItems.map((item) => renderNavItem(item, 'mobile'))}
-            
-            <li className="pt-4 mt-4 border-t border-slate-100">
+            <li>
               <Link
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
-                  pathname === '/perfil'
-                    ? 'bg-teal-50 text-teal-700 border border-teal-100 shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-teal-700 border border-transparent'
-                }`}
+                className={
+                  [
+                    styles.mobileNavLink,
+                    pathname === '/perfil' ? styles.mobileNavLinkActive : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
+                }
                 href="/perfil"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                 <svg className="w-5 h-5 stroke-current fill-none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                   <circle cx="12" cy="7" r="4"></circle>
-                 </svg>
-                <div className="flex flex-col">
-                  <strong className={`text-lg ${pathname === '/perfil' ? 'font-bold' : 'font-semibold'}`}>Perfil</strong>
-                  <span className={`text-sm ${pathname === '/perfil' ? 'font-semibold text-teal-600/80' : 'font-medium opacity-70'}`}>Mi cuenta</span>
+                <NavIcon name="profile" />
+                <div className={styles.mobileNavCopy}>
+                  <strong>Perfil</strong>
+                  <span>Mi cuenta</span>
                 </div>
               </Link>
             </li>
             {!isAdminWorkspace ? (
               <li>
                 <button
-                  className="flex w-full items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-teal-700 border border-transparent"
+                  className={styles.mobileNavButton}
                   onClick={handleDriverEntry}
                   type="button"
                 >
-                  <svg className="w-5 h-5 stroke-current fill-none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                    <path d="M5 15h14l-1.1-5H6.1L5 15Z"></path>
-                    <circle cx="8.5" cy="16.8" r="1.4"></circle>
-                    <circle cx="15.5" cy="16.8" r="1.4"></circle>
-                    <path d="M6.2 10 8 6.8h8L17.8 10"></path>
-                  </svg>
-                  <div className="flex flex-col">
-                    <strong className="text-lg font-semibold">Conductor</strong>
-                    <span className="text-sm font-medium opacity-70">
-                      {isApprovedDriver || hasStartedDriverFlow ? 'Gestionar estado' : 'Iniciar proceso'}
+                  <NavIcon name="driver" />
+                  <div className={styles.mobileNavCopy}>
+                    <strong>Conductor</strong>
+                    <span>
+                      {isApprovedDriver || hasStartedDriverFlow
+                        ? 'Gestionar estado'
+                        : 'Iniciar proceso'}
                     </span>
                   </div>
                 </button>
@@ -652,40 +643,35 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
             ) : null}
           </ul>
 
-          {/* Alertas */}
           {!operationalAccess.hasOperationalMembership && operationalAccess.title && operationalAccess.message ? (
-            <div className="mt-6 p-4 rounded-xl bg-amber-50 border border-amber-200 shadow-sm">
-              <p className="text-amber-800 text-xs font-bold uppercase tracking-wider mb-1">Acceso limitado</p>
-              <strong className="text-amber-900 text-sm block mb-1">{operationalAccess.title}</strong>
-              <p className="text-amber-700 text-sm leading-relaxed">{operationalAccess.message}</p>
+            <div className={styles.noteCard}>
+              <p className={styles.noteLabel}>Acceso limitado</p>
+              <strong>{operationalAccess.title}</strong>
+              <p>{operationalAccess.message}</p>
             </div>
           ) : null}
 
           {requiresOnboarding ? (
-            <div className="mt-6 p-4 rounded-xl bg-rose-50 border border-rose-200 shadow-sm">
-              <p className="text-rose-800 text-xs font-bold uppercase tracking-wider mb-1">Perfil pendiente</p>
-              <strong className="text-rose-900 text-sm">Completa tu perfil para continuar.</strong>
+            <div className={styles.noteCard}>
+              <p className={styles.noteLabel}>Perfil pendiente</p>
+              <strong>Completa tu perfil para continuar.</strong>
             </div>
           ) : null}
         </nav>
 
-        {/* Pie de página Móvil */}
-        <div className="p-4 border-t border-slate-100 bg-white flex items-center justify-between">
+        <div className={styles.mobileDrawerFooter}>
           <NotificationBell accessToken={authSession?.accessToken} />
-          <button 
-            type="button"
-            className="px-5 py-2.5 bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 font-bold rounded-xl text-sm transition-all shadow-sm active:scale-95"
+          <button
+            className={styles.mobileSignOut}
             onClick={handleSignOut}
+            type="button"
           >
             Cerrar sesión
           </button>
         </div>
       </aside>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 w-full relative">
-        {children}
-      </main>
+      <main className={styles.content}>{children}</main>
 
       {!isAdminWorkspace && hasStartedDriverFlow ? (
         <button

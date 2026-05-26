@@ -45,7 +45,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
     const issues: string[] = [];
 
     if (!code.trim()) {
-      issues.push('Debes indicar el codigo de verificacion.');
+      issues.push('Debes indicar el código de verificación.');
     }
 
     return issues;
@@ -114,7 +114,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
 
     try {
       const response = await resendVerificationCode(email);
-      pushToast('Codigo reenviado', response.message, 'info');
+      pushToast('Código reenviado', response.message, 'info');
       setDevelopmentCode(
         response.deliveryChannel === 'development_preview'
           ? response.verificationCode ?? null
@@ -124,7 +124,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage('No fue posible reenviar el codigo en este momento.');
+        setErrorMessage('No fue posible reenviar el código en este momento.');
       }
     } finally {
       setIsResending(false);
@@ -136,16 +136,16 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
       <div className={`${styles.verifyFormCard} form-card`}>
         <div className={`${styles.verifyFormHeader} form-header`}>
-          <p className={styles.kicker}>Codigo de acceso</p>
+          <p className={styles.kicker}>Código de acceso</p>
           <h2>Activa tu cuenta</h2>
-          <p>Ingresa el codigo que recibiste y habilita tu acceso en un instante.</p>
+          <p>Ingresa el código que recibiste y habilita tu acceso en un instante.</p>
         </div>
 
         {email ? (
           <div className={styles.summaryCard}>
             <span className={styles.summaryLabel}>Destino confirmado</span>
             <div>
-              Enviamos el codigo a <strong>{maskEmailAddress(email)}</strong>.
+              Enviamos el código a <strong>{maskEmailAddress(email)}</strong>.
             </div>
           </div>
         ) : null}
@@ -159,19 +159,19 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
         >
           <InputField
             autoComplete="one-time-code"
-            hint="Escribe el codigo de 6 digitos que recibiste por correo."
+            hint="Escribe el código de 6 dígitos que recibiste por correo."
             inputMode="numeric"
-            label="Codigo de verificacion"
+            label="Código de verificación"
             maxLength={6}
             onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder="Ingresa el codigo de 6 digitos"
+            placeholder="Ingresa el código de 6 dígitos"
             required
             value={code}
           />
 
           {developmentCode ? (
             <div className={styles.developmentCode}>
-              Codigo de desarrollo: <strong>{developmentCode}</strong>
+              Código de desarrollo: <strong>{developmentCode}</strong>
             </div>
           ) : null}
 
@@ -193,20 +193,20 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
           </Button>
         </form>
 
-        <div className="mt-6 flex flex-col items-center gap-3">
+        <div className={styles.footerActions}>
           <button
             type="button"
-            className="auth-inline-link text-sm font-medium"
+            className={styles.inlineAction}
             disabled={isResending || !email}
             onClick={() => void runResend()}
           >
-            {isResending ? 'Reenviando...' : 'Reenviar codigo de verificacion'}
+            {isResending ? 'Reenviando...' : 'Reenviar código de verificación'}
           </button>
 
-          <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
+          <div className={styles.navigationActions}>
             <button
               type="button"
-              className="hover:text-slate-800 transition-colors"
+              className={styles.navigationAction}
               onClick={() =>
                 router.push(
                   email
@@ -220,7 +220,7 @@ export function VerifyEmailForm({ initialCode = '', email }: VerifyEmailFormProp
             <span>•</span>
             <button
               type="button"
-              className="hover:text-slate-800 transition-colors"
+              className={styles.navigationAction}
               onClick={() =>
                 router.push(
                   email

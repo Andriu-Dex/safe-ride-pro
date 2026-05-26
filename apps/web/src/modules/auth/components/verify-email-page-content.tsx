@@ -26,9 +26,7 @@ export function VerifyEmailPageContent({
   }, [authSession, isHydrated, router]);
 
   return (
-    <main
-      className={`${styles.verifyShell} min-h-screen bg-[radial-gradient(circle_at_top,#eefbfb_0%,#f5f7f7_44%,#edf3f2_100%)] p-4 sm:p-8`}
-    >
+    <main className={styles.verifyShell}>
       <section className={styles.verifyCard}>
         <header className={styles.verifyShowcase}>
           <div className={`${styles.heroBlock} ${styles.reveal}`}>

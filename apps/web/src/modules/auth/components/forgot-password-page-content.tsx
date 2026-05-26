@@ -10,7 +10,7 @@ export function ForgotPasswordPageContent() {
   const { authSession, isHydrated, signOut } = useAuth();
 
   return (
-    <main className={`${styles.forgotShell} grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top,#fdf8ee_0%,#f3ecdf_42%,#eadfcd_100%)] p-4 sm:p-8`}>
+    <main className={styles.forgotShell}>
       <section className={styles.forgotCard}>
         <aside className={styles.forgotShowcase}>
           <div className={styles.reveal}>
