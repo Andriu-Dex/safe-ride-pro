@@ -21,6 +21,7 @@ export type RealtimeTripChangeReason =
 
 export type RealtimeTripRequestChangeReason =
   | 'created'
+  | 'payment_confirmed'
   | 'accepted'
   | 'rejected'
   | 'cancelled'

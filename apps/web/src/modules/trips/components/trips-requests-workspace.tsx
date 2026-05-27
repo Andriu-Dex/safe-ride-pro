@@ -396,6 +396,10 @@ export function TripsRequestsWorkspace({
                       const canRefreshPaypal =
                         request.payment?.provider === PaymentProvider.Paypal
                         && !isTripPaymentSettled(request.payment.status);
+                      const isPaypalAwaitingPayment =
+                        request.payment?.provider === PaymentProvider.Paypal
+                        && !isTripPaymentSettled(request.payment.status)
+                        && !isTripPaymentClosed(request.payment.status);
 
                       return (
                         <tr key={request.id}>
@@ -412,9 +416,12 @@ export function TripsRequestsWorkspace({
                           <td>
                             <div className={styles.cellStatus}>
                               <StatusPill
-                                label={getTripRequestStatusLabel(request.status)}
-                                tone={getTripRequestStatusTone(request.status)}
+                                label={isPaypalAwaitingPayment ? 'Pendiente de pago' : getTripRequestStatusLabel(request.status)}
+                                tone={isPaypalAwaitingPayment ? 'warning' : getTripRequestStatusTone(request.status)}
                               />
+                              {isPaypalAwaitingPayment ? (
+                                <span className={styles.warningText}>No enviada al conductor</span>
+                              ) : null}
                               {request.status === TripRequestStatus.Accepted || request.status === TripRequestStatus.NoShow ? (
                                 <StatusPill
                                   label={getTripRequestExecutionStatusLabel(request.executionStatus)}
@@ -449,6 +456,9 @@ export function TripsRequestsWorkspace({
                                     {' | '}
                                     {getPaymentProviderLabel(request.payment.provider)}
                                   </small>
+                                  {isPaypalAwaitingPayment ? (
+                                    <small>Abre PayPal para enviar la solicitud</small>
+                                  ) : null}
                                 </>
                               ) : (
                             <span className={styles.emptyText}>Sin cargo</span>

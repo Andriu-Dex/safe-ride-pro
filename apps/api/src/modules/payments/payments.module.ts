@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { PAYMENT_PROVIDER } from './application/ports/payment-provider';
 import { PAYMENTS_REPOSITORY } from './application/ports/payments.repository';
 import { TripPaymentsOrchestratorService } from './application/services/trip-payments-orchestrator.service';
@@ -15,7 +16,7 @@ import { PaymentsController } from './presentation/controllers/payments.controll
 
 @Global()
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, RealtimeModule],
   controllers: [PaymentsController],
   providers: [
     {

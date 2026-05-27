@@ -144,16 +144,6 @@ export class CreateTripRequestUseCase {
 
     const tripRequest = await this.createTripRequest(command, trip.id, membership.id, selectedPaymentProvider);
 
-    this.realtimeEventsService.publishTripRequestChanged({
-      actorUserId: command.userId,
-      driverMembershipId: trip.driverMembershipId,
-      institutionId: trip.institutionId,
-      passengerMembershipId: tripRequest.passengerMembershipId,
-      reason: 'created',
-      requestId: tripRequest.id,
-      tripId: trip.id,
-    });
-
     if (tripRequest.payment?.provider === PaymentProvider.Paypal) {
       await this.notificationsService?.notifyMembership({
         institutionId: trip.institutionId,
@@ -165,6 +155,16 @@ export class CreateTripRequestUseCase {
         actionUrl: '/viajes?passengerView=requests',
       });
     } else {
+      this.realtimeEventsService.publishTripRequestChanged({
+        actorUserId: command.userId,
+        driverMembershipId: trip.driverMembershipId,
+        institutionId: trip.institutionId,
+        passengerMembershipId: tripRequest.passengerMembershipId,
+        reason: 'created',
+        requestId: tripRequest.id,
+        tripId: trip.id,
+      });
+
       await this.notificationsService?.notifyMembership({
         institutionId: trip.institutionId,
         recipientMembershipId: trip.driverMembershipId,

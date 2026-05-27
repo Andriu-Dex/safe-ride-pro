@@ -9,6 +9,7 @@ import {
 import { AppNotificationType, TripPaymentStatus } from '@saferidepro/shared-types';
 
 import { NotificationsService } from '../../../notifications/application/services/notifications.service';
+import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import { mapPaypalStatusesToTripPaymentStatus } from '../../domain/payment-status';
 import {
   PAYMENT_PROVIDER,
@@ -28,6 +29,8 @@ export class CapturePaymentUseCase {
     private readonly paymentProvider: PaymentProviderPort,
     @Optional()
     private readonly notificationsService?: NotificationsService,
+    @Optional()
+    private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}
 
   async execute(userId: string, paymentId: string) {
@@ -81,6 +84,16 @@ export class CapturePaymentUseCase {
     }
 
     if (updatedPayment.status === TripPaymentStatus.Paid) {
+      this.realtimeEventsService.publishTripRequestChanged({
+        actorUserId: userId,
+        driverMembershipId: updatedPayment.driverMembershipId,
+        institutionId: updatedPayment.institutionId,
+        passengerMembershipId: updatedPayment.passengerMembershipId,
+        reason: 'payment_confirmed',
+        requestId: updatedPayment.tripRequestId,
+        tripId: updatedPayment.tripId,
+      });
+
       await this.notificationsService?.notifyMembership({
         institutionId: updatedPayment.institutionId,
         recipientMembershipId: updatedPayment.driverMembershipId,

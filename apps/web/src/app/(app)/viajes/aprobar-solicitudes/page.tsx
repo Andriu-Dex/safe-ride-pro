@@ -151,6 +151,26 @@ function sortRequests(requests: TripRequestRecord[]): TripRequestRecord[] {
   });
 }
 
+function getLatestRequestPerPassengerTrip(
+  requests: TripRequestRecord[],
+): TripRequestRecord[] {
+  const latestRequests = new Map<string, TripRequestRecord>();
+
+  requests.forEach((request) => {
+    const key = `${request.tripId}:${request.passengerMembershipId}`;
+    const currentRequest = latestRequests.get(key);
+
+    if (
+      !currentRequest ||
+      new Date(request.createdAt).getTime() > new Date(currentRequest.createdAt).getTime()
+    ) {
+      latestRequests.set(key, request);
+    }
+  });
+
+  return Array.from(latestRequests.values());
+}
+
 export default function DriverTripRequestsPage() {
   const { authSession, isHydrated, refreshSession } = useAuth();
   const operationalAccess = getOperationalAccessState(authSession?.user.memberships);
@@ -364,7 +384,7 @@ export default function DriverTripRequestsPage() {
   };
 
   const filteredRequests = useMemo(() => {
-    return incomingRequests.filter((request) => {
+    return getLatestRequestPerPassengerTrip(incomingRequests).filter((request) => {
       const matchesStatus =
         selectedStatuses.length === 0 || selectedStatuses.includes(request.status as RequestStatusFilter);
       const matchesPayment =

@@ -211,6 +211,15 @@ export function TripsDiscoverWorkspace({
                     <button
                       className={styles.tripAction}
                       onClick={() => {
+                        if (hasActiveRequest) {
+                          notifyBlockedAction(
+                            'Solicitud ya registrada',
+                            'Revisa el estado y el pago desde Mis solicitudes.',
+                          );
+                          onOpenRequests();
+                          return;
+                        }
+
                         if (isMutatingRequestId === trip.id) {
                           notifyBlockedAction('Operacion en curso', 'Espera a que termine la accion anterior.');
                           return;
