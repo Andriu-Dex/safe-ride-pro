@@ -242,13 +242,17 @@ export class PrismaTripRequestsRepository implements TripRequestsRepository {
           {
             payment: {
               provider: PaymentProvider.Paypal,
-              status: TripPaymentStatus.Paid,
+              status: {
+                in: [TripPaymentStatus.Paid, TripPaymentStatus.Refunded],
+              },
             },
           },
           {
             payment: {
               provider: PaymentProvider.Wallet,
-              status: TripPaymentStatus.Paid,
+              status: {
+                in: [TripPaymentStatus.Paid, TripPaymentStatus.Refunded],
+              },
             },
           },
         ],
