@@ -747,6 +747,7 @@ export class PrismaTripsRepository implements TripsRepository {
     cancelledAt: Date | null;
     completedAt: Date | null;
     createdAt: Date;
+    updatedAt: Date;
     institution: { name: string };
     driverMembership: {
       user: { fullName: string };
@@ -798,6 +799,7 @@ export class PrismaTripsRepository implements TripsRepository {
         cancelledAt: trip.cancelledAt,
       }),
       createdAt: trip.createdAt,
+      updatedAt: trip.updatedAt,
     };
   }
 

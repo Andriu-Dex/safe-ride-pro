@@ -72,6 +72,7 @@ export type TripRecord = {
   completedAt: Date | null;
   cancellationTiming?: CancellationTiming | null;
   createdAt: Date;
+  updatedAt: Date;
 };
 
 export type CreateTripInput = {

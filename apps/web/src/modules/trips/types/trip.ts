@@ -41,6 +41,7 @@ export type TripRecord = {
   completedAt: string | null;
   cancellationTiming: CancellationTiming | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type TripRoutePathPoint = {

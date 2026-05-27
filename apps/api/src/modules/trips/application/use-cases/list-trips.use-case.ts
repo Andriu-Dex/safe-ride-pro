@@ -105,6 +105,7 @@ export class ListTripsUseCase {
       completedAt: trip.completedAt,
       cancellationTiming: trip.cancellationTiming,
       createdAt: trip.createdAt,
+      updatedAt: trip.updatedAt,
     }));
   }
 }

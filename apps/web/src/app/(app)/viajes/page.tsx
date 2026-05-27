@@ -313,7 +313,7 @@ function getDriverSortLabel(sortBy: DriverTripSortOption): string {
     case 'created-asc':
       return 'Mas antiguos primero';
     default:
-      return 'Mas recientes primero';
+      return 'Ultima actividad primero';
   }
 }
 
@@ -1310,7 +1310,10 @@ export default function TripsPage() {
         case 'created-asc':
           return new Date(leftTrip.createdAt).getTime() - new Date(rightTrip.createdAt).getTime();
         default:
-          return new Date(rightTrip.createdAt).getTime() - new Date(leftTrip.createdAt).getTime();
+          return (
+            new Date(rightTrip.updatedAt ?? rightTrip.createdAt).getTime() -
+            new Date(leftTrip.updatedAt ?? leftTrip.createdAt).getTime()
+          );
       }
     });
 
@@ -1629,7 +1632,7 @@ export default function TripsPage() {
                           }))}
                         value={driverWorkspaceFilters.sortBy}
                       >
-                        <option value="recent">Mas recientes primero</option>
+                        <option value="recent">Ultima actividad primero</option>
                         <option value="created-asc">Mas antiguos primero</option>
                         <option value="departure-asc">Salida mas cercana</option>
                         <option value="departure-desc">Salida mas lejana</option>

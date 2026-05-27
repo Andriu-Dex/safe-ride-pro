@@ -97,6 +97,7 @@ export class GetTripByIdUseCase {
       completedAt: reconciledTrip.completedAt,
       cancellationTiming: reconciledTrip.cancellationTiming,
       createdAt: reconciledTrip.createdAt,
+      updatedAt: reconciledTrip.updatedAt,
       isOwner,
       isAcceptedPassenger,
       canViewPreciseRoute,
