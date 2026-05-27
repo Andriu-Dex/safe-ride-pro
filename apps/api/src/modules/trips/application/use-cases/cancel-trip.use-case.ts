@@ -19,12 +19,10 @@ export class CancelTripUseCase {
     private readonly auditService: AuditService,
     private readonly operationalSanctionsService: OperationalSanctionsService,
     @Optional()
-    private readonly tripPaymentsOrchestratorService: Pick<
-      TripPaymentsOrchestratorService,
-      'cancelTripPayments'
-    > = {
+    @Inject(TripPaymentsOrchestratorService)
+    private readonly tripPaymentsOrchestratorService: TripPaymentsOrchestratorService = {
       cancelTripPayments: async () => 0,
-    },
+    } as unknown as TripPaymentsOrchestratorService,
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
   ) {}

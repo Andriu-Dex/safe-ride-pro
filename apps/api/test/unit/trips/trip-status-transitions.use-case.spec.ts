@@ -102,6 +102,7 @@ function buildTrip(status: TripStatus, overrides: Partial<TripRecord> = {}): Tri
     completedAt: null,
     cancellationTiming: null,
     createdAt: new Date('2030-01-01T09:00:00.000Z'),
+    updatedAt: new Date('2030-01-01T09:00:00.000Z'),
     ...overrides,
   };
 }

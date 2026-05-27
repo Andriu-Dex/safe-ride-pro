@@ -7,7 +7,7 @@ import {
   TripRouteMode,
 } from '@saferidepro/shared-types';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { ApiError } from '../../../../lib/api-client';
 import { persistToast } from '../../../../components/ui/flash-toast';
@@ -24,6 +24,10 @@ import {
   createTrip,
   listRecentTripRouteTemplates,
 } from '../../../../modules/trips/lib/trip-api';
+import {
+  fetchGeoapifyPlaceLabel,
+  isGeoapifyConfigured,
+} from '../../../../modules/trips/lib/geoapify';
 import { TripCreationForm } from '../../../../modules/trips/components/trip-creation-form';
 import {
   EMPTY_TRIP_FORM,
@@ -106,6 +110,7 @@ export default function NewTripPage() {
   const [isRefreshingContext, setIsRefreshingContext] = useState(false);
   const [tripErrorMessage, setTripErrorMessage] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const hasRequestedCurrentOriginRef = useRef(false);
 
   const pushToast = useCallback((title: string, description: string, tone: ToastItem['tone']) => {
     setToasts((currentToasts) => [
@@ -233,6 +238,87 @@ export default function NewTripPage() {
     && !trustRestrictions.blocksDriver
     && activeVehicles.length > 0;
   const selectedVehicle = activeVehicles.find((vehicle) => vehicle.id === tripForm.vehicleId) ?? null;
+
+  useEffect(() => {
+    if (
+      hasRequestedCurrentOriginRef.current ||
+      !canCreateTrips ||
+      !isHydrated ||
+      !authSession ||
+      tripForm.originLatitude ||
+      tripForm.originLongitude ||
+      tripForm.originLabel ||
+      typeof navigator === 'undefined' ||
+      !navigator.geolocation
+    ) {
+      return;
+    }
+
+    hasRequestedCurrentOriginRef.current = true;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const point = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        const fallbackLabel = `Mi ubicación ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
+
+        setTripForm((currentForm) => {
+          if (currentForm.originLatitude || currentForm.originLongitude || currentForm.originLabel) {
+            return currentForm;
+          }
+
+          return {
+            ...currentForm,
+            originLabel: fallbackLabel,
+            originLatitude: point.latitude.toFixed(6),
+            originLongitude: point.longitude.toFixed(6),
+          };
+        });
+
+        if (!isGeoapifyConfigured()) {
+          return;
+        }
+
+        void fetchGeoapifyPlaceLabel(point)
+          .then((label) => {
+            if (!label) {
+              return;
+            }
+
+            setTripForm((currentForm) => {
+              if (
+                currentForm.originLatitude !== point.latitude.toFixed(6) ||
+                currentForm.originLongitude !== point.longitude.toFixed(6) ||
+                currentForm.originLabel !== fallbackLabel
+              ) {
+                return currentForm;
+              }
+
+              return {
+                ...currentForm,
+                originLabel: label,
+              };
+            });
+          })
+          .catch(() => undefined);
+      },
+      () => undefined,
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60_000,
+        timeout: 7_000,
+      },
+    );
+  }, [
+    authSession,
+    canCreateTrips,
+    isHydrated,
+    tripForm.originLabel,
+    tripForm.originLatitude,
+    tripForm.originLongitude,
+  ]);
 
   const handleTripFormChange = useCallback((field: keyof TripFormValues, value: string) => {
     setTripForm((currentForm) => ({

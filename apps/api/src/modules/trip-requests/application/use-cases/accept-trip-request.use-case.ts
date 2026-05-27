@@ -28,13 +28,8 @@ export class AcceptTripRequestUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
-    @Optional()
-    private readonly tripPaymentsOrchestratorService: Pick<
-      TripPaymentsOrchestratorService,
-      'ensureAcceptedTripRequestPayment'
-    > = {
-      ensureAcceptedTripRequestPayment: async () => null,
-    },
+    @Inject(TripPaymentsOrchestratorService)
+    private readonly tripPaymentsOrchestratorService: TripPaymentsOrchestratorService,
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
     @Optional()

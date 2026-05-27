@@ -6,8 +6,16 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { TripRequestStatus, TripStatus } from '@saferidepro/shared-types';
+import {
+  AppNotificationType,
+  PaymentProvider,
+  TripPaymentStatus,
+  TripRequestStatus,
+  TripStatus,
+} from '@saferidepro/shared-types';
 
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
+import type { TripPaymentRecord } from '../../../payments/application/ports/payments.repository';
 import { TripPaymentsOrchestratorService } from '../../../payments/application/services/trip-payments-orchestrator.service';
 import { RealtimeEventsService } from '../../../realtime/application/services/realtime-events.service';
 import {
@@ -20,15 +28,12 @@ export class RejectTripRequestUseCase {
   constructor(
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
-    @Optional()
-    private readonly tripPaymentsOrchestratorService: Pick<
-      TripPaymentsOrchestratorService,
-      'cancelTripRequestPayment'
-    > = {
-      cancelTripRequestPayment: async () => null,
-    },
+    @Inject(TripPaymentsOrchestratorService)
+    private readonly tripPaymentsOrchestratorService: TripPaymentsOrchestratorService,
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async execute(userId: string, requestId: string, reviewNote?: string) {
@@ -55,7 +60,7 @@ export class RejectTripRequestUseCase {
       );
     }
 
-    await this.tripPaymentsOrchestratorService.cancelTripRequestPayment(
+    const closedPayment = await this.tripPaymentsOrchestratorService.cancelTripRequestPayment(
       tripRequest.id,
       'Pago reembolsado porque la solicitud fue rechazada por el conductor.',
     );
@@ -81,9 +86,38 @@ export class RejectTripRequestUseCase {
       tripId: updatedTripRequest.tripId,
     });
 
+    await this.notificationsService?.notifyMembership({
+      institutionId: updatedTripRequest.institutionId,
+      recipientMembershipId: updatedTripRequest.passengerMembershipId,
+      actorUserId: userId,
+      type: AppNotificationType.TripRequestRejected,
+      title: 'Solicitud rechazada',
+      body: buildRejectedRequestNotificationBody(closedPayment),
+      actionUrl: '/viajes?passengerView=requests',
+    });
+
     return {
-      message: 'Solicitud rechazada correctamente.',
+      message:
+        closedPayment?.status === TripPaymentStatus.Refunded
+          ? 'Solicitud rechazada y pago reembolsado.'
+          : 'Solicitud rechazada correctamente.',
       tripRequest: updatedTripRequest,
     };
   }
+}
+
+function buildRejectedRequestNotificationBody(payment: TripPaymentRecord | null): string {
+  if (payment?.status !== TripPaymentStatus.Refunded) {
+    return 'El conductor rechazo tu solicitud.';
+  }
+
+  if (payment.provider === PaymentProvider.Paypal) {
+    return 'El conductor rechazo tu solicitud y el pago fue reembolsado por PayPal.';
+  }
+
+  if (payment.provider === PaymentProvider.Wallet) {
+    return 'El conductor rechazo tu solicitud y el saldo volvio a tu billetera.';
+  }
+
+  return 'El conductor rechazo tu solicitud.';
 }

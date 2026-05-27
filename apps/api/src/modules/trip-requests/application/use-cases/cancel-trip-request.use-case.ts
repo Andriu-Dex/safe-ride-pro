@@ -28,13 +28,8 @@ export class CancelTripRequestUseCase {
     @Inject(TRIP_REQUESTS_REPOSITORY)
     private readonly tripRequestsRepository: TripRequestsRepository,
     private readonly operationalSanctionsService: OperationalSanctionsService,
-    @Optional()
-    private readonly tripPaymentsOrchestratorService: Pick<
-      TripPaymentsOrchestratorService,
-      'cancelTripRequestPayment'
-    > = {
-      cancelTripRequestPayment: async () => null,
-    },
+    @Inject(TripPaymentsOrchestratorService)
+    private readonly tripPaymentsOrchestratorService: TripPaymentsOrchestratorService,
     @Optional()
     private readonly realtimeEventsService: RealtimeEventsService = new RealtimeEventsService(),
     @Optional()

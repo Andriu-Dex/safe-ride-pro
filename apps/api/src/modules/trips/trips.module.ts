@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { TRIPS_REPOSITORY } from './application/ports/trips.repository';
 import { CancelTripUseCase } from './application/use-cases/cancel-trip.use-case';
@@ -20,7 +21,7 @@ import { PrismaTripsRepository } from './infrastructure/repositories/prisma-trip
 import { TripsController } from './presentation/controllers/trips.controller';
 
 @Module({
-  imports: [AuthModule, RealtimeModule],
+  imports: [AuthModule, RealtimeModule, PaymentsModule],
   controllers: [TripsController],
   providers: [
     {

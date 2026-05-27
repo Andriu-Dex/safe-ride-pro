@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   CancellationTiming,
+  PaymentProvider,
+  TripPaymentStatus,
   TripRequestExecutionStatus,
   TripRequestStatus,
   TripRouteMode,
@@ -8,6 +10,7 @@ import {
 } from '@saferidepro/shared-types';
 
 import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
+import { TripPaymentsOrchestratorService } from '../../../src/modules/payments/application/services/trip-payments-orchestrator.service';
 import { AcceptTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/accept-trip-request.use-case';
 import { CancelTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/cancel-trip-request.use-case';
 import { RejectTripRequestUseCase } from '../../../src/modules/trip-requests/application/use-cases/reject-trip-request.use-case';
@@ -38,6 +41,13 @@ function createOperationalSanctionsServiceMock(): jest.Mocked<OperationalSanctio
     assertPassengerOperationsAllowed: jest.fn(),
     assertDriverOperationsAllowed: jest.fn(),
   } as unknown as jest.Mocked<OperationalSanctionsService>;
+}
+
+function createTripPaymentsOrchestratorMock(): jest.Mocked<TripPaymentsOrchestratorService> {
+  return {
+    ensureAcceptedTripRequestPayment: jest.fn(),
+    cancelTripRequestPayment: jest.fn(),
+  } as unknown as jest.Mocked<TripPaymentsOrchestratorService>;
 }
 
 function buildTripRequest(
@@ -88,7 +98,8 @@ function buildTripRequest(
 describe('Trip request seat adjustment use cases', () => {
   it('accepts a pending request and trims the review note before delegating', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new AcceptTripRequestUseCase(repository);
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new AcceptTripRequestUseCase(repository, paymentsOrchestrator);
 
     repository.findTripRequestById.mockResolvedValue(buildTripRequest());
     repository.acceptTripRequest.mockResolvedValue(
@@ -109,7 +120,8 @@ describe('Trip request seat adjustment use cases', () => {
 
   it('rejects acceptance when the trip has no seats available', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new AcceptTripRequestUseCase(repository);
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new AcceptTripRequestUseCase(repository, paymentsOrchestrator);
 
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
@@ -128,7 +140,8 @@ describe('Trip request seat adjustment use cases', () => {
 
   it('blocks accepting a pending request after the trip changed state', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new AcceptTripRequestUseCase(repository);
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new AcceptTripRequestUseCase(repository, paymentsOrchestrator);
 
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
@@ -149,7 +162,8 @@ describe('Trip request seat adjustment use cases', () => {
 
   it('rejects a pending request without consuming seats', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new RejectTripRequestUseCase(repository);
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new RejectTripRequestUseCase(repository, paymentsOrchestrator);
 
     repository.findTripRequestById.mockResolvedValue(buildTripRequest());
     repository.rejectTripRequest.mockResolvedValue(
@@ -174,9 +188,69 @@ describe('Trip request seat adjustment use cases', () => {
     expect(response.tripRequest.tripAvailableSeats).toBe(2);
   });
 
+  it('refunds the payment before rejecting a paid request', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new RejectTripRequestUseCase(
+      repository,
+      paymentsOrchestrator,
+    );
+
+    repository.findTripRequestById.mockResolvedValue(buildTripRequest());
+    paymentsOrchestrator.cancelTripRequestPayment.mockResolvedValue({
+      id: 'payment-1',
+      institutionId: 'institution-1',
+      tripId: 'trip-1',
+      tripRequestId: 'request-1',
+      passengerMembershipId: 'membership-passenger',
+      passengerUserId: 'user-passenger',
+      passengerEmail: 'pasajero@uta.edu.ec',
+      passengerFullName: 'Pasajero Uno',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-driver',
+      driverFullName: 'Conductor Uno',
+      tripOriginLabel: 'Huachi',
+      tripDestinationLabel: 'Centro',
+      tripDepartureAt: new Date('2030-01-01T10:00:00.000Z'),
+      tripStatus: TripStatus.Published,
+      provider: PaymentProvider.Paypal,
+      status: TripPaymentStatus.Refunded,
+      currencyCode: 'USD',
+      amount: 10,
+      merchantOrderReference: 'SRP-1',
+      providerOrderToken: 'order-1',
+      providerPaymentLinkId: 'capture-1',
+      providerPaymentLinkUrl: null,
+      providerOrderStatus: null,
+      providerPaymentStatus: 'COMPLETED',
+      failureReason: 'Pago reembolsado.',
+      paidAt: new Date('2030-01-01T09:05:00.000Z'),
+      cancelledAt: new Date('2030-01-01T09:10:00.000Z'),
+      expiresAt: null,
+      lastSyncedAt: new Date('2030-01-01T09:10:00.000Z'),
+      createdAt: new Date('2030-01-01T09:00:00.000Z'),
+      updatedAt: new Date('2030-01-01T09:10:00.000Z'),
+    });
+    repository.rejectTripRequest.mockResolvedValue(
+      buildTripRequest({
+        status: TripRequestStatus.Rejected,
+      }),
+    );
+
+    const response = await useCase.execute('user-driver', 'request-1');
+
+    expect(paymentsOrchestrator.cancelTripRequestPayment).toHaveBeenCalledWith(
+      'request-1',
+      'Pago reembolsado porque la solicitud fue rechazada por el conductor.',
+    );
+    expect(repository.rejectTripRequest).toHaveBeenCalledWith('request-1', undefined);
+    expect(response.message).toBe('Solicitud rechazada y pago reembolsado.');
+  });
+
   it('blocks rejecting a pending request after the trip is already in progress', async () => {
     const repository = createTripRequestsRepositoryMock();
-    const useCase = new RejectTripRequestUseCase(repository);
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new RejectTripRequestUseCase(repository, paymentsOrchestrator);
 
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
@@ -198,7 +272,8 @@ describe('Trip request seat adjustment use cases', () => {
   it('cancels an accepted request and delegates seat release to the repository', async () => {
     const repository = createTripRequestsRepositoryMock();
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new CancelTripRequestUseCase(repository, sanctionsService);
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new CancelTripRequestUseCase(repository, sanctionsService, paymentsOrchestrator);
 
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
@@ -228,7 +303,8 @@ describe('Trip request seat adjustment use cases', () => {
   it('blocks cancelling a request after the trip changed state', async () => {
     const repository = createTripRequestsRepositoryMock();
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new CancelTripRequestUseCase(repository, sanctionsService);
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new CancelTripRequestUseCase(repository, sanctionsService, paymentsOrchestrator);
 
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({
@@ -251,7 +327,8 @@ describe('Trip request seat adjustment use cases', () => {
   it('recalculates sanctions after a late passenger cancellation', async () => {
     const repository = createTripRequestsRepositoryMock();
     const sanctionsService = createOperationalSanctionsServiceMock();
-    const useCase = new CancelTripRequestUseCase(repository, sanctionsService);
+    const paymentsOrchestrator = createTripPaymentsOrchestratorMock();
+    const useCase = new CancelTripRequestUseCase(repository, sanctionsService, paymentsOrchestrator);
 
     repository.findTripRequestById.mockResolvedValue(
       buildTripRequest({

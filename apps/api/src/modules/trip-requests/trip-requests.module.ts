@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 import { InstitutionsModule } from '../institutions/institutions.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { TRIP_REQUESTS_REPOSITORY } from './application/ports/trip-requests.repository';
 import { AcceptTripRequestUseCase } from './application/use-cases/accept-trip-request.use-case';
@@ -17,7 +18,7 @@ import { PrismaTripRequestsRepository } from './infrastructure/repositories/pris
 import { TripRequestsController } from './presentation/controllers/trip-requests.controller';
 
 @Module({
-  imports: [AuthModule, RealtimeModule, InstitutionsModule],
+  imports: [AuthModule, RealtimeModule, InstitutionsModule, PaymentsModule],
   controllers: [TripRequestsController],
   providers: [
     {
