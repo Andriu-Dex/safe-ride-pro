@@ -155,6 +155,36 @@
   letter-spacing: 0.08em;
 }
 
+.filterInput,
+.filterSelect {
+  min-height: 2.35rem;
+  border: 1px solid rgba(0, 97, 165, 0.18);
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #0b1c30;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.filterInput {
+  width: min(15rem, 100%);
+  padding: 0.45rem 0.75rem;
+}
+
+.filterSelect {
+  padding: 0.45rem 2rem 0.45rem 0.75rem;
+}
+
+.filterInput:focus,
+.filterSelect:focus {
+  background: #ffffff;
+  border-color: rgba(0, 97, 165, 0.5);
+  box-shadow: 0 0 0 3px rgba(0, 97, 165, 0.12);
+}
+
 .filterOptions {
   display: flex;
   flex-wrap: wrap;

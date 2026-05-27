@@ -7,6 +7,7 @@ import {
   isOperationalMembership,
   PaymentProvider,
   selectOperationalMembership,
+  TripPaymentStatus,
   TripRequestExecutionStatus,
   TripRequestStatus,
   TripStatus,
@@ -147,6 +148,9 @@ const EMPTY_DRIVER_WORKSPACE_FILTERS: DriverWorkspaceFilters = {
   onlyWithPendingRequests: false,
   sortBy: 'recent',
 };
+
+const PAYMENT_COMPLETED_CHANNEL = 'saferidepro:payment-completed';
+const PAYMENT_COMPLETED_STORAGE_KEY = 'saferidepro:payment-completed-event';
 
 const DRIVER_TRIP_STATUS_OPTIONS: Array<{ value: DriverTripStatusFilter; label: string }> = [
   { value: 'draft', label: 'Borrador' },
@@ -314,6 +318,31 @@ function getDriverSortLabel(sortBy: DriverTripSortOption): string {
       return 'Mas antiguos primero';
     default:
       return 'Ultima actividad primero';
+  }
+}
+
+function emitPaymentCompletedEvent(paymentId: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const payload = {
+    paymentId,
+    occurredAt: new Date().toISOString(),
+  };
+
+  try {
+    window.localStorage.setItem(PAYMENT_COMPLETED_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Storage may be blocked by the browser.
+  }
+
+  try {
+    const channel = new BroadcastChannel(PAYMENT_COMPLETED_CHANNEL);
+    channel.postMessage(payload);
+    channel.close();
+  } catch {
+    // BroadcastChannel is not available in every browser context.
   }
 }
 
@@ -578,6 +607,39 @@ export default function TripsPage() {
   });
 
   useEffect(() => {
+    if (!authSession || typeof window === 'undefined') {
+      return;
+    }
+
+    const handlePaymentCompleted = () => {
+      setPassengerWorkspace('requests');
+      void refreshTripsData();
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === PAYMENT_COMPLETED_STORAGE_KEY && event.newValue) {
+        handlePaymentCompleted();
+      }
+    };
+
+    let channel: BroadcastChannel | null = null;
+
+    try {
+      channel = new BroadcastChannel(PAYMENT_COMPLETED_CHANNEL);
+      channel.onmessage = handlePaymentCompleted;
+    } catch {
+      channel = null;
+    }
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      channel?.close();
+    };
+  }, [authSession, refreshTripsData]);
+
+  useEffect(() => {
     if (!tripErrorMessage) {
       return;
     }
@@ -653,6 +715,8 @@ export default function TripsPage() {
 
       void capturePayment(authSession.accessToken, paymentId)
         .then(async (response) => {
+          emitPaymentCompletedEvent(response.payment.id);
+          setPassengerWorkspace('requests');
           await refreshTripsData();
           setPaymentSuccessMessage(response.message);
         })
@@ -1138,6 +1202,10 @@ export default function TripsPage() {
 
     try {
       const response = await refreshPaymentStatus(authSession.accessToken, paymentId);
+      if (response.payment.status === TripPaymentStatus.Paid) {
+        emitPaymentCompletedEvent(response.payment.id);
+        setPassengerWorkspace('requests');
+      }
       await reloadData();
       setPaymentSuccessMessage(response.message);
     } catch (error) {

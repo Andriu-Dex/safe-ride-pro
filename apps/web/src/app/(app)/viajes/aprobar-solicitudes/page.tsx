@@ -47,6 +47,7 @@ type RequestStatusFilter =
   | TripRequestStatus.Cancelled;
 
 type PaymentFilter = 'pending' | 'paid' | 'cash-pending' | 'paypal-pending';
+type RequestSortOption = 'activity-desc' | 'created-desc' | 'departure-asc' | 'departure-desc' | 'payment-desc';
 
 const REQUEST_STATUS_FILTERS: ReadonlyArray<{
   key: RequestStatusFilter;
@@ -124,7 +125,20 @@ function matchesPaymentFilter(request: TripRequestRecord, filter: PaymentFilter)
   }
 }
 
-function sortRequests(requests: TripRequestRecord[]): TripRequestRecord[] {
+function getRequestActivityTimestamp(request: TripRequestRecord): number {
+  return Math.max(
+    new Date(request.createdAt).getTime(),
+    request.reviewedAt ? new Date(request.reviewedAt).getTime() : 0,
+    request.cancelledAt ? new Date(request.cancelledAt).getTime() : 0,
+    request.executionStatusUpdatedAt ? new Date(request.executionStatusUpdatedAt).getTime() : 0,
+    request.payment?.updatedAt ? new Date(request.payment.updatedAt).getTime() : 0,
+  );
+}
+
+function sortRequests(
+  requests: TripRequestRecord[],
+  sortBy: RequestSortOption = 'activity-desc',
+): TripRequestRecord[] {
   const priorityByStatus: Record<TripRequestStatus, number> = {
     [TripRequestStatus.Pending]: 0,
     [TripRequestStatus.Accepted]: 1,
@@ -134,6 +148,28 @@ function sortRequests(requests: TripRequestRecord[]): TripRequestRecord[] {
   };
 
   return [...requests].sort((left, right) => {
+    switch (sortBy) {
+      case 'created-desc':
+        return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+      case 'departure-asc':
+        return new Date(left.tripDepartureAt).getTime() - new Date(right.tripDepartureAt).getTime();
+      case 'departure-desc':
+        return new Date(right.tripDepartureAt).getTime() - new Date(left.tripDepartureAt).getTime();
+      case 'payment-desc':
+        return (
+          new Date(right.payment?.updatedAt ?? right.createdAt).getTime() -
+          new Date(left.payment?.updatedAt ?? left.createdAt).getTime()
+        );
+      case 'activity-desc':
+      default: {
+        const activityDiff = getRequestActivityTimestamp(right) - getRequestActivityTimestamp(left);
+
+        if (activityDiff !== 0) {
+          return activityDiff;
+        }
+      }
+    }
+
     const statusPriority = priorityByStatus[left.status] - priorityByStatus[right.status];
 
     if (statusPriority !== 0) {
@@ -149,6 +185,44 @@ function sortRequests(requests: TripRequestRecord[]): TripRequestRecord[] {
 
     return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
+}
+
+function matchesSearchFilter(request: TripRequestRecord, query: string): boolean {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return [
+    request.tripOriginLabel,
+    request.tripDestinationLabel,
+    request.passengerFullName,
+    request.driverFullName,
+    request.payment?.provider,
+  ]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(normalizedQuery));
+}
+
+function isWithinDepartureRange(
+  request: TripRequestRecord,
+  dateFrom: string,
+  dateTo: string,
+): boolean {
+  const departureTimestamp = new Date(request.tripDepartureAt).getTime();
+  const fromTimestamp = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+  const toTimestamp = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null;
+
+  if (fromTimestamp !== null && departureTimestamp < fromTimestamp) {
+    return false;
+  }
+
+  if (toTimestamp !== null && departureTimestamp > toTimestamp) {
+    return false;
+  }
+
+  return true;
 }
 
 function getLatestRequestPerPassengerTrip(
@@ -181,6 +255,10 @@ export default function DriverTripRequestsPage() {
     TripRequestStatus.Accepted,
   ]);
   const [selectedPayments, setSelectedPayments] = useState<PaymentFilter[]>([]);
+  const [queryFilter, setQueryFilter] = useState('');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [sortBy, setSortBy] = useState<RequestSortOption>('activity-desc');
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
@@ -211,7 +289,7 @@ export default function DriverTripRequestsPage() {
 
   const loadRequests = useCallback(async (accessToken: string) => {
     const items = await listIncomingTripRequests(accessToken);
-    setIncomingRequests(sortRequests(items));
+    setIncomingRequests(items);
   }, []);
 
   const refreshRequests = useCallback(async (showSpinner = false) => {
@@ -380,20 +458,28 @@ export default function DriverTripRequestsPage() {
   const clearFilters = () => {
     setSelectedStatuses([TripRequestStatus.Pending, TripRequestStatus.Accepted]);
     setSelectedPayments([]);
+    setQueryFilter('');
+    setDateFromFilter('');
+    setDateToFilter('');
+    setSortBy('activity-desc');
     setPage(1);
   };
 
   const filteredRequests = useMemo(() => {
-    return getLatestRequestPerPassengerTrip(incomingRequests).filter((request) => {
+    const nextRequests = getLatestRequestPerPassengerTrip(incomingRequests).filter((request) => {
       const matchesStatus =
         selectedStatuses.length === 0 || selectedStatuses.includes(request.status as RequestStatusFilter);
       const matchesPayment =
         selectedPayments.length === 0
         || selectedPayments.some((paymentFilter) => matchesPaymentFilter(request, paymentFilter));
+      const matchesQuery = matchesSearchFilter(request, queryFilter);
+      const matchesDate = isWithinDepartureRange(request, dateFromFilter, dateToFilter);
 
-      return matchesStatus && matchesPayment;
+      return matchesStatus && matchesPayment && matchesQuery && matchesDate;
     });
-  }, [incomingRequests, selectedPayments, selectedStatuses]);
+
+    return sortRequests(nextRequests, sortBy);
+  }, [dateFromFilter, dateToFilter, incomingRequests, queryFilter, selectedPayments, selectedStatuses, sortBy]);
 
   const paginatedRequests = useMemo(
     () => filteredRequests.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -684,6 +770,21 @@ export default function DriverTripRequestsPage() {
           <div className={styles.filtersToolbar}>
             <div className={styles.filterGroups}>
               <div className={styles.filterGroup}>
+                <label className={styles.filterLabel} htmlFor="request-query-filter">Buscar</label>
+                <input
+                  className={styles.filterInput}
+                  id="request-query-filter"
+                  onChange={(event) => {
+                    setQueryFilter(event.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Ruta o pasajero"
+                  type="search"
+                  value={queryFilter}
+                />
+              </div>
+
+              <div className={styles.filterGroup}>
                 <span className={styles.filterLabel}>Estado</span>
                 <div className={styles.filterOptions}>
                   {REQUEST_STATUS_FILTERS.map((filter) => (
@@ -697,6 +798,53 @@ export default function DriverTripRequestsPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel} htmlFor="request-date-from">Desde</label>
+                <input
+                  className={styles.filterInput}
+                  id="request-date-from"
+                  onChange={(event) => {
+                    setDateFromFilter(event.target.value);
+                    setPage(1);
+                  }}
+                  type="date"
+                  value={dateFromFilter}
+                />
+              </div>
+
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel} htmlFor="request-date-to">Hasta</label>
+                <input
+                  className={styles.filterInput}
+                  id="request-date-to"
+                  onChange={(event) => {
+                    setDateToFilter(event.target.value);
+                    setPage(1);
+                  }}
+                  type="date"
+                  value={dateToFilter}
+                />
+              </div>
+
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel} htmlFor="request-sort">Orden</label>
+                <select
+                  className={styles.filterSelect}
+                  id="request-sort"
+                  onChange={(event) => {
+                    setSortBy(event.target.value as RequestSortOption);
+                    setPage(1);
+                  }}
+                  value={sortBy}
+                >
+                  <option value="activity-desc">Actividad reciente</option>
+                  <option value="created-desc">Solicitudes recientes</option>
+                  <option value="departure-asc">Salida cercana</option>
+                  <option value="departure-desc">Salida lejana</option>
+                  <option value="payment-desc">Pago actualizado</option>
+                </select>
               </div>
 
               <div className={styles.filterGroup}>
@@ -716,7 +864,14 @@ export default function DriverTripRequestsPage() {
               </div>
             </div>
 
-            {(selectedStatuses.length !== 2 || selectedPayments.length > 0) ? (
+            {(
+              selectedStatuses.length !== 2 ||
+              selectedPayments.length > 0 ||
+              queryFilter ||
+              dateFromFilter ||
+              dateToFilter ||
+              sortBy !== 'activity-desc'
+            ) ? (
               <button className={styles.clearButton} onClick={clearFilters} type="button">
                 Restablecer filtros
               </button>
