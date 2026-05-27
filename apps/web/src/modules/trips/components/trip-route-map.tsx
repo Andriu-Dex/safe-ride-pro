@@ -540,9 +540,7 @@ function syncMapBundle(
   }
 
   if (routePath && routePath.length > 1) {
-    const routePositions = routePath.map(
-      (point) => [point.latitude, point.longitude] as [number, number],
-    );
+    const routePositions = buildRoutePositions(routePath, origin, destination);
     fitPoints.push(...routePositions);
     leaflet
       .polyline(routePositions, {
@@ -607,6 +605,46 @@ function syncMapBundle(
     animate: false,
     padding: [72, 72],
   });
+}
+
+function buildRoutePositions(
+  routePath: Array<{ latitude: number; longitude: number }>,
+  origin: PlaceSelection | null,
+  destination: PlaceSelection | null,
+): Array<[number, number]> {
+  const positions = routePath
+    .filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude))
+    .map((point) => [point.latitude, point.longitude] as [number, number]);
+
+  if (positions.length === 0) {
+    return [];
+  }
+
+  if (origin) {
+    const originPosition: [number, number] = [origin.latitude, origin.longitude];
+
+    if (!areMapPositionsClose(originPosition, positions[0])) {
+      positions.unshift(originPosition);
+    }
+  }
+
+  if (destination) {
+    const destinationPosition: [number, number] = [destination.latitude, destination.longitude];
+    const lastPosition = positions[positions.length - 1];
+
+    if (!areMapPositionsClose(destinationPosition, lastPosition)) {
+      positions.push(destinationPosition);
+    }
+  }
+
+  return positions;
+}
+
+function areMapPositionsClose(
+  first: [number, number],
+  second: [number, number],
+): boolean {
+  return Math.abs(first[0] - second[0]) < 0.00001 && Math.abs(first[1] - second[1]) < 0.00001;
 }
 
 function buildMarkerIcon(

@@ -298,7 +298,7 @@ export function TripCreationForm({
             return;
           }
 
-          onChange('routePathJson', JSON.stringify(recommendation.path.slice(0, 400)));
+          onChange('routePathJson', JSON.stringify(compactRoutePath(recommendation.path, 600)));
           onChange('routeDistanceMeters', recommendation.distanceMeters?.toString() ?? '');
           onChange('routeDurationSeconds', recommendation.durationSeconds?.toString() ?? '');
 
@@ -914,6 +914,30 @@ async function resolveMapPointLabel(
 
 function buildMapPointLabel(prefix: string, point: GeoapifyRoutePoint): string {
   return `${prefix} ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
+}
+
+function compactRoutePath(
+  path: GeoapifyRoutePoint[],
+  maxPoints: number,
+): GeoapifyRoutePoint[] {
+  if (path.length <= maxPoints) {
+    return path;
+  }
+
+  const lastIndex = path.length - 1;
+  const step = lastIndex / (maxPoints - 1);
+
+  return Array.from({ length: maxPoints }, (_, index) => {
+    if (index === 0) {
+      return path[0];
+    }
+
+    if (index === maxPoints - 1) {
+      return path[lastIndex];
+    }
+
+    return path[Math.round(index * step)];
+  });
 }
 
 function TripFormSectionHeader({
