@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5433"
     volumes:
       - postgres_qa_data:/var/lib/postgresql/data
     healthcheck:
@@ -65,7 +65,7 @@ services:
     ports:
       - "${API_PORT:-3001}:3001"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/health > /dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/api/health > /dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 8

@@ -25,6 +25,8 @@ type GeoapifyAutocompleteResponse = {
   }>;
 };
 
+type GeoapifyReverseGeocodeResponse = GeoapifyAutocompleteResponse;
+
 type GeoapifyRouteResponse = {
   features?: Array<{
     geometry?: {
@@ -84,6 +86,20 @@ export function buildGeoapifyAutocompleteUrl(query: string): string {
   return url.toString();
 }
 
+export function buildGeoapifyReverseGeocodeUrl(point: GeoapifyRoutePoint): string {
+  if (!isGeoapifyConfigured()) {
+    throw new Error(getGeoapifySetupMessage());
+  }
+
+  const url = new URL('https://api.geoapify.com/v1/geocode/reverse');
+  url.searchParams.set('lat', point.latitude.toString());
+  url.searchParams.set('lon', point.longitude.toString());
+  url.searchParams.set('lang', 'es');
+  url.searchParams.set('apiKey', GEOAPIFY_API_KEY);
+
+  return url.toString();
+}
+
 export function buildGeoapifyRoutingUrl(
   origin: GeoapifyRoutePoint,
   destination: GeoapifyRoutePoint,
@@ -125,6 +141,30 @@ export async function fetchGeoapifyRouteRecommendation(
   }
 
   return mapGeoapifyRouteRecommendation(payload);
+}
+
+export async function fetchGeoapifyPlaceLabel(
+  point: GeoapifyRoutePoint,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const response = await fetch(buildGeoapifyReverseGeocodeUrl(point), {
+    signal,
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = (await response.json().catch(() => null)) as GeoapifyReverseGeocodeResponse | null;
+  const feature = payload?.features?.[0];
+  const label =
+    feature?.properties?.address_line1 ??
+    feature?.properties?.formatted ??
+    null;
+
+  return typeof label === 'string' && label.trim().length > 0
+    ? label.trim()
+    : null;
 }
 
 export function mapGeoapifyRouteRecommendation(

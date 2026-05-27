@@ -7,6 +7,7 @@ import { SelectField } from '../../../components/ui/select-field';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import type { VehicleRecord } from '../../vehicles/types/vehicle';
 import {
+  fetchGeoapifyPlaceLabel,
   fetchGeoapifyRouteRecommendation,
   getGeoapifySetupMessage,
   isGeoapifyConfigured,
@@ -106,6 +107,7 @@ export function TripCreationForm({
     origLat: originLatitude,
     destLat: destinationLatitude,
   });
+  const mapLabelRequestIdRef = useRef({ destination: 0, origin: 0 });
 
   if (!values.vehicleId) {
     validationIssues.push('Selecciona un vehiculo antes de crear el viaje.');
@@ -178,17 +180,38 @@ export function TripCreationForm({
     longitude: number;
     target: 'origin' | 'destination' | 'pickup' | 'dropoff';
   }) => {
+    const point = { latitude, longitude };
+    const fallbackLabel = buildMapPointLabel(target === 'origin' ? 'Salida' : 'Llegada', point);
+
     if (target === 'origin') {
+      const requestId = mapLabelRequestIdRef.current.origin + 1;
+      mapLabelRequestIdRef.current.origin = requestId;
       onChange('originLatitude', latitude.toFixed(6));
       onChange('originLongitude', longitude.toFixed(6));
-      onChange('originLabel', 'Punto de origen en el mapa');
+      onChange('originLabel', fallbackLabel);
+      void resolveMapPointLabel(point, fallbackLabel).then((label) => {
+        if (mapLabelRequestIdRef.current.origin !== requestId) {
+          return;
+        }
+
+        onChange('originLabel', label);
+      });
       setActiveTarget('destination');
       return;
     }
 
+    const requestId = mapLabelRequestIdRef.current.destination + 1;
+    mapLabelRequestIdRef.current.destination = requestId;
     onChange('destinationLatitude', latitude.toFixed(6));
     onChange('destinationLongitude', longitude.toFixed(6));
-    onChange('destinationLabel', 'Punto de destino en el mapa');
+    onChange('destinationLabel', fallbackLabel);
+    void resolveMapPointLabel(point, fallbackLabel).then((label) => {
+      if (mapLabelRequestIdRef.current.destination !== requestId) {
+        return;
+      }
+
+      onChange('destinationLabel', label);
+    });
   };
 
   const handleRouteModeChange = (nextRouteMode: TripRouteMode) => {
@@ -872,6 +895,25 @@ function buildPlaceSelection(
     latitude,
     longitude,
   };
+}
+
+async function resolveMapPointLabel(
+  point: GeoapifyRoutePoint,
+  fallbackLabel: string,
+): Promise<string> {
+  if (!isGeoapifyConfigured()) {
+    return fallbackLabel;
+  }
+
+  try {
+    return (await fetchGeoapifyPlaceLabel(point)) ?? fallbackLabel;
+  } catch {
+    return fallbackLabel;
+  }
+}
+
+function buildMapPointLabel(prefix: string, point: GeoapifyRoutePoint): string {
+  return `${prefix} ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
 }
 
 function TripFormSectionHeader({
