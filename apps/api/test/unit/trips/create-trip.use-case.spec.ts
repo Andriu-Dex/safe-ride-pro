@@ -88,6 +88,7 @@ function buildCreatedTrip(input: CreateTripInput): TripRecord {
     completedAt: null,
     cancellationTiming: null,
     createdAt: new Date('2030-01-01T09:00:00.000Z'),
+    updatedAt: new Date('2030-01-01T09:00:00.000Z'),
   };
 }
 

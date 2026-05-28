@@ -73,7 +73,7 @@ test('pasajero, conductor y admin completan solicitud, cierre, confianza y moder
     await expect(ratingCard).toBeVisible();
     await ratingCard.getByRole('button', { name: 'Calificar' }).click();
     await passengerPage.getByLabel('Comentario').fill(`Calificacion E2E ${suffix}`);
-    await passengerPage.getByRole('button', { name: 'Registrar calificacion' }).click();
+    await passengerPage.getByRole('button', { name: 'Registrar' }).click();
     await expect(passengerPage.getByText('Calificacion registrada correctamente.')).toBeVisible();
 
     await createReport(

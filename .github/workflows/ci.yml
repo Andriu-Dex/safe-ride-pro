@@ -7,9 +7,38 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 24
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/safe_ride_pro_ci
+  TEST_DATABASE_SCHEMA: integration_tests
+  JWT_SECRET: ci-jwt-secret
+  EMAIL_VERIFICATION_TOKEN_TTL_MINUTES: 30
+  PASSWORD_RESET_TOKEN_TTL_MINUTES: 30
+  WEB_APP_ORIGINS: http://localhost:3000
+  DEFAULT_INSTITUTION_NAME: Universidad Tecnica de Ambato
+  DEFAULT_INSTITUTION_CODE: UTA
+  DEFAULT_INSTITUTION_DOMAIN: uta.edu.ec
+  SUPER_ADMIN_EMAIL: admin@uta.edu.ec
+  SUPER_ADMIN_PASSWORD: Admin12345
+  SUPER_ADMIN_FULL_NAME: SafeRidePro Super Admin
+  SUPER_ADMIN_DOCUMENT_TYPE: NATIONAL_ID
+  SUPER_ADMIN_DOCUMENT_NUMBER: "0000000000"
+  PAYPAL_ENABLED: "false"
+  NEXT_PUBLIC_API_BASE_URL: http://localhost:3001/api
+  NEXT_PUBLIC_GEOAPIFY_API_KEY: ""
+
 jobs:
-  validate:
+  api-web-quality:
+    name: API + Web quality
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -24,32 +53,18 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/safe_ride_pro_ci
-      TEST_DATABASE_SCHEMA: integration_tests
-      JWT_SECRET: ci-jwt-secret
-      EMAIL_VERIFICATION_TOKEN_TTL_MINUTES: 30
-      WEB_APP_ORIGINS: http://localhost:3000
-      DEFAULT_INSTITUTION_NAME: Universidad Tecnica de Ambato
-      DEFAULT_INSTITUTION_CODE: UTA
-      DEFAULT_INSTITUTION_DOMAIN: uta.edu.ec
-      SUPER_ADMIN_EMAIL: admin@uta.edu.ec
-      SUPER_ADMIN_PASSWORD: ChangeMe123!
-      SUPER_ADMIN_FULL_NAME: SafeRidePro Super Admin
-      SUPER_ADMIN_DOCUMENT_TYPE: NATIONAL_ID
-      SUPER_ADMIN_DOCUMENT_NUMBER: "0000000000"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -62,7 +77,7 @@ jobs:
       - name: Build shared types
         run: pnpm --filter @saferidepro/shared-types build
 
-      - name: Run API tests
+      - name: Run API unit and integration tests
         run: pnpm --dir apps/api test
 
       - name: Run API real DB tests
@@ -74,11 +89,106 @@ jobs:
       - name: Build API
         run: pnpm --dir apps/api build
 
+      - name: Run web unit tests
+        run: pnpm --dir apps/web test
+
       - name: Typecheck web
         run: pnpm --dir apps/web typecheck
 
-      - name: Run web tests
-        run: pnpm --dir apps/web test
-
       - name: Build web
         run: pnpm --dir apps/web build
+
+  e2e-smoke:
+    name: Docker smoke E2E
+    runs-on: ubuntu-latest
+    needs: api-web-quality
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --dir apps/web exec playwright install --with-deps chromium
+
+      - name: Create QA environment
+        run: |
+          cat > .env.qa <<'EOF'
+          POSTGRES_PORT=5433
+          POSTGRES_DB=safe_ride_pro_qa
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          API_PORT=3001
+          WEB_PORT=3000
+          JWT_SECRET=qa-jwt-secret
+          ACCESS_TOKEN_TTL_MINUTES=60
+          REFRESH_TOKEN_TTL_DAYS=30
+          EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=30
+          PASSWORD_RESET_TOKEN_TTL_MINUTES=30
+          AUTH_RESEND_COOLDOWN_SECONDS=30
+          AUTH_FAILED_ATTEMPT_LIMIT=5
+          AUTH_FAILED_ATTEMPT_WINDOW_MINUTES=15
+          AUTH_ALLOW_DEBUG_CODES=true
+          API_PUBLIC_BASE_URL=http://localhost:3001/api
+          SMTP_HOST=
+          SMTP_PORT=587
+          SMTP_SECURE=false
+          SMTP_USER=
+          SMTP_PASSWORD=
+          SMTP_FROM_EMAIL=
+          SMTP_FROM_NAME=SafeRidePro
+          WEB_APP_ORIGINS=http://localhost:3000
+          NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
+          NEXT_PUBLIC_GEOAPIFY_API_KEY=
+          PAYMENTS_CURRENCY=USD
+          PAYPAL_ENABLED=false
+          PAYPAL_API_BASE_URL=https://api-m.sandbox.paypal.com
+          PAYPAL_CLIENT_ID=
+          PAYPAL_CLIENT_SECRET=
+          PAYPAL_BRAND_NAME=SafeRidePro
+          DEFAULT_INSTITUTION_NAME=Universidad Tecnica de Ambato
+          DEFAULT_INSTITUTION_CODE=UTA
+          DEFAULT_INSTITUTION_DOMAIN=uta.edu.ec
+          SUPER_ADMIN_EMAIL=admin@uta.edu.ec
+          SUPER_ADMIN_PASSWORD=Admin12345
+          SUPER_ADMIN_FULL_NAME=SafeRidePro Super Admin
+          SUPER_ADMIN_DOCUMENT_TYPE=NATIONAL_ID
+          SUPER_ADMIN_DOCUMENT_NUMBER=0000000000
+          EOF
+
+      - name: Run smoke E2E
+        env:
+          PLAYWRIGHT_FORCE_QA_REBUILD: "true"
+        run: pnpm --dir apps/web test:e2e:smoke
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-results
+          path: apps/web/test-results
+          if-no-files-found: ignore
+
+      - name: Stop QA stack
+        if: always()
+        run: docker compose --env-file .env.qa -f docker-compose.qa.yml down -v

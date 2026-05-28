@@ -71,6 +71,7 @@ function buildTrip(): TripRecord {
     completedAt: new Date('2030-01-02T13:31:00.000Z'),
     cancellationTiming: null,
     createdAt: new Date('2030-01-01T12:00:00.000Z'),
+    updatedAt: new Date('2030-01-02T13:31:00.000Z'),
   };
 }
 
