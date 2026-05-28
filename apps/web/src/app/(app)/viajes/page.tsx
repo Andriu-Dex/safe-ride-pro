@@ -4,6 +4,8 @@ import Link from 'next/link';
 import {
   DriverLicenseStatus,
   DriverVerificationStatus,
+  isTripPaymentClosed,
+  isTripPaymentSettled,
   isOperationalMembership,
   PaymentProvider,
   selectOperationalMembership,
@@ -151,6 +153,7 @@ const EMPTY_DRIVER_WORKSPACE_FILTERS: DriverWorkspaceFilters = {
 
 const PAYMENT_COMPLETED_CHANNEL = 'saferidepro:payment-completed';
 const PAYMENT_COMPLETED_STORAGE_KEY = 'saferidepro:payment-completed-event';
+const PAYMENT_COMPLETED_MESSAGE_TYPE = 'saferidepro.payment.completed';
 
 const DRIVER_TRIP_STATUS_OPTIONS: Array<{ value: DriverTripStatusFilter; label: string }> = [
   { value: 'draft', label: 'Borrador' },
@@ -321,12 +324,17 @@ function getDriverSortLabel(sortBy: DriverTripSortOption): string {
   }
 }
 
+type PaymentCompletedPayload = {
+  paymentId: string;
+  occurredAt: string;
+};
+
 function emitPaymentCompletedEvent(paymentId: string) {
   if (typeof window === 'undefined') {
     return;
   }
 
-  const payload = {
+  const payload: PaymentCompletedPayload = {
     paymentId,
     occurredAt: new Date().toISOString(),
   };
@@ -343,6 +351,18 @@ function emitPaymentCompletedEvent(paymentId: string) {
     channel.close();
   } catch {
     // BroadcastChannel is not available in every browser context.
+  }
+
+  try {
+    window.opener?.postMessage(
+      {
+        type: PAYMENT_COMPLETED_MESSAGE_TYPE,
+        payload,
+      },
+      window.location.origin,
+    );
+  } catch {
+    // The opener may be unavailable after the PayPal redirect.
   }
 }
 
@@ -382,6 +402,14 @@ function canCreateRequestForTrip(trip: TripRecord, hasActiveRequest: boolean): b
     !hasActiveRequest &&
     trip.status === TripStatus.Published &&
     trip.availableSeats > 0
+  );
+}
+
+function hasPendingPaypalPayment(request: TripRequestRecord): boolean {
+  return (
+    request.payment?.provider === PaymentProvider.Paypal &&
+    !isTripPaymentSettled(request.payment.status) &&
+    !isTripPaymentClosed(request.payment.status)
   );
 }
 
@@ -428,6 +456,7 @@ export default function TripsPage() {
   const realtimeRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeRefreshPendingRef = useRef(false);
   const realtimeRefreshRunningRef = useRef(false);
+  const paymentWindowWatcherRef = useRef<number | null>(null);
 
   const pushToast = useCallback((title: string, description: string, tone: ToastItem['tone']) => {
     setToasts((currentToasts) => [
@@ -564,6 +593,15 @@ export default function TripsPage() {
     },
   );
 
+  const pendingPaypalPaymentIds = useMemo(
+    () =>
+      myRequests
+        .filter(hasPendingPaypalPayment)
+        .map((request) => request.payment?.id)
+        .filter((paymentId): paymentId is string => Boolean(paymentId)),
+    [myRequests],
+  );
+
   const scheduleRealtimeRefresh = useCallback(() => {
     if (realtimeRefreshTimeoutRef.current) {
       clearTimeout(realtimeRefreshTimeoutRef.current);
@@ -593,6 +631,10 @@ export default function TripsPage() {
       if (realtimeRefreshTimeoutRef.current) {
         clearTimeout(realtimeRefreshTimeoutRef.current);
       }
+
+      if (paymentWindowWatcherRef.current) {
+        clearInterval(paymentWindowWatcherRef.current);
+      }
     };
   }, []);
 
@@ -600,7 +642,11 @@ export default function TripsPage() {
     accessToken: authSession?.accessToken,
     enabled: Boolean(authSession && operationalAccess.hasOperationalMembership),
     onEvent: (event) => {
-      if (event.type === 'trip.changed' || event.type === 'trip-request.changed') {
+      if (
+        event.type === 'trip.changed' ||
+        event.type === 'trip-request.changed' ||
+        event.type === 'notification.created'
+      ) {
         scheduleRealtimeRefresh();
       }
     },
@@ -622,6 +668,20 @@ export default function TripsPage() {
       }
     };
 
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const data = event.data as { type?: unknown; payload?: unknown } | null;
+
+      if (!data || data.type !== PAYMENT_COMPLETED_MESSAGE_TYPE) {
+        return;
+      }
+
+      handlePaymentCompleted();
+    };
+
     let channel: BroadcastChannel | null = null;
 
     try {
@@ -632,12 +692,91 @@ export default function TripsPage() {
     }
 
     window.addEventListener('storage', handleStorage);
+    window.addEventListener('message', handleMessage);
 
     return () => {
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('message', handleMessage);
       channel?.close();
     };
   }, [authSession, refreshTripsData]);
+
+  useEffect(() => {
+    if (!authSession || !operationalAccess.hasOperationalMembership) {
+      return;
+    }
+
+    const refreshWhenVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+
+      void refreshTripsData();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshWhenVisible();
+      }
+    };
+
+    window.addEventListener('focus', refreshWhenVisible);
+    window.addEventListener('pageshow', refreshWhenVisible);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      window.removeEventListener('pageshow', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [authSession, operationalAccess.hasOperationalMembership, refreshTripsData]);
+
+  useEffect(() => {
+    if (
+      !authSession ||
+      passengerWorkspace !== 'requests' ||
+      pendingPaypalPaymentIds.length === 0
+    ) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const syncPendingPaypalPayments = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+
+      for (const paymentId of pendingPaypalPaymentIds) {
+        if (isCancelled) {
+          return;
+        }
+
+        try {
+          const response = await refreshPaymentStatus(authSession.accessToken, paymentId);
+
+          if (response.payment.status === TripPaymentStatus.Paid) {
+            emitPaymentCompletedEvent(response.payment.id);
+          }
+        } catch {
+          // Keep the passive sync silent. Manual refresh still shows errors when needed.
+        }
+      }
+
+      if (!isCancelled) {
+        await refreshTripsData();
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void syncPendingPaypalPayments();
+    }, 4_000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [authSession, passengerWorkspace, pendingPaypalPaymentIds, refreshTripsData]);
 
   useEffect(() => {
     if (!tripErrorMessage) {
@@ -1175,6 +1314,23 @@ export default function TripsPage() {
 
         if (!newWindow) {
           setPaymentErrorMessage('El navegador bloqueo la ventana de PayPal.');
+        } else {
+          if (paymentWindowWatcherRef.current) {
+            clearInterval(paymentWindowWatcherRef.current);
+          }
+
+          paymentWindowWatcherRef.current = window.setInterval(() => {
+            if (!newWindow.closed) {
+              return;
+            }
+
+            if (paymentWindowWatcherRef.current) {
+              clearInterval(paymentWindowWatcherRef.current);
+              paymentWindowWatcherRef.current = null;
+            }
+
+            void refreshTripsData();
+          }, 1_000);
         }
       }
     } catch (error) {
