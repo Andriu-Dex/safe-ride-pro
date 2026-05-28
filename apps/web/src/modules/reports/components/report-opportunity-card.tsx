@@ -10,7 +10,6 @@ import { suppressAuthSessionSync } from '../../auth/lib/auth-sync-guard';
 import { formatTripClosureDeadline } from '../../trips/lib/trip-closure';
 import {
   REPORT_REASON_OPTIONS,
-  getReportReasonLabel,
 } from '../lib/report-labels';
 import styles from './report-opportunity-card.module.css';
 
@@ -83,10 +82,6 @@ function ReportEvidenceUploadCard({
     <div className={styles.uploadBlock}>
       <div>
         <strong>Evidencia del reporte</strong>
-        <p className={styles.uploadHint}>
-          Adjunta una imagen o PDF legible para respaldar el caso. Se conservara junto al
-          reporte para su revision administrativa.
-        </p>
       </div>
       <div className={styles.uploadActions}>
         <StatusPill
@@ -203,9 +198,7 @@ export function ReportOpportunityCard({
           <p>{opportunity.tripClosureNote}</p>
         </div>
       ) : null}
-      <p className={styles.deadline}>
-        Disponible hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}.
-      </p>
+      <p className={styles.deadline}>Hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}</p>
 
       <div className={styles.grid}>
         <SelectField
@@ -219,16 +212,12 @@ export function ReportOpportunityCard({
             </option>
           ))}
         </SelectField>
-
-        <p className={styles.helper}>
-          Se registrara el motivo "{getReportReasonLabel(value.reason)}" en el historial del caso.
-        </p>
       </div>
 
       <TextareaField
         label="Descripcion"
         onChange={(event) => onChange('description', event.target.value)}
-        placeholder="Describe lo ocurrido con el mayor contexto posible"
+        placeholder="Describe lo ocurrido"
         rows={4}
         value={value.description}
       />
@@ -244,7 +233,7 @@ export function ReportOpportunityCard({
 
       <div className={styles.actions}>
         <Button disabled={isSubmitting} onClick={onSubmit} variant="secondary">
-          Registrar reporte
+          Registrar
         </Button>
       </div>
     </div>

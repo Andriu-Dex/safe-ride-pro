@@ -67,9 +67,7 @@ export function RatingOpportunityCard({
         <span className="topbar-badge">{opportunity.directionLabel}</span>
       </div>
 
-      <p className={styles.deadline}>
-        Disponible hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}.
-      </p>
+      <p className={styles.deadline}>Hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}</p>
 
       <div className={styles.grid}>
         <SelectField
@@ -83,8 +81,6 @@ export function RatingOpportunityCard({
           <option value="2">2 - Regular</option>
           <option value="1">1 - Deficiente</option>
         </SelectField>
-
-        <p className={styles.helper}>Deja una observacion breve si aporta contexto real.</p>
       </div>
 
       <TextareaField
@@ -97,7 +93,7 @@ export function RatingOpportunityCard({
 
       <div className={styles.actions}>
         <Button disabled={isSubmitting} onClick={onSubmit}>
-          Registrar calificacion
+          Registrar
         </Button>
       </div>
     </div>

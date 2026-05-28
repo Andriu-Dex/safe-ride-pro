@@ -155,15 +155,15 @@ function getIncidentSummary(
 ): string {
   switch (incidentType) {
     case TripClosureIncidentType.Completed:
-      return `Viaje completado dentro de la ventana de cierre. Si hubo un problema, regístralo ahora.`;
+      return 'Viaje completado.';
     case TripClosureIncidentType.LateDriverCancellation:
-      return `El conductor canceló tarde un viaje que ya tenía participantes confirmados.`;
+      return 'Cancelacion tardia.';
     case TripClosureIncidentType.DriverAbsence:
-      return `El viaje fue cancelado por ausencia del conductor después de la hora prevista de salida.`;
+      return 'Ausencia del conductor.';
     case TripClosureIncidentType.OverdueInProgress:
-      return `El viaje sigue abierto fuera del tiempo estimado y puede requerir cierre o revisión administrativa.`;
+      return 'Viaje vencido sin cierre.';
     default:
-      return `Incidente operativo disponible para revisión.`;
+      return 'Incidente operativo.';
   }
 }
 
@@ -952,9 +952,7 @@ export default function TrustPage() {
           <article className={styles.stateCard}>
             <div aria-hidden="true" className={styles.loadingPulse} />
             <h1 className={styles.loadingTitle}>Cargando confianza</h1>
-            <p className={styles.loadingText}>
-              Estamos preparando tus calificaciones, reportes y restricciones.
-            </p>
+            <p className={styles.loadingText}>Preparando datos.</p>
           </article>
         </div>
       </section>
@@ -994,9 +992,7 @@ export default function TrustPage() {
         <div className={styles.heroCopy}>
           <p className={styles.kicker}>Confianza</p>
           <h1 className={styles.heroTitle}>Reputaci&oacute;n y seguridad</h1>
-          <p className={styles.heroLead}>
-            Resuelve pendientes, revisa restricciones y conserva un historial claro.
-          </p>
+          <p className={styles.heroLead}>Historial, pendientes y restricciones.</p>
         </div>
         <div className={styles.heroActions}>
           <span className={`${styles.heroBadge} ${getBadgeClass(totalPendingActions ? 'warning' : 'success')}`}>
@@ -1028,7 +1024,7 @@ export default function TrustPage() {
               <article className={styles.surfaceCard}>
                 <div className={styles.surfaceHeader}>
                   <div>
-                    <h3 className={styles.surfaceTitle}>Tu Estado</h3>
+                    <h3 className={styles.surfaceTitle}>Estado</h3>
                   </div>
                   <div className={styles.badgeRow}>
                     <StatusPill
@@ -1055,8 +1051,7 @@ export default function TrustPage() {
               <article className={styles.surfaceCard}>
                 <div className={styles.surfaceHeader}>
                   <div>
-                    <h3 className={styles.surfaceTitle}>Se&ntilde;ales actuales</h3>
-                    <p className={styles.sectionMeta}>{riskSignalsCount} detectadas</p>
+                    <h3 className={styles.surfaceTitle}>Se&ntilde;ales</h3>
                   </div>
                 </div>
                 {trustSummary.riskSignals.length ? (
@@ -1197,7 +1192,7 @@ export default function TrustPage() {
           <section className={styles.sectionBlock}>
             <header className={styles.sectionHeader}>
               <div className={styles.sectionHeaderTitleGroup}>
-                <h2 className={styles.sectionTitle}>Pendientes de cierre</h2>
+                <h2 className={styles.sectionTitle}>Pendientes</h2>
               </div>
               <StatusPill
                 label={`${totalPendingActions} activos`}
@@ -1211,7 +1206,6 @@ export default function TrustPage() {
                   <div className={styles.surfaceHeader}>
                     <div>
                       <h3 className={styles.surfaceTitle}>Calificaciones</h3>
-                      <p className={styles.sectionMeta}>{pendingRatingOpportunities.length} por resolver</p>
                     </div>
                   </div>
                   <div className={styles.stackList}>
@@ -1229,11 +1223,6 @@ export default function TrustPage() {
                           <span className={styles.tripRoute}>{opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}</span>
                           <span className={styles.tripDate}>Viaje del: {formatDateTime(opportunity.tripDepartureAt)}</span>
                         </div>
-                        <div className={styles.incidentBox}>
-                          <p className={styles.noteText}>
-                            {opportunity.ratingDirectionLabel}
-                          </p>
-                        </div>
                         <div className={styles.actionRow} style={{ marginTop: '0.8rem' }}>
                           <Button onClick={() => setActiveRatingOpportunity(opportunity)}>
                             Calificar
@@ -1250,7 +1239,6 @@ export default function TrustPage() {
                   <div className={styles.surfaceHeader}>
                     <div>
                       <h3 className={styles.surfaceTitle}>Reportes</h3>
-                      <p className={styles.sectionMeta}>{pendingReportOpportunities.length} por resolver</p>
                     </div>
                   </div>
                   <div className={styles.stackList}>
@@ -1262,25 +1250,14 @@ export default function TrustPage() {
                       >
                         <div className={styles.recordHeader}>
                           <strong>{opportunity.targetFullName}</strong>
-                          <StatusPill label="Pendiente" tone="danger" />
+                          <div className={styles.badgeRowStart}>
+                            <StatusPill label="Pendiente" tone="danger" />
+                            <StatusPill label={opportunity.incidentLabel} tone={opportunity.incidentTone} />
+                          </div>
                         </div>
                         <div className={styles.tripContext}>
                           <span className={styles.tripRoute}>{opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}</span>
                           <span className={styles.tripDate}>Salida: {formatDateTime(opportunity.tripDepartureAt)}</span>
-                        </div>
-                        <div className={styles.incidentBox}>
-                          <div className={styles.badgeRowStart}>
-                            <StatusPill label={opportunity.incidentLabel} tone={opportunity.incidentTone} />
-                          </div>
-                          <p className={styles.noteText}>
-                            {opportunity.incidentSummary}
-                          </p>
-                          {opportunity.tripClosureNote ? (
-                            <div className={styles.reviewBlock}>
-                              <strong>Nota de cierre operativo:</strong>
-                              <p>{opportunity.tripClosureNote}</p>
-                            </div>
-                          ) : null}
                         </div>
                         <div className={styles.actionRow} style={{ marginTop: '0.8rem' }}>
                           <Button variant="secondary" onClick={() => setActiveReportOpportunity(opportunity)}>
@@ -1309,19 +1286,19 @@ export default function TrustPage() {
                 className={[styles.dashboardTab, activeHistoryTab === 'given' ? styles.dashboardTabActive : ''].join(' ')}
                 onClick={() => setActiveHistoryTab('given')}
               >
-                Calificaciones emitidas ({ratings.given.length})
+                Emitidas ({ratings.given.length})
               </button>
               <button
                 className={[styles.dashboardTab, activeHistoryTab === 'received' ? styles.dashboardTabActive : ''].join(' ')}
                 onClick={() => setActiveHistoryTab('received')}
               >
-                Calificaciones recibidas ({ratings.received.length})
+                Recibidas ({ratings.received.length})
               </button>
               <button
                 className={[styles.dashboardTab, activeHistoryTab === 'reports' ? styles.dashboardTabActive : ''].join(' ')}
                 onClick={() => setActiveHistoryTab('reports')}
               >
-                Reportes emitidos ({reports.length})
+                Reportes ({reports.length})
               </button>
             </nav>
 
