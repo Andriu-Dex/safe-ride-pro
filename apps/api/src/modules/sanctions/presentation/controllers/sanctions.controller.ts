@@ -87,6 +87,7 @@ export class SanctionsController {
     return this.listReviewableActiveSanctionsUseCase.execute({
       currentUser,
       institutionId: query.institutionId,
+      userId: query.userId,
       limit: query.limit,
     });
   }

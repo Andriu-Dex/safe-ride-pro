@@ -6,6 +6,7 @@ import {
   GlobalUserRole,
   InstitutionMembershipRole,
   isOperationalMembership,
+  ReportStatus,
 } from '@saferidepro/shared-types';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -29,6 +30,10 @@ import {
   updateAdminUserAccountStatus,
 } from '../../../modules/users/lib/user-api';
 import type { AdminUserDirectoryRecord } from '../../../modules/users/types/admin-user-directory';
+import { listReviewableReports, reviewReport } from '../../../modules/reports/lib/report-api';
+import type { ReportRecord } from '../../../modules/reports/types/report';
+import { liftOperationalSanction, listReviewableActiveSanctions } from '../../../modules/sanctions/lib/sanction-api';
+import type { ReviewableOperationalSanctionRecord } from '../../../modules/sanctions/types/sanction';
 import styles from './page.module.css';
 
 const PAGE_SIZE = 10;
@@ -110,6 +115,25 @@ function getPrimaryInstitutionLabel(user: AdminUserDirectoryRecord): string {
   return primaryMembership?.institutionName ?? 'Sin institucion';
 }
 
+function getGlobalDriverStatus(user: AdminUserDirectoryRecord): { label: string, tone: 'neutral' | 'success' | 'warning' | 'danger' } {
+  const statuses = user.memberships.map(m => m.effectiveDriverVerificationStatus ?? m.driverVerificationStatus);
+
+  if (statuses.includes(DriverVerificationStatus.Approved)) {
+    return { label: 'Aprobado', tone: 'success' };
+  }
+  if (statuses.includes(DriverVerificationStatus.PendingVerification)) {
+    return { label: 'Pendiente', tone: 'warning' };
+  }
+  if (statuses.includes(DriverVerificationStatus.Suspended)) {
+    return { label: 'Suspendido', tone: 'danger' };
+  }
+  if (statuses.includes(DriverVerificationStatus.Rejected)) {
+    return { label: 'Rechazado', tone: 'danger' };
+  }
+
+  return { label: 'Pasajero', tone: 'neutral' };
+}
+
 function UserActionIcon({
   name,
   className,
@@ -189,6 +213,9 @@ export default function AdminUsersPage() {
   const [fetchLimit, setFetchLimit] = useState('50');
   const [page, setPage] = useState(1);
   const [activeUser, setActiveUser] = useState<AdminUserDirectoryRecord | null>(null);
+  const [userSanctions, setUserSanctions] = useState<ReviewableOperationalSanctionRecord[]>([]);
+  const [userReports, setUserReports] = useState<ReportRecord[]>([]);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUpdatingUserId, setIsUpdatingUserId] = useState<string | null>(null);
@@ -380,9 +407,9 @@ export default function AdminUsersPage() {
         setActiveUser((currentUser) =>
           currentUser
             ? {
-                ...currentUser,
-                accountStatus: nextStatus,
-              }
+              ...currentUser,
+              accountStatus: nextStatus,
+            }
             : currentUser,
         );
       }
@@ -398,6 +425,61 @@ export default function AdminUsersPage() {
       );
     } finally {
       setIsUpdatingUserId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (activeUser && authSession) {
+      let isMounted = true;
+      setIsLoadingDetails(true);
+
+      Promise.all([
+        listReviewableActiveSanctions(authSession.accessToken, { userId: activeUser.userId, limit: 100 }),
+        listReviewableReports(authSession.accessToken, { userId: activeUser.userId, limit: 100 })
+      ])
+        .then(([sanctions, reports]) => {
+          if (isMounted) {
+            setUserSanctions(sanctions);
+            setUserReports(reports);
+          }
+        })
+        .catch(() => {
+          if (isMounted) pushToast('Error', 'No se pudieron cargar los detalles adicionales del usuario', 'error');
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingDetails(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setUserSanctions([]);
+      setUserReports([]);
+    }
+  }, [activeUser, authSession]);
+
+  const handleLiftSanction = async (sanctionId: string) => {
+    if (!authSession) return;
+    try {
+      await liftOperationalSanction(authSession.accessToken, sanctionId, { reviewNote: 'Levantado desde panel de usuarios' });
+      setUserSanctions((prev) => prev.filter(s => s.id !== sanctionId));
+      pushToast('Éxito', 'Bloqueo levantado correctamente', 'success');
+      void refreshUsers();
+    } catch (e) {
+      pushToast('Error', 'No se pudo levantar el bloqueo', 'error');
+    }
+  };
+
+  const handleReviewReport = async (reportId: string, status: ReportStatus) => {
+    if (!authSession) return;
+    try {
+      await reviewReport(authSession.accessToken, reportId, { status, reviewNote: 'Actualizado desde panel de usuarios' });
+      setUserReports((prev) => prev.map(r => r.id === reportId ? { ...r, status } : r));
+      pushToast('Éxito', 'Reporte actualizado correctamente', 'success');
+      void refreshUsers();
+    } catch (e) {
+      pushToast('Error', 'No se pudo actualizar el reporte', 'error');
     }
   };
 
@@ -531,6 +613,8 @@ export default function AdminUsersPage() {
             <thead>
               <tr>
                 <th>Usuario</th>
+                <th>Rol</th>
+                <th>Estado</th>
                 <th>Institución Principal</th>
                 <th>Estado General</th>
                 <th>Señales (Global)</th>
@@ -540,7 +624,7 @@ export default function AdminUsersPage() {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={7}>
                     <div className={styles.emptyState}>
                       <h3 className={styles.emptyTitle}>Sin resultados</h3>
                       <p>No se encontraron usuarios con los filtros actuales.</p>
@@ -565,9 +649,18 @@ export default function AdminUsersPage() {
                           </div>
                           <div className={styles.userMeta}>
                             <span className={styles.tdPrimary}>{user.fullName}</span>
-                            <span className={styles.tdSecondary}>{user.email} &bull; {getGlobalRoleLabel(user.globalRole)}</span>
+                            <span className={styles.tdSecondary}>{user.email}</span>
                           </div>
                         </div>
+                      </td>
+                      <td>
+                        <StatusPill label={getGlobalRoleLabel(user.globalRole)} tone="neutral" />
+                      </td>
+                      <td>
+                        <StatusPill
+                          label={getGlobalDriverStatus(user).label}
+                          tone={getGlobalDriverStatus(user).tone}
+                        />
                       </td>
                       <td>
                         <span className={styles.tdPrimary}>{getPrimaryInstitutionLabel(user)}</span>
@@ -648,7 +741,7 @@ export default function AdminUsersPage() {
                   onClick={() => setPage((value) => Math.max(1, value - 1))}
                   type="button"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                   Anterior
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: '0 0.5rem' }}>
@@ -663,7 +756,7 @@ export default function AdminUsersPage() {
                   type="button"
                 >
                   Siguiente
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                 </button>
               </div>
             </div>
@@ -701,7 +794,7 @@ export default function AdminUsersPage() {
                 type="button"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
                 </svg>
               </button>
             </div>
@@ -773,6 +866,74 @@ export default function AdminUsersPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Bloqueos (Cancelaciones tardías)</h3>
+                {isLoadingDetails ? (
+                  <div className={styles.loadingPulse} style={{ height: '2rem' }} />
+                ) : userSanctions.length > 0 ? (
+                  userSanctions.map((sanction) => (
+                    <div className={styles.membershipCard} key={sanction.id}>
+                      <div className={styles.membershipCardHeader}>
+                        <strong>{sanction.institutionName}</strong>
+                        <span className={styles.tdSecondary}>{new Date(sanction.startedAt).toLocaleDateString()}</span>
+                      </div>
+                      <p className={styles.tdSecondary} style={{ marginBottom: '0.5rem' }}>{sanction.reason}</p>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Button
+                          onClick={() => void handleLiftSanction(sanction.id)}
+                          variant="ghost"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                        >
+                          Levantar Bloqueo
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className={styles.tdSecondary}>El usuario no tiene bloqueos temporales activos.</p>
+                )}
+              </div>
+
+              <div className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Reportes Recibidos</h3>
+                {isLoadingDetails ? (
+                  <div className={styles.loadingPulse} style={{ height: '2rem' }} />
+                ) : userReports.length > 0 ? (
+                  userReports.map((report) => (
+                    <div className={styles.membershipCard} key={report.id}>
+                      <div className={styles.membershipCardHeader}>
+                        <strong>{report.institutionName}</strong>
+                        <StatusPill
+                          label={report.status === ReportStatus.Resolved ? 'Resuelto' : report.status === ReportStatus.Dismissed ? 'Descartado' : 'Pendiente'}
+                          tone={report.status === ReportStatus.Resolved ? 'success' : report.status === ReportStatus.Dismissed ? 'neutral' : 'warning'}
+                        />
+                      </div>
+                      <p className={styles.tdSecondary} style={{ margin: '0.5rem 0' }}>{report.reason}</p>
+                      {report.status === ReportStatus.Pending && (
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <Button
+                            onClick={() => void handleReviewReport(report.id, ReportStatus.Resolved)}
+                            variant="ghost"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                          >
+                            Marcar Resuelto
+                          </Button>
+                          <Button
+                            onClick={() => void handleReviewReport(report.id, ReportStatus.Dismissed)}
+                            variant="ghost"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                          >
+                            Descartar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className={styles.tdSecondary}>El usuario no tiene reportes pendientes/activos que requieran su atención.</p>
+                )}
               </div>
             </div>
 

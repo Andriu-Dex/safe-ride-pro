@@ -10,6 +10,7 @@ import { resolveReviewableInstitutionScope } from '../utils/sanctions-admin-acce
 export type ListReviewableActiveSanctionsCommand = {
   currentUser: CurrentUserContext;
   institutionId?: string;
+  userId?: string;
   limit?: number;
 };
 
@@ -27,6 +28,7 @@ export class ListReviewableActiveSanctionsUseCase {
     );
     const items = await this.sanctionsRepository.listReviewableActiveSanctions({
       institutionIds,
+      userId: command.userId,
       limit: command.limit,
       asOf: new Date(),
     });

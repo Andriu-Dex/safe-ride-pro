@@ -15,6 +15,7 @@ import {
 export type ListReviewableReportsCommand = {
   currentUser: CurrentUserContext;
   institutionId?: string;
+  userId?: string;
   status?: ReportStatus;
   limit?: number;
 };
@@ -55,6 +56,7 @@ export class ListReviewableReportsUseCase {
 
     const items = await this.reportsRepository.listReviewableReports({
       institutionIds,
+      userId: command.userId,
       status: command.status,
       limit: command.limit,
     });

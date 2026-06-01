@@ -99,6 +99,7 @@ export type ListReviewableOperationalSanctionAppealsInput = {
 
 export type ListReviewableOperationalSanctionsInput = {
   institutionIds?: string[];
+  userId?: string;
   limit?: number;
   asOf: Date;
 };

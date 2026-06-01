@@ -35,6 +35,7 @@ type ReviewableAppealFilters = {
 
 type ReviewableSanctionFilters = {
   institutionId?: string;
+  userId?: string;
   limit?: number;
 };
 
@@ -96,6 +97,7 @@ export async function listReviewableActiveSanctions(
     accessToken,
     searchParams: {
       institutionId: filters.institutionId,
+      userId: filters.userId,
       limit: filters.limit ? String(filters.limit) : undefined,
     },
   });

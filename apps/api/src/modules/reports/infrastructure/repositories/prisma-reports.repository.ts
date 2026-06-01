@@ -191,8 +191,21 @@ export class PrismaReportsRepository implements ReportsRepository {
                   in: input.institutionIds,
                 },
               },
+              ...(input.userId
+                ? {
+                    reportedMembership: {
+                      userId: input.userId,
+                    },
+                  }
+                : {}),
             }
-          : {}),
+          : input.userId
+            ? {
+                reportedMembership: {
+                  userId: input.userId,
+                },
+              }
+            : {}),
         ...(input.status ? { status: input.status } : {}),
       },
       include: this.reportInclude(),

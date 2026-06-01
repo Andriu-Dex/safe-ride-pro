@@ -19,6 +19,7 @@ type ReportMutationResponse = {
 
 type ReportInboxFilters = {
   institutionId?: string;
+  userId?: string;
   status?: ReportStatus;
   limit?: number;
 };
@@ -39,6 +40,7 @@ export async function listReviewableReports(
     accessToken,
     searchParams: {
       institutionId: filters.institutionId,
+      userId: filters.userId,
       status: filters.status,
       limit: filters.limit ? String(filters.limit) : undefined,
     },

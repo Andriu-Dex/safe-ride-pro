@@ -7,6 +7,10 @@ export class ListReviewableActiveSanctionsQueryDto {
   institutionId?: string;
 
   @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @IsOptional()
   @Transform(({ value }) =>
     value === undefined || value === null || value === '' ? undefined : Number.parseInt(value, 10),
   )

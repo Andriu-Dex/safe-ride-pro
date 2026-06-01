@@ -12,6 +12,10 @@ export class ListReviewableReportsQueryDto {
   status?: ReportStatus;
 
   @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @IsOptional()
   @Transform(({ value }) =>
     value === undefined || value === null || value === '' ? undefined : Number.parseInt(value, 10),
   )

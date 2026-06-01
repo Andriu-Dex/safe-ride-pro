@@ -78,6 +78,7 @@ export type ReviewReportInput = {
 
 export type ListReviewableReportsInput = {
   institutionIds?: string[];
+  userId?: string;
   status?: ReportStatus;
   limit?: number;
 };

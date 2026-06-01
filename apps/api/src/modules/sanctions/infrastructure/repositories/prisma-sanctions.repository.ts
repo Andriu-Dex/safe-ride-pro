@@ -266,9 +266,16 @@ export class PrismaSanctionsRepository implements SanctionsRepository {
                 institutionId: {
                   in: input.institutionIds,
                 },
+                ...(input.userId ? { userId: input.userId } : {}),
               },
             }
-          : {}),
+          : input.userId
+            ? {
+                membership: {
+                  userId: input.userId,
+                },
+              }
+            : {}),
       },
       include: this.sanctionDetailInclude(),
       orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],

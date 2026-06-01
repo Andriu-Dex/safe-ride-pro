@@ -91,6 +91,7 @@ export class ReportsController {
     return this.listReviewableReportsUseCase.execute({
       currentUser,
       institutionId: query.institutionId,
+      userId: query.userId,
       status: query.status,
       limit: query.limit,
     });
