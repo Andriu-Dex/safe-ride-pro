@@ -54,6 +54,7 @@ const MIN_FULL_NAME_LENGTH = 5;
 const MIN_PASSWORD_LENGTH = 8;
 const NATIONAL_ID_LENGTH = 10;
 const NATIONAL_ID_PATTERN = /^\d{10}$/;
+const ECUADOR_INSTITUTIONAL_DOMAIN_PATTERN = /^[a-z0-9.-]+\.edu\.ec$/;
 const PUBLIC_EMAIL_DOMAINS = new Set([
   'gmail.com',
   'googlemail.com',
@@ -91,6 +92,30 @@ const FIELD_ORDER: RegisterFormField[] = [
   'password',
   'confirmPassword',
 ];
+
+function validateInstitutionalEmail(email: string): string | null {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (!normalizedEmail) {
+    return 'Debes ingresar tu correo institucional.';
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return 'Ingresa un correo institucional válido.';
+  }
+
+  const domain = normalizedEmail.split('@')[1];
+
+  if (!domain || PUBLIC_EMAIL_DOMAINS.has(domain)) {
+    return 'Se requiere un correo institucional autorizado.';
+  }
+
+  if (!ECUADOR_INSTITUTIONAL_DOMAIN_PATTERN.test(domain)) {
+    return 'El dominio institucional debe terminar en .edu.ec.';
+  }
+
+  return null;
+}
 
 function validateDocument(
   documentType: DocumentType,
@@ -206,14 +231,14 @@ export function RegisterForm({ initialEmail = '' }: RegisterFormProps) {
 
   const validationIssues = useMemo(() => {
     const issues: string[] = [];
-    const normalizedEmail = values.email.trim().toLowerCase();
+    const currentEmailError = validateInstitutionalEmail(values.email);
 
     if (values.fullName.trim().length < MIN_FULL_NAME_LENGTH) {
       issues.push('Ingresa tu nombre completo para continuar.');
     }
 
-    if (!normalizedEmail.includes('@')) {
-      issues.push('Debes usar un correo institucional válido.');
+    if (currentEmailError) {
+      issues.push(currentEmailError);
     }
 
     if (values.password.length < MIN_PASSWORD_LENGTH) {
@@ -256,23 +281,7 @@ export function RegisterForm({ initialEmail = '' }: RegisterFormProps) {
   const canSubmit = !isSubmitting;
 
   const emailError = useMemo(() => {
-    const normalizedEmail = values.email.trim().toLowerCase();
-
-    if (!normalizedEmail) {
-      return 'Debes ingresar tu correo institucional.';
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      return 'Ingresa un correo institucional válido.';
-    }
-
-    const domain = normalizedEmail.split('@')[1];
-
-    if (domain && PUBLIC_EMAIL_DOMAINS.has(domain)) {
-      return 'Se requiere un correo institucional autorizado.';
-    }
-
-    return null;
+    return validateInstitutionalEmail(values.email);
   }, [values.email]);
 
   const fullNameError = useMemo(() => {

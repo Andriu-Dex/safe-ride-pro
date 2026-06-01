@@ -233,6 +233,44 @@ describe('RegisterUserUseCase', () => {
     expect(repository.createUserWithMembership).not.toHaveBeenCalled();
   });
 
+  it('rejects institutional-looking emails from unsupported domains', async () => {
+    const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
+    const passwordHasher = createPasswordHasherMock();
+    const environmentService = {
+      emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
+    } as EnvironmentService;
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new RegisterUserUseCase(
+      repository,
+      authEmailService,
+      passwordHasher,
+      environmentService,
+      auditService,
+    );
+
+    repository.findInstitutionByDomain.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        email: 'student@uta.ec.edu',
+        password: 'Password123',
+        fullName: 'Usuario',
+        documentType: DocumentType.NationalId,
+        documentNumber: '1710034065',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('El dominio del correo no esta permitido para ninguna institucion activa.'),
+    );
+
+    expect(repository.findInstitutionByDomain).toHaveBeenCalledWith('uta.ec.edu');
+    expect(repository.findUserByEmail).not.toHaveBeenCalled();
+    expect(repository.createUserWithMembership).not.toHaveBeenCalled();
+  });
+
   it('rejects an invalid Ecuadorian national id', async () => {
     const repository = createAuthRepositoryMock();
     const authEmailService = createAuthEmailServiceMock();

@@ -202,4 +202,36 @@ describe('RegisterForm', () => {
       screen.getByText('Se requiere un correo institucional autorizado.'),
     ).toBeInTheDocument();
   });
+
+  it('rejects institutional domains with the wrong order on submit', async () => {
+    render(<RegisterForm />);
+
+    const user = userEvent.setup();
+
+    await user.type(screen.getByPlaceholderText('Nombres y apellidos'), 'Nuevo Usuario');
+    await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo@uta.ec.edu');
+    await user.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'Password123');
+    await user.type(screen.getByPlaceholderText('Repite tu clave'), 'Password123');
+    await user.type(screen.getByPlaceholderText('0102030405'), '1710034065');
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+
+    expect(screen.getByText('El dominio institucional debe terminar en .edu.ec.')).toBeInTheDocument();
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it('blocks public email providers on submit even without leaving the field', async () => {
+    render(<RegisterForm />);
+
+    const user = userEvent.setup();
+
+    await user.type(screen.getByPlaceholderText('Nombres y apellidos'), 'Nuevo Usuario');
+    await user.type(screen.getByPlaceholderText('tu-correo@institucion.edu'), 'nuevo@gmail.com');
+    await user.type(screen.getByPlaceholderText('Mínimo 8 caracteres'), 'Password123');
+    await user.type(screen.getByPlaceholderText('Repite tu clave'), 'Password123');
+    await user.type(screen.getByPlaceholderText('0102030405'), '1710034065');
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+
+    expect(screen.getByText('Se requiere un correo institucional autorizado.')).toBeInTheDocument();
+    expect(register).not.toHaveBeenCalled();
+  });
 });

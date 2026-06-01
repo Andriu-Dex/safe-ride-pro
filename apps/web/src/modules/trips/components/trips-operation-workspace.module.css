@@ -49,7 +49,7 @@
   align-items: center;
   min-height: 92px;
   border-bottom: 1px solid rgba(15, 58, 67, 0.09);
-  background: linear-gradient(90deg, rgba(235, 247, 245, 0.75), rgba(255, 255, 255, 0.96) 28%);
+  background: linear-gradient(90deg, #e2f1ffbf, #fffffff5 28%);
   transition: background-color 0.16s ease, box-shadow 0.16s ease;
 }
 
@@ -58,8 +58,8 @@
 }
 
 .tripRow:hover {
-  background: linear-gradient(90deg, rgba(221, 241, 239, 0.95), #ffffff 32%);
-  box-shadow: inset 4px 0 0 #0b7d7a;
+  background: linear-gradient(90deg, #bce7f6f2, #ffffff 32%);
+  box-shadow: inset 4px 0 #0b227d;
 }
 
 .tripRouteCell,
