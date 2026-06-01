@@ -68,6 +68,7 @@ export function TripCreationForm({
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === values.vehicleId);
   const isMapsEnabled = isGeoapifyConfigured();
   const now = new Date();
+  const minDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   const originLabel = values.originLabel.trim();
   const destinationLabel = values.destinationLabel.trim();
   const originLatitude = Number.parseFloat(values.originLatitude);
@@ -686,6 +687,7 @@ export function TripCreationForm({
             <InputField
               disabled={disabled}
               label="Salida"
+              min={minDateTime}
               onChange={(event) => onChange('departureAt', event.target.value)}
               required
               type="datetime-local"
@@ -694,6 +696,7 @@ export function TripCreationForm({
             <InputField
               disabled={disabled}
               label="Llegada estimada"
+              min={values.departureAt || minDateTime}
               onChange={(event) => onChange('estimatedArrivalAt', event.target.value)}
               required
               type="datetime-local"

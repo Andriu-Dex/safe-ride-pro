@@ -92,7 +92,9 @@ export class UpdateTripUseCase {
       );
     }
 
-    const activeRequestCount = await this.tripsRepository.countActiveRequestsForTrip(trip.id);
+    const activeRequestCount = trip.status === TripStatus.Draft
+      ? 0
+      : await this.tripsRepository.countActiveRequestsForTrip(trip.id);
 
     if (activeRequestCount > 0) {
       throw new BadRequestException(
@@ -138,7 +140,7 @@ export class UpdateTripUseCase {
       throw new BadRequestException('Las fechas del viaje no son validas.');
     }
 
-    if (departureAt <= new Date()) {
+    if (trip.status !== TripStatus.Draft && departureAt <= new Date()) {
       throw new BadRequestException('La salida del viaje debe mantenerse en el futuro.');
     }
 

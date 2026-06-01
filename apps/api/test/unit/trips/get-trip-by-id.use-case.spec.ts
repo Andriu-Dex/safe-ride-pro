@@ -108,6 +108,55 @@ describe('GetTripByIdUseCase', () => {
     expect(repository.hasAcceptedTripRequest).not.toHaveBeenCalled();
   });
 
+  it('allows the owner to edit a draft without checking active requests', async () => {
+    const repository = createTripsRepositoryMock();
+    const tripLifecycleMaintenanceService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new GetTripByIdUseCase(repository, tripLifecycleMaintenanceService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-driver',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(
+      buildTrip({
+        status: TripStatus.Draft,
+        departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      }),
+    );
+
+    const response = await useCase.execute('user-driver', 'trip-1');
+
+    expect(response.canEdit).toBe(true);
+    expect(repository.countActiveRequestsForTrip).not.toHaveBeenCalled();
+  });
+
+  it('allows the owner to edit an expired draft', async () => {
+    const repository = createTripsRepositoryMock();
+    const tripLifecycleMaintenanceService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new GetTripByIdUseCase(repository, tripLifecycleMaintenanceService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-driver',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(
+      buildTrip({
+        status: TripStatus.Draft,
+        departureAt: new Date('2020-01-01T10:00:00.000Z'),
+      }),
+    );
+
+    const response = await useCase.execute('user-driver', 'trip-1');
+
+    expect(response.canEdit).toBe(true);
+  });
+
   it('returns precise route coordinates to an accepted passenger', async () => {
     const repository = createTripsRepositoryMock();
     const tripLifecycleMaintenanceService = createTripLifecycleMaintenanceServiceMock();

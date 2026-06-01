@@ -44,7 +44,7 @@ export class GetTripByIdUseCase {
       ? false
       : await this.tripsRepository.hasAcceptedTripRequest(tripId, membership.id);
     const canViewPreciseRoute = isOwner || isAcceptedPassenger;
-    const activeRequestCount = isOwner
+    const activeRequestCount = isOwner && reconciledTrip.status !== TripStatus.Draft
       ? await this.tripsRepository.countActiveRequestsForTrip(tripId)
       : 0;
     const canEdit =
@@ -56,7 +56,7 @@ export class GetTripByIdUseCase {
       (reconciledTrip.status === TripStatus.Draft ||
         reconciledTrip.status === TripStatus.Published ||
         reconciledTrip.status === TripStatus.Full) &&
-      reconciledTrip.departureAt > new Date();
+      (reconciledTrip.status === TripStatus.Draft || reconciledTrip.departureAt > new Date());
     const canCancel =
       isOwner &&
       reconciledTrip.status !== TripStatus.InProgress &&
