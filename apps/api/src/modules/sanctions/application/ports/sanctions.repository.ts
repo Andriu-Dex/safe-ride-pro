@@ -120,12 +120,20 @@ export interface SanctionsRepository {
     asOf: Date,
   ): Promise<number>;
   listActiveSanctions(membershipId: string, asOf: Date): Promise<OperationalSanctionRecord[]>;
+  listManuallyLiftedAutomaticSanctions?(
+    membershipId: string,
+    asOf: Date,
+  ): Promise<OperationalSanctionRecord[]>;
   findSanctionDetailById(sanctionId: string): Promise<OperationalSanctionDetailRecord | null>;
   listReviewableActiveSanctions(
     input: ListReviewableOperationalSanctionsInput,
   ): Promise<OperationalSanctionDetailRecord[]>;
   expireElapsedSanctions(membershipId: string, asOf: Date): Promise<OperationalSanctionRecord[]>;
-  expireSanction(sanctionId: string, asOf: Date): Promise<OperationalSanctionRecord>;
+  expireSanction(
+    sanctionId: string,
+    asOf: Date,
+    metadata?: Record<string, unknown>,
+  ): Promise<OperationalSanctionRecord>;
   createOperationalSanction(
     input: CreateOperationalSanctionInput,
   ): Promise<OperationalSanctionRecord>;

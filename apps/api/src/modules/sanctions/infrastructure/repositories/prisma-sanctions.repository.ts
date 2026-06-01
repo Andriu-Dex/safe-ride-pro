@@ -233,6 +233,33 @@ export class PrismaSanctionsRepository implements SanctionsRepository {
     return sanctions.map((sanction) => this.mapSanction(sanction));
   }
 
+  async listManuallyLiftedAutomaticSanctions(
+    membershipId: string,
+    asOf: Date,
+  ): Promise<OperationalSanctionRecord[]> {
+    const recurrenceWindowStart = new Date(asOf);
+    recurrenceWindowStart.setDate(
+      recurrenceWindowStart.getDate() - SANCTION_RECURRENCE_WINDOW_DAYS,
+    );
+
+    const sanctions = await this.prisma.operationalSanction.findMany({
+      where: {
+        membershipId,
+        isAutomatic: true,
+        status: 'EXPIRED',
+        expiredAt: {
+          not: null,
+          gte: recurrenceWindowStart,
+        },
+      },
+      orderBy: [{ expiredAt: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return sanctions
+      .map((sanction) => this.mapSanction(sanction))
+      .filter((sanction) => this.hasManualLiftMetadata(sanction.metadata));
+  }
+
   async findSanctionDetailById(
     sanctionId: string,
   ): Promise<OperationalSanctionDetailRecord | null> {
@@ -323,12 +350,14 @@ export class PrismaSanctionsRepository implements SanctionsRepository {
   async expireSanction(
     sanctionId: string,
     asOf: Date,
+    metadata?: Record<string, unknown>,
   ): Promise<OperationalSanctionRecord> {
     const sanction = await this.prisma.operationalSanction.update({
       where: { id: sanctionId },
       data: {
         status: 'EXPIRED',
         expiredAt: asOf,
+        ...(metadata ? { metadata: metadata as Prisma.InputJsonValue } : {}),
       },
     });
 
@@ -478,6 +507,14 @@ export class PrismaSanctionsRepository implements SanctionsRepository {
         medium: 0,
         high: 0,
       },
+    );
+  }
+
+  private hasManualLiftMetadata(metadata: Record<string, unknown> | null): boolean {
+    return (
+      !!metadata &&
+      typeof metadata.manualLift === 'object' &&
+      metadata.manualLift !== null
     );
   }
 

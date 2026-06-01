@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
+  MembershipStatus,
   OperationalSanctionScope,
   OperationalSanctionStatus,
   OperationalSanctionTrigger,
@@ -22,6 +23,7 @@ function createSanctionsRepositoryMock(): jest.Mocked<SanctionsRepository> {
     getRecentSanctionHistory: jest.fn(),
     countRecentBlockingSanctionsByScope: jest.fn(),
     listActiveSanctions: jest.fn(),
+    listManuallyLiftedAutomaticSanctions: jest.fn(),
     findSanctionDetailById: jest.fn(),
     listReviewableActiveSanctions: jest.fn(),
     expireElapsedSanctions: jest.fn(),
@@ -274,6 +276,122 @@ describe('OperationalSanctionsService', () => {
     expect(sanctions[0].endsAt?.toISOString()).toBe('2030-01-08T08:00:00.000Z');
   });
 
+  it('does not recreate a manually lifted automatic sanction for the same events', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(1);
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        lateDriverTripCancellations: 3,
+      }),
+    );
+    repository.listActiveSanctions.mockResolvedValue([]);
+    (
+      repository.listManuallyLiftedAutomaticSanctions as jest.MockedFunction<
+        NonNullable<SanctionsRepository['listManuallyLiftedAutomaticSanctions']>
+      >
+    ).mockResolvedValue([
+      buildSanctionRecord({
+        id: 'sanction-lifted',
+        type: OperationalSanctionType.LimitedDriver,
+        scope: OperationalSanctionScope.Driver,
+        trigger: OperationalSanctionTrigger.LateDriverCancellation,
+        status: OperationalSanctionStatus.Expired,
+        expiredAt: new Date('2026-06-01T12:00:00.000Z'),
+        endsAt: new Date('2030-01-08T08:00:00.000Z'),
+        metadata: {
+          threshold: 3,
+          eventCount: 3,
+          manualLift: {
+            liftedAt: '2026-06-01T12:00:00.000Z',
+            liftedByUserId: 'admin-1',
+            originalEndsAt: '2030-01-08T08:00:00.000Z',
+            suppressedEventCount: 3,
+          },
+        },
+      }),
+    ]);
+
+    const sanctions = await service.synchronizeAutomaticSanctions('membership-1');
+
+    expect(sanctions).toEqual([]);
+    expect(repository.createOperationalSanction).not.toHaveBeenCalled();
+  });
+
+  it('creates a new sanction after manual lift when a new event increases the metric', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.countRecentBlockingSanctionsByScope.mockResolvedValue(1);
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        lateDriverTripCancellations: 4,
+      }),
+    );
+    repository.listActiveSanctions.mockResolvedValue([]);
+    (
+      repository.listManuallyLiftedAutomaticSanctions as jest.MockedFunction<
+        NonNullable<SanctionsRepository['listManuallyLiftedAutomaticSanctions']>
+      >
+    ).mockResolvedValue([
+      buildSanctionRecord({
+        id: 'sanction-lifted',
+        type: OperationalSanctionType.LimitedDriver,
+        scope: OperationalSanctionScope.Driver,
+        trigger: OperationalSanctionTrigger.LateDriverCancellation,
+        status: OperationalSanctionStatus.Expired,
+        expiredAt: new Date('2026-06-01T12:00:00.000Z'),
+        metadata: {
+          threshold: 3,
+          eventCount: 3,
+          manualLift: {
+            liftedAt: '2026-06-01T12:00:00.000Z',
+            liftedByUserId: 'admin-1',
+            originalEndsAt: '2030-01-08T08:00:00.000Z',
+            suppressedEventCount: 3,
+          },
+        },
+      }),
+    ]);
+    repository.createOperationalSanction.mockImplementation(
+      async (input: CreateOperationalSanctionInput) =>
+        buildSanctionRecord({
+          id: 'sanction-new',
+          membershipId: input.membershipId,
+          type: input.type,
+          scope: input.scope,
+          trigger: input.trigger,
+          reason: input.reason,
+          startedAt: input.startedAt,
+          endsAt: input.endsAt,
+          metadata: input.metadata ?? null,
+        }),
+    );
+
+    const sanctions = await service.synchronizeAutomaticSanctions('membership-1');
+
+    expect(repository.createOperationalSanction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: OperationalSanctionType.LimitedDriver,
+        scope: OperationalSanctionScope.Driver,
+        metadata: expect.objectContaining({
+          eventCount: 4,
+        }),
+      }),
+    );
+    expect(sanctions).toHaveLength(1);
+  });
+
   it('blocks passenger operations when an active limited passenger sanction exists', async () => {
     const repository = createSanctionsRepositoryMock();
     const auditService = {
@@ -422,5 +540,61 @@ describe('OperationalSanctionsService', () => {
     expect(history.recentSanctionCount).toBe(3);
     expect(history.recentBlockingSanctionCount).toBe(1);
     expect(history.recurrenceWindowDays).toBe(90);
+  });
+
+  it('stores manual lift metadata when an admin lifts an active sanction', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.findSanctionDetailById.mockResolvedValue({
+      ...buildSanctionRecord({
+        type: OperationalSanctionType.LimitedDriver,
+        scope: OperationalSanctionScope.Driver,
+        trigger: OperationalSanctionTrigger.LateDriverCancellation,
+        metadata: {
+          threshold: 3,
+          eventCount: 3,
+        },
+      }),
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      institutionIsActive: true,
+      membershipStatus: MembershipStatus.Active,
+      membershipUserId: 'user-1',
+      membershipUserFullName: 'Usuario Uno',
+    });
+    repository.expireSanction.mockImplementation(
+      async (sanctionId, asOf, metadata) =>
+        buildSanctionRecord({
+          id: sanctionId,
+          status: OperationalSanctionStatus.Expired,
+          expiredAt: asOf,
+          metadata: metadata ?? null,
+        }),
+    );
+
+    await service.liftSanctionManually({
+      sanctionId: 'sanction-1',
+      actorUserId: 'admin-1',
+      reviewNote: 'Correccion administrativa.',
+    });
+
+    expect(repository.expireSanction).toHaveBeenCalledWith(
+      'sanction-1',
+      expect.any(Date),
+      expect.objectContaining({
+        threshold: 3,
+        eventCount: 3,
+        manualLift: expect.objectContaining({
+          liftedByUserId: 'admin-1',
+          reviewNote: 'Correccion administrativa.',
+          suppressedEventCount: 3,
+          originalEndsAt: '2030-01-04T08:00:00.000Z',
+        }),
+      }),
+    );
   });
 });

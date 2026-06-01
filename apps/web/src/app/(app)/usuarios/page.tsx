@@ -464,10 +464,14 @@ export default function AdminUsersPage() {
     try {
       await liftOperationalSanction(authSession.accessToken, sanctionId, { reviewNote: 'Levantado desde panel de usuarios' });
       setUserSanctions((prev) => prev.filter(s => s.id !== sanctionId));
-      pushToast('Éxito', 'Bloqueo levantado correctamente', 'success');
+      pushToast('Sanción levantada', 'El usuario ya no tiene esa restricción activa.', 'success');
       void refreshUsers();
-    } catch (e) {
-      pushToast('Error', 'No se pudo levantar el bloqueo', 'error');
+    } catch (error) {
+      pushToast(
+        'No se pudo levantar',
+        getApiErrorMessage(error, 'No fue posible levantar la sanción.'),
+        'error',
+      );
     }
   };
 
@@ -869,7 +873,7 @@ export default function AdminUsersPage() {
               </div>
 
               <div className={styles.modalSection}>
-                <h3 className={styles.modalSectionTitle}>Bloqueos (Cancelaciones tardías)</h3>
+                <h3 className={styles.modalSectionTitle}>Sanciones activas</h3>
                 {isLoadingDetails ? (
                   <div className={styles.loadingPulse} style={{ height: '2rem' }} />
                 ) : userSanctions.length > 0 ? (
@@ -886,13 +890,13 @@ export default function AdminUsersPage() {
                           variant="ghost"
                           style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
                         >
-                          Levantar Bloqueo
+                          Levantar sanción
                         </Button>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className={styles.tdSecondary}>El usuario no tiene bloqueos temporales activos.</p>
+                  <p className={styles.tdSecondary}>El usuario no tiene sanciones activas.</p>
                 )}
               </div>
 

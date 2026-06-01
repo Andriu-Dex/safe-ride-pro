@@ -74,9 +74,13 @@ export class OperationalSanctionsService {
       expiredSanctions.map((sanction) => this.recordExpirationAudit(sanction)),
     );
 
-    const [metrics, activeSanctions] = await Promise.all([
+    const [metrics, activeSanctions, manuallyLiftedAutomaticSanctions] = await Promise.all([
       this.sanctionsRepository.getRecentMetrics(membershipId, asOf),
       this.sanctionsRepository.listActiveSanctions(membershipId, asOf),
+      this.sanctionsRepository.listManuallyLiftedAutomaticSanctions?.(
+        membershipId,
+        asOf,
+      ) ?? Promise.resolve([]),
     ]);
 
     const decisions = deriveOperationalSanctionDecisions(metrics);
@@ -94,6 +98,13 @@ export class OperationalSanctionsService {
         asOf,
         recurrenceCountsByScope,
       );
+
+      if (
+        !currentSanction &&
+        this.isSuppressedByManualLift(decision, manuallyLiftedAutomaticSanctions, asOf)
+      ) {
+        continue;
+      }
 
       if (!currentSanction) {
         const createdSanction = await this.createAutomaticSanction(
@@ -188,9 +199,24 @@ export class OperationalSanctionsService {
       );
     }
 
+    const liftedAt = new Date();
     const expiredSanction = await this.sanctionsRepository.expireSanction(
       sanction.id,
-      new Date(),
+      liftedAt,
+      {
+        ...(sanction.metadata ?? {}),
+        manualLift: {
+          liftedAt: liftedAt.toISOString(),
+          liftedByUserId: command.actorUserId,
+          reviewNote: command.reviewNote,
+          relatedAppealId: command.relatedAppealId ?? null,
+          originalEndsAt: sanction.endsAt?.toISOString() ?? null,
+          suppressedEventCount: this.getMetadataNumber(
+            sanction.metadata,
+            'eventCount',
+          ),
+        },
+      },
     );
 
     await this.auditService.record({
@@ -345,6 +371,76 @@ export class OperationalSanctionsService {
     const currentDurationDays = this.getSanctionDurationDays(currentSanction);
 
     return decision.durationDays > currentDurationDays;
+  }
+
+  private isSuppressedByManualLift(
+    decision: OperationalSanctionDecision,
+    liftedSanctions: OperationalSanctionRecord[],
+    asOf: Date,
+  ): boolean {
+    return liftedSanctions.some((sanction) => {
+      if (
+        sanction.type !== decision.type ||
+        sanction.scope !== decision.scope ||
+        sanction.trigger !== decision.trigger
+      ) {
+        return false;
+      }
+
+      const manualLift = this.getManualLiftMetadata(sanction.metadata);
+
+      if (!manualLift) {
+        return false;
+      }
+
+      if (
+        manualLift.originalEndsAt &&
+        new Date(manualLift.originalEndsAt).getTime() <= asOf.getTime()
+      ) {
+        return false;
+      }
+
+      const previousEventCount =
+        manualLift.suppressedEventCount ??
+        this.getMetadataNumber(sanction.metadata, 'eventCount') ??
+        0;
+
+      return decision.metadata.eventCount <= previousEventCount;
+    });
+  }
+
+  private getManualLiftMetadata(
+    metadata: Record<string, unknown> | null,
+  ): {
+    originalEndsAt: string | null;
+    suppressedEventCount: number | null;
+  } | null {
+    const manualLift = metadata?.manualLift;
+
+    if (!manualLift || typeof manualLift !== 'object' || Array.isArray(manualLift)) {
+      return null;
+    }
+
+    const liftedMetadata = manualLift as Record<string, unknown>;
+    const originalEndsAt =
+      typeof liftedMetadata.originalEndsAt === 'string'
+        ? liftedMetadata.originalEndsAt
+        : null;
+    const suppressedEventCount =
+      typeof liftedMetadata.suppressedEventCount === 'number'
+        ? liftedMetadata.suppressedEventCount
+        : null;
+
+    return { originalEndsAt, suppressedEventCount };
+  }
+
+  private getMetadataNumber(
+    metadata: Record<string, unknown> | null,
+    key: string,
+  ): number | null {
+    const value = metadata?.[key];
+
+    return typeof value === 'number' ? value : null;
   }
 
   private getSanctionDurationDays(sanction: OperationalSanctionRecord): number {
