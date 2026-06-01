@@ -500,6 +500,7 @@ main {
 .status-pill-warning {
   background: var(--color-badge-warning);
   color: var(--color-text-warning);
+  width: 85px;
 }
 
 .status-pill-danger {
@@ -726,6 +727,7 @@ main {
   border-color: rgba(23, 51, 56, 0.14);
   background: rgba(255, 255, 255, 0.56);
   color: var(--color-text);
+  box-shadow: 0 8px 18px #17333814;
 }
 
 .button-ghost:hover {
