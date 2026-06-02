@@ -326,7 +326,7 @@ export function TripsOperationWorkspace({
                     ) : null}
                     {lateRemovalWarning ? (
                       <span className={styles.warningText} title={lateRemovalWarning}>
-                        Cancelacion tardia
+                        Riesgo Cancelación tardía
                       </span>
                     ) : null}
                     {completionOverdueMessage ? (
