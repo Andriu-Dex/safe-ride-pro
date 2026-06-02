@@ -1,3 +1,4 @@
+# Node / JS
 node_modules
 .turbo
 dist
@@ -7,11 +8,49 @@ out
 .expo
 .expo-shared
 .vercel
+
+# Logs
 *.log
+
+# Environment variables
 .env
 .env.*
 !.env.example
 !.env.qa.example
+
+# Tests
 playwright-report
 test-results
+
+# App storage
 apps/api/storage
+
+# LaTeX auxiliary files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv
+
+# LaTeX build folders
+/build/
+/_build/
+
+# LaTeX editor files
+*.bak
+*.tmp
+*.swp
+*.synctex
+*.synctex.gz(busy)

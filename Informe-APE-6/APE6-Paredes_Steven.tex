@@ -1,0 +1,301 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage[letterpaper,top=2cm,bottom=3cm,left=2cm,right=2cm,marginparwidth=1.75cm]{geometry}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{amssymb,stackengine}
+\usepackage{fancyhdr}
+\usepackage{multicol}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{caption}
+\usepackage{pdflscape}
+\usepackage{longtable}
+
+\graphicspath{{Imagenes/}}
+
+\newcommand{\checkedbox}{\stackinset{c}{0pt}{c}{0pt}{\checkmark}{$\square$}}
+\newcommand{\evidencia}[3][0.94\linewidth]{%
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{Imagenes/#2}{%
+      \includegraphics[width=#1]{Imagenes/#2}
+    }{%
+      \fbox{\parbox[c][6cm][c]{0.88\linewidth}{\centering
+      Captura pendiente\\
+      \texttt{\detokenize{#2}}}}
+    }
+    \caption{#3}
+  \end{figure}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{60pt}
+\renewcommand{\headrule}{\vspace{2pt}\hrule}
+
+\fancyhead[C]{%
+    \begin{minipage}[c]{2.5cm}
+        \centering
+        \includegraphics[width=2cm]{Imagenes/UTA.jpeg}
+    \end{minipage}%
+    \hfill
+    \begin{minipage}[c]{8cm}
+        \centering
+        \small {\textbf{UNIVERSIDAD TÉCNICA DE AMBATO}} \\[0.1cm]
+        \scriptsize \textit{FACULTAD DE INGENIERÍA EN SISTEMAS ELECTRÓNICA E INDUSTRIAL} \\[0.1cm]
+        \scriptsize \textbf{CARRERA DE SOFTWARE} \\[0.1cm]
+        \scriptsize \textbf{CICLO ACADÉMICO: ENERO 2026 -- JULIO 2026}
+    \end{minipage}%
+    \hfill%
+    \begin{minipage}[c]{2.5cm}
+        \centering
+        \includegraphics[width=1.9cm]{Imagenes/fisei.png}
+    \end{minipage}%
+}
+
+\begin{document}
+\begin{center}
+    {\large \textbf{INFORME DE GUÍA PRÁCTICA}} \\
+\end{center}
+
+\section{Portada}
+\begin{flushleft}
+\begin{tabular}{ l l }
+    \textbf{Tema:} & APE GPIS 6: Implantación del sistema en servidor local y en servidor en la nube \\
+    \textbf{Unidad de Organización Curricular:} & Profesional \\
+    \textbf{Nivel y Paralelo:} & 6 - ``A'' \\
+    \textbf{Alumnos participantes:} &
+    \begin{tabular}[t]{@{}l@{}}
+        Aguilar Guillen Erick Mateo \\
+        Llerena Garces Gabriel Stefano \\
+        Navarro Pazmiño Maybelline Estefania \\
+        Paredes Medina Steven Eduardo
+    \end{tabular} \\
+    \textbf{Asignatura:} & Gestión de Pruebas e Implantación de Software \\
+    \textbf{Docente:} & Ing. Leonardo Torres, Mg. \\
+\end{tabular}
+\end{flushleft}
+
+\section{Informe de Guía Práctica}
+\subsection{Objetivos}
+
+\subsubsection{General}
+\begin{itemize}
+    \item Realizar la implantación funcional del sistema SafeRidePro en un servidor local y en un servidor en la nube, asegurando su despliegue reproducible, su disponibilidad y su validación básica de operación.
+\end{itemize}
+
+\subsubsection{Específicos}
+\begin{itemize}
+    \item Desplegar el sistema en un entorno local mediante Docker Compose reutilizando la arquitectura real del proyecto.
+    \item Implantar el mismo stack en una máquina virtual Ubuntu de Oracle Cloud Always Free y publicarlo mediante una IP pública.
+    \item Verificar el funcionamiento de la aplicación en ambos entornos mediante healthchecks, autenticación y acceso a vistas funcionales.
+\end{itemize}
+
+\subsection{Modalidad}
+Presencial
+
+\subsection{Tiempo de Duración}
+Presenciales: 4\\
+No presenciales: 0
+
+\subsection{Instrucciones}
+\textbf{Acciones previas:}
+
+\noindent Se revisó el stack real del proyecto para evitar implantarlo sobre tecnologías que no corresponden a su arquitectura. SafeRidePro está compuesto por una aplicación web Next.js, una API NestJS y una base de datos PostgreSQL, por lo que la estrategia seleccionada fue Docker Compose tanto para el entorno local como para la nube \cite{dockercompose}.\\
+
+\noindent \textbf{Pasos ejecutados:}
+\begin{enumerate}
+    \item Preparar el entorno local y el archivo \texttt{.env.qa} a partir del archivo base del proyecto.
+    \item Levantar el sistema completo en local con Docker Compose y validar servicios, healthchecks y autenticación.
+    \item Aprovisionar una máquina virtual Ubuntu en Oracle Cloud Always Free, instalar Docker y publicar el sistema por IP pública.
+    \item Verificar el comportamiento del sistema en ambos entornos y documentar evidencia visual, problemas presentados y soluciones aplicadas.
+\end{enumerate}
+
+\subsection{Listado de Equipos, Materiales y Recursos}
+\begin{itemize}
+    \item Inteligencia artificial, TAC.
+    \item PC portátil con Windows.
+    \item Docker Desktop.
+    \item Internet.
+    \item Cuenta Oracle Cloud Always Free.
+    \item Repositorio del sistema SafeRidePro.
+\end{itemize}
+
+\textbf{TAC (Tecnologías para el Aprendizaje y Conocimiento) empleados en la guía práctica:}
+\begin{itemize}
+    \item[\checkedbox] Plataformas educativas
+    \item[$\square$] Simuladores y laboratorios virtuales
+    \item[$\square$] Aplicaciones educativas
+    \item[$\square$] Recursos audiovisuales
+    \item[$\square$] Gamificación
+    \item[\checkedbox] Inteligencia Artificial
+    \item Otros (Especifique): \underline{\hspace{5cm}}
+\end{itemize}
+
+\subsection{Actividades por Desarrollar}
+\begin{enumerate}[leftmargin=*]
+    \item Analizar la arquitectura del proyecto y definir una estrategia de implantación compatible con el stack real.
+    \item Configurar el entorno local de despliegue con \texttt{docker-compose.qa.yml}, \texttt{deploy/api.Dockerfile} y \texttt{deploy/web.Dockerfile}.
+    \item Ejecutar el despliegue local con el comando \texttt{corepack pnpm qa:up:build}.
+    \item Verificar los contenedores, puertos y healthchecks del sistema local.
+    \item Ingresar al sistema con credenciales de prueba generadas por el seed y validar una vista operativa.
+    \item Crear una máquina virtual Ubuntu en Oracle Cloud Always Free y habilitar puertos de acceso para SSH, web y API.
+    \item Instalar Docker Engine y Docker Compose Plugin en la máquina virtual remota.
+    \item Copiar el proyecto a la nube, ajustar \texttt{.env.qa} con la IP pública y levantar el stack en Oracle Cloud.
+    \item Verificar el sistema publicado desde Internet y comprobar nuevamente autenticación y disponibilidad.
+    \item Consolidar capturas, incidencias y soluciones dentro del informe final.
+\end{enumerate}
+
+\subsection{Resultados Obtenidos}
+Se obtuvo un despliegue funcional del sistema SafeRidePro en dos entornos distintos:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Servidor local:} el stack \texttt{PostgreSQL + API + Web} quedó operativo mediante Docker Compose, con healthchecks activos y acceso correcto a la aplicación web.
+    \item \textbf{Servidor en nube:} el mismo stack fue implantado en una máquina virtual Ubuntu de Oracle Cloud Always Free, quedando accesible desde Internet mediante IP pública.
+    \item \textbf{Validación funcional:} en ambos entornos se comprobó la disponibilidad del sistema, la autenticación con usuarios seed y el acceso a una vista operativa.
+    \item \textbf{Alcance declarado:} la implantación funcional cubre web, API y base de datos. El módulo móvil \texttt{apps/mobile} existe como prototipo Expo, pero no forma parte del despliegue operativo evaluado en esta práctica.
+\end{itemize}
+
+\subsection{Descripción de la Arquitectura Implantada}
+La arquitectura desplegada corresponde al stack real del proyecto:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Base de datos:} PostgreSQL 16 en contenedor.
+    \item \textbf{Backend:} API desarrollada con NestJS, compilada y ejecutada dentro de un contenedor Node.js.
+    \item \textbf{Frontend:} aplicación web desarrollada con Next.js, publicada desde un contenedor Node.js.
+    \item \textbf{Orquestación:} Docker Compose mediante el archivo \texttt{docker-compose.qa.yml}.
+\end{itemize}
+
+La misma arquitectura fue reutilizada en local y en nube para garantizar reproducibilidad y reducir el riesgo de divergencias entre entornos.
+
+\subsection{Implantación en Servidor Local}
+La implantación local se ejecutó sobre una laptop con Windows y Docker Desktop. Se utilizó el archivo \texttt{.env.qa} como base de configuración y se levantó el sistema completo con los scripts definidos en la raíz del proyecto.
+
+\begin{enumerate}[leftmargin=*]
+    \item Crear el archivo \texttt{.env.qa} desde \texttt{.env.qa.example}.
+    \item Ejecutar \texttt{corepack pnpm qa:up:build}.
+    \item Verificar el estado de los contenedores con \texttt{corepack pnpm qa:ps}.
+    \item Validar los endpoints:
+    \begin{itemize}
+        \item \texttt{http://localhost:3000}
+        \item \texttt{http://localhost:3001/api/health}
+        \item \texttt{http://localhost:3000/healthz}
+    \end{itemize}
+    \item Ingresar con una cuenta de prueba generada por el seed.
+\end{enumerate}
+
+Además, la recuperación automática tras reinicio del equipo depende de dos elementos ya configurados:
+\begin{itemize}[leftmargin=*]
+    \item política \texttt{restart: unless-stopped} en los servicios del archivo Compose;
+    \item arranque automático de Docker Desktop al iniciar Windows.
+\end{itemize}
+
+\subsection{Implantación en Oracle Cloud Always Free}
+Para la implantación en nube se seleccionó Oracle Cloud Always Free debido a que permite desplegar una máquina virtual sin costo, reutilizando el mismo stack Docker ya validado en local \cite{oraclefree}.
+
+\begin{enumerate}[leftmargin=*]
+    \item Crear la cuenta y la tenancy de Oracle Cloud.
+    \item Aprovisionar una máquina virtual Ubuntu Always Free.
+    \item Configurar reglas de ingreso para puertos 22, 3000 y 3001.
+    \item Conectarse por SSH a la instancia.
+    \item Instalar Docker Engine y Docker Compose Plugin.
+    \item Transferir el proyecto al servidor.
+    \item Crear un archivo \texttt{.env.qa} adaptado a la IP pública de la instancia.
+    \item Ejecutar:
+\begin{verbatim}
+docker compose --env-file .env.qa -f docker-compose.qa.yml up --build -d
+\end{verbatim}
+    \item Verificar los contenedores con \texttt{docker ps}.
+    \item Validar acceso público al sistema y al endpoint de salud del API.
+\end{enumerate}
+
+\subsection{Validación del Sistema}
+La validación realizada en ambos entornos consideró tres niveles:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Infraestructura:} contenedores activos, puertos expuestos y healthchecks correctos.
+    \item \textbf{Aplicación:} acceso a la pantalla de login, autenticación con datos seed y navegación funcional.
+    \item \textbf{Consistencia:} mismo comportamiento general en local y en nube usando la misma composición Docker.
+\end{itemize}
+
+\subsection{Problemas Encontrados y Solución}
+\begin{longtable}{p{0.28\linewidth} p{0.32\linewidth} p{0.32\linewidth}}
+\toprule
+\textbf{Problema} & \textbf{Causa probable} & \textbf{Solución aplicada} \\
+\midrule
+Docker no levanta contenedores & Daemon apagado o Docker Desktop no iniciado & Iniciar Docker Desktop y verificar estado antes de ejecutar Compose. \\
+Puertos ocupados & Otro proceso usando 3000, 3001 o 5433 & Ajustar variables de puerto o liberar el puerto en conflicto. \\
+Frontend no consume el backend correcto & Variable \texttt{NEXT\_PUBLIC\_API\_BASE\_URL} mal configurada & Corregir \texttt{.env.qa} según el entorno local o la IP pública remota. \\
+No hay acceso externo en la nube & Reglas de ingreso no habilitadas & Abrir puertos 3000 y 3001 en Oracle Cloud. \\
+La aplicación no conserva operación tras reinicio & Docker no arranca con el sistema & Configurar Docker Desktop para inicio automático en Windows. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Habilidades Blandas Empleadas en la Práctica}
+\begin{itemize}
+    \item[$\square$] Liderazgo
+    \item[$\square$] Trabajo en equipo
+    \item[$\square$] Comunicación asertiva
+    \item[$\square$] La empatía
+    \item[\checkedbox] Pensamiento crítico
+    \item[$\square$] Flexibilidad
+    \item[$\square$] La resolución de conflictos
+    \item[$\square$] Adaptabilidad
+    \item[\checkedbox] Responsabilidad
+\end{itemize}
+
+\subsection{Conclusiones Generales}
+\begin{itemize}[leftmargin=*,noitemsep]
+    \item La implantación correcta de un sistema depende de respetar su arquitectura real; en este caso, Docker Compose fue la alternativa coherente para local y nube.
+    \item Reutilizar el mismo stack entre entornos simplificó la implantación y redujo errores de configuración.
+    \item Oracle Cloud Always Free resultó adecuado para publicar el sistema con acceso externo sin rediseñar el despliegue.
+    \item La validación mediante healthchecks, autenticación y navegación funcional permitió comprobar que el sistema quedó operativo en ambos entornos.
+\end{itemize}
+
+\vspace{1em}
+\subsection{Recomendaciones}
+\begin{itemize}[leftmargin=*,noitemsep]
+    \item Mantener archivos de entorno separados para local y nube para evitar errores de configuración.
+    \item No exponer credenciales sensibles en capturas ni en archivos compartidos públicamente.
+    \item Verificar reglas de red antes de asumir errores de aplicación en entornos de nube.
+    \item Como trabajo futuro, incorporar dominio, HTTPS, proxy inverso y monitoreo si se desea acercar el despliegue a un escenario productivo.
+\end{itemize}
+
+\subsection{Referencias}
+\vspace{-3em}
+\renewcommand{\refname}{}
+\bibliographystyle{IEEEtran}
+\bibliography{bibliografias}
+
+\subsection{Anexos}
+\subsubsection{Capturas de Implantación Local}
+\evidencia{ape6_local_01_env_qa.png}{Archivo \texttt{.env.qa} configurado para implantación local.}
+\evidencia{ape6_local_02_levantar_stack.png}{Ejecución del comando de levantamiento del stack local.}
+\evidencia{ape6_local_03_servicios_activos.png}{Verificación de contenedores activos en el entorno local.}
+\evidencia{ape6_local_04_health_api.png}{Healthcheck del API en el entorno local.}
+\evidencia{ape6_local_05_login.png}{Pantalla de acceso del sistema en entorno local.}
+\evidencia{ape6_local_06_sistema_funcionando.png}{Vista operativa del sistema luego del inicio de sesión en local.}
+\evidencia{ape6_local_07_reinicio_o_persistencia.png}{Evidencia de recuperación operativa tras reinicio local.}
+\evidencia{ape6_local_08_logs_stack.png}{Logs del stack local.}
+
+\subsubsection{Capturas de Implantación en Oracle Cloud}
+\evidencia{ape6_nube_01_instancia_oracle.png}{Instancia Oracle Cloud Always Free creada para el despliegue.}
+\evidencia{ape6_nube_02_reglas_red.png}{Reglas de red configuradas para acceso SSH, web y API.}
+\evidencia{ape6_nube_03_ssh_vm.png}{Conexión SSH establecida con la máquina virtual Ubuntu.}
+\evidencia{ape6_nube_04_docker_instalado.png}{Verificación de instalación de Docker y Docker Compose en Oracle Cloud.}
+\evidencia{ape6_nube_05_archivo_env.png}{Archivo \texttt{.env.qa} configurado en la máquina virtual remota.}
+\evidencia{ape6_nube_06_levantar_stack.png}{Levantamiento del stack Docker en Oracle Cloud.}
+\evidencia{ape6_nube_07_contenedores_activos.png}{Contenedores activos en el entorno de nube.}
+\evidencia{ape6_nube_08_health_api.png}{Healthcheck del API desde la instancia publicada.}
+\evidencia{ape6_nube_09_login_publico.png}{Pantalla pública de login publicada por IP.}
+\evidencia{ape6_nube_10_sistema_funcionando.png}{Sistema autenticado y operativo desde el despliegue en nube.}
+\evidencia{ape6_nube_11_logs_stack.png}{Logs del stack publicado en Oracle Cloud.}
+
+\vfill
+\end{document}
