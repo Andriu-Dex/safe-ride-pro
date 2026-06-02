@@ -16,7 +16,7 @@ export const REPORT_REASON_OPTIONS = [
 export function getReportStatusLabel(status: ReportStatus): string {
   switch (status) {
     case ReportStatus.Pending:
-      return 'Pendiente';
+      return 'Pendiente de revision';
     case ReportStatus.UnderReview:
       return 'En revision';
     case ReportStatus.Resolved:
