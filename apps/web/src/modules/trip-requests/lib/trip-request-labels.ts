@@ -54,7 +54,7 @@ export function getTripRequestExecutionStatusLabel(
 ): string {
   switch (executionStatus) {
     case TripRequestExecutionStatus.AcceptedPendingBoarding:
-      return 'Pendiente de abordaje';
+      return 'Por abordar';
     case TripRequestExecutionStatus.OnBoard:
       return 'A bordo';
     case TripRequestExecutionStatus.DroppedOff:

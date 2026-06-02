@@ -7,7 +7,7 @@
 }
 
 .content {
-  width: min(1380px, 100%);
+  width: 100%;
   margin: 0 auto;
   display: grid;
   gap: 1.5rem;
@@ -23,8 +23,6 @@
   background: linear-gradient(150deg, #002045, #1a365d 74%);
   box-shadow: 0 22px 54px rgba(2, 20, 40, 0.2);
   border: 1px solid rgba(2, 20, 40, 0.08);
-  border-radius: 20px;
-  box-shadow: 0 12px 34px rgba(2, 20, 40, 0.08);
   display: grid;
   gap: 0.6rem;
   max-width: 100%;
@@ -315,3 +313,4 @@
     padding-inline: 0.2rem;
   }
 }
+

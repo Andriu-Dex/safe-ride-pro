@@ -1,78 +1,172 @@
 .card {
-  display: grid;
-  gap: 1rem;
-  padding: 1.1rem;
-  border: 1px solid rgba(116, 119, 127, 0.18);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 1.5rem;
   background:
-    linear-gradient(90deg, rgba(210, 228, 255, 0.3), transparent 28rem),
-    rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 42px rgba(8, 35, 58, 0.12);
+    linear-gradient(135deg, rgba(255, 235, 235, 0.6) 0%, transparent 60%),
+    rgba(255, 255, 255, 1);
+  box-shadow: 0 24px 64px rgba(8, 35, 58, 0.15), 0 0 0 1px rgba(116, 119, 127, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scaleUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .highlighted {
-  border-color: rgba(208, 146, 24, 0.42);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.5), 0 24px 64px rgba(8, 35, 58, 0.15);
+}
+
+.closeButton {
+  position: absolute;
+  top: -1rem;
+  right: -1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(116, 119, 127, 0.2);
+  background: #ffffff;
+  color: #dc2626;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.closeButton:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.warningBanner {
+  background: linear-gradient(90deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 1.5rem 1.5rem 0 0;
+}
+
+.bannerIcon {
+  font-size: 2rem;
+}
+
+.bannerText {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.bannerText strong {
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.bannerText p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
 }
 
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding: 0 2rem;
+  margin-top: 0.5rem;
 }
 
 .identity {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.1rem;
   min-width: 0;
 }
 
 .title {
   color: #07182b;
-  font-size: 1.2rem;
+  font-size: 2rem;
   font-weight: 900;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
 }
 
-.meta,
-.incidentSummary,
-.deadline,
-.helper,
-.uploadHint {
+.meta {
   margin: 0;
   color: #5b7180;
-  font-size: 0.86rem;
-  line-height: 1.45;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 800;
 }
 
-.badges,
-.uploadActions {
+.badges {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.55rem;
+  gap: 0.65rem;
+}
+
+.tripInfoCard {
+  margin: 0 2rem;
+  background: rgba(254, 242, 242, 0.5);
+  border-left: 4px solid #dc2626;
+  padding: 1rem 1.25rem;
+  border-radius: 0 0.75rem 0.75rem 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.tripInfoCard .meta {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+  color: #0b1c30;
+}
+
+.incidentSummaryBox {
+  padding: 0 2rem;
+  display: grid;
+  gap: 0.75rem;
 }
 
 .incidentSummary {
   color: #0b1c30;
   font-weight: 750;
-}
-
-.deadline {
-  color: #004172;
-  font-weight: 850;
+  font-size: 1.05rem;
+  margin: 0;
 }
 
 .closureNote {
   display: grid;
-  gap: 0.3rem;
-  padding: 0.75rem 0.85rem;
-  border-left: 3px solid rgba(0, 97, 165, 0.24);
-  background: rgba(210, 228, 255, 0.42);
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid rgba(220, 38, 38, 0.3);
+  background: rgba(254, 226, 226, 0.45);
+  border-radius: 0 0.5rem 0.5rem 0;
 }
 
 .closureNote span {
-  color: #004172;
-  font-size: 0.68rem;
+  color: #991b1b;
+  font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -81,34 +175,59 @@
 .closureNote p {
   margin: 0;
   color: #0b1c30;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
 }
 
-.grid {
+.formGrid {
+  padding: 0 2rem;
   display: grid;
-  grid-template-columns: minmax(0, 16rem);
-  gap: 0.8rem;
+  gap: 1.5rem;
+}
+
+.uploadDropzoneWrapper {
+  padding: 0 2rem;
 }
 
 .uploadBlock {
   display: grid;
-  gap: 0.75rem;
-  padding: 0.9rem;
-  border: 1px dashed rgba(116, 119, 127, 0.3);
-  background: rgba(248, 251, 255, 0.78);
+  gap: 0.85rem;
+  padding: 1.5rem;
+  border: 2px dashed rgba(220, 38, 38, 0.3);
+  background: rgba(254, 242, 242, 0.3);
+  border-radius: 1rem;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.uploadBlock:hover {
+  border-color: rgba(220, 38, 38, 0.5);
+  background: rgba(254, 242, 242, 0.6);
 }
 
 .uploadHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.9rem;
 }
 
-.uploadHeader strong,
-.uploadBlock strong {
+.uploadHeader strong {
   color: #07182b;
   font-weight: 850;
+  font-size: 1.1rem;
+}
+
+.uploadActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.uploadIcon {
+  font-size: 1.5rem;
+  margin-right: 0.5rem;
 }
 
 .uploadInput {
@@ -126,24 +245,25 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.35rem;
-  padding: 0.58rem 0.9rem;
-  border: 1px solid rgba(116, 119, 127, 0.2);
-  border-radius: 0.7rem;
+  min-height: 3rem;
+  padding: 0.6rem 1.5rem;
+  border: 1px solid rgba(116, 119, 127, 0.25);
+  border-radius: 0.75rem;
   color: #07182b;
   background: #ffffff;
-  font-size: 0.86rem;
+  font-size: 1rem;
   font-weight: 850;
   cursor: pointer;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: all 160ms ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .uploadLabel:hover,
 .uploadLabel:focus-visible {
-  border-color: rgba(0, 97, 165, 0.35);
-  box-shadow: 0 14px 28px rgba(8, 35, 58, 0.12);
+  border-color: rgba(220, 38, 38, 0.4);
+  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.12);
   outline: none;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .uploadLabelDisabled {
@@ -152,11 +272,27 @@
   pointer-events: none;
 }
 
+.uploadHintSmall {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #5b7180;
+}
+
+.uploadHint {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: #0b1c30;
+}
+
 .preview {
-  width: min(100%, 13rem);
+  width: 100%;
+  max-width: 16rem;
+  margin: 1rem auto 0;
   overflow: hidden;
   border: 1px solid rgba(116, 119, 127, 0.18);
+  border-radius: 0.75rem;
   background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .preview img {
@@ -165,25 +301,87 @@
   height: auto;
 }
 
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
+  background: #f8fafc;
+  border-top: 1px solid rgba(116, 119, 127, 0.15);
+  border-radius: 0 0 1.5rem 1.5rem;
+}
+
+.deadline {
+  margin: 0;
+  color: #004172;
+  font-weight: 850;
+  padding: 0.6rem 1rem;
+  background: rgba(0, 65, 114, 0.08);
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
 .actions {
+  flex-grow: 1;
   display: flex;
   justify-content: flex-end;
-  gap: 0.7rem;
+}
+
+.actions button {
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  border-radius: 999px;
+  font-weight: 900;
+  background: #dc2626;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.actions button:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
+}
+
+.actions button:disabled {
+  background: rgba(116, 119, 127, 0.2);
+  color: rgba(116, 119, 127, 0.8);
 }
 
 @media (max-width: 760px) {
-  .header,
-  .uploadHeader {
+  .warningBanner {
     flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 1rem 1.5rem;
   }
 
-  .badges,
-  .uploadActions,
-  .actions {
-    justify-content: flex-start;
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0 1.5rem;
   }
 
-  .grid {
-    grid-template-columns: 1fr;
+  .tripInfoCard,
+  .incidentSummaryBox,
+  .formGrid,
+  .uploadDropzoneWrapper {
+    padding: 0 1.5rem;
+    margin: 0 1.5rem;
+  }
+
+  .footerRow {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1.5rem;
+  }
+  
+  .actions button {
+    width: 100%;
+  }
+
+  .deadline {
+    text-align: center;
   }
 }

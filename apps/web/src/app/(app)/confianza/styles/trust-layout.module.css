@@ -540,11 +540,15 @@
 }
 
 @keyframes modalSlideUp {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(12px) scale(0.98);
+    transform: translateY(30px) scale(0.95);
   }
-  to {
+  60% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.02);
+  }
+  100% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
@@ -555,12 +559,12 @@
   inset: 0;
   z-index: 1300;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: rgba(2, 13, 24, 0.68);
-  backdrop-filter: blur(10px);
-  animation: overlayFadeIn 180ms ease-out both;
+  flex-direction: column;
+  padding: 2rem 1rem;
+  background: rgba(0, 5, 15, 0.85);
+  backdrop-filter: blur(14px);
+  animation: overlayFadeIn 250ms ease-out both;
+  overflow-y: auto;
 }
 
 .modalContent {
@@ -568,9 +572,9 @@
   flex-direction: column;
   gap: 0.7rem;
   width: min(100%, 42rem);
-  max-height: calc(100dvh - 2rem);
-  overflow-y: auto;
-  animation: modalSlideUp 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  margin: auto;
+  position: relative;
+  animation: modalSlideUp 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .modalContent::-webkit-scrollbar {
@@ -581,6 +585,7 @@
   padding: 0.7rem;
   border: 1px solid rgba(116, 119, 127, 0.14);
   background: rgba(255, 255, 255, 0.94);
+  border-radius: 1rem;
   box-shadow: 0 18px 40px rgba(8, 35, 58, 0.12);
 }
 

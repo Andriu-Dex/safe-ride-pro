@@ -500,7 +500,6 @@ main {
 .status-pill-warning {
   background: var(--color-badge-warning);
   color: var(--color-text-warning);
-  width: 115px;
 }
 
 .status-pill-danger {

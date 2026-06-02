@@ -47,6 +47,7 @@ type ReportOpportunityCardProps = {
   onUploadEvidence: (file: File) => void;
   onEvidenceValidationError: (message: string) => void;
   onSubmit: () => void;
+  onClose: () => void;
   highlighted?: boolean;
   elementId?: string;
 };
@@ -80,33 +81,33 @@ function ReportEvidenceUploadCard({
 
   return (
     <div className={styles.uploadBlock}>
-      <div>
+      <div className={styles.uploadHeader}>
         <strong>Evidencia del reporte</strong>
-      </div>
-      <div className={styles.uploadActions}>
         <StatusPill
           label={isUploaded ? 'Evidencia cargada' : 'Opcional'}
           tone={isUploaded ? 'success' : 'neutral'}
         />
-
-        <div className={styles.uploadActions}>
-          <label
-            className={[
-              styles.uploadLabel,
-              isUploading ? styles.uploadLabelDisabled : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            htmlFor={!isUploading ? inputId : undefined}
-            onClick={() => {
-              if (!isUploading) {
-                suppressAuthSessionSync();
-              }
-            }}
-          >
-            {isUploading ? 'Subiendo...' : isUploaded ? 'Cambiar archivo' : 'Seleccionar archivo'}
-          </label>
-        </div>
+      </div>
+      
+      <div className={styles.uploadActions}>
+        <label
+          className={[
+            styles.uploadLabel,
+            isUploading ? styles.uploadLabelDisabled : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          htmlFor={!isUploading ? inputId : undefined}
+          onClick={() => {
+            if (!isUploading) {
+              suppressAuthSessionSync();
+            }
+          }}
+        >
+          <span className={styles.uploadIcon}>📁</span>
+          {isUploading ? 'Subiendo...' : isUploaded ? 'Cambiar archivo' : 'Seleccionar archivo o arrastrar'}
+        </label>
+        <p className={styles.uploadHintSmall}>Admite PDF, JPG, PNG o WEBP (máximo 8 MB)</p>
 
         <input
           accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp"
@@ -141,7 +142,7 @@ function ReportEvidenceUploadCard({
         />
 
         {uploadedFileName ? (
-          <p className={styles.uploadHint}>Archivo actual: {uploadedFileName}</p>
+          <p className={styles.uploadHint}>Archivo actual: <strong>{uploadedFileName}</strong></p>
         ) : null}
 
         {previewUrl ? (
@@ -167,6 +168,7 @@ export function ReportOpportunityCard({
   onUploadEvidence,
   onEvidenceValidationError,
   onSubmit,
+  onClose,
   highlighted = false,
   elementId,
 }: ReportOpportunityCardProps) {
@@ -177,13 +179,22 @@ export function ReportOpportunityCard({
         .join(' ')}
       id={elementId}
     >
+      <button className={styles.closeButton} onClick={onClose} type="button" aria-label="Cerrar">
+        &times;
+      </button>
+
+      <div className={styles.warningBanner}>
+        <div className={styles.bannerIcon}>⚠️</div>
+        <div className={styles.bannerText}>
+          <strong>Reporte de Incidente</strong>
+          <p>La información enviada será revisada por el equipo de seguridad de SafeRidePro.</p>
+        </div>
+      </div>
+
       <div className={styles.header}>
         <div className={styles.identity}>
+          <p className={styles.meta}>Reportando a</p>
           <strong className={styles.title}>{opportunity.reportedFullName}</strong>
-          <p className={styles.meta}>
-            {opportunity.tripOriginLabel} -&gt; {opportunity.tripDestinationLabel}
-          </p>
-          <p className={styles.meta}>Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
         </div>
         <div className={styles.badges}>
           <span className="topbar-badge">{opportunity.directionLabel}</span>
@@ -191,50 +202,69 @@ export function ReportOpportunityCard({
         </div>
       </div>
 
-      <p className={styles.incidentSummary}>{opportunity.incidentSummary}</p>
-      {opportunity.tripClosureNote ? (
-        <div className={styles.closureNote}>
-          <span>Nota de cierre operativo</span>
-          <p>{opportunity.tripClosureNote}</p>
-        </div>
-      ) : null}
-      <p className={styles.deadline}>Hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}</p>
-
-      <div className={styles.grid}>
-        <SelectField
-          label="Motivo principal"
-          onChange={(event) => onChange('reason', event.target.value)}
-          value={value.reason}
-        >
-          {REPORT_REASON_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
+      <div className={styles.tripInfoCard}>
+        <p className={styles.meta}>
+          <strong>Ruta:</strong> {opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}
+        </p>
+        <p className={styles.meta}>
+          <strong>Fecha:</strong> {formatDateTime(opportunity.tripDepartureAt)}
+        </p>
       </div>
 
-      <TextareaField
-        label="Descripcion"
-        onChange={(event) => onChange('description', event.target.value)}
-        placeholder="Describe lo ocurrido"
-        rows={4}
-        value={value.description}
-      />
+      <div className={styles.incidentSummaryBox}>
+        <p className={styles.incidentSummary}>{opportunity.incidentSummary}</p>
+        {opportunity.tripClosureNote ? (
+          <div className={styles.closureNote}>
+            <span>Nota de cierre operativo</span>
+            <p>{opportunity.tripClosureNote}</p>
+          </div>
+        ) : null}
+      </div>
 
-      <ReportEvidenceUploadCard
-        isUploaded={Boolean(value.evidenceFileKey)}
-        isUploading={isUploadingEvidence}
-        onUploadEvidence={onUploadEvidence}
-        onUploadValidationError={onEvidenceValidationError}
-        previewUrl={value.evidencePreviewUrl}
-        uploadedFileName={value.evidenceFileName}
-      />
+      <div className={styles.formGrid}>
+        <div className={styles.reasonField}>
+          <SelectField
+            label="Motivo principal"
+            onChange={(event) => onChange('reason', event.target.value)}
+            value={value.reason}
+          >
+            {REPORT_REASON_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </SelectField>
+        </div>
 
-      <div className={styles.actions}>
-        <Button disabled={isSubmitting} onClick={onSubmit} variant="secondary">
-          Registrar
-        </Button>
+        <div className={styles.descriptionField}>
+          <TextareaField
+            label="Detalles del reporte"
+            onChange={(event) => onChange('description', event.target.value)}
+            placeholder="Describe lo ocurrido con el mayor detalle posible"
+            rows={4}
+            value={value.description}
+          />
+        </div>
+      </div>
+
+      <div className={styles.uploadDropzoneWrapper}>
+        <ReportEvidenceUploadCard
+          isUploaded={Boolean(value.evidenceFileKey)}
+          isUploading={isUploadingEvidence}
+          onUploadEvidence={onUploadEvidence}
+          onUploadValidationError={onEvidenceValidationError}
+          previewUrl={value.evidencePreviewUrl}
+          uploadedFileName={value.evidenceFileName}
+        />
+      </div>
+
+      <div className={styles.footerRow}>
+        <p className={styles.deadline}>Cierra {formatTripClosureDeadline(opportunity.windowClosesAt)}</p>
+        <div className={styles.actions}>
+          <Button disabled={isSubmitting || !value.reason || !value.description?.trim()} onClick={onSubmit} className={styles.submitButton}>
+            {isSubmitting ? 'Enviando...' : 'Enviar Reporte Oficial'}
+          </Button>
+        </div>
       </div>
     </div>
   );

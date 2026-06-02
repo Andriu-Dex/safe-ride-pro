@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '../../../components/ui/button';
-import { SelectField } from '../../../components/ui/select-field';
+import { StarRatingField } from '../../../components/ui/star-rating-field';
 import { TextareaField } from '../../../components/ui/textarea-field';
 import { formatTripClosureDeadline } from '../../trips/lib/trip-closure';
 import styles from './rating-opportunity-card.module.css';
@@ -29,6 +29,7 @@ type RatingOpportunityCardProps = {
   isSubmitting: boolean;
   onChange: (field: keyof RatingDraft, value: string) => void;
   onSubmit: () => void;
+  onClose: () => void;
   highlighted?: boolean;
   elementId?: string;
 };
@@ -43,9 +44,12 @@ export function RatingOpportunityCard({
   isSubmitting,
   onChange,
   onSubmit,
+  onClose,
   highlighted = false,
   elementId,
 }: RatingOpportunityCardProps) {
+  const hasRated = value.score !== '0';
+
   return (
     <div
       className={[
@@ -56,45 +60,59 @@ export function RatingOpportunityCard({
         .join(' ')}
       id={elementId}
     >
+      <button className={styles.closeButton} onClick={onClose} type="button" aria-label="Cerrar">
+        &times;
+      </button>
+
       <div className={styles.header}>
         <div className={styles.identity}>
+          <p className={styles.meta}>Calificando a</p>
           <strong className={styles.title}>{opportunity.targetFullName}</strong>
-          <p className={styles.meta}>
-            {opportunity.tripOriginLabel} -&gt; {opportunity.tripDestinationLabel}
-          </p>
-          <p className={styles.meta}>Salida: {formatDateTime(opportunity.tripDepartureAt)}</p>
         </div>
-        <span className="topbar-badge">{opportunity.directionLabel}</span>
+        <div className={styles.badges}>
+          <span className="topbar-badge">{opportunity.directionLabel}</span>
+        </div>
       </div>
 
-      <p className={styles.deadline}>Hasta {formatTripClosureDeadline(opportunity.windowClosesAt)}</p>
-
-      <div className={styles.grid}>
-        <SelectField
-          label="Puntaje"
-          onChange={(event) => onChange('score', event.target.value)}
-          value={value.score}
-        >
-          <option value="5">5 - Excelente</option>
-          <option value="4">4 - Muy bien</option>
-          <option value="3">3 - Bien</option>
-          <option value="2">2 - Regular</option>
-          <option value="1">1 - Deficiente</option>
-        </SelectField>
+      <div className={styles.tripInfoCard}>
+        <p className={styles.meta}>
+          <strong>Ruta:</strong> {opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}
+        </p>
+        <p className={styles.meta}>
+          <strong>Fecha:</strong> {formatDateTime(opportunity.tripDepartureAt)}
+        </p>
       </div>
 
-      <TextareaField
-        label="Comentario"
-        onChange={(event) => onChange('comment', event.target.value)}
-        placeholder="Comentario opcional"
-        rows={3}
-        value={value.comment}
-      />
+      <div className={styles.ratingSection}>
+        <h3 className={styles.ratingPrompt}>¿Cómo fue la experiencia?</h3>
+        <div className={styles.starsWrapper}>
+          <StarRatingField
+            label="Puntaje"
+            onChange={(val) => onChange('score', val)}
+            value={value.score}
+          />
+        </div>
+      </div>
 
-      <div className={styles.actions}>
-        <Button disabled={isSubmitting} onClick={onSubmit}>
-          Registrar
-        </Button>
+      {hasRated && (
+        <div className={styles.commentSection}>
+          <TextareaField
+            label="Comentario (Opcional)"
+            onChange={(event) => onChange('comment', event.target.value)}
+            placeholder="¿Algo que destacar?"
+            rows={3}
+            value={value.comment}
+          />
+        </div>
+      )}
+
+      <div className={styles.footerRow}>
+        <p className={styles.deadline}>Cierra {formatTripClosureDeadline(opportunity.windowClosesAt)}</p>
+        <div className={styles.actions}>
+          <Button disabled={isSubmitting || !hasRated} onClick={onSubmit} className={styles.submitButton}>
+            {isSubmitting ? 'Registrando...' : 'Registrar calificación'}
+          </Button>
+        </div>
       </div>
     </div>
   );
