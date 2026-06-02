@@ -43,22 +43,28 @@ export function PendingActions({
                 <h3 className={styles.surfaceTitle}>Calificaciones</h3>
               </div>
             </div>
-            <div className={styles.stackList}>
+            <div className={styles.stackList} style={{ gap: '0.8rem' }}>
               {pendingRatingOpportunities.map((opportunity) => (
                 <div 
                   key={opportunity.id}
-                  className={`${styles.recordCard} ${highlightedRatingOpportunityIds.has(opportunity.id) ? styles.recordCardAccent : ''}`}
+                  className={`${styles.pendingCard} ${highlightedRatingOpportunityIds.has(opportunity.id) ? styles.pendingCardAccent : ''}`}
                   id={buildClosureOpportunityElementId('rating', opportunity.id)}
                 >
-                  <div className={styles.recordHeader}>
-                    <strong>{opportunity.targetFullName}</strong>
-                    <StatusPill label="Pendiente" tone="warning" />
+                  <div className={styles.pendingInfo}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <strong style={{ fontSize: '1.05rem', color: '#07182b', fontWeight: 850 }}>{opportunity.targetFullName}</strong>
+                    </div>
+                    <div className={styles.historyMeta} style={{ color: '#0b1c30', fontWeight: 600 }}>
+                      {opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}
+                    </div>
+                    <div className={styles.historyMeta}>
+                      Viaje: {formatDateTime(opportunity.tripDepartureAt)}
+                    </div>
                   </div>
-                  <div className={styles.tripContext}>
-                    <span className={styles.tripRoute}>{opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}</span>
-                    <span className={styles.tripDate}>Viaje del: {formatDateTime(opportunity.tripDepartureAt)}</span>
-                  </div>
-                  <div className={styles.actionRow} style={{ marginTop: '0.8rem' }}>
+                  <div className={styles.pendingActions}>
+                    <span className={styles.deadlineChip}>
+                      Cierra: {new Date(opportunity.windowClosesAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
                     <Button onClick={() => setActiveRatingOpportunity(opportunity)}>
                       Calificar
                     </Button>
@@ -76,25 +82,29 @@ export function PendingActions({
                 <h3 className={styles.surfaceTitle}>Reportes</h3>
               </div>
             </div>
-            <div className={styles.stackList}>
+            <div className={styles.stackList} style={{ gap: '0.8rem' }}>
               {pendingReportOpportunities.map((opportunity) => (
                 <div 
                   key={opportunity.id} 
-                  className={`${styles.recordCard} ${highlightedReportOpportunityIds.has(opportunity.id) ? styles.recordCardAccent : ''}`}
+                  className={`${styles.pendingCard} ${highlightedReportOpportunityIds.has(opportunity.id) ? styles.pendingCardAccent : ''}`}
                   id={buildClosureOpportunityElementId('report', opportunity.id)}
                 >
-                  <div className={styles.recordHeader}>
-                    <strong>{opportunity.targetFullName}</strong>
-                    <div className={styles.badgeRowStart}>
-                      <StatusPill label="Pendiente" tone="danger" />
+                  <div className={styles.pendingInfo}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <strong style={{ fontSize: '1.05rem', color: '#07182b', fontWeight: 850 }}>{opportunity.targetFullName}</strong>
                       <StatusPill label={opportunity.incidentLabel} tone={opportunity.incidentTone} />
                     </div>
+                    <div className={styles.historyMeta} style={{ color: '#0b1c30', fontWeight: 600 }}>
+                      {opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}
+                    </div>
+                    <div className={styles.historyMeta}>
+                      Viaje: {formatDateTime(opportunity.tripDepartureAt)}
+                    </div>
                   </div>
-                  <div className={styles.tripContext}>
-                    <span className={styles.tripRoute}>{opportunity.tripOriginLabel} &rarr; {opportunity.tripDestinationLabel}</span>
-                    <span className={styles.tripDate}>Salida: {formatDateTime(opportunity.tripDepartureAt)}</span>
-                  </div>
-                  <div className={styles.actionRow} style={{ marginTop: '0.8rem' }}>
+                  <div className={styles.pendingActions}>
+                    <span className={styles.deadlineChip}>
+                      Cierra: {new Date(opportunity.windowClosesAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
                     <Button variant="secondary" onClick={() => setActiveReportOpportunity(opportunity)}>
                       Reportar
                     </Button>

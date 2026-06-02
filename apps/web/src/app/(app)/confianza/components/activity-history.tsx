@@ -61,22 +61,20 @@ export function ActivityHistory({
             ratings.given.length ? (
               <div className={styles.scrollArea}>
                 {ratings.given.map((rating) => (
-                  <div key={rating.id} className={styles.recordCard}>
-                    <div className={styles.recordHeader}>
-                      <strong>{rating.targetFullName}</strong>
-                      <span className={styles.inlineStars}>{getRatingStars(rating.score)} {rating.score}/5</span>
-                    </div>
-                    <div className={styles.tripContext}>
-                      <span className={styles.tripRoute}>{rating.tripOriginLabel} &rarr; {rating.tripDestinationLabel}</span>
-                      <span className={styles.tripDate}>Viaje del: {formatDateTime(rating.tripDepartureAt)}</span>
+                  <div key={rating.id} className={styles.historyCard}>
+                    <div className={styles.historyHeader}>
+                      <div className={styles.historyTitle}>
+                        {rating.targetFullName}
+                        <span className={styles.inlineStars} style={{ fontSize: '1.1rem', marginLeft: '0.4rem' }}>
+                          {getRatingStars(rating.score)}
+                        </span>
+                      </div>
+                      <span className={styles.historyMeta}>
+                        {rating.tripOriginLabel} &rarr; {rating.tripDestinationLabel} &bull; {formatDateTime(rating.tripDepartureAt)}
+                      </span>
                     </div>
                     {rating.comment ? (
-                      <div className={styles.incidentBox}>
-                        <div className={styles.reviewBlock}>
-                          <strong>Tu comentario:</strong>
-                          <p>{rating.comment}</p>
-                        </div>
-                      </div>
+                      <p className={styles.historyComment}>{rating.comment}</p>
                     ) : null}
                   </div>
                 ))}
@@ -90,22 +88,20 @@ export function ActivityHistory({
             ratings.received.length ? (
               <div className={styles.scrollArea}>
                 {ratings.received.map((rating) => (
-                  <div key={rating.id} className={styles.recordCard}>
-                    <div className={styles.recordHeader}>
-                      <strong>{rating.authorFullName}</strong>
-                      <span className={styles.inlineStars}>{getRatingStars(rating.score)} {rating.score}/5</span>
-                    </div>
-                    <div className={styles.tripContext}>
-                      <span className={styles.tripRoute}>{rating.tripOriginLabel} &rarr; {rating.tripDestinationLabel}</span>
-                      <span className={styles.tripDate}>Viaje del: {formatDateTime(rating.tripDepartureAt)}</span>
+                  <div key={rating.id} className={styles.historyCard}>
+                    <div className={styles.historyHeader}>
+                      <div className={styles.historyTitle}>
+                        {rating.authorFullName}
+                        <span className={styles.inlineStars} style={{ fontSize: '1.1rem', marginLeft: '0.4rem' }}>
+                          {getRatingStars(rating.score)}
+                        </span>
+                      </div>
+                      <span className={styles.historyMeta}>
+                        {rating.tripOriginLabel} &rarr; {rating.tripDestinationLabel} &bull; {formatDateTime(rating.tripDepartureAt)}
+                      </span>
                     </div>
                     {rating.comment ? (
-                      <div className={styles.incidentBox}>
-                        <div className={styles.reviewBlock}>
-                          <strong>Comentario recibido:</strong>
-                          <p>{rating.comment}</p>
-                        </div>
-                      </div>
+                      <p className={styles.historyComment}>{rating.comment}</p>
                     ) : null}
                   </div>
                 ))}
@@ -118,42 +114,48 @@ export function ActivityHistory({
           {activeHistoryTab === 'reports' && (
             reports.length ? (
               <div className={styles.scrollArea}>
-                {reports.map((report) => (
-                  <div key={report.id} className={styles.recordCard}>
-                    <div className={styles.recordHeader}>
-                      <strong>{report.reportedFullName}</strong>
-                      <StatusPill
-                        label={getReportStatusLabel(report.status)}
-                        tone={getReportStatusTone(report.status)}
-                      />
-                    </div>
-                    <div className={styles.tripContext}>
-                      <span className={styles.tripRoute}>{report.tripOriginLabel} &rarr; {report.tripDestinationLabel}</span>
-                      <span className={styles.tripDate}>Emitido el: {formatDateTime(report.createdAt)}</span>
-                    </div>
-                    <div className={styles.incidentBox}>
-                      <div className={styles.badgeRowStart}>
+                {reports.map((report) => {
+                  const tone = getReportSeverityTone(report.reason);
+                  let severityClass = styles.severityLow;
+                  if (tone === 'warning') severityClass = styles.severityMedium;
+                  if (tone === 'danger') severityClass = styles.severityHigh;
+
+                  return (
+                    <div key={report.id} className={styles.historyCard}>
+                      <div className={styles.historyHeader}>
+                        <div className={styles.historyTitle}>
+                          <span
+                            aria-hidden="true"
+                            className={`${styles.severityDot} ${severityClass}`}
+                            title={getReportSeverityLabel(report.reason)}
+                          />
+                          <span className="sr-only">{getReportSeverityLabel(report.reason)}.</span>
+                          {report.reportedFullName}
+                          <span style={{ fontSize: '0.85rem', color: '#526b78', fontWeight: 600, marginLeft: '0.5rem' }}>
+                            ({getReportReasonLabel(report.reason)})
+                          </span>
+                        </div>
                         <StatusPill
-                          label={getReportSeverityLabel(report.reason)}
-                          tone={getReportSeverityTone(report.reason)}
+                          label={getReportStatusLabel(report.status)}
+                          tone={getReportStatusTone(report.status)}
                         />
-                        <span className={styles.metaBadge}>{getReportReasonLabel(report.reason)}</span>
+                      </div>
+                      <div className={styles.historyMeta} style={{ marginBottom: '0.2rem' }}>
+                        {report.tripOriginLabel} &rarr; {report.tripDestinationLabel} &bull; Emitido: {formatDateTime(report.createdAt)}
                       </div>
                       {report.description ? (
-                        <div className={styles.reviewBlock}>
-                          <strong>Detalle del reporte:</strong>
-                          <p>{report.description}</p>
-                        </div>
+                        <p className={styles.historyComment} style={{ color: '#0b1c30' }}>
+                          <strong>Tú:</strong> {report.description}
+                        </p>
+                      ) : null}
+                      {report.reviewNote ? (
+                        <p className={styles.historyComment} style={{ marginTop: '0.2rem' }}>
+                          <strong>Soporte:</strong> {report.reviewNote}
+                        </p>
                       ) : null}
                     </div>
-                    {report.reviewNote ? (
-                      <div className={styles.reviewBlock}>
-                        <strong>Respuesta administrativa:</strong>
-                        <p>{report.reviewNote}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <TrustEmptyStateCopy message="Aún no has enviado reportes desde esta membresía." />

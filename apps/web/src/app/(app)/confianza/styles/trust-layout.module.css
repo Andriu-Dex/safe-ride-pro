@@ -406,6 +406,101 @@
   justify-content: flex-end;
 }
 
+/* NEW REDESIGN STYLES */
+
+.historyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(116, 119, 127, 0.18);
+}
+.historyCard:last-child {
+  border-bottom: none;
+}
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.historyTitle {
+  font-weight: 850;
+  color: #07182b;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.historyMeta {
+  font-size: 0.85rem;
+  color: #526b78;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.historyComment {
+  font-size: 0.9rem;
+  color: #526b78;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+.severityDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.severityLow { background-color: #94a3b8; }
+.severityMedium { background-color: #f59e0b; }
+.severityHigh { background-color: #dc2626; }
+
+.pendingCard {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(116, 119, 127, 0.18);
+  border-radius: 1rem;
+  background: #ffffff;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(8, 35, 58, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.pendingCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(8, 35, 58, 0.08);
+}
+.pendingCardAccent {
+  border-left: 4px solid #0061a5;
+}
+.pendingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.pendingActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+.deadlineChip {
+  font-size: 0.75rem;
+  font-weight: 850;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .dashboardTabs {
   display: inline-flex;
   flex-wrap: wrap;
@@ -626,6 +721,29 @@
 
   .actionRow {
     justify-content: flex-start;
+  }
+
+  .pendingCard {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .pendingActions {
+    align-items: flex-start;
+    width: 100%;
+  }
+  
+  .pendingActions button {
+    width: 100%;
+  }
+
+  .historyHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .historyMeta {
+    white-space: normal;
   }
 }
 
