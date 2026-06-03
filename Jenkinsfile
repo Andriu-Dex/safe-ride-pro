@@ -27,10 +27,16 @@ pipeline {
 
     stage('Preparar entorno') {
       steps {
-        sh '''
-          test -f "$QA_ENV_FILE"
-          test -f "$QA_COMPOSE_FILE"
-        '''
+        withCredentials([file(credentialsId: 'env-qa', variable: 'ENV_QA_FILE')]) {
+          sh '''
+            cp "$ENV_QA_FILE" "$QA_ENV_FILE"
+
+            test -f "$QA_ENV_FILE"
+            test -f "$QA_COMPOSE_FILE"
+
+            echo "Archivo de entorno QA cargado correctamente"
+          '''
+        }
       }
     }
 
@@ -78,9 +84,15 @@ pipeline {
   post {
     always {
       sh '''
-        docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" ps > jenkins-compose-ps.txt || true
-        docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" logs --no-color > jenkins-compose-logs.txt || true
+        if [ -f "$QA_COMPOSE_FILE" ]; then
+          docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" ps > jenkins-compose-ps.txt || true
+          docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" logs --no-color > jenkins-compose-logs.txt || true
+        else
+          echo "No existe $QA_COMPOSE_FILE" > jenkins-compose-ps.txt
+          echo "No existe $QA_COMPOSE_FILE" > jenkins-compose-logs.txt
+        fi
       '''
+
       archiveArtifacts artifacts: 'jenkins-compose-ps.txt, jenkins-compose-logs.txt', allowEmptyArchive: true
     }
   }
