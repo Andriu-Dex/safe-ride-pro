@@ -19,6 +19,10 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 RUN pnpm exec tsc --project packages/shared-types/tsconfig.json
+
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
+
 RUN node scripts/run-api-prisma.js generate
 RUN pnpm --dir apps/api build
 
@@ -34,6 +38,7 @@ RUN mkdir -p /app/storage/private && chown -R node:node /app/storage
 
 ENV NODE_ENV=production
 ENV PRISMA_HIDE_UPDATE_MESSAGE=true
+
 EXPOSE 3001
 
 USER node

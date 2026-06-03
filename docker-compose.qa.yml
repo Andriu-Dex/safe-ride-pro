@@ -21,6 +21,8 @@ services:
     build:
       context: .
       dockerfile: deploy/api.Dockerfile
+      args:
+        DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-safe_ride_pro_qa}
     restart: unless-stopped
     depends_on:
       postgres:
