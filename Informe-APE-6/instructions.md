@@ -1,294 +1,135 @@
 # Guía operativa APE 6
 
-## Objetivo
-Esta guía resume la ejecución práctica del deber APE 6 usando el stack real de SafeRidePro:
+## Alcance implantado
+La implantación funcional presentada para SafeRidePro quedó distribuida de esta manera:
 
-- PostgreSQL
-- API NestJS
-- Web Next.js
-- Docker Compose
-- Oracle Cloud Always Free
+- **Local:** Docker Compose
+- **Nube:** Render + Supabase
+- **Fuera de alcance operativo:** `apps/mobile`
 
 ## Implantación local
 
-### Preparación
-1. Copiar el archivo base:
+### Componentes utilizados
+- `docker-compose.qa.yml`
+- `deploy/api.Dockerfile`
+- `deploy/web.Dockerfile`
+- `.env.qa`
+
+### Secuencia ejecutada
+1. Preparar el archivo `.env.qa`.
+2. Levantar el stack:
    ```powershell
-   Copy-Item .env.qa.example .env.qa
+   corepack pnpm qa:up:build
    ```
-2. Ajustar los valores necesarios en `.env.qa`.
+3. Verificar contenedores:
+   ```powershell
+   corepack pnpm qa:ps
+   ```
+4. Validar:
+   - `http://localhost:3000`
+   - `http://localhost:3001/api/health`
+   - `http://localhost:3000/healthz`
+5. Iniciar sesión con una cuenta seed.
 
-### Levantar el sistema
-```powershell
-corepack pnpm qa:up:build
-corepack pnpm qa:ps
-```
+### Persistencia local
+La recuperación automática tras reinicio quedó soportada por:
+- `restart: unless-stopped` en los servicios de Docker Compose
+- arranque automático de Docker Desktop con Windows
 
-### Validación
-- `http://localhost:3000`
-- `http://localhost:3001/api/health`
-- `http://localhost:3000/healthz`
+## Implantación en la nube
 
-### Persistencia tras reinicio
-Para que el entorno vuelva a levantarse tras reiniciar el equipo:
-- Docker Desktop debe iniciar con Windows.
-- Los servicios ya usan `restart: unless-stopped`.
+## Supabase
 
-## Implantación en Oracle Cloud Always Free
+### Proyecto de base de datos
+Se creó el proyecto `saferidepro` en Supabase y se utilizó la cadena PostgreSQL obtenida desde:
+- `Connect`
+- método `Session pooler`
 
-### Recursos a crear
-- 1 VM Ubuntu Always Free
-- Reglas de ingreso para:
-  - 22
-  - 3000
-  - 3001
+Ese valor fue asignado a:
+- `DATABASE_URL`
 
-### Instalación base en la VM
+## Render
+
+### Servicios desplegados
+Se publicaron dos servicios web:
+
+- `saferidepro-api`
+- `saferidepro-web`
+
+### Configuración del backend
+
+#### Build Command
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y ca-certificates curl gnupg
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo usermod -aG docker $USER
+corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && pnpm --filter @saferidepro/shared-types build && pnpm --filter @saferidepro/api prisma:generate && pnpm --filter @saferidepro/api build
 ```
 
-Luego cerrar y reabrir la sesión SSH.
+#### Start Command
+```bash
+pnpm --filter @saferidepro/api db:deploy && pnpm --filter @saferidepro/api db:seed && node apps/api/dist/main.js
+```
 
-### Despliegue
-1. Subir el proyecto a la VM.
-2. Crear `.env.qa` en la raíz del proyecto.
-3. Ajustar al menos:
-   - `NEXT_PUBLIC_API_BASE_URL=http://IP_PUBLICA:3001/api`
-   - `WEB_APP_ORIGINS=http://IP_PUBLICA:3000`
-4. Levantar:
-   ```bash
-   docker compose --env-file .env.qa -f docker-compose.qa.yml up --build -d
-   ```
-5. Verificar:
-   ```bash
-   docker ps
-   ```
+#### Health Check
+```txt
+/api/health
+```
 
-### Validación
-- `http://IP_PUBLICA:3000`
-- `http://IP_PUBLICA:3001/api/health`
+#### Variables principales
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `WEB_APP_ORIGINS`
+- `API_PUBLIC_BASE_URL`
+- `AUTH_ALLOW_DEBUG_CODES`
+- `PAYMENTS_CURRENCY`
+- `PAYPAL_ENABLED`
 
-## Capturas obligatorias
-Las capturas deben guardarse exactamente con estos nombres en `Informe-APE-6/Imagenes`:
+### Configuración del frontend
 
-### Local
-- `ape6_local_01_env_qa.png`
-  - abrir el archivo `.env.qa` en el editor
-  - deben verse las variables principales del entorno Docker QA
-  - deben ser visibles al menos estas claves:
-    - `POSTGRES_DB`
-    - `POSTGRES_USER`
-    - `POSTGRES_PORT`
-    - `API_PORT`
-    - `WEB_PORT`
-    - `NEXT_PUBLIC_API_BASE_URL`
-    - `WEB_APP_ORIGINS`
-  - si existen secretos reales, deben quedar tapados o censurados antes de guardar la captura
-  - no mostrar otros archivos, solo el editor con `.env.qa`
+#### Build Command
+```bash
+corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && pnpm --filter @saferidepro/shared-types build && pnpm --filter @saferidepro/web build
+```
 
-- `ape6_local_02_levantar_stack.png`
-  - abrir una terminal en la raíz del proyecto
-  - ejecutar:
-    ```powershell
-    corepack pnpm qa:up:build
-    ```
-  - la captura debe mostrar:
-    - el comando completo
-    - el proceso de build/levantamiento
-    - al menos el tramo final donde se vea que los servicios se están creando o iniciando
-  - no cortar la parte superior de la terminal; debe verse que estás en la carpeta del proyecto
+#### Start Command
+```bash
+node scripts/run-web-next.js start --hostname 0.0.0.0 --port $PORT
+```
 
-- `ape6_local_03_servicios_activos.png`
-  - en la misma terminal ejecutar:
-    ```powershell
-    corepack pnpm qa:ps
-    ```
-    o
-    ```powershell
-    docker ps
-    ```
-  - deben verse claramente los contenedores de:
-    - `postgres`
-    - `api`
-    - `web`
-  - también debe verse el estado, por ejemplo `Up` o `healthy`
-  - si usas `docker ps`, procura que se vean nombres, puertos y estado
+#### Health Check
+```txt
+/healthz
+```
 
-- `ape6_local_04_health_api.png`
-  - abrir el navegador en:
-    - `http://localhost:3001/api/health`
-  - debe verse:
-    - la URL completa en la barra del navegador
-    - la respuesta del healthcheck cargada correctamente
-  - si la salida es JSON, dejar visible el cuerpo completo
+#### Variables principales
+- `NEXT_PUBLIC_API_BASE_URL`
+- `NEXT_PUBLIC_GEOAPIFY_API_KEY`
 
-- `ape6_local_05_login.png`
-  - abrir el navegador en:
-    - `http://localhost:3000`
-  - debe verse la pantalla de login completa
-  - deben verse:
-    - logo o branding de SafeRidePro
-    - campos de correo y contraseña
-    - botón de inicio de sesión
-    - la URL en la barra del navegador
-  - no llenar todavía las credenciales en esta captura
+## Validación pública realizada
+- `https://saferidepro-api.onrender.com/api/health`
+- `https://saferidepro-web.onrender.com/healthz`
+- `https://saferidepro-web.onrender.com/login`
+- navegación autenticada a módulos del sistema
 
-- `ape6_local_06_sistema_funcionando.png`
-  - iniciar sesión con una cuenta seed
-  - entrar a una vista operativa clara, por ejemplo:
-    - inicio
-    - viajes
-    - conductor
-    - billetera
-  - la captura debe demostrar que el sistema ya está autenticado y funcionando
-  - deben verse:
-    - navbar o menú autenticado
-    - nombre del usuario o avatar
-    - contenido principal de una vista funcional
+## Build filters en Render
+No fue necesario configurarlos para que el despliegue funcionara.
 
-- `ape6_local_07_reinicio_o_persistencia.png`
-  - reiniciar Docker Desktop o reiniciar el equipo
-  - luego abrir terminal y ejecutar:
-    ```powershell
-    corepack pnpm qa:ps
-    ```
-    o
-    ```powershell
-    docker ps
-    ```
-  - la captura debe mostrar que los contenedores volvieron a quedar activos después del reinicio
-  - si puedes, incluye también el ícono o ventana de Docker ya abierto para reforzar la evidencia
+Su función es únicamente optimizar cuándo Render debe volver a construir un servicio después de cambios en el repositorio. Si ya tienes el sistema publicado y estable, no necesitas hacer nada adicional con ese apartado para cerrar este deber.
 
-### Nube
-- `ape6_nube_01_instancia_oracle.png`
-  - abrir el panel de Oracle Cloud
-  - ir a la sección de instancias o compute
-  - debe verse:
-    - nombre de la VM
-    - estado `Running` o equivalente
-    - sistema operativo Ubuntu
-    - tipo Always Free si Oracle lo muestra en pantalla
-    - IP pública o referencia a red si está visible
+## Limitaciones observadas en la capa gratuita
 
-- `ape6_nube_02_reglas_red.png`
-  - abrir la configuración de red o security list / ingress rules
-  - deben verse reglas para:
-    - puerto `22`
-    - puerto `3000`
-    - puerto `3001`
-  - si Oracle muestra rango de origen, protocolo y puerto, deben verse completos
-  - esta captura debe probar que el acceso externo fue configurado y no solo asumido
+### Render
+- la instancia entra en suspensión por inactividad
+- la primera respuesta después de ese periodo puede tardar
+- no hay disco persistente en free web services
+- no hay acceso SSH al servicio web gratuito
 
-- `ape6_nube_03_ssh_vm.png`
-  - abrir terminal conectada por SSH a la VM
-  - la captura debe mostrar:
-    - el comando SSH usado o una sesión ya abierta
-    - el prompt de Ubuntu dentro de la instancia
-    - alguna evidencia del usuario y host remoto, por ejemplo `ubuntu@...`
+### Supabase
+- la capacidad del proyecto gratuito es limitada
+- el proyecto puede pausarse tras periodos prolongados sin uso
 
-- `ape6_nube_04_docker_instalado.png`
-  - dentro de la VM ejecutar:
-    ```bash
-    docker --version
-    docker compose version
-    ```
-  - la captura debe mostrar ambas salidas completas
-  - debe quedar claro que Docker y Compose están realmente instalados en la VM
+## Evidencia colocada en `Imagenes`
+Se normalizaron referencias para el informe con:
 
-- `ape6_nube_05_archivo_env.png`
-  - abrir `.env.qa` en la VM con `nano`, `vim`, `cat` o un editor remoto
-  - deben verse al menos estas variables:
-    - `API_PORT`
-    - `WEB_PORT`
-    - `NEXT_PUBLIC_API_BASE_URL`
-    - `WEB_APP_ORIGINS`
-  - debe notarse que las URLs usan la IP pública de la VM
-  - ocultar cualquier secreto real antes de guardar la captura
+- `ape6_local_*`
+- `ape6_nube_*`
 
-- `ape6_nube_06_levantar_stack.png`
-  - en la VM ejecutar:
-    ```bash
-    docker compose --env-file .env.qa -f docker-compose.qa.yml up --build -d
-    ```
-  - la captura debe mostrar:
-    - el comando exacto
-    - el proceso de build/creación
-    - la salida final indicando que los servicios fueron creados o iniciados
-
-- `ape6_nube_07_contenedores_activos.png`
-  - en la VM ejecutar:
-    ```bash
-    docker ps
-    ```
-  - deben verse los tres contenedores principales:
-    - base de datos
-    - API
-    - Web
-  - deben apreciarse nombres, puertos y estado
-
-- `ape6_nube_08_health_api.png`
-  - abrir desde el navegador local:
-    - `http://IP_PUBLICA:3001/api/health`
-  - debe verse:
-    - la IP pública completa en la barra
-    - la respuesta del healthcheck del API
-  - si el navegador muestra JSON, dejarlo visible
-
-- `ape6_nube_09_login_publico.png`
-  - abrir desde el navegador local:
-    - `http://IP_PUBLICA:3000`
-  - debe verse la pantalla pública de login del sistema cargada desde la nube
-  - deben verse:
-    - la IP pública en la barra
-    - branding de SafeRidePro
-    - formulario de inicio de sesión
-
-- `ape6_nube_10_sistema_funcionando.png`
-  - iniciar sesión en la instancia publicada
-  - abrir una vista funcional del sistema, igual que en local
-  - deben verse:
-    - menú autenticado
-    - contenido real de una vista
-    - evidencia de que no es local sino el sistema publicado por IP pública
-
-### Opcionales
-- `ape6_local_08_logs_stack.png`
-  - ejecutar:
-    ```powershell
-    corepack pnpm qa:logs
-    ```
-    o
-    ```powershell
-    docker compose --env-file .env.qa -f docker-compose.qa.yml logs
-    ```
-  - la captura debe mostrar logs de los servicios del stack local
-
-- `ape6_nube_11_logs_stack.png`
-  - en la VM ejecutar:
-    ```bash
-    docker compose --env-file .env.qa -f docker-compose.qa.yml logs
-    ```
-  - la captura debe mostrar logs del stack desplegado en Oracle Cloud
-
-## Alcance declarado
-- Sí se implanta:
-  - web
-  - api
-  - base de datos
-- No se implanta:
-  - `apps/mobile` como producto operativo
-
-## Observación importante
-No se deben mostrar secretos reales en capturas del archivo `.env.qa`. Si hay credenciales visibles, deben ocultarse antes de exportar la imagen.
+Además, se conservaron las capturas originales `Render*.png` y `Supabase*.png` como respaldo.
