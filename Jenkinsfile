@@ -64,30 +64,42 @@ pipeline {
       }
     }
 
-    stage('Validar frontend') {
-  steps {
-    sh '''
-      for i in $(seq 1 30); do
-        if docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" exec -T web wget -qO- http://127.0.0.1:3000/healthz; then
-          echo "Frontend OK"
-          exit 0
-        fi
+    stage('Validar backend') {
+      steps {
+        sh '''
+          for i in $(seq 1 30); do
+            if docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" exec -T api wget -qO- http://127.0.0.1:3001/api/health; then
+              echo "Backend OK"
+              exit 0
+            fi
 
-        echo "Esperando frontend... intento $i/30"
-        sleep 2
-      done
+            echo "Esperando backend... intento $i/30"
+            sleep 2
+          done
 
-      echo "Frontend no respondió a tiempo"
-      docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" logs --no-color web
-      exit 1
-    '''
-  }
-}
+          echo "Backend no respondió a tiempo"
+          docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" logs --no-color api
+          exit 1
+        '''
+      }
+    }
 
     stage('Validar frontend') {
       steps {
         sh '''
-          docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" exec -T web wget -qO- http://127.0.0.1:3000/healthz
+          for i in $(seq 1 30); do
+            if docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" exec -T web wget -qO- http://127.0.0.1:3000/healthz; then
+              echo "Frontend OK"
+              exit 0
+            fi
+
+            echo "Esperando frontend... intento $i/30"
+            sleep 2
+          done
+
+          echo "Frontend no respondió a tiempo"
+          docker compose --env-file "$QA_ENV_FILE" -f "$QA_COMPOSE_FILE" logs --no-color web
+          exit 1
         '''
       }
     }
