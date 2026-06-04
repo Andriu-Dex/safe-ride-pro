@@ -1,0 +1,445 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage[letterpaper,top=2cm,bottom=3cm,left=2cm,right=2cm,marginparwidth=1.75cm]{geometry}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{amssymb,stackengine}
+\usepackage{fancyhdr}
+\usepackage{multicol}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{caption}
+\usepackage{pdflscape}
+\usepackage{longtable}
+\usepackage{ifthen}
+\usepackage{url}
+
+\graphicspath{{Imagenes/}}
+
+\newcommand{\checkedbox}{\stackinset{c}{0pt}{c}{0pt}{\checkmark}{$\square$}}
+\newcommand{\evidencia}[3][0.94\linewidth]{%
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{Imagenes/#2}{%
+      \includegraphics[width=#1]{Imagenes/#2}
+    }{%
+      \fbox{\parbox[c][6cm][c]{0.88\linewidth}{\centering
+      Captura pendiente\\
+      \texttt{\detokenize{#2}}}}
+    }
+    \caption{#3}
+  \end{figure}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{60pt}
+\renewcommand{\headrule}{\vspace{2pt}\hrule}
+
+\fancyhead[C]{%
+    \begin{minipage}[c]{2.5cm}
+        \centering
+        \includegraphics[width=2cm]{Imagenes/UTA.jpeg}
+    \end{minipage}%
+    \hfill
+    \begin{minipage}[c]{8cm}
+        \centering
+        \small {\textbf{UNIVERSIDAD TÉCNICA DE AMBATO}} \\[0.1cm]
+        \scriptsize \textit{FACULTAD DE INGENIERÍA EN SISTEMAS ELECTRÓNICA E INDUSTRIAL} \\[0.1cm]
+        \scriptsize \textbf{CARRERA DE SOFTWARE} \\[0.1cm]
+        \scriptsize \textbf{CICLO ACADÉMICO: ENERO 2026 -- JULIO 2026}
+    \end{minipage}%
+    \hfill%
+    \begin{minipage}[c]{2.5cm}
+        \centering
+        \includegraphics[width=1.9cm]{Imagenes/fisei.png}
+    \end{minipage}%
+}
+
+\begin{document}
+\begin{center}
+    {\large \textbf{INFORME DE GUÍA PRÁCTICA}} \\
+\end{center}
+
+\section{Portada}
+\begin{flushleft}
+\begin{tabular}{ l l }
+    \textbf{Tema:} & Investigación y práctica sobre la automatización del despliegue \\
+    \textbf{Unidad de Organización Curricular:} & Profesional \\
+    \textbf{Nivel y Paralelo:} & 6 - ``A'' \\
+    \textbf{Alumnos participantes:} &
+    \begin{tabular}[t]{@{}l@{}}
+        Aguilar Guillen Erick Mateo \\
+        Llerena Garces Gabriel Stefano \\
+        Navarro Pazmiño Maybelline Estefania \\
+        Paredes Medina Steven Eduardo
+    \end{tabular} \\
+    \textbf{Asignatura:} & Gestión de Pruebas e Implantación de Software \\
+    \textbf{Docente:} & Ing. Leonardo Torres, Mg. \\
+\end{tabular}
+\end{flushleft}
+
+\section{Informe de Guía Práctica}
+\subsection{Objetivos}
+
+\subsubsection{General}
+\begin{itemize}
+    \item Implementar y evaluar un flujo de automatización de despliegue (CI/CD) para el sistema web SafeRidePro en un entorno controlado de pruebas (QA), mediante la integración de un servidor de automatización Jenkins y contenedores de Docker coordinados por Docker Compose, analizando en paralelo la viabilidad de su transición hacia entornos de orquestación a gran escala con Kubernetes.
+\end{itemize}
+
+\subsubsection{Específicos}
+\begin{itemize}
+    \item Investigar y contrastar las bases conceptuales, diferencias operativas y criterios de aplicación de Jenkins, Docker y Kubernetes en arquitecturas modernas de despliegue continuo de software.
+    \item Configurar un entorno local aislado de Jenkins mediante contenedores Docker, habilitando la comunicación directa con el daemon del host para permitir la construcción y ejecución ágil de pipelines declarativos.
+    \item Construir las imágenes y desplegar los contenedores correspondientes al backend y frontend de SafeRidePro en un monorepo, controlando la propagación de configuraciones críticas y variables de entorno.
+    \item Analizar y documentar los problemas presentados durante las primeras ejecuciones del pipeline, implementando soluciones de estabilización basadas en health checks con reintentos automáticos e inyección segura de credenciales.
+\end{itemize}
+
+\subsection{Modalidad}
+Presencial
+
+\subsection{Tiempo de Duración}
+Presenciales: 4\\
+\indent No presenciales: 0
+
+\subsection{Instrucciones}
+Los estudiantes deberán realizar una investigación sobre las herramientas de automatización de despliegue Jenkins, Docker y Kubernetes. La investigación debe cubrir:
+
+\begin{itemize}
+    \item \textbf{Jenkins:} funcionamiento básico, configuración de pipelines, integración continua y entrega continua (CI/CD).
+    \item \textbf{Docker:} uso de contenedores para empaquetar y desplegar aplicaciones, creación de imágenes y ejecución de contenedores.
+    \item \textbf{Kubernetes:} orquestación de contenedores, despliegue en clústeres, escalabilidad y gestión de aplicaciones en contenedores.
+\end{itemize}
+
+Una vez realizada la investigación, los estudiantes deberán aplicar estas herramientas en la práctica, utilizando la aplicación que han desarrollado. Deberán:
+
+\begin{itemize}
+    \item Crear un pipeline de automatización de despliegue en Jenkins que integre las herramientas Docker o Kubernetes. El pipeline debe realizar el despliegue automatizado de la aplicación en un entorno controlado.
+    \item Utilizar Docker para crear una imagen de la aplicación y ejecutar la misma en un contenedor.
+    \item (Opcional) Desplegar la aplicación en Kubernetes, utilizando clústeres de contenedores y probando la escalabilidad de la aplicación.
+    \item Documentar todo el proceso, desde la instalación y configuración de las herramientas hasta la ejecución del pipeline, con capturas de pantalla y ejemplos de los resultados obtenidos.
+    \item Entregar el informe en formato PDF.
+\end{itemize}
+
+\subsection{Listado de Equipos, Materiales y Recursos}
+\begin{itemize}
+    \item Inteligiencia artificial, TAC.
+    \item PC portátil con Windows.
+    \item Docker Desktop.
+    \item Jenkins ejecutado en contenedor.
+    \item Internet.
+    \item Repositorio del sistema SafeRidePro.
+    \item Navegador web.
+    \item Archivo \texttt{.env.qa} para el entorno de despliegue.
+\end{itemize}
+
+\textbf{TAC (Tecnologías para el Aprendizaje y Conocimiento) empleados en la guía práctica:}
+\begin{itemize}
+    \item[\checkedbox] Plataformas educativas
+    \item[$\square$] Simuladores y laboratorios virtuales
+    \item[$\square$] Aplicaciones educativas
+    \item[$\square$] Recursos audiovisuales
+    \item[$\square$] Gamificación
+    \item[\checkedbox] Inteligencia Artificial
+    \item Otros (Especifique): \underline{\hspace{5cm}}
+\end{itemize}
+
+\subsection{Actividades por Desarrollar}
+\subsubsection{Jenkins, Docker y Kubernetes}
+
+\subsubsection*{Jenkins}
+Jenkins se posiciona como una plataforma de automatización de código abierto líder en el ámbito de la ingeniería de software, diseñada principalmente para facilitar y modelar los procesos de integración y entrega continua (CI/CD) \cite{jenkinsdocs}. Su núcleo operativo reside en un motor de ejecución de tareas programadas denominadas pipelines, las cuales se describen de manera declarativa o estructurada mediante un script de configuración versionable denominado \texttt{Jenkinsfile} \cite{jenkinspipeline}. En esta práctica, Jenkins asume la función de controlador principal del ciclo de vida del software en el entorno local. Se encarga de suscribirse e interactuar con el sistema de control de versiones Git, descargar los cambios recientes en el código, aprovisionar de forma segura el espacio de trabajo con secretos y variables de entorno, y orquestar las llamadas a los servicios de virtualización del host.
+
+A diferencia de los enfoques tradicionales de ejecución manual de scripts (los cuales sufren de variabilidad debido al estado del sistema anfitrión), Jenkins garantiza un entorno de compilación homogéneo e inmutable. Su arquitectura lógica se basa en el modelo controlador-agente (controller-agent), donde el nodo principal centraliza la administración web, la gestión de colas de trabajos y la retención de históricos de logs, delegando la carga pesada de construcción de artefactos a ejecutores o agentes dedicados. Esto permite desacoplar la interfaz administrativa del cómputo de compilación, incrementando la robustez operativa y la escalabilidad de las cargas de trabajo. Para optimizar su funcionamiento, se hace un uso extensivo de su amplio ecosistema de plugins, incorporando complementos para el control del ciclo de vida de Git, gestores de credenciales cifradas y herramientas de limpieza automática de espacios de trabajo obsoletos. Gracias a este enfoque, el flujo completo se comporta como código versionado, lo que posibilita auditar de manera precisa cada cambio de configuración y recrear la infraestructura de construcción en cualquier momento.
+
+\subsubsection*{CI/CD en el contexto de la práctica}
+Los conceptos de Integración Continua (CI) y Entrega Continua (CD) representan paradigmas organizativos enfocados en mitigar el riesgo asociado a la integración tardía del código, un fenómeno conocido históricamente como "el infierno de la integración". La Integración Continua promueve que los desarrolladores fusionen sus cambios en la rama principal con alta frecuencia. Cada fusión activa un flujo automático en Jenkins que compila el código, resuelve las dependencias cruzadas y ejecuta suites de pruebas estáticas o dinámicas. De este modo, cualquier error sintáctico, de tipado o de lógica se detecta y aísla de inmediato, reduciendo el costo de depuración al identificar con exactitud el commit causante de la regresión.
+
+En el caso de SafeRidePro, la Entrega Continua (CD) extiende esta automatización un paso más allá. El pipeline no se detiene en la mera verificación de compilación; avanza de forma automatizada hacia el empaquetado de artefactos (imágenes de contenedor) y la posterior actualización de la aplicación en el servidor local de aseguramiento de la calidad (QA). Esto asegura que en todo momento exista una versión funcional de la aplicación lista para ser probada por usuarios o analistas de QA. Si bien en esquemas de Despliegue Continuo (Continuous Deployment) el paso hacia producción está automatizado al 100\% sin filtros adicionales, en esta guía de Entrega Continua se establece el entorno controlado de QA como meta final, garantizando que el paso a producción dependa únicamente de una decisión de negocio respaldada por un entorno de QA perfectamente validado por tests de salud automáticos y simulaciones funcionales.
+
+\subsubsection*{Docker}
+Docker revolucionó el desarrollo de software al introducir la tecnología de contenedorización a nivel de sistema operativo, permitiendo aislar aplicaciones completas junto con sus dependencias específicas en paquetes portables y autocontenidos conocidos como contenedores \cite{dockeroverview}. Existe una distinción arquitectónica fundamental entre la virtualización basada en hipervisores (Máquinas Virtuales) y la contenedorización. Las Máquinas Virtuales emulan el hardware físico subyacente y requieren que cada instancia ejecute un sistema operativo invitado completo, con sus propios controladores y asignación rígida de memoria, lo cual resulta en altos tiempos de arranque y desperdicio de recursos del procesador en la ejecución de tareas de infraestructura repetitivas.
+
+En contraste, los contenedores de Docker comparten el mismo núcleo (kernel) del sistema operativo anfitrión y se aíslan a nivel de software utilizando características nativas del kernel de Linux, específicamente:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Namespaces (Espacios de nombres):} Proveen aislamiento de recursos, garantizando que un contenedor no pueda ver ni interferir con los procesos, interfaces de red, puntos de montaje o sistemas de archivos de otros contenedores hermanos o del propio host.
+    \item \textbf{Control Groups (cgroups):} Controlan la asignación y límites de recursos de hardware (CPU, memoria RAM, I/O de disco) para evitar que un contenedor monopolice el host o provoque caídas de servicios adyacentes.
+\end{itemize}
+
+Para SafeRidePro, Docker garantiza que el backend NestJS y el frontend Next.js se ejecuten de manera idéntica independientemente de la máquina física de los estudiantes. Esto se logra mediante el plano inmutable o receta de construcción (la Imagen de Docker), construida mediante capas superpuestas de solo lectura (UnionFS). Cada línea del Dockerfile crea una capa de filesystem independiente y cacheable. Al instanciarse en memoria con una capa de lectura y escritura efímera, la imagen da origen a un contenedor ejecutable, dinámico e independiente.
+
+\subsubsection*{Docker Compose}
+En aplicaciones multi-servicio donde interactúan varios contenedores independientes, el uso aislado de Docker se vuelve complejo debido a la necesidad de gestionar redes y dependencias de forma individual. Docker Compose permite unificar esta configuración a través de un único archivo declarativo en formato YAML \cite{dockercompose}. En el caso de SafeRidePro, la infraestructura no se reduce a un servidor web simple: requiere coordinar un motor de base de datos PostgreSQL, un backend API en NestJS y un cliente frontend en Next.js.
+
+Docker Compose automatiza tres aspectos críticos en este entorno de QA:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Redes Virtuales de Servicio:} Compose crea por defecto una red virtual tipo bridge privada para la pila de servicios. Los contenedores se registran internamente en un DNS dinámico administrado por Docker, lo que permite que el API de NestJS locate la base de datos utilizando el hostname virtual \texttt{postgres-qa} en el puerto 5432, omitiendo IPs dinámicas susceptibles a cambios que romperían el enlace.
+    \item \textbf{Persistencia y Volúmenes:} Para evitar la pérdida de los registros de viajes y configuraciones de SafeRidePro al reiniciar la pila de servicios o actualizar las imágenes, Compose de igual forma gestiona volúmenes montados en el host que resguardan la base de datos de PostgreSQL de forma persistente.
+    \item \textbf{Políticas de Dependencia y Exposición:} Permite mapear puertos hacia el host exterior para posibilitar el acceso local de pruebas (puertos 3000 y 3001), mientras que controla la secuencia de arranque de contenedores utilizando el bloque \texttt{depends\_on}. Cabe señalar que \texttt{depends\_on} solo detecta el inicio del proceso del contenedor y no la preparación lógica de la aplicación, razón por la cual se requirió complementar este flujo con mecanismos externos de health check en Jenkins.
+\end{enumerate}
+
+\subsubsection*{Kubernetes}
+Kubernetes (K8s) es un motor de orquestación de contenedores a escala empresarial diseñado para automatizar el despliegue, el escalamiento y la operación de aplicaciones en clústeres distribuidos de servidores físicos o virtuales \cite{kubernetesoverview}. Su arquitectura se divide en dos planos fundamentales:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Control Plane (Plano de Control):} Coordina el estado general del clúster. Contiene el \texttt{API Server} (punto central de comunicación), \texttt{etcd} (base de datos de configuración distribuida y consistente), el \texttt{Kube-Scheduler} (asigna las cargas de trabajo a los nodos) y el \texttt{Kube-Controller-Manager} (gestiona bucles de control para mantener el estado deseado del clúster).
+    \item \textbf{Worker Nodes (Nodos de Trabajo):} Hosts que ejecutan los contenedores. Cada nodo cuenta con el agente \texttt{Kubelet} (comunica con el plano de control), el componente de red \texttt{Kube-Proxy} (direcciona tráfico) y el motor de ejecución de contenedores.
+\end{itemize}
+
+Entre los recursos declarativos principales de Kubernetes destacan los Pods (agrupación mínima de uno o más contenedores estrechamente acoplados que comparten almacenamiento y red), los Deployments (describen el ciclo de actualización y el número de réplicas de los Pods), los Services (abstraen direcciones IP dinámicas y proveen balanceo de carga interno) y los recursos de Ingress (gestionan el acceso HTTPS externo hacia los servicios).
+
+Para los requerimientos locales de la guía de APE 7, aunque se analizó la topología de Kubernetes, se determinó utilizar Docker Compose para la fase de despliegue práctico. Esta decisión responde a criterios de optimización de recursos en la máquina de pruebas. Configurar un clúster local de Kubernetes (mediante Minikube o K3s) añade una sobrecarga considerable de uso de CPU y memoria RAM debido al procesamiento continuo del plano de control y agentes de red. Para una aplicación monolítica o monorrepo simple en QA local, Docker Compose provee la orquestación necesaria sin la complejidad operativa asociada a Kubernetes, reservando a este último como un objetivo prioritario para entornos distribuidos de alta disponibilidad.
+
+\subsubsection{Comprensión del sistema a desplegar}
+El software SafeRidePro está estructurado bajo la arquitectura de un monorepo administrado con gestores de paquetes modernos, lo que implica que múltiples proyectos coexisten en el mismo repositorio Git compartiendo dependencias comunes. La comprensión de esta topología es indispensable para configurar un pipeline, ya que un error común consiste en intentar desplegar subcarpetas de manera aislada sin compilar previamente sus dependencias directas.
+
+El monorepo cuenta con los siguientes componentes distribuidos en su estructura:
+\begin{itemize}[leftmargin=*]
+    \item \texttt{apps/api}: Backend programado en el framework NestJS. Utiliza una arquitectura modular estructurada basada en inyección de dependencias para resolver peticiones REST. Para la persistencia de datos y mapeo relacional, se apoya en Prisma ORM, el cual requiere leer un esquema de base de datos (\texttt{schema.prisma}) para generar en caliente el cliente TypeScript compilado.
+    \item \texttt{apps/web}: Frontend de la aplicación implementado sobre Next.js. El framework aprovecha características avanzadas como el renderizado del lado del servidor (SSR) e hidratación del cliente. Para optimizar el tamaño de las imágenes finales, Next.js se configura en modo de salida independiente (\texttt{output: 'standalone'}), lo que genera una compilación compacta que copia exclusivamente los módulos Node.js requeridos en producción.
+    \item \texttt{packages/shared-types}: Biblioteca compartida dentro del monorrepo que almacena las interfaces, tipificaciones y DTOs comunes que tanto backend como frontend consumen directamente.
+    \item \texttt{deploy/api.Dockerfile} y \texttt{deploy/web.Dockerfile}: Archivos de receta Docker optimizados en múltiples etapas (multi-stage builds) para compilar y empaquetar los artefactos finales minimizando el tamaño en disco de las imágenes.
+    \item \texttt{docker-compose.qa.yml}: Archivo de orquestación multi-contenedor adaptado para el ambiente de QA local, integrando una base de datos PostgreSQL en el puerto 5433, el backend en el puerto 3001 y el frontend en el puerto 3000.
+    \item \texttt{.env.qa}: Archivo de variables de entorno específicas para este entorno de pruebas (direcciones de base de datos, secretos, URLs de salud, etc.).
+\end{itemize}
+
+El principal reto técnico que introduce esta estructura radica en que para construir la imagen del backend y del frontend, el monorepo requiere primero resolver e instalar todas las dependencias en la raíz del proyecto y transpilar el paquete \texttt{packages/shared-types}. De igual forma, el backend de NestJS depende directamente de Prisma ORM, lo que obliga a ejecutar comandos de generación del cliente de base de datos (\texttt{prisma generate}) antes de iniciar la compilación. El ignorar estas dependencias jerárquicas provocaría un fallo inmediato en el proceso de construcción de imágenes.
+
+\subsubsection{Diseño del entorno automatizado}
+Para aislar el software del sistema de pruebas local de los estudiantes y evitar la instalación nativa de Jenkins en Windows, se diseñó un entorno de automatización basado en contenedores Docker. Específicamente, se implementó el patrón de diseño arquitectónico denominado Docker-outside-of-Docker (DooD), montando el socket del daemon de Docker del host dentro del contenedor de Jenkins.
+
+Se analizaron dos alternativas técnicas para la estructuración de este flujo:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Docker-in-Docker (DinD):} Consiste en ejecutar una instancia completa del daemon de Docker dentro de un contenedor Docker. Requiere levantar el contenedor contenedorizador con privilegios elevados del sistema operativo principal (\texttt{--privileged}), lo cual representa una brecha crítica de seguridad. Además, causa penalizaciones severas en la velocidad de lectura y escritura de disco debido a la anidación del sistema de archivos de almacenamiento de Docker (overlayfs sobre overlayfs).
+    \item \textbf{Docker-outside-of-Docker (DooD):} En lugar de ejecutar un daemon de Docker anidado, se comparte el motor de Docker de la máquina host montando el socket virtual de comunicación UNIX \texttt{/var/run/docker.sock} dentro del contenedor de Jenkins en la misma ruta. El contenedor de Jenkins solo contiene el cliente ligero de la línea de comandos de Docker (\texttt{docker-cli}). Cuando Jenkins ejecuta un comando de construcción o levantamiento, la petición viaja por el socket y es procesada directamente por el motor de Docker Desktop del host Windows.
+\end{itemize}
+
+La opción DooD fue la seleccionada debido a que ofrece un rendimiento óptimo de compilación al aprovechar la caché de capas de la máquina anfitriona directamente, eliminando la necesidad de otorgar accesos privilegiados que comprometan la seguridad del sistema host. Bajo este diseño, los contenedores de SafeRidePro que levanta el pipeline se ejecutan como contenedores hermanos (siblings) de Jenkins en el host, simplificando la gestión de puertos e intercomunicación de redes bridge locales.
+
+\subsubsection{Preparación del entorno local}
+El sistema operativo Windows sobre el cual se ejecutó la práctica cuenta con Docker Desktop configurado con el motor de virtualización basado en WSL2 (Windows Subsystem for Linux). Antes de iniciar el aprovisionamiento, se procedió a verificar que no existieran conflictos de puertos mediante comandos de terminal, garantizando que el puerto 8080 (destinado a Jenkins), 3000 (Next.js), 3001 (NestJS API) y 5433 (PostgreSQL QA) se encontraran completamente desocupados.
+
+La preparación del entorno de Jenkins se llevó a cabo utilizando un contenedor construido desde la imagen personalizada configurada en \texttt{docker-compose.jenkins.yml}. Este archivo define el montaje del socket de Docker, la persistencia de la carpeta \texttt{/var/jenkins\_home} y la asignación del puerto 8080. Para iniciar el proceso de descarga y compilación de la imagen de automatización, se ejecutó el siguiente comando en la raíz del proyecto:
+
+\begin{verbatim}
+docker compose -f docker-compose.jenkins.yml up --build -d
+\end{verbatim}
+
+\evidencia{ape7_01_jenkins_compose_up.png}{Construcción y levantamiento inicial del contenedor de Jenkins mediante \texttt{docker compose}.}
+
+Tras concluir el comando de inicio, se ejecutó una comprobación rápida en la consola para confirmar que el contenedor llamado \texttt{saferidepro-jenkins} estuviera activo y que su puerto 8080 se encontrara expuesto a conexiones locales.
+
+\evidencia{ape7_02_jenkins_container_running.png}{Contenedor \texttt{saferidepro-jenkins} ejecutándose correctamente después del arranque inicial.}
+
+Para complementar esta validación técnica, se revisó la interfaz gráfica de Docker Desktop, confirmando visualmente que los recursos se encontraran asignados sin problemas, que el contenedor no reportara fallos de arranque y que los logs iniciales de carga de Jenkins se estuvieran emitiendo con normalidad.
+
+\evidencia{Captura de pantalla 2026-06-03 135342.png}{Verificación del contenedor de Jenkins desde Docker Desktop, incluyendo su estado y registros generales.}
+
+\subsubsection{Configuración inicial de Jenkins}
+Una vez levantado el servidor web de Jenkins en \texttt{http://localhost:8080}, se procedió a realizar su desbloqueo de seguridad. Por motivos de protección en instalaciones nuevas, Jenkins genera una contraseña temporal de administrador en el sistema de archivos del contenedor. Se utilizó un comando de ejecución interactiva para extraer este hash de seguridad sin necesidad de ingresar al contenedor:
+
+\begin{verbatim}
+docker exec saferidepro-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+\end{verbatim}
+
+\evidencia[0.8\linewidth]{ape7_03_jenkins_password.png}{Obtención de la contraseña inicial necesaria para desbloquear Jenkins.}
+
+El valor alfanumérico obtenido se ingresó en la interfaz del navegador, superando la primera barrera de seguridad de la plataforma.
+
+\evidencia{ape7_04_jenkins_unlock.png}{Pantalla de desbloqueo de Jenkins al iniciar por primera vez.}
+
+En el asistente de arranque, se seleccionó la instalación de los plugins recomendados por la comunidad. Aunque la imagen dockerizada de Jenkins ya contenía complementos integrados, esta acción garantiza que se cuente con las últimas actualizaciones estables de Git, Pipeline y Credentials binding, indispensables para el correcto procesamiento del \texttt{Jenkinsfile} del monorepo.
+
+\evidencia{ape7_05_jenkins_plugins.png}{Pantalla de selección e instalación de plugins sugeridos durante la configuración inicial de Jenkins.}
+\evidencia{ape7_05.2_jenkins_plugins.png}{Panel de administración de Jenkins una vez terminada la configuración básica y con el entorno listo para continuar.}
+
+Finalmente, se rellenó el formulario para crear el usuario administrador del sistema, otorgando credenciales persistentes que impiden tener que recurrir nuevamente a la contraseña temporal de desbloqueo en futuros accesos.
+
+\evidencia{ape7_06_jenkins_admin_user.png}{Creación del usuario administrador para el acceso permanente a Jenkins.}
+
+\subsubsection{Registro de la credencial \texttt{env-qa}}
+El almacenamiento seguro de variables confidenciales es una práctica fundamental de DevOps. Dado que el archivo \texttt{.env.qa} contiene credenciales críticas, como las contraseñas de la base de datos y llaves de cifrado, no debe ser subido al repositorio de código público o compartido. Jenkins resuelve esta problemática a través de su gestor interno de credenciales cifradas.
+
+El proceso de registro se inició accediendo al menú de administración de credenciales globales, el cual se encontraba vacío en la instalación inicial.
+
+\evidencia{Captura de pantalla 2026-06-03 135355.png}{Vista inicial del módulo de credenciales de Jenkins antes de registrar el archivo de entorno.}
+
+Se seleccionó la opción de agregar una nueva credencial con alcance global. Para el manejo del archivo se especificó que se trataría de una credencial de tipo \texttt{Secret file}, la cual almacena el contenido binario o de texto de un archivo cargado directamente por el administrador.
+
+\evidencia{Captura de pantalla 2026-06-03 135409.png}{Selección del tipo de credencial \texttt{Secret file} para almacenar el archivo \texttt{.env.qa}.}
+
+Se subió el archivo local \texttt{.env.qa} y se le asignó el identificador único \texttt{env-qa}. Esta cadena de identificación es fundamental debido a que el script del pipeline interactúa con ella de forma directa para referenciar y extraer el archivo en tiempo de ejecución.
+
+\evidencia{Captura de pantalla 2026-06-03 135526.png}{Formulario de creación de la credencial \texttt{env-qa} dentro de Jenkins.}
+
+Tras guardar el formulario, se confirmó que la credencial estuviera disponible en el dominio global, lista para ser montada de forma aislada e inyectada temporalmente en el workspace del job de automatización.
+
+\evidencia{Captura de pantalla 2026-06-03 135604.png}{Confirmación visual de la credencial \texttt{env-qa} ya creada y disponible para el pipeline.}
+
+\subsubsection{Creación del pipeline desde el repositorio}
+Con la infraestructura de soporte y la seguridad preparadas, se procedió a definir el Job que procesará el flujo de integración continua. Se eligió crear un elemento de tipo \texttt{Pipeline} bajo el nombre \texttt{SafeRidePro-CI-CD}, lo cual provee el soporte para sintaxis declarativa.
+
+\evidencia{ape7_07_new_item_pipeline.png}{Creación del nuevo job \texttt{SafeRidePro-CI-CD} como pipeline en Jenkins.}
+
+Para evitar mantener el código del pipeline acoplado de forma exclusiva a la base de datos interna de Jenkins (lo que impediría la portabilidad o el control de cambios sobre las etapas de despliegue), se seleccionó la opción de definición \texttt{Pipeline script from SCM}. Se especificó que la procedencia del código sería un repositorio de Git local o remoto.
+
+\evidencia{ape7_08_pipeline_scm_config.png}{Configuración del pipeline para obtener el script directamente desde el repositorio Git.}
+
+Se fijó la rama de rastreo del repositorio de trabajo y se validó que el parámetro del nombre del script fuera exactamente \texttt{Jenkinsfile}, indicándole al motor de automatización el archivo raíz que debe procesar tras clonar el repositorio.
+
+\evidencia{ape7_09_pipeline_jenkinsfile_path.png}{Definición del \texttt{Script Path} hacia el archivo \texttt{Jenkinsfile}.}
+
+\subsubsection{Estructura y lógica del \texttt{Jenkinsfile}}
+El pipeline de SafeRidePro está programado bajo un esquema de pipeline declarativo de Jenkins. La sintaxis del archivo se estructura en bloques lógicos bien diferenciados, lo cual permite delimitar claramente qué tareas pertenecen a la compilación, cuáles al despliegue físico y cuáles a las rutinas de confirmación funcional.
+
+\evidencia[0.72\linewidth]{ape7_18_jenkinsfile_codigo.png}{Primera parte del archivo \texttt{Jenkinsfile}, con variables de entorno y etapas iniciales del pipeline.}
+\evidencia[0.72\linewidth]{ape7_18.2_jenkinsfile_codigo.png}{Segunda parte del archivo \texttt{Jenkinsfile}, con validaciones y archivado de artefactos.}
+
+El archivo \texttt{Jenkinsfile} contiene las siguientes etapas secuenciales de ejecución:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Checkout:} Clona la rama configurada del monorepo en el directorio de trabajo local del contenedor.
+    \item \textbf{Verificar herramientas:} Ejecuta consultas de versión sobre \texttt{docker} y \texttt{docker compose} en el host, confirmando que la conexión a través del socket montado sea correcta antes de proceder con cargas pesadas de trabajo.
+    \item \textbf{Preparar entorno:} Hace uso de la función nativa \texttt{withCredentials} para tomar la credencial secreta \texttt{env-qa}, ubicar su contenido en un archivo de paso y luego copiar dicho archivo con el nombre definitivo \texttt{.env.qa} a la raíz del espacio de trabajo.
+    \item \textbf{Limpiar despliegue anterior:} Ejecuta comandos de detención y eliminación de contenedores de QA preexistentes que puedan estar ocupando los puertos o reteniendo memoria obsoleta (\texttt{docker compose -f docker-compose.qa.yml down --volumes --remove-orphans}). Esto garantiza la reproducibilidad de la prueba desde cero.
+    \item \textbf{Construir imágenes:} Compila el monorepo y empaqueta las imágenes Docker definitivas utilizando \texttt{docker compose -f docker-compose.qa.yml build}.
+    \item \textbf{Levantar aplicación:} Inicia la ejecución de los contenedores PostgreSQL, API NestJS y Next.js en segundo plano (modo background).
+    \item \textbf{Validar backend y frontend:} Dos etapas dedicadas que ejecutan solicitudes HTTP iterativas (\texttt{curl}) contra los endpoints de salud \texttt{/api/health} y \texttt{/healthz} respectivamente. Ambas etapas implementan temporizadores de espera y reintentos para no marcar un despliegue como fallido de forma precipitada mientras los servicios culminan sus rutinas internas de inicio.
+\end{itemize}
+
+El pipeline concluye con una directiva de post-ejecución (\texttt{post}) que se encarga de resguardar evidencia técnica útil al finalizar el job (tanto si resulta exitoso como si fracasa). Se recopilan y archivan en Jenkins el listado de contenedores resultantes (\texttt{jenkins-compose-ps.txt}) y el volcado de logs completos del stack de QA (\texttt{jenkins-compose-logs.txt}).
+
+\subsubsection{Ajustes realizados durante las primeras ejecuciones}
+El proceso de estabilización inicial del pipeline no estuvo exento de fallos. Este comportamiento es habitual cuando se integran sistemas con múltiples servicios, compilaciones complejas y validaciones automáticas. Se requirió un proceso de depuración iterativo enfocado en corregir cuatro fallos técnicos principales:
+
+\subsubsection*{1. Carga del archivo de entorno}
+En los primeros intentos de ejecución del pipeline se omitió el archivo de variables \texttt{.env.qa}, asumiendo que al estar en un entorno local, el contenedor podría leer el archivo general del host. Sin embargo, dado que Jenkins se ejecuta dentro de un contenedor aislado, carece de visibilidad sobre los archivos externos al workspace. Para solucionar esto se introdujo la credencial de tipo \texttt{Secret file} y el uso estructurado de \texttt{withCredentials} en el \texttt{Jenkinsfile}, permitiendo que el pipeline escriba y exponga el archivo únicamente en las etapas requeridas.
+
+\subsubsection*{2. Construcción del backend con Prisma}
+Durante la fase de construcción de la imagen de backend, el compilador ejecutaba la transpilación de NestJS y requería inicializar el cliente de base de datos Prisma mediante el esquema declarativo. Dado que en ese instante del build no existe un contenedor de base de datos encendido con el cual validar la conexión (ya que la base de datos se levanta en la fase de ejecución, no de construcción), el build fallaba inmediatamente. Para solucionar este bloqueo, se añadió la declaración de un argumento de construcción \texttt{DATABASE\_URL} dentro de \texttt{deploy/api.Dockerfile} y se enlazó este valor desde el archivo \texttt{docker-compose.qa.yml} para inyectar una cadena de conexión estructurada que sirviera de guía sintáctica al generador durante la compilación.
+
+\subsubsection*{3. Validación prematura de servicios}
+Al inicio de las pruebas de automatización, las tareas de verificación hacían un único llamado de tipo HTTP contra los endpoints del backend y del frontend inmediatamente después de invocar \texttt{docker compose up}. Dado que PostgreSQL requiere varios segundos para inicializar su almacenamiento y aplicar las migraciones correspondientes mediante Prisma, y que el servidor NestJS toma tiempo en iniciar su servidor de escucha, la validación se topaba con un puerto cerrado o un código de error de pasarela de enlace (\texttt{502 Bad Gateway}), lo que provocaba que Jenkins abortara y marcara la corrida como fallida.
+
+La solución de este problema consistió en implementar un script estructurado de consultas recurrentes en lenguaje Bash. En lugar de lanzar una consulta única, el pipeline ejecuta bucles iterativos utilizando \texttt{curl} con un máximo de 30 reintentos y pausas programadas de 2 segundos. De este modo, se otorga una ventana temporal de tolerancia de hasta 60 segundos para que los servicios culminen sus procesos de arranque antes de declarar un fallo.
+
+\subsubsection*{4. Falta de evidencia útil al fallar}
+Durante las primeras ejecuciones del pipeline que fracasaban en etapas intermedias de construcción, se experimentó una pérdida del historial de errores debido a que al colapsar la tarea, el pipeline detenía el proceso abruptamente sin guardar logs del motor de base de datos o del backend de NestJS. Para evitar depuraciones a ciegas, se diseñó la sección de post-procesamiento en el \texttt{Jenkinsfile}, la cual captura y archiva los archivos de registro y el estado del docker compose como artefactos descargables del build de Jenkins.
+
+\evidencia{ape7_10_pipeline_running.png}{Ejemplo de una ejecución intermedia del pipeline, todavía en proceso de ajuste y estabilización.}
+
+\subsubsection{Ejecución final del pipeline automatizado}
+Una vez aplicados los ajustes e integradas las modificaciones en la lógica del \texttt{Jenkinsfile}, se lanzó una nueva corrida del pipeline. En esta ocasión, todas las etapas (Checkout, verificación, limpieza, build, inicio y validación por reintentos) se ejecutaron secuencialmente en un tiempo controlado, culminando en un estado completamente exitoso (color verde en la interfaz).
+
+\evidencia{ape7_11_pipeline_stage_view_success.png}{Ejecución exitosa del pipeline completo una vez estabilizados los pasos de despliegue y validación.}
+
+El registro completo de salida por consola arrojó los detalles técnicos del procesamiento. Se pudo constatar cómo el pipeline clonó correctamente el repositorio, inyectó la credencial secreta en el archivo temporal de entorno y envió las señales correspondientes al motor de Docker de la máquina host para crear los contenedores en paralelo.
+
+\evidencia{ape7_12_pipeline_console_output.png}{Salida de consola del pipeline mostrando el recorrido de la ejecución automatizada.}
+
+Asimismo, se verificó el registro de artefactos en la parte superior derecha de la interfaz del Job en Jenkins, confirmando la disponibilidad de los ficheros de logs recopilados tras culminar las comprobaciones.
+
+\evidencia{ape7_19_jenkins_logs_artifacts.png}{Artefactos generados por Jenkins para conservar el estado y los logs del despliegue.}
+
+\subsubsection{Verificación del despliegue de SafeRidePro}
+Para garantizar que el éxito reportado por Jenkins tuviera correspondencia con la realidad operativa de los servicios, se procedió a realizar pruebas funcionales externas desde la máquina anfitriona. En primera instancia, se listaron los contenedores en ejecución empleando la consola de comandos de Docker, validando la coexistencia del contenedor de Jenkins junto con la base de datos PostgreSQL, la API NestJS y el frontend de Next.js.
+
+\begin{verbatim}
+docker ps
+\end{verbatim}
+
+\evidencia{ape7_13_app_containers_running.png}{Contenedores de Jenkins, PostgreSQL, API y frontend activos después de la ejecución del pipeline.}
+
+Posteriormente, se abrió el navegador web para interrogar directamente a los endpoints de verificación de salud de la aplicación. Para el backend de la API, se accedió a la dirección \texttt{http://localhost:3001/api/health}, obteniendo un mensaje con código HTTP 200 y una carga útil JSON de respuesta indicando que la conectividad a la base de datos y la inicialización de módulos era satisfactoria.
+
+\evidencia[0.7\linewidth]{ape7_14_api_health.png}{Respuesta satisfactoria del endpoint de salud del backend.}
+
+De igual forma, se consultó el estado del servidor frontend ingresando a la URL \texttt{http://localhost:3000/healthz}, confirmando que la aplicación Next.js se encontraba respondiendo peticiones de forma estable.
+
+\evidencia[0.7\linewidth]{ape7_15_web_health.png}{Respuesta correcta del endpoint de salud del frontend.}
+
+Consolidados los tests de salud técnicos de bajo nivel, se procedió a navegar a la ruta pública de acceso del sistema en \texttt{http://localhost:3000/login}, visualizando el renderizado correcto de la pantalla de inicio de sesión de SafeRidePro.
+
+\evidencia{ape7_16_login_publico.png}{Pantalla de login de SafeRidePro.}
+
+Para finalizar la verificación práctica, se ingresó al sistema utilizando una cuenta de prueba previamente registrada en el seed de la base de datos. Se accedió al dashboard principal, comprobando que la aplicación no presentaba errores de CORS, conectividad con base de datos o caídas de renderizado.
+
+\evidencia{ape7_17_app_funcionando.png}{Vista autenticada del sistema, ya desplegado y operativo tras la ejecución del pipeline.}
+
+\subsubsection{Papel teórico de Kubernetes dentro del trabajo}
+Aunque el alcance práctico del presente laboratorio se solventó adecuadamente mediante la combinación de Jenkins y Docker Compose, se realizó un análisis teórico sobre el rol que desempañaría Kubernetes en un entorno de producción real para SafeRidePro.
+
+Docker Compose es una herramienta idónea para la orquestación local o entornos de preproducción simples de una sola máquina, pero posee limitaciones críticas como la falta de escalado automatizado ante picos de demanda, carencia de balanceo de carga nativo multi-nodo y la ausencia de políticas de autorrecuperación (self-healing) que puedan reubicar contenedores que fallen hacia otros servidores de manera automática.
+
+Bajo esta perspectiva, la incorporación de Kubernetes como orquestador principal de SafeRidePro aportaría ventajas operativas concretas:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Alta disponibilidad y tolerancia a fallos:} Si un nodo físico que aloja contenedores de la API NestJS sufre un fallo de hardware, Kubernetes migra instantáneamente esos Pods a otros nodos funcionales sin interrupción de cara al usuario.
+    \item \textbf{Escalamiento horizontal automatizado (HPA):} Monitorea de manera constante el uso de CPU y memoria de la aplicación. Si el frontend web o la API sufren picos de solicitudes concurrentes, Kubernetes incrementa de forma dinámica el número de réplicas en ejecución y distribuye la carga entre ellas.
+    \item \textbf{Despliegues progresivos y rollback automático:} Al actualizar SafeRidePro, Kubernetes realiza despliegues de tipo Rolling Update (actualizaciones progresivas sin tiempo de inactividad). Si la nueva versión de la API arroja fallos en sus validaciones internas, el orquestador aborta la actualización y revierte al estado anterior de manera inmediata.
+    \item \textbf{Gestión avanzada de redes e Ingress:} Centraliza el enrutamiento HTTP/HTTPS, gestionando los certificados SSL/TLS de forma nativa y balanceando el tráfico hacia los servicios frontend o backend de manera transparente.
+\end{itemize}
+
+Por consiguiente, el uso de Jenkins y Docker Compose en este laboratorio sirvió como el escalón intermedio ideal para dominar los conceptos de empaquetado y automatización, dejando sentadas las bases para una eventual adopción de Kubernetes cuando las demandas de escalabilidad de SafeRidePro lo requieran.
+
+\subsection{Resultados Obtenidos}
+El desarrollo del laboratorio permitió alcanzar resultados tangibles tanto a nivel de infraestructura automatizada como en la estabilidad del flujo de entrega continua para el sistema SafeRidePro. Se detallan a continuación los logros técnicos obtenidos:
+
+\subsubsection*{1. Entorno de Automatización Aislado y Persistente}
+Se consolidó un servidor de Jenkins operativo ejecutándose dentro de un contenedor Docker aislado. Al emplear el volumen persistente montado en \texttt{/var/jenkins\_home}, se garantizó que los plugins instalados, las configuraciones de usuario administrador y el histórico de ejecuciones del pipeline se conservaran entre reinicios del contenedor. Mediante la vinculación del socket de comunicación UNIX del host, el contenedor de Jenkins interactuó directamente con el motor de Docker Desktop anfitrión, logrando ejecutar compilaciones de imágenes y despliegues sin degradación de rendimiento.
+
+\subsubsection*{2. Ciclo de Despliegue Declarativo Automatizado}
+Se obtuvo un pipeline declarativo estructurado en el archivo \texttt{Jenkinsfile} e integrado en el monorepo. Este flujo automatizó la secuencia completa de despliegue que anteriormente requería de intervenciones manuales fragmentadas. El pipeline ejecuta de manera consistente las fases de: clonación del código fuente, validación de las herramientas de compilación, inyección dinámica de secretos desde el gestor de credenciales, detención de despliegues obsoletos de QA, reconstrucción de imágenes con Docker Compose y validación funcional interactiva.
+
+\subsubsection*{3. Resolución de Bloqueos en Monorrepositorio y Base de Datos}
+Se solventó el acoplamiento crítico entre la compilación de código JavaScript y la disponibilidad de bases de datos relacionales en la fase de construcción de imágenes. Al incorporar argumentos de construcción (`build args`) en el Dockerfile del backend para Prisma ORM, se posibilitó generar el cliente compilado en caliente sin necesidad de contar con una instancia activa de PostgreSQL en dicha fase. Asimismo, la configuración de Next.js standalone redujo la imagen final a una fracción de su tamaño original al extraer únicamente las dependencias de producción.
+
+\subsubsection*{4. Mecanismo de Health Check Resiliente en QA}
+Se erradicaron los falsos fallos en el pipeline causados por latencias normales de inicio. Mediante la codificación de bucles en lenguaje Bash con reintentos iterativos (hasta 30 reintentos con pausas de 2 segundos), el pipeline tolera el tiempo de arranque de PostgreSQL (aplicación de migraciones) y la compilación inicial de NestJS y Next.js. El flujo solo valida el despliegue cuando los endpoints `/api/health` y `/healthz` responden con código HTTP 200, garantizando que el sistema QA quede verdaderamente operativo.
+
+\subsubsection*{5. Despliegue Exitoso y Verificable del Sistema}
+Se constató la ejecución paralela y correcta de cuatro contenedores: el servidor de Jenkins, la base de datos PostgreSQL en el puerto 5433, el backend de NestJS en el puerto 3001 y el frontend de Next.js en el puerto 3000. Se validó visualmente la carga y renderizado de la pantalla pública de login de SafeRidePro y se verificó la conectividad a la base de datos tras iniciar sesión con un usuario seed de pruebas, confirmando que todos los servicios operan de forma articulada.
+
+\subsubsection*{6. Trazabilidad Técnica Mediante Artefactos}
+Se implementó la recolección automática de evidencia post-ejecución. Cada ejecución del pipeline genera y resguarda de forma permanente dos artefactos descargables: \texttt{jenkins-compose-ps.txt} (estado de salud y mapeo de puertos de los contenedores) y \texttt{jenkins-compose-logs.txt} (registros completos de salida estándar de los contenedores). Esto facilita la auditoría del rendimiento y simplifica el diagnóstico de errores futuros en entornos de desarrollo compartido.
+
+%===========================================================================================================================================================================================================
+\subsection{Habilidades Blandas Empleadas En La Práctica}
+
+\begin{itemize}
+    \item[$\square$]  Liderazgo
+    \item[\checkedbox] Trabajo en equipo
+    \item[$\square$] Comunicación asertiva
+    \item[$\square$] La empatía
+    \item[\checkedbox] Pensamiento crítico
+    \item[$\square$] Flexibilidad
+    \item[$\square$] La resolución de conflictos
+    \item[$\square$] Adaptabilidad
+    \item[\checkedbox] Responsabilidad
+\end{itemize}
+
+\subsection{Conclusiones}
+\begin{itemize}
+    \item La automatización del despliegue mediante un pipeline de CI/CD reduce considerablemente los fallos manuales y las inconsistencias de entorno que suelen surgir al levantar servicios de forma manual. Al delegar estas tareas en Jenkins, se garantiza que cada compilación y puesta en marcha se efectúe bajo condiciones exactamente idénticas, lo que incrementa la predictibilidad y estabilidad general del software.
+    \item Docker aporta la flexibilidad necesaria para empaquetar aplicaciones complejas de tipo monorepo como SafeRidePro, aislando los componentes individuales y resolviendo los problemas derivados del versionado de dependencias o motores de ejecución del host. El uso de Docker Compose se confirma como una alternativa sumamente eficiente y de bajo overhead para orquestar entornos locales de prueba de forma coordinada.
+    \item Un pipeline automatizado no puede considerarse completo ni seguro si carece de validaciones de salud activas posteriores al despliegue. Las rutinas de reintento implementadas demostraron que la disponibilidad de red de un contenedor no equivale inmediatamente a su operatividad lógica, por lo que el monitoreo de endpoints reales es una fase indispensable en el flujo de automatización.
+    \item La investigación y análisis de Kubernetes provee el marco teórico necesario para entender el escalado de arquitecturas en la nube. Aunque Docker Compose cubre de manera óptima las necesidades académicas y de QA local del laboratorio, Kubernetes representa el camino de evolución natural si SafeRidePro requiriera atender demandas de alta concurrencia, balanceo geográfico y tolerancia a fallos multi-nodo.
+\end{itemize}
+
+\subsection{Recomendaciones}
+\begin{enumerate}
+    \item Versionar y mantener el archivo \texttt{Jenkinsfile} dentro de la raíz del repositorio Git del proyecto. Al tratar al pipeline como código, se facilita el control de versiones de la infraestructura de automatización y se simplifica la replicabilidad en nuevos servidores de Jenkins.
+    \item Evitar bajo cualquier circunstancia la inclusión física de archivos con credenciales o variables de entorno en los repositorios de código. Es mandatorio utilizar herramientas dedicadas de gestión de secretos, como el llavero de Jenkins o bóvedas dedicadas (Vault), inyectándolos dinámicamente en tiempo de compilación.
+    \item Incorporar fases tempranas de pruebas automáticas previas al despliegue en el pipeline, como la ejecución automatizada de pruebas unitarias y análisis de código estático (Linter), asegurando que se detecten inconsistencias funcionales antes de iniciar la construcción de contenedores.
+    \item Implementar políticas periódicas de limpieza de imágenes y contenedores huérfanos en el servidor de Jenkins para prevenir el agotamiento de espacio en el disco duro del host, integrando tareas programadas de mantenimiento del motor Docker.
+\end{enumerate}
+
+\bibliographystyle{plain}
+\bibliography{bibliografias}
+
+\end{document}
