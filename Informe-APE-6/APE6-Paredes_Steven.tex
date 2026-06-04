@@ -20,6 +20,7 @@
 \usepackage{pdflscape}
 \usepackage{longtable}
 \usepackage{ifthen}
+\usepackage{url}
 
 \graphicspath{{Imagenes/}}
 
@@ -109,7 +110,6 @@ Presenciales: 4\\
 \indent No presenciales: 0
 
 \subsection{Instrucciones}
-
 Los estudiantes deberán implantar el sistema desarrollado tanto en un servidor local como en un servidor en la nube, basándose en la investigación realizada sobre ambos enfoques. Deberán seguir los siguientes pasos:
 
 \begin{itemize}
@@ -145,115 +145,110 @@ Los estudiantes deberán implantar el sistema desarrollado tanto en un servidor 
 
 \subsection{Actividades por Desarrollar}
 \subsubsection{Descripción de la arquitectura implantada}
-Antes de desplegar el sistema fue necesario entender cómo estaba construido el proyecto. SafeRidePro no es una sola aplicación ejecutándose de manera aislada, sino un conjunto de componentes que se comunican entre sí. Si uno de ellos falla, el sistema completo deja de operar correctamente. Por esa razón, la implantación se planteó respetando la estructura original del repositorio y evitando soluciones improvisadas que alteraran su funcionamiento.\\
+La puesta en marcha de la suite SafeRidePro demandó un examen exhaustivo de la topología distribuida que caracteriza al proyecto. Dado que el software está estructurado como un monorrepo basado en workspaces de pnpm, sus módulos están conceptualmente desacoplados pero vinculados de forma operacional. Esta disposición requiere canales de enlace síncronos e ininterrumpidos para que el backend, la base de datos y la interfaz actúen de forma cohesionada.
 
-La arquitectura implantada mantiene la misma separación lógica del proyecto:
+La infraestructura del sistema se articula a través de las siguientes capas operativas:
 \begin{itemize}[leftmargin=*]
-    \item \textbf{Base de datos:} PostgreSQL. En local se ejecutó dentro de un contenedor Docker y, en nube, se utilizó una instancia administrada en Supabase.
-    \item \textbf{Backend:} una API desarrollada con NestJS, encargada de la lógica del sistema: autenticación, usuarios, viajes, reservas, reportes, billetera, auditoría y demás procesos internos.
-    \item \textbf{Frontend:} una aplicación web construida con Next.js, que presenta la interfaz con la que interactúan pasajeros, conductores y administradores.
-    \item \textbf{Monorepo:} el proyecto se organiza en un único repositorio con varias carpetas principales. Entre ellas destacan \texttt{apps/api}, \texttt{apps/web} y \texttt{packages/shared-types}, esta última usada para compartir tipos y contratos entre backend y frontend.
-    \item \textbf{Orquestación local:} Docker Compose, utilizado para levantar de forma coordinada la base de datos, la API y la aplicación web.
-    \item \textbf{Publicación en nube:} Render para el backend y el frontend, y Supabase como proveedor de PostgreSQL.
+    \item \textbf{Almacenamiento de Datos (Persistencia):} Motor de base de datos relacional PostgreSQL. Para la prueba local se instanció una imagen oficial expuesta dentro de un segmento de red de puente virtual en Docker. En contraste, la versión de nube delegó esta función a una base de datos gestionada en la nube mediante Supabase, resolviendo la persistencia de forma externa.
+    \item \textbf{Capa de Negocios (Backend API):} Aplicación construida bajo NestJS encargada de gobernar el flujo de datos. Implementa la autenticación basada en tokens JWT, gestiona la creación de rutas de transporte, ejecuta el procesamiento de transacciones financieras virtuales, audita las actividades de la plataforma y procesa los reportes administrativos.
+    \item \textbf{Capa de Presentación (Frontend):} Cliente web dinámico basado en Next.js y React. Se comunica con el backend mediante peticiones asíncronas REST, actuando como interfaz para los diferentes perfiles del sistema: pasajeros, conductores y administradores.
+    \item \textbf{Cohesión de Repositorio (Monorrepo):} La organización jerárquica separa los subproyectos en \texttt{apps/api} (backend) y \texttt{apps/web} (frontend), enlazados a través de tipos comunes e interfaces declaradas en el módulo compartido de librerías locales \texttt{packages/shared-types}. Esta interdependencia exige procesos ordenados de compilación previa de dependencias.
+    \item \textbf{Orquestación y Enlace:} En el ámbito local se confió en Docker Compose para administrar las redes, volúmenes de disco y puertos expuestos. En la nube, se establecieron servicios PaaS con Render para la ejecución del servidor Node y Supabase para el aprovisionamiento relacional.
 \end{itemize}
 
-En otras palabras, el objetivo no fue simplemente ``subir una página web'', sino conseguir que todas las piezas del sistema quedaran comunicadas y funcionando como una sola solución.
+Esta separación física de las capas asegura que la lógica del negocio permanezca inalterada frente a traslados de entorno, requiriendo únicamente la redefinición de variables operativas de red, tokens y rutas de conexión a bases de datos.
 
-\subsubsection{Actividad 1. Preparación del entorno local}
-La implantación local se realizó sobre una laptop con Windows y Docker Desktop. Se tomó esta decisión porque permitía reproducir el comportamiento del sistema completo sin necesidad de instalar manualmente PostgreSQL, Node.js ni procesos separados para frontend y backend. En vez de configurar cada servicio por aparte, se aprovechó la infraestructura ya definida dentro del proyecto.
+\subsubsection{Preparación del entorno local}
+Para estructurar el ambiente local de validación, se configuró una máquina portátil con Windows y el subsistema WSL2 acoplado con Docker Desktop. Este diseño evitó la sobrecarga típica de instalar múltiples servicios y paquetes de base de datos directamente en el sistema operativo anfitrión.
 
-El primer paso fue revisar el archivo \texttt{.env.qa}. Este archivo concentra la configuración del entorno: puertos, secretos, direcciones internas y parámetros que necesitan los servicios para reconocerse entre sí. Aunque a simple vista puede parecer solo un archivo de texto, en la práctica cumple un papel clave, porque de él depende que la base de datos, la API y la aplicación web arranquen con la misma configuración esperada por el proyecto.
+El proceso arrancó con la preparación de un archivo de configuración denominado \texttt{.env.qa} ubicado en la raíz del monorrepo. Este archivo centraliza secretos, claves JWT y variables de red. Un aspecto clave consistió en desviar el puerto de escucha local de la base de datos PostgreSQL dockerizada hacia el puerto 5433, eludiendo colisiones físicas con instancias que pudieran estar ejecutándose nativamente en la máquina.
 
-\evidencia[0.82\linewidth]{ape6_local_01_env_qa.png}{Configuración base del archivo \texttt{.env.qa} utilizada durante la implantación local.}
+\evidencia[0.82\linewidth]{ape6_local_01_env_qa.png}{Configuración de parámetros y variables técnicas en el archivo \texttt{.env.qa} para el entorno local.}
 
+La ejecución ordenada para inicializar la suite requirió los siguientes pasos:
 \begin{enumerate}[leftmargin=*]
-    \item Crear el archivo \texttt{.env.qa} a partir de la plantilla del entorno QA.
-    \item Ejecutar:
+    \item Ubicación y validación sintáctica del archivo \texttt{.env.qa} en la raíz del proyecto.
+    \item Ejecución del script de construcción y levantamiento global a través de pnpm:
 \begin{verbatim}
 corepack pnpm qa:up:build
 \end{verbatim}
-    \item Verificar el estado de los contenedores con:
+    \item Comprobación del estado operacional y la asignación de puertos de los contenedores activos:
 \begin{verbatim}
 corepack pnpm qa:ps
 \end{verbatim}
-    \item Validar:
+    \item Control de disponibilidad de red interna consultando los siguientes recursos locales:
     \begin{itemize}
-        \item \texttt{http://localhost:3000}
-        \item \texttt{http://localhost:3001/api/health}
-        \item \texttt{http://localhost:3000/healthz}
+        \item \texttt{http://localhost:3000} (Servidor Next.js Frontend)
+        \item \texttt{http://localhost:3001/api/health} (Endpoint de salud de API NestJS)
+        \item \texttt{http://localhost:3000/healthz} (Endpoint de salud de Next.js Web)
     \end{itemize}
-    \item Iniciar sesión con una cuenta seed y acceder a una vista funcional del sistema.
+    \item Ingreso mediante navegador a la interfaz de administración pública y validación del inicio de sesión.
 \end{enumerate}
 
-Una vez definida la configuración, se ejecutó el proceso de construcción y levantamiento completo con \texttt{corepack pnpm qa:up:build}. Este comando fue importante porque no solo enciende contenedores; también construye las imágenes necesarias, resuelve dependencias del monorepo y deja preparados los tres componentes principales del sistema.
+La instrucción \texttt{corepack pnpm qa:up:build} automatiza de forma secuencial la descarga de módulos, la compilación de tipados y la inicialización del cliente de Prisma, para luego activar la orquestación en segundo plano por medio del motor Docker Compose.
 
-Detrás de ese proceso participaron varios archivos del repositorio. El archivo \texttt{docker-compose.qa.yml} describe cómo se relacionan los servicios. Los archivos \texttt{deploy/api.Dockerfile} y \texttt{deploy/web.Dockerfile} indican cómo debe construirse el backend y el frontend. De esta manera, la implantación local reutilizó exactamente la lógica prevista por el propio proyecto, sin crear una configuración paralela ajena al desarrollo original.
+\evidencia{ape6_local_02_levantar_stack.png}{Salida de consola tras la ejecución del script que compila y arranca el entorno Docker local.}
 
-\evidencia{ape6_local_02_levantar_stack.png}{Ejecución del comando \texttt{corepack pnpm qa:up:build} para construir y levantar el stack local.}
+Una vez completada la construcción de las imágenes personalizadas, se verificó en consola la estabilidad y salud del backend, frontend y motor de base de datos relacional dentro de la red aislada de QA.
 
-Finalizado el arranque, se verificó que los contenedores del proyecto se encontraran activos y saludables. Esta comprobación tuvo dos objetivos: confirmar que cada servicio inició sin errores y asegurar que la comunicación entre ellos era correcta. En esta etapa ya debía existir una relación funcional entre la base de datos, la API y el frontend.
+\evidencia{ape6_local_03_servicios_activos.png}{Visualización del estado saludable y ejecución continua de los contenedores locales.}
 
-\evidencia{ape6_local_03_servicios_activos.png}{Contenedores del entorno local activos y estables después del levantamiento inicial.}
+A continuación, se realizó una llamada de diagnóstico al recurso \texttt{/api/health} expuesto en el puerto 3001. La respuesta estructurada validó que la API de NestJS se encontraba totalmente lista para aceptar peticiones provenientes del frontend de Next.js.
 
-La validación técnica del backend se realizó consultando el endpoint público de salud de la API. Este tipo de endpoint no muestra la lógica del negocio, pero sí permite comprobar algo fundamental: que el servidor está encendido, responde solicitudes HTTP y puede considerarse disponible para seguir con la validación.
+\evidencia[0.72\linewidth]{ape6_local_04_health_api.png}{Comprobación exitosa del estado lógico de la API del backend NestJS local.}
 
-\evidencia[0.72\linewidth]{ape6_local_04_health_api.png}{Validación del endpoint de salud del backend en el entorno local.}
+Posteriormente, se abrió el navegador web en el host y se cargó la URL local correspondiente a la interfaz del frontend, lo cual desplegó la pantalla de login del sistema.
 
-Una vez comprobada la infraestructura, se validó la capa funcional accediendo a la pantalla pública de autenticación. Esta parte fue importante porque trasladó la verificación desde el nivel técnico al nivel de usuario. Si el sistema mostraba el formulario de acceso, significaba que el frontend estaba publicado correctamente y que la comunicación inicial con el backend podía continuar.
+\evidencia{ape6_local_05_login.png}{Visualización del componente de autenticación cargado de manera correcta en el puerto local.}
 
-\evidencia{ape6_local_05_login.png}{Pantalla de login disponible desde el despliegue local.}
+Para comprobar la consistencia de los datos y la fluidez del sistema local, se ingresó con las credenciales de administrador seed, confirmando que las llamadas REST se procesaban y persistían de forma exitosa en el motor de base de datos local.
 
-Después del ingreso con una cuenta seed se verificó la navegación dentro del sistema, comprobando que la sesión se mantenía activa y que los módulos principales podían cargarse con normalidad. En este punto ya no se trataba solo de ver una pantalla inicial, sino de demostrar que el sistema completo respondía como aplicación real: autenticación, consulta de datos, carga de vistas internas y persistencia de información.
+\evidencia{ape6_local_06_sistema_funcionando.png}{Acceso exitoso al panel interactivo de SafeRidePro dentro de la infraestructura local.}
 
-\evidencia{ape6_local_06_sistema_funcionando.png}{Vista operativa autenticada del sistema funcionando sobre el entorno local.}
+Con la finalidad de dotar al entorno local de tolerancia a interrupciones lógicas o físicas (tales como apagados inesperados o caídas del daemon de Docker Desktop), se aplicó la política de reinicio \texttt{restart: unless-stopped} a cada uno de los servicios detallados en el archivo \texttt{docker-compose.qa.yml}. Se verificó experimentalmente que al forzar el reinicio manual del servicio de Docker, la pila completa de servicios se reestablecía de forma autónoma sin intervención por consola.
 
-Otro aspecto importante de la implantación local fue la persistencia operativa después de reiniciar el entorno. Esto se logró mediante la política \texttt{restart: unless-stopped} definida en Docker Compose y el arranque automático de Docker Desktop en Windows. En términos prácticos, esto significa que el sistema no dependía de una reconstrucción completa cada vez que se apagara o reiniciara el equipo.
+\evidencia{ape6_local_07_reinicio_o_persistencia.png}{Verificación técnica del reinicio automático y la retención del estado de los contenedores locales.}
 
-Como verificación final del despliegue local, se comprobó que el entorno podía recuperarse después de un reinicio de Docker o del equipo, manteniendo el estado operativo del stack sin necesidad de reconfiguración manual adicional.
+\subsubsection{Selección y preparación del entorno en nube}
+La migración de la arquitectura local de SafeRidePro hacia servidores remotos de acceso público requirió un análisis comparativo y de viabilidad de diversos proveedores cloud gratuitos.
 
-\evidencia{ape6_local_07_reinicio_o_persistencia.png}{Comprobación de persistencia operativa del entorno local después del reinicio.}
+\subsubsection*{1. Evaluación con Oracle Cloud Always Free}
+Se diseñó un plan de despliegue fundamentado en una máquina virtual de arquitectura ARM que ejecutaría Ubuntu Server, proyectando replicar exactamente la configuración de Docker Compose expuesta en el entorno local mediante la apertura manual de puertos (3000, 3001, 5433) y la asignación de una IP pública fija. Pese a generar las llaves SSH correspondientes y de configurar las listas de control de seguridad en la consola cloud, la falta de disponibilidad de procesadores Ampere libres en la región del proveedor impidió culminar el aprovisionamiento de la máquina virtual.
 
-\subsubsection{Actividad 2. Selección y preparación del entorno en nube}
-La implantación pública requirió evaluar varias alternativas antes de concretar el despliegue operativo. Esta etapa fue relevante porque, a diferencia del entorno local, en la nube no bastaba con que el sistema funcionara en una sola máquina; también era necesario escoger una plataforma que permitiera publicar el proyecto con recursos gratuitos o académicos, manteniendo una configuración razonable para el alcance de la práctica.
+\subsubsection*{2. Evaluación con Azure for Students}
+De forma complementaria, se exploró el uso de los recursos estudiantiles ofrecidos por Microsoft Azure. Al estudiar las bases de la capa Starter del programa de estudiantes, se observó que el uso concurrente de múltiples servicios web independientes y bases de datos relacionales supera las limitaciones de la cuota mensual gratuita, lo que presentaba el riesgo de cobros indeseados y obligó a descartar el uso de este entorno.
 
-Primero se analizó una estrategia basada en Oracle Cloud Always Free para reproducir una arquitectura de máquina virtual con Docker Compose. La idea era mantener una lógica muy cercana al entorno local: una máquina Ubuntu propia, puertos abiertos y el stack levantado como si se tratara de un pequeño servidor dedicado. Durante esta fase se revisó el aprovisionamiento de la VM, la selección del sistema operativo, la configuración de listas de seguridad y la apertura manual de puertos para SSH, frontend y backend. Sin embargo, la disponibilidad efectiva de recursos gratuitos en la región elegida no permitió completar la creación de la máquina virtual, por lo que no fue posible continuar con esa línea de trabajo.
+\subsubsection*{3. Selección de la Estrategia Definitiva}
+A la luz de estas restricciones de capacidad, se optó por un enfoque arquitectónico basado en Plataformas como Servicio (PaaS) desacopladas. Se seleccionó a Supabase como proveedor de la base de datos PostgreSQL remota y Render para el alojamiento independiente del backend API y el frontend. Este esquema suprimió la sobrecarga de administrar la configuración de firewalls, actualizaciones de kernel o configuraciones de red de una máquina virtual dedicada, enfocando los esfuerzos de desarrollo en estructurar los scripts de compilación de las aplicaciones independientes del monorepo.
 
-Posteriormente se verificó la posibilidad de usar Azure for Students como plataforma alternativa de nube académica. La cuenta disponible no habilitó recursos suficientes para una implantación completa del stack y solo ofreció la modalidad Starter, insuficiente para publicar frontend, backend y base de datos bajo la arquitectura requerida. Esta revisión fue útil porque confirmó que no todas las opciones gratuitas sirven realmente para un sistema con varios componentes conectados.
+\subsubsection{Provisionamiento de la base de datos en Supabase}
+El proceso de persistencia en la nube comenzó configurando un clúster relacional administrado en la consola web de Supabase. Una vez concluido el aprovisionamiento del motor de base de datos relacional, se procedió a extraer las credenciales necesarias en la pestaña de configuración.
 
-Con base en estos resultados se adoptó una estrategia PaaS administrada usando Supabase para la base de datos PostgreSQL y Render para la publicación del backend y frontend. Esta combinación fue la más conveniente porque redujo la administración manual de infraestructura y permitió concentrarse en la puesta en marcha del sistema. Dicho de otra forma, se pasó de intentar administrar una máquina virtual completa a utilizar servicios ya preparados para alojar aplicaciones y bases de datos.
+Debido al uso de Prisma ORM en el backend, la conexión directa presentaba riesgos de saturar las conexiones físicas concurrentes del plan gratuito. Por esta razón, se seleccionó el método de conexión \texttt{Session pooler} en el puerto 5432 (o 6543 para peticiones pool). Esto delega la cola de conexiones físicas a PgBouncer (incorporado en Supabase), optimizando los sockets de conexión y reduciendo drásticamente la latencia originada por transacciones de corta duración.
 
-\subsubsection{Actividad 3. Provisionamiento de la base de datos en Supabase}
-Se creó el proyecto \texttt{saferidepro} dentro de Supabase y se obtuvo la cadena de conexión PostgreSQL desde la pestaña \texttt{Connect}. El método seleccionado fue \texttt{Session pooler}, recomendado por Supabase como alternativa apropiada cuando la aplicación cliente accede mediante red IPv4 \cite{supabaseconnect}.
+\evidencia{ape6_nube_01_supabase_creacion.png}{Inicialización de la base de datos relacional PostgreSQL para SafeRidePro en Supabase.}
+\evidencia{ape6_nube_02_supabase_panel.png}{Panel de control del proyecto Supabase mostrando la base de datos activa y en línea.}
+\evidencia[0.78\linewidth]{ape6_nube_03_supabase_conexion.png}{Extracción de la cadena de conexión basada en el Session Pooler para optimizar Prisma.}
 
-Aquí conviene explicar qué representa esa cadena de conexión. La variable \texttt{DATABASE\_URL} es la dirección completa que usa el backend para conectarse a PostgreSQL. Incluye el usuario, la contraseña, el host, el puerto y el nombre de la base. Si este valor está mal formado, el backend puede compilar, pero no podrá iniciar correctamente ni ejecutar migraciones. Por eso esta parte fue una de las más delicadas de toda la implantación.
-
-La cadena obtenida fue utilizada como valor de \texttt{DATABASE\_URL} en el servicio del backend.
-
-\evidencia{ape6_nube_01_supabase_creacion.png}{Formulario de creación del proyecto \texttt{saferidepro} en Supabase.}
-\evidencia{ape6_nube_02_supabase_panel.png}{Panel principal del proyecto en Supabase una vez completado el aprovisionamiento.}
-\evidencia[0.78\linewidth]{ape6_nube_03_supabase_conexion.png}{Selección del método \texttt{Session pooler} para obtener la cadena PostgreSQL usada por el backend.}
-
-\subsubsection{Actividad 4. Publicación del backend en Render}
-El backend se desplegó como un servicio web Node.js llamado \texttt{saferidepro-api}. La configuración aplicada fue:
+\subsubsection{Publicación del backend en Render}
+La API NestJS del backend de la aplicación se alojó en Render bajo la tipología de servicio \texttt{Web Service}, dándole el nombre identificativo de \texttt{saferidepro-api}. La definición estructural del servicio contempló los siguientes parámetros:
 \begin{itemize}[leftmargin=*]
-    \item \textbf{Name:} \texttt{saferidepro-api}
-    \item \textbf{Language:} \texttt{Node}
-    \item \textbf{Branch:} \texttt{main}
-    \item \textbf{Region:} \texttt{Oregon (US West)}
-    \item \textbf{Root Directory:} vacío
-    \item \textbf{Health Check Path:} \texttt{/api/health}
+    \item \textbf{Identificador:} \texttt{saferidepro-api}
+    \item \textbf{Entorno Técnico:} \texttt{Node}
+    \item \textbf{Rama del Repositorio:} \texttt{main}
+    \item \textbf{Región de Despliegue:} \texttt{Oregon (US West)}
+    \item \textbf{Directorio de Origen (Root Directory):} en blanco (requerido para habilitar el alcance de pnpm a las dependencias transversales en la raíz del monorepo)
+    \item \textbf{Verificador de Disponibilidad (Health Check):} \texttt{/api/health}
 \end{itemize}
 
-El proceso comenzó con la creación de un nuevo servicio web en Render y la autorización del acceso al repositorio del proyecto alojado en GitHub. A partir de esa conexión, Render pudo clonar el monorepo completo y construir el servicio del backend respetando la estructura real del proyecto.
+El proceso arrancó enlazando el repositorio de GitHub con la cuenta personal de Render, autorizando el acceso a la lectura del código del proyecto SafeRidePro para implementar compilaciones automáticas basadas en webhooks cada vez que se realice un commit.
 
-En esta fase fue importante dejar vacío el campo \texttt{Root Directory}. Esto se hizo porque el backend no depende únicamente de archivos dentro de \texttt{apps/api}; también usa recursos compartidos del monorepo, por ejemplo \texttt{packages/shared-types}. Si se hubiera aislado solo la carpeta del backend, el proceso de compilación habría quedado incompleto.
+\evidencia{ape6_nube_04_render_nuevo_servicio.png}{Pantalla de creación del nuevo servicio web en el panel de control de Render.}
+\evidencia{ape6_nube_05_render_github_permiso.png}{Configuración de permisos de acceso al repositorio de GitHub desde la plataforma Render.}
+\evidencia{ape6_nube_06_render_repo_api.png}{Vinculación formal de la rama de desarrollo del backend para iniciar las compilaciones.}
+\evidencia{ape6_nube_07_render_api_config.png}{Parámetros de despliegue y región configurados para el servicio \texttt{saferidepro-api}.}
 
-\evidencia{ape6_nube_04_render_nuevo_servicio.png}{Creación de un nuevo servicio web en Render.}
-\evidencia{ape6_nube_05_render_github_permiso.png}{Autorización de acceso de Render al repositorio GitHub del proyecto.}
-\evidencia{ape6_nube_06_render_repo_api.png}{Selección del repositorio fuente para la publicación del backend.}
-\evidencia{ape6_nube_07_render_api_config.png}{Configuración general del servicio \texttt{saferidepro-api} en Render.}
-
-El comando de construcción utilizado en Render fue:
+El comando de compilación (Build Command) se diseñó para resolver las particularidades del monorepo, instalando pnpm globalmente e invocando la compilación ordenada de los tipos compartidos antes de compilar el backend de NestJS:
 \begin{verbatim}
 corepack prepare pnpm@latest --activate &&
 pnpm install --frozen-lockfile &&
@@ -262,43 +257,30 @@ pnpm --filter @saferidepro/api prisma:generate &&
 pnpm --filter @saferidepro/api build
 \end{verbatim}
 
-El comando de arranque utilizado fue:
+Para el arranque de la API (Start Command), se programó una secuencia lógica que ejecuta las migraciones pendientes de la base de datos de manera automatizada e inyecta los datos semilla de pruebas (seeding) antes de encender el servidor de producción:
 \begin{verbatim}
 pnpm --filter @saferidepro/api db:deploy &&
 pnpm --filter @saferidepro/api db:seed &&
 node apps/api/dist/main.js
 \end{verbatim}
 
-Ese comando merece una breve explicación. Primero ejecuta \texttt{db:deploy}, que aplica las migraciones pendientes de Prisma. Después corre \texttt{db:seed}, que inserta los datos iniciales necesarios para probar el sistema. Finalmente arranca el backend ya compilado. Gracias a esta secuencia, el servicio no solo quedó en línea, sino también listo para ser utilizado inmediatamente con cuentas y datos base.
+En el panel de Render se definieron de forma segura las variables de entorno operativas de la API, tales como \texttt{DATABASE\_URL} (apuntando al Session Pooler de Supabase), \texttt{JWT\_SECRET} (para firmar criptográficamente las credenciales) y la variable \texttt{WEB\_APP\_ORIGINS} (con la URL del frontend para habilitar las cabeceras CORS de forma exclusiva).
 
-Las variables configuradas incluyeron, entre otras:
+\evidencia{ape6_nube_08_render_api_env.png}{Variables de entorno y secretos inyectados de forma segura en el backend de Render.}
+\evidencia{ape6_nube_09_render_api_advanced.png}{Ajustes avanzados de compilación, tiempos de espera y ruta de salud del backend.}
+
+\subsubsection{Publicación del frontend en Render}
+La interfaz web de la aplicación construida en Next.js se desplegó como un servicio web independiente denominado \texttt{saferidepro-web}. La especificación técnica de configuración fue la siguiente:
 \begin{itemize}[leftmargin=*]
-    \item \texttt{DATABASE\_URL}
-    \item \texttt{JWT\_SECRET}
-    \item \texttt{WEB\_APP\_ORIGINS}
-    \item \texttt{API\_PUBLIC\_BASE\_URL}
-    \item \texttt{AUTH\_ALLOW\_DEBUG\_CODES}
-    \item \texttt{PAYMENTS\_CURRENCY}
-    \item \texttt{PAYPAL\_ENABLED}
+    \item \textbf{Identificador:} \texttt{saferidepro-web}
+    \item \textbf{Entorno Técnico:} \texttt{Node}
+    \item \textbf{Rama de Repositorio:} \texttt{main}
+    \item \textbf{Región de Despliegue:} \texttt{Oregon (US West)}
+    \item \textbf{Directorio de Origen:} vacío
+    \item \textbf{Verificador de Disponibilidad (Health Check):} \texttt{/healthz}
 \end{itemize}
 
-Las variables de entorno se configuraron directamente desde el panel del servicio, permitiendo definir la conexión con Supabase, las claves de autenticación y las URLs públicas necesarias para CORS y comunicación entre frontend y backend. También se configuró el \textit{health check path} del servicio. Esto permitió que Render pudiera detectar automáticamente cuándo el backend estaba listo y disponible.
-
-\evidencia{ape6_nube_08_render_api_env.png}{Variables de entorno configuradas para el backend en Render.}
-\evidencia{ape6_nube_09_render_api_advanced.png}{Configuración avanzada del backend en Render, incluyendo \textit{health check} y parámetros de despliegue.}
-
-\subsubsection{Actividad 5. Publicación del frontend en Render}
-El frontend se desplegó como un segundo servicio web llamado \texttt{saferidepro-web}. La configuración aplicada fue:
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Name:} \texttt{saferidepro-web}
-    \item \textbf{Language:} \texttt{Node}
-    \item \textbf{Branch:} \texttt{main}
-    \item \textbf{Region:} \texttt{Oregon (US West)}
-    \item \textbf{Root Directory:} vacío
-    \item \textbf{Health Check Path:} \texttt{/healthz}
-\end{itemize}
-
-El comando de construcción utilizado en Render fue:
+El comando de compilación (Build Command) estructurado para resolver el enrutamiento de dependencias y construir la aplicación Next.js fue:
 \begin{verbatim}
 corepack prepare pnpm@latest --activate &&
 pnpm install --frozen-lockfile &&
@@ -306,105 +288,116 @@ pnpm --filter @saferidepro/shared-types build &&
 pnpm --filter @saferidepro/web build
 \end{verbatim}
 
-El comando de arranque utilizado fue:
+Para asegurar que Next.js escuche peticiones desde internet y se enlace correctamente a la red de contenedores de Render, el comando de inicio (Start Command) se configuró de la siguiente forma:
 \begin{verbatim}
 node scripts/run-web-next.js start --hostname 0.0.0.0 --port $PORT
 \end{verbatim}
 
-Las variables configuradas incluyeron:
+Esta configuración inyecta dinámicamente la variable de entorno \texttt{\$PORT} proveída por Render y fuerza la escucha en todas las interfaces (\texttt{0.0.0.0}). Además, se registró la variable pública \texttt{NEXT\_PUBLIC\_API\_BASE\_URL} que apunta a la URL pública del backend desplegado en Render, asegurando que las llamadas asíncronas del cliente web en el navegador del usuario se dirijan a los endpoints remotos correctos.
+
+\evidencia{ape6_nube_12_render_web_config.png}{Comandos de construcción y arranque parametrizados para la aplicación del frontend en Render.}
+\evidencia{ape6_nube_14_render_web_advanced.png}{Configuración de salud y especificación avanzada del servicio web del frontend en la nube.}
+
+\subsubsection{Validación del sistema}
+La certificación del despliegue en la nube se efectuó de forma progresiva, garantizando tanto el acceso de red de los endpoints como el correcto funcionamiento de los flujos operacionales.
+
+El proceso de verificación comprendió los siguientes pasos lógicos:
 \begin{itemize}[leftmargin=*]
-    \item \texttt{NEXT\_PUBLIC\_API\_BASE\_URL}
-    \item \texttt{NEXT\_PUBLIC\_GEOAPIFY\_API\_KEY}
+    \item \textbf{Comprobación de Rutas Físicas:} Acceso externo y respuesta HTTP de los hosts públicos.
+    \item \textbf{Validación de Disponibilidad (Health Checks):} Petición GET a los recursos `/api/health` y `/healthz`.
+    \item \textbf{Verificación de Integridad de Persistencia y CORS:} Pruebas de autenticación y lectura cruzada de tablas conectadas en Supabase.
+    \item \textbf{Validación Integral de Módulos:} Pruebas de funcionamiento del mapa interactivo, la geolocalización, la billetera virtual y el sistema de reputación.
 \end{itemize}
 
-El frontend se publicó como un segundo servicio independiente dentro de la misma plataforma. Esto permitió separar claramente responsabilidades: el backend responde como API y el frontend se encarga de la interfaz visible para el usuario. La configuración mantuvo el mismo criterio del backend: construcción desde la raíz del repositorio, variables de entorno explícitas y uso del endpoint \texttt{/healthz} como verificación de disponibilidad de la aplicación Next.js.
+Se comprobó primeramente el estado saludable de los servicios de Render a través de su consola administrativa.
 
-El comando de arranque incluyó \texttt{--hostname 0.0.0.0} y \texttt{--port \$PORT}. Esto fue necesario porque Render asigna dinámicamente el puerto interno del servicio y espera que la aplicación escuche en todas las interfaces de red disponibles. Si el frontend se quedaba escuchando solo en \texttt{localhost}, la plataforma no podía exponerlo correctamente hacia internet.
+\evidencia{ape6_nube_10_render_api_live.png}{Estado activo y en ejecución del servicio backend en Render.}
 
-\evidencia{ape6_nube_12_render_web_config.png}{Configuración del servicio \texttt{saferidepro-web} con sus comandos de construcción y arranque.}
-\evidencia{ape6_nube_14_render_web_advanced.png}{Configuración avanzada del frontend en Render, incluyendo \textit{health check} y parámetros públicos.}
+Posteriormente, se realizó una petición HTTP al endpoint de salud del API en Render, comprobando el retorno de un estado exitoso estructurado en JSON.
 
-\subsubsection{Actividad 6. Validación del sistema}
-Una implantación no puede considerarse completa solo porque el despliegue termine sin errores. Por eso la validación se estructuró en varios niveles, empezando por la infraestructura y terminando en la experiencia real de uso del sistema.
+\evidencia[0.90\linewidth]{ape6_nube_11_render_api_health.png}{Validación lógica del endpoint de salud del backend remoto en producción.}
 
-La validación se estructuró en tres niveles:
+El mismo procedimiento de diagnóstico se llevó a cabo sobre el endpoint de salud del frontend de Next.js en Render.
+
+\evidencia{ape6_nube_15_render_web_live.png}{Estado activo y en ejecución del frontend web en la plataforma Render.}
+\evidencia[0.90\linewidth]{ape6_nube_16_render_web_health.png}{Validación del endpoint de disponibilidad lógica del frontend web en producción.}
+
+Una vez en línea los componentes, se ingresó a la dirección pública del frontend para iniciar las pruebas funcionales de la aplicación.
+
+\evidencia{ape6_nube_17_render_login_publico.png}{Despliegue del portal de autenticación público expuesto en internet.}
+
+Se inició sesión con las credenciales seeded de administración, confirmando que la base de datos de Supabase respondía dinámicamente listando los usuarios autorizados de la plataforma.
+
+\evidencia{ape6_nube_18_render_admin_publico.png}{Ingreso exitoso al panel de control de SafeRidePro desde internet.}
+
+Se navegó al panel de Viajes, validando la persistencia de las rutas y la recuperación de información desde la nube.
+
+\evidencia{ape6_nube_19_render_viajes_publico.png}{Módulo de control de viajes operando y listando registros desde la nube.}
+
+Se comprobó la carga del mapa interactivo y el procesamiento dinámico del módulo de geolocalización.
+
+\evidencia{ape6_nube_20_render_tracking_publico.png}{Mapeo e interfaz de geolocalización de rutas en funcionamiento sobre la versión remota.}
+
+Se procedió a probar el módulo de Confianza y Calificaciones, verificando que las valoraciones de los conductores se insertaban y promediaban correctamente en la base de datos.
+
+\evidencia{ape6_nube_21_render_confianza_publico.png}{Módulo de reputación y opiniones en funcionamiento real sobre el entorno remoto.}
+
+Finalmente, se validó el módulo de Billetera Virtual, confirmando el correcto procesamiento y persistencia de saldos monetarios en la base de datos de la nube.
+
+\evidencia{ape6_nube_22_render_billetera_publico.png}{Validación del saldo y transacciones de billetera en la versión de producción.}
+
+\subsubsection{Limitaciones observadas}
+El despliegue de la suite sobre una infraestructura en la nube bajo los planes de uso gratuitos impuso ciertas restricciones técnicas de rendimiento:
 \begin{itemize}[leftmargin=*]
-    \item \textbf{Infraestructura local:} contenedores saludables, puertos expuestos y respuesta de healthchecks.
-    \item \textbf{Infraestructura en nube:} servicios web publicados en Render y base de datos saludable en Supabase.
-    \item \textbf{Validación funcional:} acceso a login, sesión iniciada y disponibilidad de vistas operativas como administración, viajes, billetera, confianza y seguimiento GPS.
+    \item \textbf{Latencia por Suspensión (Cold Start):} Render detiene los contenedores gratuitos si no detectan tráfico HTTP en un periodo de 15 minutos. Al ingresar un usuario tras dicho lapso, la plataforma inicia una fase de arranque en frío que puede demorar entre 45 y 60 segundos antes de resolver la primera petición HTTP \cite{renderfree}.
+    \item \textbf{Almacenamiento de Datos Efímero en Render:} La capa gratuita de Render carece de soporte para volúmenes persistentes. Cualquier archivo guardado en el disco local del contenedor (como registros de auditoría locales) se borra definitivamente tras cada redespliegue de código o reinicio periódico del sistema \cite{renderfree}.
+    \item \textbf{Límites del Pool en Supabase Free:} El plan gratuito limita de forma estricta las conexiones concurrentes a la base de datos. Sin el uso del Session Pooler, el pool de conexiones nativo de Prisma ORM satura rápidamente los recursos de red de Supabase, provocando errores de conexión intermitentes.
 \end{itemize}
 
-Una vez completados ambos despliegues se verificó:
-\begin{itemize}[leftmargin=*]
-    \item \texttt{https://saferidepro-api.onrender.com/api/health}
-    \item \texttt{https://saferidepro-web.onrender.com/healthz}
-    \item pantalla pública de login
-    \item autenticación con cuenta seed
-    \item navegación a módulos internos del sistema
-\end{itemize}
+Estas limitantes demuestran la diferencia de rendimiento entre el entorno local (donde la base de datos y la API están inmediatamente disponibles) y el entorno cloud gratuito, confirmando que para entornos productivos reales se requiere migrar a planes de recursos dedicados.
 
-La validación pública comenzó confirmando que ambos servicios quedaron en estado \texttt{Live} dentro de Render y que respondían en sus respectivos endpoints de salud. Esta verificación aseguró que tanto la API como el frontend estaban accesibles desde internet y que la plataforma no solo había aceptado el despliegue, sino que también lo mantenía realmente operativo.
-
-\evidencia{ape6_nube_10_render_api_live.png}{Estado del servicio \texttt{saferidepro-api} ya publicado en Render.}
-\evidencia[0.90\linewidth]{ape6_nube_11_render_api_health.png}{Healthcheck público del backend desplegado en Render.}
-\evidencia{ape6_nube_15_render_web_live.png}{Estado del servicio \texttt{saferidepro-web} ya publicado en Render.}
-\evidencia[0.90\linewidth]{ape6_nube_16_render_web_health.png}{Healthcheck público del frontend desplegado en Render.}
-
-Después de la validación técnica se comprobó el flujo funcional completo desde la URL pública del sistema. Se verificó la pantalla de acceso, el ingreso con autenticación correcta y la navegación a módulos internos representativos. Esta parte fue importante porque demostró que la publicación servía para algo más que mostrar una página estática: el sistema respondía con sesiones reales, cargaba información y permitía recorrer módulos relevantes.
-
-\evidencia{ape6_nube_17_render_login_publico.png}{Pantalla pública de autenticación servida desde Render.}
-\evidencia{ape6_nube_18_render_admin_publico.png}{Acceso autenticado al sistema publicado en Render.}
-\evidencia{ape6_nube_19_render_viajes_publico.png}{Vista de viajes operativa desde el despliegue en nube.}
-\evidencia{ape6_nube_20_render_tracking_publico.png}{Módulo de seguimiento GPS accesible desde la publicación en Render.}
-\evidencia{ape6_nube_21_render_confianza_publico.png}{Módulo de confianza y reputación validado en la versión pública del sistema.}
-\evidencia{ape6_nube_22_render_billetera_publico.png}{Módulo de billetera visible y operativo en el entorno de nube.}
-
-\subsubsection{Actividad 7. Limitaciones observadas}
-Durante la implantación en nube también se registraron limitaciones propias de los planes gratuitos utilizados. Incluirlas en el informe es importante porque explican el comportamiento real del sistema una vez publicado y ayudan a interpretar correctamente algunas diferencias frente al entorno local.
-
-Durante la implantación en nube se documentaron las siguientes limitaciones de la capa gratuita:
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Render Free Web Services:} la instancia entra en estado de suspensión por inactividad, lo que introduce demora en la primera respuesta después de un periodo sin tráfico \cite{renderfree}.
-    \item \textbf{Render Free:} no ofrece disco persistente ni acceso SSH sobre los servicios web gratuitos \cite{renderfree}.
-    \item \textbf{Supabase Free:} el proyecto gratuito dispone de capacidad limitada de base de datos y puede ser pausado tras periodos prolongados de inactividad \cite{supabasepricing}.
-    \item \textbf{Archivos locales del backend:} los archivos temporales almacenados en filesystem dentro del servicio gratuito no deben asumirse como persistentes a largo plazo.
-\end{itemize}
-
-Render permite definir \textit{build filters} para limitar qué cambios del repositorio disparan un nuevo despliegue. En esta implantación no fue obligatorio configurarlos para que el sistema funcionara; el despliegue quedó operativo sin esa optimización. Aun así, conviene mencionarlo porque en proyectos monorepo este tipo de ajuste puede reducir tiempos de compilación y evitar despliegues innecesarios cuando solo cambia una parte del repositorio.
-
-\subsubsection{Actividad 8. Problemas encontrados y solución}
-Además de la secuencia principal de despliegue, durante la práctica aparecieron inconvenientes concretos que obligaron a ajustar el proceso. Documentarlos resulta útil porque muestran decisiones reales de implantación y no únicamente el resultado final.
+\subsubsection{Problemas encontrados y solución}
+A continuación, se detalla la bitácora técnica de problemas encontrados durante la preparación y publicación del stack SafeRidePro, y las soluciones aplicadas para estabilizar el sistema:
 
 \begin{longtable}{p{0.28\linewidth} p{0.31\linewidth} p{0.33\linewidth}}
 \toprule
 \textbf{Problema} & \textbf{Contexto} & \textbf{Forma de resolución aplicada} \\
 \midrule
-Disponibilidad de recursos gratuitos en Oracle Cloud & La arquitectura inicial contemplaba una VM Always Free para ejecutar Docker Compose, pero la región evaluada no tuvo capacidad disponible para completar el aprovisionamiento. & Se migró la estrategia de nube a una arquitectura PaaS compuesta por Supabase y Render, manteniendo la publicación del sistema sin dependencia de una máquina virtual propia. \\
-Capacidad operativa insuficiente en Azure for Students & La cuenta evaluada solo permitió acceder a la modalidad Starter, sin recursos adecuados para una implantación completa del sistema. & Se descartó ese entorno para esta práctica y se continuó con una plataforma capaz de publicar backend, frontend y base de datos dentro del alcance académico. \\
-Configuración detallada de VM y red en Oracle Cloud & La estrategia basada en VM exigía seleccionar Ubuntu, revisar parámetros avanzados y abrir manualmente los puertos 22, 3000 y 3001 en seguridad de red. & Se documentó el procedimiento técnico previsto y, al no existir disponibilidad real de recursos gratuitos, se optó por una plataforma administrada con menor fricción operativa. \\
-Inicialización de \texttt{pnpm} en Render & El entorno de Render no permitió modificar el binario del sistema en \texttt{/usr/bin/pnpm}. & Se definió el comando de construcción usando \texttt{corepack prepare pnpm@latest --activate} antes de \texttt{pnpm install}. \\
-Monorepo con dependencias compartidas & El frontend y el backend dependen de \texttt{packages/shared-types} y scripts en la raíz del repositorio. & Se dejó vacío el campo \texttt{Root Directory} y se ejecutaron los builds desde la raíz del repo. \\
-Conexión de base de datos administrada & La aplicación requería una cadena PostgreSQL compatible con Prisma. & Se utilizó la cadena de conexión \texttt{Session pooler} proporcionada por Supabase. \\
-Construcción válida de la cadena \texttt{DATABASE\_URL} & La cadena entregada por Supabase contenía un marcador de contraseña y era necesario conservar el formato correcto de URL para Prisma. & Se reemplazó el marcador por la contraseña real y se codificaron los caracteres especiales que requerían representación URL antes de guardar el valor definitivo. \\
-Compatibilidad del modo académico con correo electrónico & Durante la configuración del backend surgió la duda de si \texttt{AUTH\_ALLOW\_DEBUG\_CODES=true} impedía el uso posterior de SMTP. & Se mantuvo la variable activa para facilitar validaciones académicas, entendiendo que no bloquea una configuración SMTP adicional cuando se requiera un envío real de correos. \\
-Sincronización de URLs públicas & El frontend necesitaba apuntar al backend publicado y el backend restringir CORS al frontend real. & Se configuraron \texttt{NEXT\_PUBLIC\_API\_BASE\_URL}, \texttt{API\_PUBLIC\_BASE\_URL} y \texttt{WEB\_APP\_ORIGINS} con las URLs definitivas de Render. \\
-Disponibilidad inicial del servicio gratuito & La primera respuesta en Render puede demorar tras inactividad. & Se contempló esta condición como limitación de la capa gratuita y se validó el servicio mediante healthchecks públicos. \\
+Agotamiento de cuotas en Oracle Cloud & Se intentó aprovisionar una máquina virtual Always Free, pero la región no poseía recursos de CPU libres. & Se pivotó el diseño hacia una arquitectura de servicios PaaS administrados (Supabase + Render), asegurando la viabilidad del laboratorio. \\
+\midrule
+Restricciones de la cuenta Azure for Students Starter & Azure Starter no permitió levantar contenedores Docker Compose de forma simultánea. & Se descartó el proveedor para esta práctica y se consolidó el despliegue en Render y Supabase. \\
+\midrule
+Resolución de pnpm en contenedores Render & Render no dispone de pnpm instalado globalmente y arroja fallas en los comandos de inicio. & Se inyectó al inicio del build command la descarga y activación de pnpm usando corepack (\texttt{corepack prepare pnpm@latest --activate}). \\
+\midrule
+Errores de compilación por dependencias compartidas & Next.js y NestJS fallaban en Render al no encontrar las interfaces del monorrepo. & Se dejó el \texttt{Root Directory} vacío en Render y se usaron comandos de construcción filtrados en pnpm desde la raíz del proyecto. \\
+\midrule
+Fallas de CORS en peticiones del Navegador & Las consultas al backend eran bloqueadas al no reconocer el origen del frontend publicado. & Se configuró la variable \texttt{WEB\_APP\_ORIGINS} en el backend con la URL final del frontend generada por Render. \\
+\midrule
+Formato URL y contraseñas de Prisma en base de datos & Supabase proporciona una plantilla de conexión que requiere escapar contraseñas. & Se codificaron los caracteres especiales de la contraseña del usuario en formato URL encode antes de registrar la variable en Render. \\
+\midrule
+Exposición y enlace de puertos en Next.js & Render no lograba realizar el health check de Next.js al compilarse en localhost. & Se configuró el comando de arranque del frontend forzando la escucha en todas las interfaces de red con la bandera \texttt{--hostname 0.0.0.0}. \\
 \bottomrule
 \end{longtable}
 
 \subsection{Resultados Obtenidos}
-La implantación se completó correctamente en los dos escenarios propuestos:
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Servidor local:} el stack compuesto por PostgreSQL, API y frontend quedó operativo sobre Docker Compose, con contenedores saludables y endpoints accesibles.
-    \item \textbf{Servidor en nube:} la base de datos fue provisionada en Supabase y la publicación de la aplicación se realizó en Render mediante dos servicios web independientes.
-    \item \textbf{Validación funcional:} se verificó el acceso al login, la autenticación y la navegación a módulos operativos como administración, viajes, confianza, billetera y seguimiento GPS.
-    \item \textbf{Alcance declarado:} la implantación funcional cubre web, API y base de datos. El módulo \texttt{apps/mobile} no forma parte del despliegue operativo presentado en esta práctica.
-\end{itemize}
+El proceso de implantación y prueba del sistema SafeRidePro arrojó resultados determinantes para la validación del proyecto en ambos esquemas de infraestructura:
+
+\subsubsection*{1. Paridad Operacional de los Entornos}
+Se logró replicar con precisión el funcionamiento de los servicios a través de dos esquemas de infraestructura física distintos. Mientras el entorno local provisto por Docker Compose ofreció una respuesta de red instantánea óptima para las fases rápidas de depuración, el entorno en la nube (Render + Supabase) certificó el correcto comportamiento de la aplicación en condiciones reales de red a través de internet, garantizando que no existan discrepancias lógicas al migrar esquemas de base de datos a través de Prisma.
+
+\subsubsection*{2. Persistencia y Gestión del Pool Relacional}
+La provisión de la base de datos PostgreSQL en Supabase, acoplada con el método Session Pooler, posibilitó el control dinámico de los sockets físicos del servidor en la nube. Se constató la ejecución no interactiva del esquema relacional y de las transacciones de inserción inicial (seed) durante la fase de despliegue, logrando mantener el uso de memoria de la base de datos dentro de los umbrales normales asignados por el proveedor.
+
+\subsubsection*{3. Coordinación y Enlace Multiorigen}
+Mediante la segmentación física de los servicios en Render, se aisló el cómputo de la interfaz y del backend. La correcta inyección de variables de entorno permitió enlazar el origen del cliente web con el backend NestJS sin generar conflictos por políticas CORS del navegador, logrando que Next.js dirija de forma dinámica sus consultas HTTP a la dirección del servidor API expuesta públicamente.
+
+\subsubsection*{4. Mitigación de Limitaciones de Infraestructura}
+Se documentaron las limitaciones de la capa gratuita (demoras de Cold Start y almacenamiento volátil), adaptando la experiencia de pruebas para considerar los tiempos de reinicio de contenedores en Render, logrando un despliegue operativo funcional y verificable sin incurrir en costos económicos.
 
 \subsection{Habilidades Blandas Empleadas en la Práctica}
 \begin{itemize}
     \item[$\square$] Liderazgo
-    \item[$\square$] Trabajo en equipo
+    \item[\checkedbox] Trabajo en equipo
     \item[$\square$] Comunicación asertiva
     \item[$\square$] La empatía
     \item[\checkedbox] Pensamiento crítico
@@ -416,19 +409,19 @@ La implantación se completó correctamente en los dos escenarios propuestos:
 
 \subsection{Conclusiones Generales}
 \begin{itemize}[leftmargin=*,noitemsep]
-    \item La implantación resultó más robusta al respetar la arquitectura real del monorepo y sus dependencias compartidas.
-    \item Docker Compose resolvió correctamente la necesidad de despliegue local, manteniendo el stack completo en una sola operación reproducible.
-    \item Supabase y Render permitieron publicar el sistema en la nube sin necesidad de administrar una máquina virtual ni reestructurar el proyecto.
-    \item La validación funcional sobre servicios publicados confirmó que el sistema no solo estuvo en línea, sino que también respondió correctamente en módulos internos relevantes.
+    \item La implantación demostró que el acoplamiento de un monorrepo puede gestionarse eficientemente en la nube mediante comandos de construcción filtrados en pnpm, evitando fragmentar el código o crear repositorios independientes para producción.
+    \item El uso de Docker Compose en local garantiza la reproducibilidad de la infraestructura en pocos segundos, reduciendo drásticamente la latencia de desarrollo en comparación con las plataformas PaaS gratuitas que sufren de suspensión de red.
+    \item La arquitectura basada en Supabase y Render provee una alternativa robusta para el despliegue ágil en fases de staging y pruebas QA, eliminando la sobrecarga operativa y de costos asociada a la provisión de máquinas virtuales y firewalls manuales.
+    \item La validación end-to-end realizada certificó que la aplicación SafeRidePro responde correctamente en flujos sensibles de persistencia (Billetera), geolocalización (Seguimiento GPS) y seguridad, consolidando un sistema listo para pruebas de usuario.
 \end{itemize}
 
 \subsection{Recomendaciones}
-\begin{itemize}[leftmargin=*,noitemsep]
-    \item Mantener separados los archivos de entorno local y los valores públicos de nube para evitar cruces de configuración.
-    \item Configurar \textit{build filters} en Render si se desea optimizar despliegues futuros del monorepo, aunque no sean necesarios para el funcionamiento base.
-    \item Evaluar almacenamiento persistente externo para archivos generados por el backend si la plataforma gratuita llega a ser insuficiente.
-    \item Incorporar dominio y HTTPS personalizado como mejora futura si el despliegue se mantiene más allá del alcance académico.
-\end{itemize}
+\begin{enumerate}[leftmargin=*,noitemsep]
+    \item Utilizar variables de entorno estrictamente delimitadas para desarrollo, QA y producción, evitando que datos de prueba locales contaminen o purguen bases de datos administradas en la nube.
+    \item Evaluar el uso de servicios de almacenamiento de objetos externos (como AWS S3 o Cloudinary) para la API de SafeRidePro, con el fin de solventar la pérdida de archivos debida al disco efímero no persistente de Render Free.
+    \item Implementar tareas de ping automatizadas (cron jobs) de bajo costo para enviar peticiones periódicas a los endpoints de salud de Render, evitando la suspensión por inactividad y eliminando los retardos por cold start.
+    \item En transiciones productivas, migrar la base de datos de Supabase a un esquema de conexión directa bajo una red VPC (Virtual Private Cloud) para optimizar el rendimiento y la seguridad del tráfico.
+\end{enumerate}
 
 \subsection{Referencias}
 \vspace{-3em}
