@@ -222,4 +222,220 @@ describe('WalletService', () => {
       amount: 15,
     });
   });
+
+  it('returns the current wallet immediately when the top up was already paid', async () => {
+    const prisma = createPrismaMock();
+    const provider = createPaymentProviderMock();
+    const service = new WalletService(prisma as never, provider);
+    const paidAt = new Date('2030-01-01T09:30:00.000Z');
+
+    prisma.walletTopUp.findFirst.mockResolvedValue({
+      id: 'top-up-1',
+      walletId: 'wallet-1',
+      provider: PaymentProvider.Paypal,
+      status: 'PAID',
+      currencyCode: 'USD',
+      amount: decimal(20),
+      providerOrderToken: 'order-1',
+      providerPaymentLinkId: 'capture-1',
+      providerPaymentLinkUrl: 'https://paypal.example/checkout',
+      providerOrderStatus: 'COMPLETED',
+      providerPaymentStatus: 'COMPLETED',
+      paidAt,
+      expiresAt: null,
+      updatedAt: paidAt,
+      createdAt: new Date('2030-01-01T09:00:00.000Z'),
+    });
+    prisma.walletAccount.findUniqueOrThrow.mockResolvedValue({
+      ...wallet,
+      ledgerEntries: [],
+      topUps: [
+        {
+          id: 'top-up-1',
+          provider: PaymentProvider.Paypal,
+          status: 'PAID',
+          currencyCode: 'USD',
+          amount: decimal(20),
+          providerPaymentLinkUrl: 'https://paypal.example/checkout',
+          paidAt,
+          expiresAt: null,
+          updatedAt: paidAt,
+          createdAt: new Date('2030-01-01T09:00:00.000Z'),
+        },
+      ],
+    });
+
+    const response = await service.captureTopUp('user-1', 'top-up-1');
+
+    expect(provider.capturePayment).not.toHaveBeenCalled();
+    expect(response.message).toBe('Recarga acreditada.');
+    expect(response.wallet.account.availableBalance).toBe(20);
+  });
+
+  it('requires an associated PayPal order before capturing or refreshing a top up', async () => {
+    const prisma = createPrismaMock();
+    const provider = createPaymentProviderMock();
+    const service = new WalletService(prisma as never, provider);
+    const topUp = {
+      id: 'top-up-1',
+      walletId: 'wallet-1',
+      provider: PaymentProvider.Paypal,
+      status: 'CHECKOUT_READY',
+      currencyCode: 'USD',
+      amount: decimal(20),
+      providerOrderToken: null,
+      providerPaymentLinkId: null,
+      providerPaymentLinkUrl: null,
+      providerOrderStatus: 'CREATED',
+      providerPaymentStatus: null,
+      paidAt: null,
+      expiresAt: null,
+      updatedAt: new Date('2030-01-01T09:00:00.000Z'),
+      createdAt: new Date('2030-01-01T09:00:00.000Z'),
+    };
+
+    prisma.walletTopUp.findFirst.mockResolvedValue(topUp);
+
+    await expect(service.captureTopUp('user-1', 'top-up-1')).rejects.toThrow(
+      new BadRequestException('La recarga no tiene un pago PayPal asociado.'),
+    );
+    await expect(service.refreshTopUp('user-1', 'top-up-1')).rejects.toThrow(
+      new BadRequestException('La recarga no tiene un pago PayPal asociado.'),
+    );
+  });
+
+  it('captures a top up and returns the refreshed wallet summary', async () => {
+    const prisma = createPrismaMock();
+    const provider = createPaymentProviderMock();
+    const service = new WalletService(prisma as never, provider);
+    const topUp = {
+      id: 'top-up-1',
+      walletId: 'wallet-1',
+      provider: PaymentProvider.Paypal,
+      status: 'CHECKOUT_READY',
+      currencyCode: 'USD',
+      amount: decimal(15),
+      providerOrderToken: 'order-1',
+      providerPaymentLinkId: 'link-1',
+      providerPaymentLinkUrl: 'https://paypal.example/checkout',
+      providerOrderStatus: 'CREATED',
+      providerPaymentStatus: null,
+      paidAt: null,
+      expiresAt: null,
+      updatedAt: new Date('2030-01-01T09:00:00.000Z'),
+      createdAt: new Date('2030-01-01T09:00:00.000Z'),
+    };
+    const paidAt = new Date('2030-01-01T09:30:00.000Z');
+
+    prisma.walletTopUp.findFirst.mockResolvedValue(topUp);
+    provider.capturePayment.mockResolvedValue({
+      provider: PaymentProvider.Paypal,
+      providerOrderToken: 'order-1',
+      providerCaptureId: 'capture-1',
+      providerOrderStatus: 'COMPLETED',
+      providerPaymentStatus: 'COMPLETED',
+      paidAt,
+      expiresAt: null,
+      rawResponse: { id: 'capture-1' },
+    });
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({
+        walletTopUp: {
+          findUnique: jest.fn().mockResolvedValue({
+            ...topUp,
+            wallet: wallet,
+          }),
+          update: jest.fn().mockResolvedValue({
+            ...topUp,
+            status: 'PAID',
+            providerPaymentLinkId: 'capture-1',
+            providerOrderStatus: 'COMPLETED',
+            providerPaymentStatus: 'COMPLETED',
+            paidAt,
+            lastSyncedAt: paidAt,
+          }),
+        },
+        walletLedgerEntry: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue(undefined),
+        },
+        walletAccount: {
+          update: jest.fn().mockResolvedValue({
+            ...wallet,
+            availableBalance: decimal(35),
+            heldBalance: decimal(5),
+          }),
+        },
+      }),
+    );
+    prisma.walletAccount.findUniqueOrThrow.mockResolvedValue({
+      ...wallet,
+      availableBalance: decimal(35),
+      ledgerEntries: [
+        {
+          id: 'ledger-1',
+          type: 'TOP_UP_CAPTURED',
+          amount: decimal(15),
+          availableBalanceAfter: decimal(35),
+          heldBalanceAfter: decimal(5),
+          note: 'Recarga PayPal acreditada.',
+          createdAt: paidAt,
+        },
+      ],
+      topUps: [
+        {
+          id: 'top-up-1',
+          provider: PaymentProvider.Paypal,
+          status: 'PAID',
+          currencyCode: 'USD',
+          amount: decimal(15),
+          providerPaymentLinkUrl: 'https://paypal.example/checkout',
+          paidAt,
+          expiresAt: null,
+          updatedAt: paidAt,
+          createdAt: new Date('2030-01-01T09:00:00.000Z'),
+        },
+      ],
+    });
+
+    const response = await service.captureTopUp('user-1', 'top-up-1');
+
+    expect(provider.capturePayment).toHaveBeenCalledWith({
+      providerOrderToken: 'order-1',
+    });
+    expect(response.message).toBe('Recarga acreditada.');
+    expect(response.topUp.status).toBe('PAID');
+    expect(response.wallet.account.availableBalance).toBe(35);
+  });
+
+  it('requires PayPal configuration before syncing a remote top up state', async () => {
+    const prisma = createPrismaMock();
+    const provider = createPaymentProviderMock();
+    const service = new WalletService(prisma as never, provider);
+
+    provider.isConfigured.mockReturnValue(false);
+    prisma.walletTopUp.findFirst.mockResolvedValue({
+      id: 'top-up-1',
+      walletId: 'wallet-1',
+      provider: PaymentProvider.Paypal,
+      status: 'CHECKOUT_READY',
+      currencyCode: 'USD',
+      amount: decimal(20),
+      providerOrderToken: 'order-1',
+      providerPaymentLinkId: 'link-1',
+      providerPaymentLinkUrl: 'https://paypal.example/checkout',
+      providerOrderStatus: 'CREATED',
+      providerPaymentStatus: null,
+      paidAt: null,
+      expiresAt: null,
+      updatedAt: new Date('2030-01-01T09:00:00.000Z'),
+      createdAt: new Date('2030-01-01T09:00:00.000Z'),
+    });
+
+    await expect(service.refreshTopUp('user-1', 'top-up-1')).rejects.toThrow(
+      new ServiceUnavailableException(
+        'PayPal aun no esta configurado para consultar recargas.',
+      ),
+    );
+  });
 });
