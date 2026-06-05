@@ -34,7 +34,7 @@ function buildValidEcuadorianNationalId(seed: string): string {
 export async function registerUser(
   app: INestApplication,
   input: RegisterUserInput,
-) {
+): Promise<request.Response> {
   return request(app.getHttpServer())
     .post('/api/auth/register')
     .send({
@@ -49,7 +49,10 @@ export async function registerUser(
     .expect(201);
 }
 
-export async function verifyUserEmail(app: INestApplication, code: string) {
+export async function verifyUserEmail(
+  app: INestApplication,
+  code: string,
+): Promise<request.Response> {
   return request(app.getHttpServer())
     .post('/api/auth/verify-email')
     .send({ code })
@@ -60,7 +63,7 @@ export async function loginUser(
   app: INestApplication,
   email: string,
   password: string,
-) {
+): Promise<request.Response> {
   return request(app.getHttpServer())
     .post('/api/auth/login')
     .send({
@@ -87,7 +90,7 @@ export async function registerVerifyAndLoginUser(
   };
 }
 
-export async function loginSeedAdmin(app: INestApplication) {
+export async function loginSeedAdmin(app: INestApplication): Promise<request.Response> {
   const adminEmail = process.env.SUPER_ADMIN_EMAIL?.trim() || 'admin@uta.edu.ec';
   const adminPassword = process.env.SUPER_ADMIN_PASSWORD?.trim() || 'ChangeMe123!';
 
