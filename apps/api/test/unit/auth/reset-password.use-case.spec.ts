@@ -177,4 +177,66 @@ describe('ResetPasswordUseCase', () => {
       },
     });
   });
+
+  it('rejects if the user associated with the code no longer exists', async () => {
+    const repository = createAuthRepositoryMock();
+    const passwordHasher = createPasswordHasherMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ResetPasswordUseCase(repository, passwordHasher, auditService);
+
+    repository.findValidPasswordResetCode.mockResolvedValue({
+      id: 'reset-1',
+      userId: 'user-1',
+      expiresAt: new Date('2030-01-10T00:00:00.000Z'),
+      usedAt: null,
+      createdAt: new Date('2030-01-01T00:00:00.000Z'),
+    });
+    repository.findUserById.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        code: '123456',
+        password: 'NewPassword123',
+      }),
+    ).rejects.toThrow(new BadRequestException('La cuenta asociada ya no existe.'));
+  });
+
+  it('updates the password even if user has no default membership', async () => {
+    const repository = createAuthRepositoryMock();
+    const passwordHasher = createPasswordHasherMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ResetPasswordUseCase(repository, passwordHasher, auditService);
+
+    repository.findValidPasswordResetCode.mockResolvedValue({
+      id: 'reset-1',
+      userId: 'user-1',
+      expiresAt: new Date('2030-01-10T00:00:00.000Z'),
+      usedAt: null,
+      createdAt: new Date('2030-01-01T00:00:00.000Z'),
+    });
+    repository.findUserById.mockResolvedValue(buildUser({ memberships: [] }));
+    passwordHasher.compare.mockResolvedValue(false);
+    passwordHasher.hash.mockResolvedValue('new-hashed-password');
+
+    const response = await useCase.execute({
+      code: '123456',
+      password: 'NewPassword123',
+    });
+
+    expect(response.message).toBe('La contrasena se actualizo correctamente. Ya puedes iniciar sesion.');
+    expect(auditService.record).toHaveBeenCalledWith({
+      institutionId: undefined,
+      actorUserId: 'user-1',
+      action: AuditAction.AuthPasswordResetCompleted,
+      entityType: AuditEntityType.User,
+      entityId: 'user-1',
+      metadata: {
+        email: 'student@uta.edu.ec',
+      },
+    });
+  });
 });

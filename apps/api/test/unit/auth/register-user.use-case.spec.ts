@@ -392,4 +392,73 @@ describe('RegisterUserUseCase', () => {
       new ConflictException('Ya existe una cuenta registrada con este tipo y numero de documento.'),
     );
   });
+
+  it('throws BadRequestException if the email does not contain a domain', async () => {
+    const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
+    const passwordHasher = createPasswordHasherMock();
+    const environmentService = {
+      emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
+    } as EnvironmentService;
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new RegisterUserUseCase(
+      repository,
+      authEmailService,
+      passwordHasher,
+      environmentService,
+      auditService,
+    );
+
+    await expect(
+      useCase.execute({
+        email: 'invalid-email',
+        password: 'Password123',
+        fullName: 'Usuario',
+        documentType: DocumentType.NationalId,
+        documentNumber: '1710034065',
+      }),
+    ).rejects.toThrow(new BadRequestException('Se requiere un correo institucional valido.'));
+  });
+
+  it('rethrows unexpected errors from repository during user creation', async () => {
+    const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
+    const passwordHasher = createPasswordHasherMock();
+    const environmentService = {
+      emailVerificationTokenTtlMinutes: 30,
+      authAllowDebugCodes: true,
+    } as EnvironmentService;
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new RegisterUserUseCase(
+      repository,
+      authEmailService,
+      passwordHasher,
+      environmentService,
+      auditService,
+    );
+
+    repository.findInstitutionByDomain.mockResolvedValue({
+      id: 'institution-1',
+      name: 'UTA',
+      code: 'UTA',
+    });
+    repository.findUserByEmail.mockResolvedValue(null);
+    passwordHasher.hash.mockResolvedValue('hashed-password');
+    repository.createUserWithMembership.mockRejectedValue(new Error('Fatal database connection error'));
+
+    await expect(
+      useCase.execute({
+        email: 'student@uta.edu.ec',
+        password: 'Password123',
+        fullName: 'Usuario',
+        documentType: DocumentType.NationalId,
+        documentNumber: '1710034065',
+      }),
+    ).rejects.toThrow('Fatal database connection error');
+  });
 });

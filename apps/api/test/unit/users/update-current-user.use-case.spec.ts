@@ -163,4 +163,99 @@ describe('UpdateCurrentUserUseCase', () => {
     expect(repository.updateProfile.mock.calls[0]?.[1].safetyRulesAcceptedAt).toBeInstanceOf(Date);
     expect(repository.updateProfile.mock.calls[0]?.[1].onboardingCompletedAt).toBeInstanceOf(Date);
   });
+
+  it('throws NotFoundException if the user does not exist', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    repository.findById.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute('non-existent', { fullName: 'Name' }),
+    ).rejects.toThrow('El usuario solicitado no existe.');
+  });
+
+  it('throws BadRequestException if fullName is empty', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    repository.findById.mockResolvedValue(buildUserProfile() as never);
+
+    await expect(
+      useCase.execute('user-1', { fullName: '   ' }),
+    ).rejects.toThrow('Ingresa tu nombre completo para continuar.');
+  });
+
+  it('throws BadRequestException if career is less than minimum length', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    repository.findById.mockResolvedValue(buildUserProfile() as never);
+
+    await expect(
+      useCase.execute('user-1', { career: 'ab' }),
+    ).rejects.toThrow('Ingresa tu carrera con al menos 3 caracteres.');
+  });
+
+  it('throws BadRequestException if referenceNeighborhood is empty or too short', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    repository.findById.mockResolvedValue(buildUserProfile() as never);
+
+    await expect(
+      useCase.execute('user-1', { referenceNeighborhood: '  ' }),
+    ).rejects.toThrow('Ingresa tu zona o barrio de referencia.');
+  });
+
+  it('throws BadRequestException if privacy policy is explicitly rejected', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    repository.findById.mockResolvedValue(buildUserProfile() as never);
+
+    await expect(
+      useCase.execute('user-1', { acceptPrivacy: false }),
+    ).rejects.toThrow('Debes aceptar la politica de privacidad para continuar.');
+  });
+
+  it('throws BadRequestException if safety rules are explicitly rejected', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    repository.findById.mockResolvedValue(buildUserProfile() as never);
+
+    await expect(
+      useCase.execute('user-1', { acceptSafetyRules: false }),
+    ).rejects.toThrow('Debes aceptar las reglas de seguridad para continuar.');
+  });
+
+  it('does not update date if it is already accepted (covers areDatesEqual line 24)', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    const acceptedDate = new Date('2030-01-01T10:00:00.000Z');
+    const userProfile = {
+      ...buildUserProfile(),
+      career: 'Software',
+      referenceNeighborhood: 'Ficoa',
+      termsAcceptedAt: acceptedDate,
+      privacyAcceptedAt: acceptedDate,
+      safetyRulesAcceptedAt: acceptedDate,
+      onboardingCompletedAt: acceptedDate,
+    };
+    repository.findById.mockResolvedValue(userProfile as never);
+    repository.updateProfile.mockResolvedValue(userProfile as never);
+
+    await useCase.execute('user-1', {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      acceptSafetyRules: true,
+    });
+
+    expect(repository.updateProfile).toHaveBeenCalledWith('user-1', {
+      fullName: undefined,
+      career: undefined,
+      phone: undefined,
+      referenceNeighborhood: undefined,
+      profilePhotoUrl: undefined,
+      termsAcceptedAt: undefined,
+      privacyAcceptedAt: undefined,
+      safetyRulesAcceptedAt: undefined,
+      onboardingCompletedAt: undefined,
+    });
+  });
 });

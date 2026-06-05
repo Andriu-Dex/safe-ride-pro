@@ -239,4 +239,103 @@ describe('LoginUseCase', () => {
     });
     expect(authSessionService.issueTokens).not.toHaveBeenCalled();
   });
+
+  it('rejects login when the email does not exist and records the failure', async () => {
+    const repository = createAuthRepositoryMock();
+    const passwordHasher = createPasswordHasherMock();
+    const authSessionService = createAuthSessionServiceMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const authRateLimitService = {
+      assertAllowed: jest.fn(),
+      recordFailure: jest.fn(),
+      clear: jest.fn(),
+    } as unknown as jest.Mocked<AuthRateLimitService>;
+    const environmentService = {
+      authFailedAttemptLimit: 5,
+      authFailedAttemptWindowMinutes: 10,
+    } as EnvironmentService;
+    const useCase = new LoginUseCase(
+      repository,
+      passwordHasher,
+      auditService,
+      authSessionService,
+      authRateLimitService,
+      environmentService,
+    );
+
+    repository.findUserByEmail.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        email: 'missing@uta.edu.ec',
+        password: 'Password123',
+      }),
+    ).rejects.toThrow(new UnauthorizedException('Credenciales invalidas.'));
+
+    expect(auditService.record).toHaveBeenCalledWith({
+      action: AuditAction.AuthLoginFailed,
+      entityType: AuditEntityType.AuthSession,
+      metadata: {
+        email: 'missing@uta.edu.ec',
+        reason: 'INVALID_CREDENTIALS',
+      },
+    });
+    expect(authRateLimitService.recordFailure).toHaveBeenCalled();
+    expect(authSessionService.issueTokens).not.toHaveBeenCalled();
+  });
+
+  it('rejects login when the account is suspended and records the failure', async () => {
+    const repository = createAuthRepositoryMock();
+    const passwordHasher = createPasswordHasherMock();
+    const authSessionService = createAuthSessionServiceMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const authRateLimitService = {
+      assertAllowed: jest.fn(),
+      recordFailure: jest.fn(),
+      clear: jest.fn(),
+    } as unknown as jest.Mocked<AuthRateLimitService>;
+    const environmentService = {
+      authFailedAttemptLimit: 5,
+      authFailedAttemptWindowMinutes: 10,
+    } as EnvironmentService;
+    const useCase = new LoginUseCase(
+      repository,
+      passwordHasher,
+      auditService,
+      authSessionService,
+      authRateLimitService,
+      environmentService,
+    );
+
+    repository.findUserByEmail.mockResolvedValue(
+      buildUser({
+        accountStatus: AccountStatus.Suspended,
+      }),
+    );
+    passwordHasher.compare.mockResolvedValue(true);
+
+    await expect(
+      useCase.execute({
+        email: 'student@uta.edu.ec',
+        password: 'Password123',
+      }),
+    ).rejects.toThrow(new ForbiddenException('Esta cuenta se encuentra suspendida.'));
+
+    expect(auditService.record).toHaveBeenCalledWith({
+      institutionId: 'institution-1',
+      actorUserId: 'user-1',
+      action: AuditAction.AuthLoginFailed,
+      entityType: AuditEntityType.AuthSession,
+      metadata: {
+        email: 'student@uta.edu.ec',
+        reason: 'ACCOUNT_SUSPENDED',
+      },
+    });
+    expect(authRateLimitService.clear).toHaveBeenCalled();
+    expect(authSessionService.issueTokens).not.toHaveBeenCalled();
+  });
 });

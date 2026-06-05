@@ -124,6 +124,19 @@ describe('institution-settings-access', () => {
 
       expect(resolveReadableInstitutionId(currentUser)).toBe('inst-2');
     });
+
+    it('throws ForbiddenException if super admin has no memberships and requestedInstitutionId is undefined', () => {
+      const currentUser = buildCurrentUser({
+        globalRole: GlobalUserRole.SuperAdmin,
+        memberships: [],
+      });
+
+      expect(() => resolveReadableInstitutionId(currentUser)).toThrow(
+        new ForbiddenException(
+          'Debes indicar una institucion valida para consultar esta configuracion.',
+        ),
+      );
+    });
   });
 
   describe('resolveManagedInstitutionId', () => {

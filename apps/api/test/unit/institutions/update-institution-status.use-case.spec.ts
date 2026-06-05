@@ -81,4 +81,54 @@ describe('UpdateInstitutionStatusUseCase', () => {
     expect(result.message).toBe('La institucion fue suspendida correctamente.');
     expect(result.institution.isActive).toBe(false);
   });
+
+  it('returns suspended message if target status is false and matches current status', async () => {
+    const repository = createInstitutionsRepositoryMock();
+    const mockInstitution: InstitutionSummary = {
+      id: 'inst-1',
+      name: 'UTA',
+      code: 'UTA',
+      domains: ['uta.edu.ec'],
+      isActive: false,
+    };
+    repository.findById.mockResolvedValue(mockInstitution);
+
+    const useCase = new UpdateInstitutionStatusUseCase(repository);
+
+    const result = await useCase.execute({
+      institutionId: 'inst-1',
+      isActive: false,
+    });
+
+    expect(repository.updateStatus).not.toHaveBeenCalled();
+    expect(result.message).toBe('La institucion ya se encuentra suspendida.');
+  });
+
+  it('reactivates the institution and returns appropriate message', async () => {
+    const repository = createInstitutionsRepositoryMock();
+    const mockInstitution: InstitutionSummary = {
+      id: 'inst-1',
+      name: 'UTA',
+      code: 'UTA',
+      domains: ['uta.edu.ec'],
+      isActive: false,
+    };
+    const updatedInstitution: InstitutionSummary = {
+      ...mockInstitution,
+      isActive: true,
+    };
+    repository.findById.mockResolvedValue(mockInstitution);
+    repository.updateStatus.mockResolvedValue(updatedInstitution);
+
+    const useCase = new UpdateInstitutionStatusUseCase(repository);
+
+    const result = await useCase.execute({
+      institutionId: 'inst-1',
+      isActive: true,
+    });
+
+    expect(repository.updateStatus).toHaveBeenCalledWith('inst-1', true);
+    expect(result.message).toBe('La institucion fue reactivada correctamente.');
+    expect(result.institution.isActive).toBe(true);
+  });
 });

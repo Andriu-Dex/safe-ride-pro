@@ -93,4 +93,65 @@ describe('ListAdminUserDirectoryUseCase', () => {
       }),
     ).rejects.toThrow(new ForbiddenException('No tienes permisos para gestionar usuarios.'));
   });
+
+  it('rejects if non-superadmin tries to access an institution they do not administer', async () => {
+    const usersRepository = createUsersRepositoryMock();
+    const useCase = new ListAdminUserDirectoryUseCase(usersRepository);
+
+    await expect(
+      useCase.execute({
+        currentUser: buildCurrentUser({
+          globalRole: GlobalUserRole.User,
+          memberships: [
+            {
+              id: 'membership-admin-1',
+              institutionId: 'institution-1',
+              institutionName: 'UTA',
+              institutionIsActive: true,
+              role: InstitutionMembershipRole.InstitutionAdmin,
+              membershipStatus: MembershipStatus.Active,
+              studentCode: 'ADMIN-001',
+              isDefault: true,
+              driverVerificationStatus: DriverVerificationStatus.NotRequested,
+            },
+          ],
+        }),
+        institutionId: 'institution-2',
+      }),
+    ).rejects.toThrow(new ForbiddenException('No tienes permisos para gestionar usuarios de esa institucion.'));
+  });
+
+  it('allows non-superadmin to query their own institution', async () => {
+    const usersRepository = createUsersRepositoryMock();
+    usersRepository.listAdminUserDirectory.mockResolvedValue([]);
+    const useCase = new ListAdminUserDirectoryUseCase(usersRepository);
+
+    const currentUser = buildCurrentUser({
+      globalRole: GlobalUserRole.User,
+      memberships: [
+        {
+          id: 'membership-admin-1',
+          institutionId: 'institution-1',
+          institutionName: 'UTA',
+          institutionIsActive: true,
+          role: InstitutionMembershipRole.InstitutionAdmin,
+          membershipStatus: MembershipStatus.Active,
+          studentCode: 'ADMIN-001',
+          isDefault: true,
+          driverVerificationStatus: DriverVerificationStatus.NotRequested,
+        },
+      ],
+    });
+
+    await useCase.execute({
+      currentUser,
+      institutionId: 'institution-1',
+    });
+
+    expect(usersRepository.listAdminUserDirectory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        institutionIds: ['institution-1'],
+      }),
+    );
+  });
 });

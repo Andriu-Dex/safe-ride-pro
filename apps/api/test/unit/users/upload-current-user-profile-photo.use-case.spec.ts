@@ -122,4 +122,29 @@ describe('UploadCurrentUserProfilePhotoUseCase', () => {
       }),
     ).rejects.toThrow(new NotFoundException('El usuario solicitado no existe.'));
   });
+
+  it('fails when no file is provided', async () => {
+    const repository = createUsersRepositoryMock();
+    const storageService = createProfileImageStorageServiceMock();
+    const useCase = new UploadCurrentUserProfilePhotoUseCase(repository, storageService);
+
+    await expect(useCase.execute('user-1', undefined)).rejects.toThrow(
+      new BadRequestException('Selecciona una imagen para continuar.'),
+    );
+  });
+
+  it('fails when the file size exceeds the 5 MB limit', async () => {
+    const repository = createUsersRepositoryMock();
+    const storageService = createProfileImageStorageServiceMock();
+    const useCase = new UploadCurrentUserProfilePhotoUseCase(repository, storageService);
+
+    await expect(
+      useCase.execute('user-1', {
+        originalname: 'avatar.png',
+        mimetype: 'image/png',
+        size: 6 * 1024 * 1024, // 6 MB
+        buffer: Buffer.from('png'),
+      }),
+    ).rejects.toThrow(new BadRequestException('La foto de perfil no puede superar los 5 MB.'));
+  });
 });

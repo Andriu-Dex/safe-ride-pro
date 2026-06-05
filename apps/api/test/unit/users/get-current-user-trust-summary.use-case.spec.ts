@@ -210,4 +210,40 @@ describe('GetCurrentUserTrustSummaryUseCase', () => {
       'Existe al menos un reporte resuelto reciente de alta severidad (1) que requiere seguimiento prioritario.',
     );
   });
+
+  it('maps active sanctions in the output', async () => {
+    const repository = createUsersRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new GetCurrentUserTrustSummaryUseCase(repository, sanctionsService);
+
+    repository.findById.mockResolvedValue(buildUserProfile());
+    repository.getTrustSummary.mockResolvedValue(buildTrustSummary());
+    sanctionsService.synchronizeAutomaticSanctions.mockResolvedValue([
+      {
+        id: 'sanction-1',
+        type: 'SUSPENSION' as any,
+        scope: 'GLOBAL' as any,
+        reason: 'Violation',
+        createdAt: new Date(),
+        expiresAt: new Date(),
+        liftedAt: null,
+      } as any,
+    ]);
+    sanctionsService.getRecentSanctionHistory.mockResolvedValue({
+      recentSanctionCount: 0,
+      recentBlockingSanctionCount: 0,
+      recurrenceWindowDays: 90,
+      lastComputedAt: new Date('2030-01-01T12:00:00.000Z'),
+    });
+
+    const response = await useCase.execute('user-1');
+
+    expect(response.activeSanctions).toHaveLength(1);
+    expect(response.activeSanctions[0]).toEqual(
+      expect.objectContaining({
+        type: 'SUSPENSION',
+        scope: 'GLOBAL',
+      }),
+    );
+  });
 });

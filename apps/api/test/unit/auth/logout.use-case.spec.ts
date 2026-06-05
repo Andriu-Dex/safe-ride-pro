@@ -42,9 +42,9 @@ function createRefreshTokenServiceMock(): jest.Mocked<RefreshTokenService> {
 }
 
 function createAuditServiceMock(): jest.Mocked<AuditService> {
-  return {
-    record: jest.fn(),
-  } as unknown as jest.Mocked<AuditService>;
+  const mock = Object.create(AuditService.prototype) as jest.Mocked<AuditService>;
+  mock.record = jest.fn();
+  return mock;
 }
 
 function buildAuthUserRecord(overrides: Partial<AuthUserRecord> = {}): AuthUserRecord {

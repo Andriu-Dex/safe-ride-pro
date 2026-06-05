@@ -190,4 +190,62 @@ describe('ResendVerificationCodeUseCase', () => {
     expect(result.deliveryChannel).toBe('development_preview');
     expect(result.verificationCode).toBeDefined(); // should be returned as a string since debug is enabled
   });
+
+  it('generates new code, sends email, and returns result without verificationCode if debug is disabled', async () => {
+    const repository = createAuthRepositoryMock();
+    const emailService = createAuthEmailServiceMock();
+    const auditService = createAuditServiceMock();
+    const environmentService = createEnvironmentServiceMock({
+      authResendCooldownSeconds: 60,
+      emailVerificationTokenTtlMinutes: 15,
+      authAllowDebugCodes: false,
+    });
+
+    const mockUser = buildAuthUserRecord({
+      emailVerifiedAt: null,
+      accountStatus: AccountStatus.PendingEmailVerification,
+    });
+    repository.findUserByEmail.mockResolvedValue(mockUser);
+    repository.findLatestPendingEmailVerificationByUserId.mockResolvedValue(null);
+    emailService.sendVerificationCodeEmail.mockResolvedValue('development_preview');
+
+    const useCase = new ResendVerificationCodeUseCase(repository, emailService, environmentService, auditService);
+    const result = await useCase.execute({ email: 'student@uta.edu.ec' });
+
+    expect(result.verificationCode).toBeUndefined();
+  });
+
+  it('handles user with no default membership gracefully when recording audit', async () => {
+    const repository = createAuthRepositoryMock();
+    const emailService = createAuthEmailServiceMock();
+    const auditService = createAuditServiceMock();
+    const environmentService = createEnvironmentServiceMock({
+      authResendCooldownSeconds: 60,
+      emailVerificationTokenTtlMinutes: 15,
+      authAllowDebugCodes: true,
+    });
+
+    const mockUser = buildAuthUserRecord({
+      emailVerifiedAt: null,
+      accountStatus: AccountStatus.PendingEmailVerification,
+      memberships: [],
+    });
+    repository.findUserByEmail.mockResolvedValue(mockUser);
+    repository.findLatestPendingEmailVerificationByUserId.mockResolvedValue(null);
+    emailService.sendVerificationCodeEmail.mockResolvedValue('development_preview');
+
+    const useCase = new ResendVerificationCodeUseCase(repository, emailService, environmentService, auditService);
+    const result = await useCase.execute({ email: 'student@uta.edu.ec' });
+
+    expect(auditService.record).toHaveBeenCalledWith({
+      institutionId: undefined,
+      actorUserId: 'user-1',
+      action: AuditAction.AuthVerificationCodeResent,
+      entityType: AuditEntityType.AuthSession,
+      entityId: 'user-1',
+      metadata: {
+        email: 'student@uta.edu.ec',
+      },
+    });
+  });
 });

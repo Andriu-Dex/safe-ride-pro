@@ -200,4 +200,66 @@ describe('ForgotPasswordUseCase', () => {
     expect(repository.createPasswordResetCode).not.toHaveBeenCalled();
     expect(authEmailService.sendPasswordResetCodeEmail).not.toHaveBeenCalled();
   });
+
+  it('does not return the resetCode if authAllowDebugCodes is false', async () => {
+    const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const environmentService = {
+      passwordResetTokenTtlMinutes: 20,
+      authResendCooldownSeconds: 60,
+      authAllowDebugCodes: false,
+    } as EnvironmentService;
+    const useCase = new ForgotPasswordUseCase(
+      repository,
+      authEmailService,
+      environmentService,
+      auditService,
+    );
+
+    repository.findUserByEmail.mockResolvedValue(buildUser());
+    repository.findLatestPendingPasswordResetByUserId.mockResolvedValue(null);
+    authEmailService.sendPasswordResetCodeEmail.mockResolvedValue('development_preview');
+
+    const response = await useCase.execute({
+      email: 'student@uta.edu.ec',
+    });
+
+    expect(response.resetCode).toBeUndefined();
+  });
+
+  it('returns generic message if the user is found but emailVerifiedAt is null', async () => {
+    const repository = createAuthRepositoryMock();
+    const authEmailService = createAuthEmailServiceMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const environmentService = {
+      passwordResetTokenTtlMinutes: 20,
+      authResendCooldownSeconds: 60,
+      authAllowDebugCodes: true,
+    } as EnvironmentService;
+    const useCase = new ForgotPasswordUseCase(
+      repository,
+      authEmailService,
+      environmentService,
+      auditService,
+    );
+
+    repository.findUserByEmail.mockResolvedValue(buildUser({ emailVerifiedAt: null }));
+
+    const response = await useCase.execute({
+      email: 'student@uta.edu.ec',
+    });
+
+    expect(response).toEqual({
+      message:
+        'Si existe una cuenta activa con ese correo, enviamos instrucciones para restablecer la contrasena.',
+    });
+    expect(repository.createPasswordResetCode).not.toHaveBeenCalled();
+    expect(authEmailService.sendPasswordResetCodeEmail).not.toHaveBeenCalled();
+    expect(auditService.record).not.toHaveBeenCalled();
+  });
 });
