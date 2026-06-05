@@ -1,5 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+function escapeRegexLiteral(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export async function signInThroughUi(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
   await page.getByLabel('Correo').fill(email);
@@ -10,10 +14,31 @@ export async function signInThroughUi(page: Page, email: string, password: strin
 }
 
 export async function openSidebarSection(page: Page, label: string): Promise<void> {
-  await page
-    .getByRole('navigation', { name: 'Principal' })
-    .getByRole('link', { name: new RegExp(label, 'i') })
-    .click();
+  const nav = page.getByRole('navigation', { name: 'Principal' });
+  const labelPattern = new RegExp(`^${escapeRegexLiteral(label)}$`, 'i');
+  const groupedSectionByLabel: Record<string, string> = {
+    Dashboard: 'Admin',
+    Moderacion: 'Admin',
+    Usuarios: 'Admin',
+    Auditoria: 'Admin',
+    Configuracion: 'Admin',
+    Solicitudes: 'Conductor',
+    Vehiculos: 'Conductor',
+  };
+
+  const groupLabel = groupedSectionByLabel[label];
+
+  if (groupLabel) {
+    const groupTrigger = nav.getByRole('button', {
+      name: new RegExp(`^${escapeRegexLiteral(groupLabel)}$`, 'i'),
+    });
+    await groupTrigger.hover();
+    await nav.getByRole('link', { name: labelPattern }).click();
+    return;
+  }
+
+  const directLink = nav.getByRole('link', { name: labelPattern }).first();
+  await directLink.click();
 }
 
 export async function waitForSectionHeading(

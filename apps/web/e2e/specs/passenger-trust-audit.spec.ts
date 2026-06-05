@@ -68,12 +68,13 @@ test('pasajero, conductor y admin completan solicitud, cierre, confianza y moder
     const ratingCard = passengerPage
       .locator('div')
       .filter({ hasText: driver.fullName })
-      .filter({ hasText: 'Calificar al conductor' })
+      .filter({ hasText: tripResponse.trip.originLabel })
       .first();
-    await expect(ratingCard).toBeVisible();
+    await expect(ratingCard.getByRole('button', { name: 'Calificar' })).toBeVisible();
     await ratingCard.getByRole('button', { name: 'Calificar' }).click();
-    await passengerPage.getByLabel('Comentario').fill(`Calificacion E2E ${suffix}`);
-    await passengerPage.getByRole('button', { name: 'Registrar' }).click();
+    await passengerPage.getByRole('radio', { name: 'Calificar con 5 estrellas' }).click();
+    await passengerPage.getByLabel('Comentario (Opcional)').fill(`Calificacion E2E ${suffix}`);
+    await passengerPage.getByRole('button', { name: 'Registrar calificación' }).click();
     await expect(passengerPage.getByText('Calificacion registrada correctamente.')).toBeVisible();
 
     await createReport(
