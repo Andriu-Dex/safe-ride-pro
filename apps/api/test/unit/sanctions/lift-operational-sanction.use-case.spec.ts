@@ -25,6 +25,19 @@ import type {
 import { LiftOperationalSanctionUseCase } from '../../../src/modules/sanctions/application/use-cases/lift-operational-sanction.use-case';
 import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 
+jest.mock('../../../src/modules/sanctions/application/utils/sanctions-admin-access', () => {
+  const actual = jest.requireActual('../../../src/modules/sanctions/application/utils/sanctions-admin-access');
+  return {
+    ...actual,
+    resolveReviewableInstitutionScope: jest.fn((currentUser, instId) => {
+      if (instId === 'trigger-use-case-forbidden') {
+        return ['some-other-institution'];
+      }
+      return actual.resolveReviewableInstitutionScope(currentUser, instId);
+    }),
+  };
+});
+
 function createSanctionsRepositoryMock(): jest.Mocked<SanctionsRepository> {
   return {
     findInstitutionIdByMembershipId: jest.fn(),
@@ -208,5 +221,45 @@ describe('LiftOperationalSanctionUseCase', () => {
         'La sancion tiene una apelacion pendiente. Revisa la apelacion antes de levantarla manualmente.',
       ),
     );
+  });
+
+  it('throws ForbiddenException if administrator does not belong to the institution of the sanction', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new LiftOperationalSanctionUseCase(repository, sanctionsService);
+    const adminUser = buildAdminUser();
+    // Use trigger to mock helper and let use case handle the throw
+    repository.findSanctionDetailById.mockResolvedValue(buildSanction({ institutionId: 'trigger-use-case-forbidden' }));
+
+    await expect(
+      useCase.execute(adminUser, {
+        sanctionId: 'sanction-1',
+        reviewNote: 'La restriccion se levanta por correccion documentada del caso.',
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException('No tienes permisos para levantar sanciones de esa institucion.'),
+    );
+  });
+
+  it('throws BadRequestException if administrative note is too short or missing', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new LiftOperationalSanctionUseCase(repository, sanctionsService);
+    const adminUser = buildAdminUser();
+    repository.findSanctionDetailById.mockResolvedValue(buildSanction());
+
+    await expect(
+      useCase.execute(adminUser, {
+        sanctionId: 'sanction-1',
+        reviewNote: 'short', // less than min length
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      useCase.execute(adminUser, {
+        sanctionId: 'sanction-1',
+        reviewNote: '',
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

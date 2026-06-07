@@ -28,7 +28,7 @@
     "@nestjs/core": "^11.1.0",
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/platform-express": "^11.1.0",
-    "@prisma/client": "^6.6.0",
+    "@prisma/client": "^6.19.2",
     "@saferidepro/shared-types": "workspace:*",
     "@types/multer": "^2.1.0",
     "bcryptjs": "^2.4.3",

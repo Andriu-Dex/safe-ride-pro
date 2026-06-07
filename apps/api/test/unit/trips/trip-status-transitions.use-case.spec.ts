@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   CancellationTiming,
   DriverLicenseStatus,
@@ -185,6 +185,45 @@ describe('Trip status transition use cases', () => {
       entityId: 'trip-1',
       metadata: {
         status: TripStatus.Full,
+      },
+    });
+    expect(sanctionsService.assertDriverOperationsAllowed).toHaveBeenCalledWith('membership-1');
+  });
+
+  it('publishes a trip with available seats as PUBLISHED and records audit', async () => {
+    const repository = createTripsRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new PublishTripUseCase(repository, auditService, sanctionsService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(
+      buildTrip(TripStatus.Draft, { availableSeats: 2, seatCount: 4 }),
+    );
+    repository.findVehicleByIdForMembership.mockResolvedValue(buildVehicle());
+    repository.findOverlappingTrips.mockResolvedValue([]);
+    repository.updateTripStatus.mockResolvedValue(buildTrip(TripStatus.Published, { availableSeats: 2, seatCount: 4 }));
+
+    const response = await useCase.execute('user-1', 'trip-1');
+
+    expect(response.message).toBe('Viaje publicado correctamente.');
+    expect(repository.updateTripStatus).toHaveBeenCalledWith('trip-1', TripStatus.Published);
+    expect(auditService.record).toHaveBeenCalledWith({
+      institutionId: 'institution-1',
+      actorUserId: 'user-1',
+      action: AuditAction.TripPublished,
+      entityType: AuditEntityType.Trip,
+      entityId: 'trip-1',
+      metadata: {
+        status: TripStatus.Published,
       },
     });
     expect(sanctionsService.assertDriverOperationsAllowed).toHaveBeenCalledWith('membership-1');
@@ -760,5 +799,270 @@ describe('Trip status transition use cases', () => {
         'Tu membresia tiene una restriccion temporal para operar como conductor hasta 01/01/2030.',
       ),
     );
+  });
+
+  describe('validation edge cases and uncovered branches', () => {
+    it('handles CancelTripUseCase validation edge cases', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const realtimeEventsService = { publishTripChanged: jest.fn(), publishTripLiveTrackingUpdated: jest.fn() } as any;
+      const useCase = new CancelTripUseCase(repository, auditService, sanctionsService, { cancelTripPayments: jest.fn() } as any, realtimeEventsService);
+
+      // 1. Membership inactive/missing
+      repository.findDefaultMembershipByUserId.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('No tienes una membresia activa para cancelar viajes.'),
+      );
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Inactive,
+      } as any);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('No tienes una membresia activa para cancelar viajes.'),
+      );
+
+      // Setup active membership
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+
+      // 2. Trip not found
+      repository.findTripById.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new NotFoundException('El viaje solicitado no existe.'),
+      );
+
+      // 3. Different driver
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Published, { driverMembershipId: 'membership-other' }));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('Solo el conductor duenio puede cancelar este viaje.'),
+      );
+
+      // 4. InProgress/Completed status
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.InProgress));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('No se puede cancelar un viaje que ya inicio o finalizo.'),
+      );
+
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Completed));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('No se puede cancelar un viaje que ya inicio o finalizo.'),
+      );
+
+      // 5. Already cancelled
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Cancelled));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('El viaje ya se encuentra cancelado.'),
+      );
+
+      // 6. Tracking exists coverage (line 90)
+      repository.findTripById.mockResolvedValue(buildTrip(TripStatus.Published));
+      repository.cancelTripAndActiveRequests.mockResolvedValue(buildTrip(TripStatus.Cancelled));
+      repository.endTripLiveTracking.mockResolvedValue({
+        status: TripLiveTrackingStatus.Ended,
+        lastSignalAt: new Date(),
+        currentLatitude: -1.25,
+        currentLongitude: -78.62,
+        currentAccuracyMeters: 5,
+        currentHeadingDegrees: 90,
+        currentSpeedKph: 0,
+      } as any);
+
+      const res = await useCase.execute('user-1', 'trip-1');
+      expect(res.message).toBe('Viaje cancelado correctamente.');
+      expect(realtimeEventsService.publishTripLiveTrackingUpdated).toHaveBeenCalled();
+    });
+
+    it('handles CompleteTripUseCase validation edge cases', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const realtimeEventsService = { publishTripChanged: jest.fn(), publishTripLiveTrackingUpdated: jest.fn() } as any;
+      const useCase = new CompleteTripUseCase(repository, auditService, realtimeEventsService);
+
+      // 1. Membership inactive/missing
+      repository.findDefaultMembershipByUserId.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('No tienes una membresia activa para finalizar viajes.'),
+      );
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+
+      // 2. Trip not found
+      repository.findTripById.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new NotFoundException('El viaje solicitado no existe.'),
+      );
+
+      // 3. Different driver
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Published, { driverMembershipId: 'membership-other' }));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('Solo el conductor duenio puede finalizar este viaje.'),
+      );
+
+      // 4. Not in progress status
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Published));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('Solo los viajes en curso pueden finalizarse.'),
+      );
+
+      // 5. Tracking exists coverage (line 100)
+      repository.findTripById.mockResolvedValue(buildTrip(TripStatus.InProgress));
+      repository.listTripExecutionPassengers.mockResolvedValue([]);
+      repository.completeTrip.mockResolvedValue(buildTrip(TripStatus.Completed));
+      repository.endTripLiveTracking.mockResolvedValue({
+        status: TripLiveTrackingStatus.Ended,
+        lastSignalAt: new Date(),
+        currentLatitude: -1.25,
+        currentLongitude: -78.62,
+        currentAccuracyMeters: 5,
+        currentHeadingDegrees: 90,
+        currentSpeedKph: 0,
+      } as any);
+
+      const res = await useCase.execute('user-1', 'trip-1');
+      expect(res.message).toBe('Viaje finalizado correctamente.');
+      expect(realtimeEventsService.publishTripLiveTrackingUpdated).toHaveBeenCalled();
+    });
+
+    it('handles DeleteDraftTripUseCase validation edge cases', async () => {
+      const repository = createTripsRepositoryMock();
+      const useCase = new DeleteDraftTripUseCase(repository);
+
+      // 1. Membership inactive/missing
+      repository.findDefaultMembershipByUserId.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('No tienes una membresia activa para eliminar viajes.'),
+      );
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+
+      // 2. Trip not found
+      repository.findTripById.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new NotFoundException('El viaje solicitado no existe.'),
+      );
+
+      // 3. Different driver
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Draft, { driverMembershipId: 'membership-other' }));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('Solo el conductor duenio puede eliminar este viaje.'),
+      );
+
+      // 4. Active requests > 0
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Draft));
+      repository.countActiveRequestsForTrip.mockResolvedValueOnce(1);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('No se puede eliminar un viaje con solicitudes activas.'),
+      );
+    });
+
+    it('handles PublishTripUseCase validation edge cases', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new PublishTripUseCase(repository, auditService, sanctionsService);
+
+      // 1. Membership inactive/missing
+      repository.findDefaultMembershipByUserId.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('No tienes una membresia activa para publicar viajes.'),
+      );
+
+      // 2. Driver not approved
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.PendingVerification,
+      } as any);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('Solo un conductor aprobado puede publicar viajes.'),
+      );
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+
+      // 3. Trip not found
+      repository.findTripById.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new NotFoundException('El viaje solicitado no existe.'),
+      );
+
+      // 4. Different driver
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Draft, { driverMembershipId: 'membership-other' }));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('Solo el conductor duenio puede publicar este viaje.'),
+      );
+
+      // 5. Already published / not draft
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Published));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('Solo los viajes en borrador pueden publicarse.'),
+      );
+
+      // 6. Available seats > seatCount
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Draft, { availableSeats: 5, seatCount: 4 }));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('Los cupos disponibles no pueden superar la capacidad del viaje.'),
+      );
+
+      // 7. Arrival time <= departure time
+      const departure = new Date(Date.now() + 10 * 60_000);
+      const invalidArrival = new Date(departure.getTime() - 5 * 60_000);
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Draft, { departureAt: departure, estimatedArrivalAt: invalidArrival }));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('La llegada estimada del viaje debe ser posterior a la salida.'),
+      );
+    });
+
+    it('handles StartTripUseCase validation edge cases', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+      const useCase = new StartTripUseCase(repository, auditService, sanctionsService, lifecycleService);
+
+      // 1. Membership inactive/missing
+      repository.findDefaultMembershipByUserId.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('No tienes una membresia activa para iniciar viajes.'),
+      );
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+
+      // 2. Trip not found
+      repository.findTripById.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new NotFoundException('El viaje solicitado no existe.'),
+      );
+
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Published));
+      lifecycleService.reconcileTripLifecycle.mockResolvedValueOnce(buildTrip(TripStatus.Published, { driverMembershipId: 'membership-other' }));
+      // 3. Different driver
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('Solo el conductor duenio puede iniciar este viaje.'),
+      );
+
+      repository.findTripById.mockResolvedValueOnce(buildTrip(TripStatus.Published));
+      lifecycleService.reconcileTripLifecycle.mockResolvedValueOnce(buildTrip(TripStatus.Draft));
+      // 4. Status not published/full
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new BadRequestException('Solo los viajes publicados pueden iniciarse.'),
+      );
+    });
   });
 });

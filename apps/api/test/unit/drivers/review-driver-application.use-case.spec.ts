@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   AccountStatus,
   DriverLicenseStatus,
@@ -306,5 +306,118 @@ describe('ReviewDriverApplicationUseCase', () => {
         'Solo puedes revisar solicitudes asociadas a membresias activas.',
       ),
     );
+  });
+
+  it('throws NotFoundException if target membership is not found', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewDriverApplicationUseCase(repository, auditService);
+
+    repository.findMembershipById.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        membershipId: 'membership-not-found',
+        decision: DriverVerificationStatus.Approved,
+      }),
+    ).rejects.toThrow(new NotFoundException('La solicitud de conductor no existe.'));
+  });
+
+  it('throws NotFoundException if driver profile is not found', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewDriverApplicationUseCase(repository, auditService);
+
+    repository.findMembershipById.mockResolvedValue(buildTargetMembership());
+    repository.findDriverProfileByMembershipId.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        membershipId: 'membership-target',
+        decision: DriverVerificationStatus.Approved,
+      }),
+    ).rejects.toThrow(new NotFoundException('La solicitud de conductor aun no ha sido enviada.'));
+  });
+
+  it('allows SuperAdmin to review an application successfully', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewDriverApplicationUseCase(repository, auditService);
+
+    repository.findMembershipById.mockResolvedValue(buildTargetMembership());
+    repository.findDriverProfileByMembershipId.mockResolvedValue(
+      buildDriverProfile(DriverVerificationStatus.PendingVerification),
+    );
+    repository.reviewDriverApplication.mockResolvedValue(
+      buildDriverProfile(DriverVerificationStatus.Approved),
+    );
+
+    const superAdmin: CurrentUserContext = {
+      id: 'superadmin-1',
+      email: 'superadmin@saferidepro.com',
+      fullName: 'Super Admin',
+      globalRole: GlobalUserRole.SuperAdmin,
+      accountStatus: AccountStatus.Active,
+      memberships: [],
+    };
+
+    const response = await useCase.execute(superAdmin, {
+      membershipId: 'membership-target',
+      decision: DriverVerificationStatus.Approved,
+    });
+
+    expect(response.message).toBe('La solicitud de conductor fue aprobada correctamente.');
+    expect(repository.reviewDriverApplication).toHaveBeenCalledWith({
+      membershipId: 'membership-target',
+      reviewerUserId: 'superadmin-1',
+      decision: DriverVerificationStatus.Approved,
+      reviewNotes: undefined,
+    });
+  });
+
+  it('rejects the application and records audit when requested', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewDriverApplicationUseCase(repository, auditService);
+
+    repository.findMembershipById.mockResolvedValue(buildTargetMembership());
+    repository.findDriverProfileByMembershipId.mockResolvedValue(
+      buildDriverProfile(DriverVerificationStatus.PendingVerification),
+    );
+    repository.reviewDriverApplication.mockResolvedValue(
+      buildDriverProfile(DriverVerificationStatus.Rejected),
+    );
+
+    const response = await useCase.execute(buildAdminUser(), {
+      membershipId: 'membership-target',
+      decision: DriverVerificationStatus.Rejected,
+      reviewNotes: 'Documentos no legibles',
+    });
+
+    expect(response.message).toBe('La solicitud de conductor fue rechazada correctamente.');
+    expect(repository.reviewDriverApplication).toHaveBeenCalledWith({
+      membershipId: 'membership-target',
+      reviewerUserId: 'admin-1',
+      decision: DriverVerificationStatus.Rejected,
+      reviewNotes: 'Documentos no legibles',
+    });
+    expect(auditService.record).toHaveBeenCalledWith({
+      institutionId: 'institution-1',
+      actorUserId: 'admin-1',
+      action: AuditAction.DriverApplicationRejected,
+      entityType: AuditEntityType.DriverProfile,
+      entityId: 'membership-target',
+      metadata: {
+        decision: DriverVerificationStatus.Rejected,
+      },
+    });
   });
 });

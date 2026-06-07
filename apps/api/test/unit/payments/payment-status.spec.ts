@@ -38,4 +38,34 @@ describe('mapPaypalStatusesToTripPaymentStatus', () => {
       }),
     ).toBe(TripPaymentStatus.CheckoutReady);
   });
+
+  it('marks refunded orders as refunded', () => {
+    expect(
+      mapPaypalStatusesToTripPaymentStatus({
+        orderStatus: '',
+        paymentStatus: 'REFUNDED',
+      }),
+    ).toBe(TripPaymentStatus.Refunded);
+  });
+
+  it('defaults unknown status patterns to checkout ready', () => {
+    expect(
+      mapPaypalStatusesToTripPaymentStatus({
+        orderStatus: 'SOME_RANDOM_STATUS',
+        paymentStatus: 'OTHER_RANDOM_STATUS',
+      }),
+    ).toBe(TripPaymentStatus.CheckoutReady);
+  });
+
+  it('handles null/undefined inputs safely', () => {
+    expect(
+      mapPaypalStatusesToTripPaymentStatus({}),
+    ).toBe(TripPaymentStatus.CheckoutReady);
+    expect(
+      mapPaypalStatusesToTripPaymentStatus({
+        orderStatus: null,
+        paymentStatus: null,
+      }),
+    ).toBe(TripPaymentStatus.CheckoutReady);
+  });
 });

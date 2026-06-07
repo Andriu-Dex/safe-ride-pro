@@ -1,6 +1,7 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   CancellationTiming,
+  DriverLicenseStatus,
   DriverVerificationStatus,
   LuggagePolicy,
   MembershipStatus,
@@ -219,5 +220,107 @@ describe('GetTripByIdUseCase', () => {
     await expect(useCase.execute('user-passenger', 'trip-1')).rejects.toThrow(
       new NotFoundException('El viaje solicitado no existe.'),
     );
+  });
+
+  it('rejects access when the user has no default membership', async () => {
+    const repository = createTripsRepositoryMock();
+    const tripLifecycleMaintenanceService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new GetTripByIdUseCase(repository, tripLifecycleMaintenanceService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(null);
+
+    await expect(useCase.execute('user-unknown', 'trip-1')).rejects.toThrow(
+      new ForbiddenException('No tienes una membresía activa para consultar viajes.'),
+    );
+  });
+
+  it('rejects access when the trip is not found', async () => {
+    const repository = createTripsRepositoryMock();
+    const tripLifecycleMaintenanceService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new GetTripByIdUseCase(repository, tripLifecycleMaintenanceService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-passenger',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.NotRequested,
+    });
+    repository.findTripById.mockResolvedValue(null);
+
+    await expect(useCase.execute('user-passenger', 'trip-1')).rejects.toThrow(
+      new NotFoundException('El viaje solicitado no existe.'),
+    );
+  });
+
+  it('covers all canEdit sub-conditions for the owner', async () => {
+    const repository = createTripsRepositoryMock();
+    const tripLifecycleMaintenanceService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new GetTripByIdUseCase(repository, tripLifecycleMaintenanceService);
+
+    // activeRequestCount > 0
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-driver',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip({ status: TripStatus.Published }));
+    repository.countActiveRequestsForTrip.mockResolvedValue(1);
+    let response = await useCase.execute('user-driver', 'trip-1');
+    expect(response.canEdit).toBe(false);
+
+    // inactive membership
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-driver',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Inactive,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.countActiveRequestsForTrip.mockResolvedValue(0);
+    response = await useCase.execute('user-driver', 'trip-1');
+    expect(response.canEdit).toBe(false);
+
+    // driverVerificationStatus not Approved
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-driver',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.PendingVerification,
+    });
+    response = await useCase.execute('user-driver', 'trip-1');
+    expect(response.canEdit).toBe(false);
+
+    // driver license expired
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-driver',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+      licenseStatus: DriverLicenseStatus.Expired,
+    } as any);
+    response = await useCase.execute('user-driver', 'trip-1');
+    expect(response.canEdit).toBe(false);
+
+    // trip status is InProgress
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-driver',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findTripById.mockResolvedValue(buildTrip({ status: TripStatus.InProgress }));
+    response = await useCase.execute('user-driver', 'trip-1');
+    expect(response.canEdit).toBe(false);
+
+    // trip status is Published but departure time is in the past
+    repository.findTripById.mockResolvedValue(buildTrip({ status: TripStatus.Published, departureAt: new Date('2020-01-01') }));
+    response = await useCase.execute('user-driver', 'trip-1');
+    expect(response.canEdit).toBe(false);
   });
 });

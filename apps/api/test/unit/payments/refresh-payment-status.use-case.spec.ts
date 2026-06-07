@@ -223,4 +223,40 @@ describe('RefreshPaymentStatusUseCase', () => {
     expect(realtime.publishTripRequestChanged).not.toHaveBeenCalled();
     expect(notifications.notifyMembership).not.toHaveBeenCalled();
   });
+
+  it('rejects refresh if payment does not exist', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const provider = createPaymentProviderMock();
+    const useCase = new RefreshPaymentStatusUseCase(repository, provider);
+
+    repository.findPaymentById.mockResolvedValue(null);
+
+    await expect(useCase.execute('user-passenger', 'payment-invalid')).rejects.toThrow(
+      new NotFoundException('El pago solicitado no existe.'),
+    );
+  });
+
+  it('rejects refresh if payment status cannot be synchronized in repository', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const provider = createPaymentProviderMock();
+    const useCase = new RefreshPaymentStatusUseCase(repository, provider);
+
+    repository.findPaymentById.mockResolvedValue(buildPayment());
+    provider.isConfigured.mockReturnValue(true);
+    provider.fetchPaymentStatus.mockResolvedValue({
+      provider: PaymentProvider.Paypal,
+      providerOrderToken: 'order-1',
+      providerCaptureId: 'capture-1',
+      providerOrderStatus: 'COMPLETED',
+      providerPaymentStatus: 'COMPLETED',
+      paidAt: new Date('2030-01-01T09:12:00.000Z'),
+      expiresAt: null,
+      rawResponse: { id: 'capture-1' },
+    });
+    repository.syncPaymentStatus.mockResolvedValue(null);
+
+    await expect(useCase.execute('user-passenger', 'payment-1')).rejects.toThrow(
+      new NotFoundException('No fue posible sincronizar el pago solicitado.'),
+    );
+  });
 });

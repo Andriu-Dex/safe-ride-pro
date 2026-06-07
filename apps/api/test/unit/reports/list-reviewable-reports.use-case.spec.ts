@@ -105,4 +105,110 @@ describe('ListReviewableReportsUseCase', () => {
 
     expect(repository.listReviewableReports).not.toHaveBeenCalled();
   });
+
+  it('allows SuperAdmin to view all reports across all institutions', async () => {
+    const repository = createReportsRepositoryMock();
+    const mockList = [{ id: 'report-1' } as any];
+    repository.listReviewableReports.mockResolvedValue(mockList);
+    const useCase = new ListReviewableReportsUseCase(repository);
+
+    const superAdmin: CurrentUserContext = {
+      id: 'super-1',
+      email: 'super@saferidepro.com',
+      fullName: 'Super Admin',
+      globalRole: GlobalUserRole.SuperAdmin,
+      accountStatus: AccountStatus.Active,
+      memberships: [],
+    };
+
+    const result = await useCase.execute({
+      currentUser: superAdmin,
+      status: ReportStatus.Pending,
+    });
+
+    expect(repository.listReviewableReports).toHaveBeenCalledWith({
+      institutionIds: undefined,
+      userId: undefined,
+      status: ReportStatus.Pending,
+      limit: undefined,
+    });
+    expect(result.items).toBe(mockList);
+  });
+
+  it('allows SuperAdmin to view reports for a specific institution', async () => {
+    const repository = createReportsRepositoryMock();
+    repository.listReviewableReports.mockResolvedValue([]);
+    const useCase = new ListReviewableReportsUseCase(repository);
+
+    const superAdmin: CurrentUserContext = {
+      id: 'super-1',
+      email: 'super@saferidepro.com',
+      fullName: 'Super Admin',
+      globalRole: GlobalUserRole.SuperAdmin,
+      accountStatus: AccountStatus.Active,
+      memberships: [],
+    };
+
+    await useCase.execute({
+      currentUser: superAdmin,
+      institutionId: 'institution-1',
+    });
+
+    expect(repository.listReviewableReports).toHaveBeenCalledWith({
+      institutionIds: ['institution-1'],
+      userId: undefined,
+      status: undefined,
+      limit: undefined,
+    });
+  });
+
+  it('allows InstitutionAdmin to view reports for their accessible institutions', async () => {
+    const repository = createReportsRepositoryMock();
+    repository.listReviewableReports.mockResolvedValue([]);
+    const useCase = new ListReviewableReportsUseCase(repository);
+
+    await useCase.execute({
+      currentUser: buildInstitutionAdminUser(),
+      status: ReportStatus.Pending,
+    });
+
+    expect(repository.listReviewableReports).toHaveBeenCalledWith({
+      institutionIds: ['institution-1'],
+      userId: undefined,
+      status: ReportStatus.Pending,
+      limit: undefined,
+    });
+  });
+
+  it('allows InstitutionAdmin to view reports for a specific accessible institution', async () => {
+    const repository = createReportsRepositoryMock();
+    repository.listReviewableReports.mockResolvedValue([]);
+    const useCase = new ListReviewableReportsUseCase(repository);
+
+    await useCase.execute({
+      currentUser: buildInstitutionAdminUser(),
+      institutionId: 'institution-1',
+    });
+
+    expect(repository.listReviewableReports).toHaveBeenCalledWith({
+      institutionIds: ['institution-1'],
+      userId: undefined,
+      status: undefined,
+      limit: undefined,
+    });
+  });
+
+  it('forbids InstitutionAdmin from viewing reports for an inaccessible institution', async () => {
+    const repository = createReportsRepositoryMock();
+    const useCase = new ListReviewableReportsUseCase(repository);
+
+    await expect(
+      useCase.execute({
+        currentUser: buildInstitutionAdminUser(),
+        institutionId: 'institution-other',
+      }),
+    ).rejects.toThrow(new ForbiddenException('No tienes permisos para revisar reportes de esa institucion.'));
+
+    expect(repository.listReviewableReports).not.toHaveBeenCalled();
+  });
 });

@@ -226,4 +226,85 @@ describe('TripPaymentsOrchestratorService', () => {
       'Pago no completado.',
     );
   });
+
+  it('returns payment directly when payment provider is not wallet or status is not paid', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const service = new TripPaymentsOrchestratorService(repository);
+    const paypalPayment = buildPayment({
+      provider: PaymentProvider.Paypal,
+      status: TripPaymentStatus.CheckoutReady,
+    });
+
+    repository.upsertAcceptedTripRequestPayment.mockResolvedValue(paypalPayment);
+
+    const response = await service.ensureAcceptedTripRequestPayment('request-1', 'USD');
+
+    expect(response).toBe(paypalPayment);
+    expect(repository.captureWalletPayment).not.toHaveBeenCalled();
+  });
+
+  it('returns null if payment to cancel is not found', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const service = new TripPaymentsOrchestratorService(repository);
+
+    repository.findPaymentByTripRequestId.mockResolvedValue(null);
+
+    const response = await service.cancelTripRequestPayment('request-1', 'Reason');
+
+    expect(response).toBeNull();
+  });
+
+  it('cancels all payments for a trip and returns the count', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const service = new TripPaymentsOrchestratorService(repository);
+    const payments = [
+      buildPayment({ id: 'payment-1', status: TripPaymentStatus.CheckoutReady }),
+      buildPayment({ id: 'payment-2', status: TripPaymentStatus.Cancelled }),
+    ];
+
+    repository.listPaymentsByTripId.mockResolvedValue(payments);
+    repository.markPaymentCancelledByTripRequestId.mockImplementation(async (reqId) => {
+      return buildPayment({ tripRequestId: reqId, status: TripPaymentStatus.Cancelled });
+    });
+
+    const count = await service.cancelTripPayments('trip-1', 'Cancel trip');
+
+    expect(count).toBe(2);
+    expect(repository.listPaymentsByTripId).toHaveBeenCalledWith('trip-1');
+  });
+
+  it('returns payment directly if it is already closed (cancelled, refunded, or expired)', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const service = new TripPaymentsOrchestratorService(repository);
+
+    const cancelledPayment = buildPayment({ status: TripPaymentStatus.Cancelled });
+    repository.findPaymentByTripRequestId.mockResolvedValue(cancelledPayment);
+    let response = await service.cancelTripRequestPayment('request-1', 'Cancel');
+    expect(response).toBe(cancelledPayment);
+
+    const refundedPayment = buildPayment({ status: TripPaymentStatus.Refunded });
+    repository.findPaymentByTripRequestId.mockResolvedValue(refundedPayment);
+    response = await service.cancelTripRequestPayment('request-1', 'Cancel');
+    expect(response).toBe(refundedPayment);
+
+    const expiredPayment = buildPayment({ status: TripPaymentStatus.Expired });
+    repository.findPaymentByTripRequestId.mockResolvedValue(expiredPayment);
+    response = await service.cancelTripRequestPayment('request-1', 'Cancel');
+    expect(response).toBe(expiredPayment);
+  });
+
+  it('returns payment directly if it is Paid but has an unknown provider', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const service = new TripPaymentsOrchestratorService(repository);
+    const unknownPayment = buildPayment({
+      provider: 'UNKNOWN' as any,
+      status: TripPaymentStatus.Paid,
+    });
+
+    repository.findPaymentByTripRequestId.mockResolvedValue(unknownPayment);
+
+    const response = await service.cancelTripRequestPayment('request-1', 'Cancel');
+
+    expect(response).toBe(unknownPayment);
+  });
 });

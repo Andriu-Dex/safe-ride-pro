@@ -141,4 +141,19 @@ describe('MarkTripRequestBoardedUseCase', () => {
       ),
     );
   });
+
+  it('throws BadRequestException if markTripRequestBoarded returns null', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const auditService = { record: jest.fn() } as any;
+    const useCase = new MarkTripRequestBoardedUseCase(repository, auditService);
+
+    repository.findTripRequestById.mockResolvedValue(buildTripRequestRecord());
+    repository.markTripRequestBoarded.mockResolvedValue(null);
+
+    await expect(useCase.execute('driver-1', 'request-1')).rejects.toThrow(
+      new BadRequestException(
+        'No se pudo registrar el abordaje por un cambio reciente en el estado del pasajero.',
+      ),
+    );
+  });
 });

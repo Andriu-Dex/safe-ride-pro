@@ -60,9 +60,42 @@ describe('ListTripsUseCase', () => {
       membershipStatus: MembershipStatus.Active,
       driverVerificationStatus: DriverVerificationStatus.Approved,
     });
-    repository.listTrips.mockResolvedValue([]);
+    const mockTrip = {
+      id: 'trip-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-1',
+      driverFullName: 'Conductor Uno',
+      vehicleId: 'vehicle-1',
+      vehiclePlate: 'ABC-123',
+      vehicleDisplayName: 'Toyota Yaris',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Huachi',
+      destinationLabel: 'Ficoa',
+      originLatitude: -1.25,
+      originLongitude: -78.62,
+      destinationLatitude: -1.24,
+      destinationLongitude: -78.61,
+      departureAt: new Date('2030-01-10T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-10T10:30:00.000Z'),
+      seatCount: 3,
+      availableSeats: 3,
+      vehicleTypeSnapshot: VehicleType.Car,
+      luggagePolicySnapshot: 'None',
+      basePriceReference: 2.5,
+      detourSurchargeReference: null,
+      notes: null,
+      closureNote: null,
+      cancelledAt: null,
+      completedAt: null,
+      cancellationTiming: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    repository.listTrips.mockResolvedValue([mockTrip as any]);
 
-    await useCase.execute({
+    const result = await useCase.execute({
       userId: 'user-1',
       origin: 'Huachi',
       destination: 'Ficoa',
@@ -74,6 +107,9 @@ describe('ListTripsUseCase', () => {
       vehicleType: VehicleType.Car,
       availability: TripAvailabilityFilter.Available,
     });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('trip-1');
 
     expect(repository.listTrips).toHaveBeenCalledWith({
       institutionId: 'institution-1',
@@ -121,5 +157,20 @@ describe('ListTripsUseCase', () => {
       timeFromInMinutes: undefined,
       timeToInMinutes: 360,
     });
+  });
+
+  it('returns empty array when membership is not found', async () => {
+    const repository = createTripsRepositoryMock();
+    const lifecycleService = createTripLifecycleMaintenanceServiceMock();
+    const useCase = new ListTripsUseCase(repository, lifecycleService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(null);
+
+    const result = await useCase.execute({
+      userId: 'user-unknown',
+    });
+
+    expect(result).toEqual([]);
+    expect(repository.listTrips).not.toHaveBeenCalled();
   });
 });

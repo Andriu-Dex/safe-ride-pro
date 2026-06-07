@@ -48,13 +48,26 @@ apps/api/coverage/lcov-report/index.html
 
 ### Coverage del frontend
 
-Actualmente el frontend tiene suite funcional con `Vitest`, pero no hay script formal de coverage configurado como en API. Para exposicion, se demuestra mejor con:
+```powershell
+corepack pnpm --filter @saferidepro/web test:coverage
+```
 
-- `Vitest Runner` en VS Code
-- `Playwright UI`
-- `Playwright HTML report`
+Esto genera la cobertura de los componentes y funciones del frontend utilizando Vitest y `@vitest/coverage-v8`.
+Los reportes se generan en formatos text, html y lcov.
+
+Para ver el reporte completo en tu navegador, abre el siguiente archivo:
+
+```text
+apps/web/coverage/index.html
+```
 
 ## 3. Como ver reportes de Playwright
+
+### Todas las pruebas E2E (Completas)
+
+```powershell
+corepack pnpm --filter @saferidepro/web test:e2e
+```
 
 ### Smoke E2E local
 

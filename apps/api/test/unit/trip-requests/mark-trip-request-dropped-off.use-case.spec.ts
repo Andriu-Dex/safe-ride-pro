@@ -145,4 +145,19 @@ describe('MarkTripRequestDroppedOffUseCase', () => {
       ),
     );
   });
+
+  it('throws BadRequestException if markTripRequestDroppedOff returns null', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const auditService = { record: jest.fn() } as any;
+    const useCase = new MarkTripRequestDroppedOffUseCase(repository, auditService);
+
+    repository.findTripRequestById.mockResolvedValue(buildTripRequestRecord({ executionStatus: TripRequestExecutionStatus.OnBoard }));
+    repository.markTripRequestDroppedOff.mockResolvedValue(null);
+
+    await expect(useCase.execute('driver-1', 'request-1')).rejects.toThrow(
+      new BadRequestException(
+        'No se pudo registrar la finalizacion del pasajero por un cambio reciente en su estado.',
+      ),
+    );
+  });
 });

@@ -221,4 +221,59 @@ describe('SubmitSanctionAppealUseCase', () => {
       new BadRequestException('Ya existe una apelacion pendiente para esta sancion.'),
     );
   });
+
+  it('throws BadRequestException if appeal already exists and is not pending', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitSanctionAppealUseCase(repository, auditService);
+
+    repository.findSanctionDetailById.mockResolvedValue(buildSanction());
+    repository.findAppealBySanctionId.mockResolvedValue(buildAppeal({ status: OperationalSanctionAppealStatus.Approved }));
+
+    await expect(
+      useCase.execute(buildCurrentUser(), {
+        sanctionId: 'sanction-1',
+        reason: 'Solicito revision por un caso excepcional.',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('La sancion indicada ya tiene una apelacion registrada.'),
+    );
+  });
+
+  it('throws BadRequestException if attempting to appeal an inactive sanction', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitSanctionAppealUseCase(repository, auditService);
+
+    repository.findSanctionDetailById.mockResolvedValue(
+      buildSanction({
+        status: OperationalSanctionStatus.Expired,
+        endsAt: new Date('2020-01-01T08:00:00.000Z'),
+      }),
+    );
+
+    await expect(
+      useCase.execute(buildCurrentUser(), {
+        sanctionId: 'sanction-1',
+        reason: 'Solicito revision por un caso excepcional debidamente documentado.',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('Solo puedes apelar sanciones que se encuentren activas actualmente.'),
+    );
+  });
+
+  it('throws BadRequestException if appeal reason is too short', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitSanctionAppealUseCase(repository, auditService);
+
+    repository.findSanctionDetailById.mockResolvedValue(buildSanction());
+
+    await expect(
+      useCase.execute(buildCurrentUser(), {
+        sanctionId: 'sanction-1',
+        reason: 'short',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
 });

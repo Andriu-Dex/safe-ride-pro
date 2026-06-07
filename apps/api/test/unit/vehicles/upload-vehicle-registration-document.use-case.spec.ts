@@ -114,4 +114,68 @@ describe('UploadVehicleRegistrationDocumentUseCase', () => {
     });
     expect(response.fileKey).toBe('membership-1/registration/file-1.pdf');
   });
+
+  it('rejects uploads when no file is provided', async () => {
+    const repository = createVehiclesRepositoryMock();
+    const storage = createVehicleDocumentStorageMock();
+    const useCase = new UploadVehicleRegistrationDocumentUseCase(repository, storage);
+
+    await expect(
+      useCase.execute('user-1', undefined),
+    ).rejects.toThrow(
+      new BadRequestException('Selecciona un archivo antes de continuar.'),
+    );
+  });
+
+  it('rejects uploads when file size exceeds the limit', async () => {
+    const repository = createVehiclesRepositoryMock();
+    const storage = createVehicleDocumentStorageMock();
+    const useCase = new UploadVehicleRegistrationDocumentUseCase(repository, storage);
+
+    const oversizedFile = {
+      originalname: 'document.pdf',
+      mimetype: 'application/pdf',
+      size: 9 * 1024 * 1024, // 9 MB
+      buffer: Buffer.from('large-content'),
+    };
+
+    await expect(
+      useCase.execute('user-1', oversizedFile),
+    ).rejects.toThrow(
+      new BadRequestException('El documento no puede superar los 8 MB.'),
+    );
+  });
+
+  it('stores the document with default filename if originalname is falsy', async () => {
+    const repository = createVehiclesRepositoryMock();
+    const storage = createVehicleDocumentStorageMock();
+    const useCase = new UploadVehicleRegistrationDocumentUseCase(repository, storage);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.PendingVerification,
+    });
+    storage.storeRegistrationDocument.mockResolvedValue({
+      fileKey: 'membership-1/registration/default.pdf',
+    });
+
+    const response = await useCase.execute('user-1', {
+      originalname: '',
+      mimetype: 'application/pdf',
+      size: 2048,
+      buffer: Buffer.from('pdf-content'),
+    });
+
+    expect(response.message).toBe('El documento de matricula se cargo correctamente.');
+    expect(storage.storeRegistrationDocument).toHaveBeenCalledWith({
+      membershipId: 'membership-1',
+      fileName: 'vehicle-registration-document',
+      mimeType: 'application/pdf',
+      content: Buffer.from('pdf-content'),
+    });
+    expect(response.fileKey).toBe('membership-1/registration/default.pdf');
+  });
 });

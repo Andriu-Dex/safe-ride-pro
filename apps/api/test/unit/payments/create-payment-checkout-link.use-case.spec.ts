@@ -199,4 +199,46 @@ describe('CreatePaymentCheckoutLinkUseCase', () => {
     );
     expect(response.checkoutUrl).toBe('https://paypal.example/checkout');
   });
+
+  it('creates and persists the checkout link with PAID status if already paid by provider', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const provider = createPaymentProviderMock();
+    const useCase = new CreatePaymentCheckoutLinkUseCase(repository, provider);
+    const expiresAt = new Date('2030-01-01T09:30:00.000Z');
+    const updatedPayment = buildPayment({
+      status: TripPaymentStatus.Paid,
+      providerOrderToken: 'order-1',
+      providerPaymentLinkId: 'link-1',
+      providerPaymentLinkUrl: 'https://paypal.example/checkout',
+      providerOrderStatus: 'COMPLETED',
+      providerPaymentStatus: 'COMPLETED',
+    });
+
+    repository.findPaymentById.mockResolvedValue(buildPayment());
+    provider.isConfigured.mockReturnValue(true);
+    provider.createCheckout.mockResolvedValue({
+      provider: PaymentProvider.Paypal,
+      checkoutUrl: 'https://paypal.example/checkout',
+      providerOrderToken: 'order-1',
+      providerPaymentLinkId: 'link-1',
+      providerOrderStatus: 'COMPLETED',
+      providerPaymentStatus: 'COMPLETED',
+      expiresAt,
+      rawResponse: { id: 'order-1' },
+    });
+    repository.recordCheckout.mockResolvedValue(updatedPayment);
+
+    const response = await useCase.execute('user-passenger', 'payment-1');
+
+    expect(repository.recordCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentId: 'payment-1',
+        status: TripPaymentStatus.Paid,
+        checkoutUrl: 'https://paypal.example/checkout',
+        providerOrderToken: 'order-1',
+        expiresAt,
+      }),
+    );
+    expect(response.payment.status).toBe(TripPaymentStatus.Paid);
+  });
 });

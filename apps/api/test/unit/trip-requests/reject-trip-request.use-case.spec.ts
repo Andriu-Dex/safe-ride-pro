@@ -365,4 +365,37 @@ describe('RejectTripRequestUseCase', () => {
     );
     expect(response.message).toBe('Solicitud rechazada correctamente.');
   });
+
+  it('sends the fallback notification when payment is refunded but provider is Cash or other', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const paymentsOrchestrator = createPaymentsOrchestratorMock();
+    const notificationsService = createNotificationsServiceMock();
+    const useCase = new RejectTripRequestUseCase(
+      repository,
+      paymentsOrchestrator as unknown as TripPaymentsOrchestratorService,
+      undefined,
+      notificationsService as unknown as NotificationsService,
+    );
+
+    repository.findTripRequestById.mockResolvedValue(buildTripRequest());
+    paymentsOrchestrator.cancelTripRequestPayment.mockResolvedValue(
+      buildPayment({
+        provider: 'CASH' as any,
+        status: TripPaymentStatus.Refunded,
+      }),
+    );
+    repository.rejectTripRequest.mockResolvedValue(
+      buildTripRequest({
+        status: TripRequestStatus.Rejected,
+      }),
+    );
+
+    await useCase.execute('user-driver', 'request-1');
+
+    expect(notificationsService.notifyMembership).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: 'El conductor rechazo tu solicitud.',
+      }),
+    );
+  });
 });

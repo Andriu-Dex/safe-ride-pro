@@ -137,6 +137,22 @@ describe('institution-settings-access', () => {
         ),
       );
     });
+
+    it('falls back to readableInstitutionIds[0] if memberships.find returns undefined (forced via mock)', () => {
+      const memberships = [
+        buildMembership('inst-2'),
+      ];
+      Object.defineProperty(memberships, 'find', {
+        value: () => undefined,
+        configurable: true,
+      });
+
+      const currentUser = buildCurrentUser({
+        memberships,
+      });
+
+      expect(resolveReadableInstitutionId(currentUser)).toBe('inst-2');
+    });
   });
 
   describe('resolveManagedInstitutionId', () => {
@@ -188,6 +204,24 @@ describe('institution-settings-access', () => {
             role: InstitutionMembershipRole.InstitutionAdmin,
           }),
         ],
+      });
+
+      expect(resolveManagedInstitutionId(currentUser)).toBe('inst-2');
+    });
+
+    it('falls back to managedInstitutionIds[0] if memberships.find returns undefined (forced via mock)', () => {
+      const memberships = [
+        buildMembership('inst-2', {
+          role: InstitutionMembershipRole.InstitutionAdmin,
+        }),
+      ];
+      Object.defineProperty(memberships, 'find', {
+        value: () => undefined,
+        configurable: true,
+      });
+
+      const currentUser = buildCurrentUser({
+        memberships,
       });
 
       expect(resolveManagedInstitutionId(currentUser)).toBe('inst-2');

@@ -393,4 +393,349 @@ describe('CreateTripUseCase', () => {
 
     expect(repository.findVehicleByIdForMembership).not.toHaveBeenCalled();
   });
+
+  describe('validation edge cases and uncovered branches', () => {
+    it('handles inactive membership', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValueOnce(null);
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: 'Huachi',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.24,
+          destinationLongitude: -78.61,
+          departureAt: '2030-01-01T10:00:00.000Z',
+          estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+          seatCount: 3,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new ForbiddenException('No tienes una membresia activa para crear viajes.'));
+    });
+
+    it('handles inactive or missing vehicle', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+
+      repository.findVehicleByIdForMembership.mockResolvedValueOnce(null);
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: 'Huachi',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.24,
+          destinationLongitude: -78.61,
+          departureAt: '2030-01-01T10:00:00.000Z',
+          estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+          seatCount: 3,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new BadRequestException('El vehiculo seleccionado no existe o no se encuentra activo.'));
+    });
+
+    it('handles seat count limits', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+      repository.findVehicleByIdForMembership.mockResolvedValue({
+        id: 'vehicle-1',
+        isActive: true,
+        seatCount: 4,
+      } as any);
+
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: 'Huachi',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.24,
+          destinationLongitude: -78.61,
+          departureAt: '2030-01-01T10:00:00.000Z',
+          estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+          seatCount: 0,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new BadRequestException('La cantidad de cupos no puede superar la capacidad del vehiculo.'));
+
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: 'Huachi',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.24,
+          destinationLongitude: -78.61,
+          departureAt: '2030-01-01T10:00:00.000Z',
+          estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+          seatCount: 5,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new BadRequestException('La cantidad de cupos no puede superar la capacidad del vehiculo.'));
+    });
+
+    it('handles missing origin/destination labels', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+      repository.findVehicleByIdForMembership.mockResolvedValue({
+        id: 'vehicle-1',
+        isActive: true,
+        seatCount: 4,
+      } as any);
+
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: '   ',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.24,
+          destinationLongitude: -78.61,
+          departureAt: '2030-01-01T10:00:00.000Z',
+          estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+          seatCount: 3,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new BadRequestException('Debes indicar origen y destino del viaje.'));
+    });
+
+    it('handles same coordinates for origin and destination', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+      repository.findVehicleByIdForMembership.mockResolvedValue({
+        id: 'vehicle-1',
+        isActive: true,
+        seatCount: 4,
+      } as any);
+
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: 'Huachi',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.25,
+          destinationLongitude: -78.62,
+          departureAt: '2030-01-01T10:00:00.000Z',
+          estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+          seatCount: 3,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new BadRequestException('El origen y el destino no pueden compartir las mismas coordenadas.'));
+    });
+
+    it('handles invalid dates', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+      repository.findVehicleByIdForMembership.mockResolvedValue({
+        id: 'vehicle-1',
+        isActive: true,
+        seatCount: 4,
+      } as any);
+
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: 'Huachi',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.24,
+          destinationLongitude: -78.61,
+          departureAt: 'invalid-date',
+          estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+          seatCount: 3,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new BadRequestException('Las fechas del viaje no son validas.'));
+    });
+
+    it('handles departure time not in future', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+      repository.findVehicleByIdForMembership.mockResolvedValue({
+        id: 'vehicle-1',
+        isActive: true,
+        seatCount: 4,
+      } as any);
+
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: 'Huachi',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.24,
+          destinationLongitude: -78.61,
+          departureAt: '2020-01-01T10:00:00.000Z',
+          estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+          seatCount: 3,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new BadRequestException('La salida del viaje debe estar en el futuro.'));
+    });
+
+    it('handles arrival time <= departure time', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+      repository.findVehicleByIdForMembership.mockResolvedValue({
+        id: 'vehicle-1',
+        isActive: true,
+        seatCount: 4,
+      } as any);
+
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          vehicleId: 'vehicle-1',
+          routeMode: TripRouteMode.DirectRoute,
+          originLabel: 'Huachi',
+          destinationLabel: 'Centro',
+          originLatitude: -1.25,
+          originLongitude: -78.62,
+          destinationLatitude: -1.24,
+          destinationLongitude: -78.61,
+          departureAt: '2030-01-01T10:00:00.000Z',
+          estimatedArrivalAt: '2030-01-01T09:30:00.000Z',
+          seatCount: 3,
+          basePriceReference: 2.5,
+        }),
+      ).rejects.toThrow(new BadRequestException('La llegada estimada debe ser posterior a la salida.'));
+    });
+
+    it('handles route path normalization with valid and invalid coordinates', async () => {
+      const repository = createTripsRepositoryMock();
+      const auditService = { record: jest.fn() } as any;
+      const sanctionsService = createOperationalSanctionsServiceMock();
+      const realtimeEventsService = { publishTripChanged: jest.fn() } as any;
+      const useCase = new CreateTripUseCase(repository, auditService, sanctionsService, realtimeEventsService);
+
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        institutionId: 'institution-1',
+        membershipStatus: MembershipStatus.Active,
+        driverVerificationStatus: DriverVerificationStatus.Approved,
+      } as any);
+      repository.findVehicleByIdForMembership.mockResolvedValue({
+        id: 'vehicle-1',
+        isActive: true,
+        seatCount: 4,
+        vehicleType: VehicleType.Car,
+        luggagePolicy: LuggagePolicy.UpToMedium,
+      } as any);
+      repository.createTrip.mockImplementation(async (input) => buildCreatedTrip(input));
+
+      await useCase.execute({
+        userId: 'user-1',
+        vehicleId: 'vehicle-1',
+        routeMode: TripRouteMode.DirectRoute,
+        originLabel: 'Huachi',
+        destinationLabel: 'Centro',
+        originLatitude: -1.25,
+        originLongitude: -78.62,
+        destinationLatitude: -1.24,
+        destinationLongitude: -78.61,
+        departureAt: '2030-01-01T10:00:00.000Z',
+        estimatedArrivalAt: '2030-01-01T10:30:00.000Z',
+        seatCount: 3,
+        basePriceReference: 2.5,
+        routePath: [
+          { latitude: -1.245, longitude: -78.615 }, // valid
+          { latitude: NaN, longitude: -78.615 }, // invalid
+          { latitude: -1.245, longitude: Infinity }, // invalid
+          { latitude: -95, longitude: -78 }, // invalid latitude
+        ],
+      });
+
+      expect(repository.createTrip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          routePath: [{ latitude: -1.245, longitude: -78.615 }],
+        }),
+      );
+    });
+  });
 });

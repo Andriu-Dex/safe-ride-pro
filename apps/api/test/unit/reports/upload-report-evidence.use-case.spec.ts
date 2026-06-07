@@ -103,4 +103,69 @@ describe('UploadReportEvidenceUseCase', () => {
     });
     expect(response.fileKey).toBe('membership-1/evidence-1.png');
   });
+
+  it('rejects uploads when no file is provided', async () => {
+    const repository = createReportsRepositoryMock();
+    const storage = createReportEvidenceStorageMock();
+    const useCase = new UploadReportEvidenceUseCase(repository, storage);
+
+    await expect(
+      useCase.execute('user-1', undefined),
+    ).rejects.toThrow(
+      new BadRequestException('Selecciona un archivo antes de continuar.'),
+    );
+  });
+
+  it('rejects uploads exceeding the maximum file size limit', async () => {
+    const repository = createReportsRepositoryMock();
+    const storage = createReportEvidenceStorageMock();
+    const useCase = new UploadReportEvidenceUseCase(repository, storage);
+
+    const oversizedFile = {
+      originalname: 'evidence.png',
+      mimetype: 'image/png',
+      size: 9 * 1024 * 1024, // 9 MB
+      buffer: Buffer.from('large-image-content'),
+    };
+
+    await expect(
+      useCase.execute('user-1', oversizedFile),
+    ).rejects.toThrow(
+      new BadRequestException('La evidencia no puede superar los 8 MB.'),
+    );
+  });
+
+  it('stores evidence with a default file name if originalname is falsy', async () => {
+    const repository = createReportsRepositoryMock();
+    const storage = createReportEvidenceStorageMock();
+    const useCase = new UploadReportEvidenceUseCase(repository, storage);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      userId: 'user-1',
+      fullName: 'Usuario Uno',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+    });
+    storage.storeEvidence.mockResolvedValue({
+      fileKey: 'membership-1/evidence-default.png',
+    });
+
+    const response = await useCase.execute('user-1', {
+      originalname: '',
+      mimetype: 'image/png',
+      size: 2048,
+      buffer: Buffer.from('image-content'),
+    });
+
+    expect(response.message).toBe('La evidencia del reporte se cargo correctamente.');
+    expect(storage.storeEvidence).toHaveBeenCalledWith({
+      membershipId: 'membership-1',
+      fileName: 'report-evidence',
+      mimeType: 'image/png',
+      content: Buffer.from('image-content'),
+    });
+    expect(response.fileKey).toBe('membership-1/evidence-default.png');
+  });
 });

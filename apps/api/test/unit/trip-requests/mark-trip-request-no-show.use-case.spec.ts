@@ -165,4 +165,19 @@ describe('MarkTripRequestNoShowUseCase', () => {
       new BadRequestException('Debes indicar una nota para registrar la ausencia.'),
     );
   });
+
+  it('throws BadRequestException if markTripRequestAsNoShow returns null', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new MarkTripRequestNoShowUseCase(repository, sanctionsService);
+
+    repository.findTripRequestById.mockResolvedValue(buildTripRequestRecord());
+    repository.markTripRequestAsNoShow.mockResolvedValue(null);
+
+    await expect(useCase.execute('driver-1', 'request-1', 'Nota')).rejects.toThrow(
+      new BadRequestException(
+        'La solicitud ya no pudo marcarse como ausencia por un cambio reciente en su estado.',
+      ),
+    );
+  });
 });

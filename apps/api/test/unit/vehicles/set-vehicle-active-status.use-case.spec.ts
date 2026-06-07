@@ -131,4 +131,74 @@ describe('SetVehicleActiveStatusUseCase', () => {
     expect(response.message).toBe('Vehiculo desactivado correctamente.');
     expect(repository.updateVehicleStatus).toHaveBeenCalledWith('vehicle-1', false);
   });
+
+  it('allows activating a vehicle and returns success message', async () => {
+    const repository = createVehiclesRepositoryMock();
+    const useCase = new SetVehicleActiveStatusUseCase(repository);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findVehicleByIdForMembership.mockResolvedValue(buildVehicle({ isActive: false }));
+    repository.updateVehicleStatus.mockImplementation(async (_vehicleId, isActive) =>
+      buildVehicle({ isActive }),
+    );
+
+    const response = await useCase.execute({
+      userId: 'user-1',
+      vehicleId: 'vehicle-1',
+      isActive: true,
+    });
+
+    expect(response.message).toBe('Vehiculo activado correctamente.');
+    expect(repository.updateVehicleStatus).toHaveBeenCalledWith('vehicle-1', true);
+  });
+
+  it('rejects setting vehicle status to active when it is already active', async () => {
+    const repository = createVehiclesRepositoryMock();
+    const useCase = new SetVehicleActiveStatusUseCase(repository);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findVehicleByIdForMembership.mockResolvedValue(buildVehicle({ isActive: true }));
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        vehicleId: 'vehicle-1',
+        isActive: true,
+      }),
+    ).rejects.toThrow(new BadRequestException('El vehiculo ya se encuentra activo.'));
+  });
+
+  it('rejects setting vehicle status to inactive when it is already inactive', async () => {
+    const repository = createVehiclesRepositoryMock();
+    const useCase = new SetVehicleActiveStatusUseCase(repository);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      driverVerificationStatus: DriverVerificationStatus.Approved,
+    });
+    repository.findVehicleByIdForMembership.mockResolvedValue(buildVehicle({ isActive: false }));
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        vehicleId: 'vehicle-1',
+        isActive: false,
+      }),
+    ).rejects.toThrow(new BadRequestException('El vehiculo ya se encuentra inactivo.'));
+  });
 });

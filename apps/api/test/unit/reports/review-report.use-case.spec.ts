@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   AccountStatus,
   DriverVerificationStatus,
@@ -275,5 +275,102 @@ describe('ReviewReportUseCase', () => {
     ).rejects.toThrow(
       new ForbiddenException('No tienes permisos para revisar reportes de esta institucion.'),
     );
+  });
+
+  it('throws NotFoundException if report is not found', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
+
+    repository.findReportById.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        reportId: 'report-not-found',
+        status: ReportStatus.UnderReview,
+      }),
+    ).rejects.toThrow(new NotFoundException('El reporte indicado no existe.'));
+  });
+
+  it('throws BadRequestException if report is already resolved or dismissed', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
+
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.Resolved));
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        reportId: 'report-1',
+        status: ReportStatus.UnderReview,
+      }),
+    ).rejects.toThrow(new BadRequestException('El reporte ya fue cerrado y no puede cambiar de estado.'));
+  });
+
+  it('throws BadRequestException when trying to set status to pending', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
+
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.UnderReview));
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        reportId: 'report-1',
+        status: ReportStatus.Pending,
+      }),
+    ).rejects.toThrow(new BadRequestException('No se puede volver a dejar el reporte en estado pendiente.'));
+  });
+
+  it('throws BadRequestException if the report is already in the requested status', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
+
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.UnderReview));
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        reportId: 'report-1',
+        status: ReportStatus.UnderReview,
+      }),
+    ).rejects.toThrow(new BadRequestException('El reporte ya se encuentra en el estado indicado.'));
+  });
+
+  it('allows SuperAdmin to review a report they participate in, bypassing conflict of interest', async () => {
+    const repository = createReportsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new ReviewReportUseCase(repository, auditService, sanctionsService);
+
+    // SuperAdmin is user-passenger, who is the reporter of the report
+    const superAdmin: CurrentUserContext = {
+      id: 'user-passenger',
+      email: 'superadmin@saferidepro.com',
+      fullName: 'Super Admin',
+      globalRole: GlobalUserRole.SuperAdmin,
+      accountStatus: AccountStatus.Active,
+      memberships: [],
+    };
+
+    repository.findReportById.mockResolvedValue(buildReport(ReportStatus.Pending));
+    repository.reviewReport.mockResolvedValue(buildReport(ReportStatus.UnderReview));
+
+    const response = await useCase.execute(superAdmin, {
+      reportId: 'report-1',
+      status: ReportStatus.UnderReview,
+    });
+
+    expect(response.message).toBe('Reporte revisado correctamente.');
+    expect(repository.reviewReport).toHaveBeenCalledWith({
+      reportId: 'report-1',
+      reviewerUserId: 'user-passenger',
+      status: ReportStatus.UnderReview,
+      reviewNote: undefined,
+    });
   });
 });

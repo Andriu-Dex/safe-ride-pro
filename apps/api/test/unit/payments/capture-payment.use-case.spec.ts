@@ -226,4 +226,28 @@ describe('CapturePaymentUseCase', () => {
       new NotFoundException('No fue posible confirmar el pago solicitado.'),
     );
   });
+
+  it('rejects capture if payment does not exist', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const provider = createPaymentProviderMock();
+    const useCase = new CapturePaymentUseCase(repository, provider);
+
+    repository.findPaymentById.mockResolvedValue(null);
+
+    await expect(useCase.execute('user-passenger', 'payment-invalid')).rejects.toThrow(
+      new NotFoundException('El pago solicitado no existe.'),
+    );
+  });
+
+  it('rejects capture if payment has no provider order token', async () => {
+    const repository = createPaymentsRepositoryMock();
+    const provider = createPaymentProviderMock();
+    const useCase = new CapturePaymentUseCase(repository, provider);
+
+    repository.findPaymentById.mockResolvedValue(buildPayment({ providerOrderToken: null }));
+
+    await expect(useCase.execute('user-passenger', 'payment-1')).rejects.toThrow(
+      new NotFoundException('El pago aun no tiene una orden PayPal asociada.'),
+    );
+  });
 });

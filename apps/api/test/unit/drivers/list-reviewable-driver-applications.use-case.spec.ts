@@ -164,4 +164,58 @@ describe('ListReviewableDriverApplicationsUseCase', () => {
     });
     expect(result.items).toBe(mockList);
   });
+
+  it('calls listReviewableDriverApplications on repository as SuperAdmin without institutionId', async () => {
+    const repository = createDriversRepositoryMock();
+    const mockList = [buildDriverProfileRecord({ membershipId: 'm1' })];
+    repository.listReviewableDriverApplications.mockResolvedValue(mockList);
+
+    const useCase = new ListReviewableDriverApplicationsUseCase(repository);
+    const result = await useCase.execute({
+      currentUser: buildCurrentUser({ globalRole: GlobalUserRole.SuperAdmin }),
+      status: DriverVerificationStatus.PendingVerification,
+    });
+
+    expect(repository.listReviewableDriverApplications).toHaveBeenCalledWith({
+      institutionIds: undefined,
+      status: DriverVerificationStatus.PendingVerification,
+      limit: undefined,
+    });
+    expect(result.items).toBe(mockList);
+  });
+
+  it('calls listReviewableDriverApplications on repository as InstitutionAdmin with specific accessible institutionId', async () => {
+    const repository = createDriversRepositoryMock();
+    const mockList = [buildDriverProfileRecord({ membershipId: 'm1' })];
+    repository.listReviewableDriverApplications.mockResolvedValue(mockList);
+
+    const useCase = new ListReviewableDriverApplicationsUseCase(repository);
+    const result = await useCase.execute({
+      currentUser: buildCurrentUser({
+        globalRole: GlobalUserRole.User,
+        memberships: [
+          {
+            id: 'm1',
+            institutionId: 'inst-1',
+            institutionName: 'UTA',
+            role: InstitutionMembershipRole.InstitutionAdmin,
+            membershipStatus: MembershipStatus.Active,
+            institutionIsActive: true,
+            studentCode: '123',
+            isDefault: true,
+            driverVerificationStatus: DriverVerificationStatus.NotRequested,
+          },
+        ],
+      }),
+      institutionId: 'inst-1',
+      status: DriverVerificationStatus.PendingVerification,
+    });
+
+    expect(repository.listReviewableDriverApplications).toHaveBeenCalledWith({
+      institutionIds: ['inst-1'],
+      status: DriverVerificationStatus.PendingVerification,
+      limit: undefined,
+    });
+    expect(result.items).toBe(mockList);
+  });
 });

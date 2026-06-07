@@ -26,6 +26,19 @@ import type {
 import { ReviewSanctionAppealUseCase } from '../../../src/modules/sanctions/application/use-cases/review-sanction-appeal.use-case';
 import { OperationalSanctionsService } from '../../../src/modules/sanctions/application/services/operational-sanctions.service';
 
+jest.mock('../../../src/modules/sanctions/application/utils/sanctions-admin-access', () => {
+  const actual = jest.requireActual('../../../src/modules/sanctions/application/utils/sanctions-admin-access');
+  return {
+    ...actual,
+    resolveReviewableInstitutionScope: jest.fn((currentUser, instId) => {
+      if (instId === 'trigger-use-case-forbidden') {
+        return ['some-other-institution'];
+      }
+      return actual.resolveReviewableInstitutionScope(currentUser, instId);
+    }),
+  };
+});
+
 function createSanctionsRepositoryMock(): jest.Mocked<SanctionsRepository> {
   return {
     findInstitutionIdByMembershipId: jest.fn(),
@@ -159,6 +172,39 @@ describe('ReviewSanctionAppealUseCase', () => {
     });
   });
 
+  it('rejects an appeal and records audit', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewSanctionAppealUseCase(
+      repository,
+      sanctionsService,
+      auditService,
+    );
+
+    repository.findAppealById.mockResolvedValue(buildAppeal());
+    repository.reviewOperationalSanctionAppeal.mockResolvedValue(
+      buildAppeal({
+        status: OperationalSanctionAppealStatus.Rejected,
+        reviewNote: 'Rechazo justificable.',
+      }),
+    );
+
+    const response = await useCase.execute(buildAdminUser(), {
+      appealId: 'appeal-1',
+      status: OperationalSanctionAppealStatus.Rejected,
+      reviewNote: 'Rechazo justificable.',
+    });
+
+    expect(response.message).toBe('Apelacion revisada correctamente.');
+    expect(sanctionsService.liftSanctionManually).not.toHaveBeenCalled();
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AuditAction.SanctionAppealRejected,
+      }),
+    );
+  });
+
   it('rejects invalid review attempts', async () => {
     const repository = createSanctionsRepositoryMock();
     const sanctionsService = createOperationalSanctionsServiceMock();
@@ -205,5 +251,72 @@ describe('ReviewSanctionAppealUseCase', () => {
     ).rejects.toThrow(
       new BadRequestException('La apelacion ya fue revisada anteriormente.'),
     );
+  });
+
+  it('throws ForbiddenException if administrator does not belong to the institution of the appeal', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewSanctionAppealUseCase(
+      repository,
+      sanctionsService,
+      auditService,
+    );
+
+    repository.findAppealById.mockResolvedValue(buildAppeal({ institutionId: 'trigger-use-case-forbidden' }));
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        appealId: 'appeal-1',
+        status: OperationalSanctionAppealStatus.Approved,
+        reviewNote: 'La evidencia presentada justifica levantar la sancion.',
+      }),
+    ).rejects.toThrow(
+      new ForbiddenException('No tienes permisos para revisar apelaciones de esa institucion.'),
+    );
+  });
+
+  it('throws BadRequestException if attempting to set the appeal status back to PENDING', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewSanctionAppealUseCase(
+      repository,
+      sanctionsService,
+      auditService,
+    );
+
+    repository.findAppealById.mockResolvedValue(buildAppeal());
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        appealId: 'appeal-1',
+        status: OperationalSanctionAppealStatus.Pending,
+        reviewNote: 'La evidencia presentada justifica levantar la sancion.',
+      }),
+    ).rejects.toThrow(
+      new BadRequestException('No se puede volver a dejar la apelacion en estado pendiente.'),
+    );
+  });
+
+  it('throws BadRequestException if the review note is missing or too short', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const useCase = new ReviewSanctionAppealUseCase(
+      repository,
+      sanctionsService,
+      auditService,
+    );
+
+    repository.findAppealById.mockResolvedValue(buildAppeal());
+
+    await expect(
+      useCase.execute(buildAdminUser(), {
+        appealId: 'appeal-1',
+        status: OperationalSanctionAppealStatus.Approved,
+        reviewNote: 'short',
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

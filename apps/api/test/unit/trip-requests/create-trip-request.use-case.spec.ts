@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   MembershipStatus,
   PaymentProvider,
@@ -505,5 +505,647 @@ describe('CreateTripRequestUseCase', () => {
         paymentProvider: PaymentProvider.Wallet,
       }),
     ).rejects.toThrow(new BadRequestException('Saldo insuficiente en la billetera.'));
+  });
+
+  it('rejects inactive user memberships', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Suspended,
+      termsAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      privacyAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+      safetyRulesAcceptedAt: new Date('2030-01-01T08:00:00.000Z'),
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+      }),
+    ).rejects.toThrow(new ForbiddenException('No tienes una membresia activa para solicitar viajes.'));
+  });
+
+  it('rejects when terms, privacy, or safety rules are not accepted', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: null,
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('rejects when the trip does not exist', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('rejects when the trip belongs to a different institution', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-other',
+      institutionName: 'Other',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+      }),
+    ).rejects.toThrow(new ForbiddenException('Solo puedes solicitar viajes de tu institucion activa.'));
+  });
+
+  it('rejects when trip status is not Published or seats < 1', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Draft,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+      }),
+    ).rejects.toThrow(new BadRequestException('El viaje ya no tiene cupos disponibles.'));
+  });
+
+  it('rejects when trip departure is in the past', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2020-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2020-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+      }),
+    ).rejects.toThrow(new BadRequestException('No puedes solicitar un viaje que ya esta por iniciar o salir.'));
+  });
+
+  it('rejects when Cash payments are disabled by institution settings', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: false,
+      allowPaypalPayments: true,
+    } as any);
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+        paymentProvider: PaymentProvider.Cash,
+      }),
+    ).rejects.toThrow(new BadRequestException('Esta institucion desactivo temporalmente el pago en efectivo para nuevas reservas.'));
+  });
+
+  it('rejects when Wallet payments are disabled by institution settings', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+      allowPaypalPayments: true,
+      allowWalletPayments: false,
+    } as any);
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+        paymentProvider: PaymentProvider.Wallet,
+      }),
+    ).rejects.toThrow(new BadRequestException('Esta institucion desactivo temporalmente la billetera para nuevas reservas.'));
+  });
+
+  it('rejects when passenger already has an active request for this trip', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue({ id: 'request-active' } as any);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+      allowPaypalPayments: true,
+    } as any);
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+      }),
+    ).rejects.toThrow(new BadRequestException('Ya tienes una solicitud activa para este viaje.'));
+  });
+
+  it('handles PayPal payment request creation successfully', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const notificationsService = { notifyMembership: jest.fn() } as any;
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+      undefined,
+      notificationsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+      allowPaypalPayments: true,
+    } as any);
+    repository.createTripRequest.mockResolvedValue({
+      id: 'request-paypal-1',
+      passengerMembershipId: 'membership-2',
+      payment: {
+        provider: PaymentProvider.Paypal,
+      },
+    } as any);
+
+    const result = await useCase.execute({
+      userId: 'user-2',
+      tripId: 'trip-2',
+      acceptReservationCommitment: true,
+      paymentProvider: PaymentProvider.Paypal,
+    });
+
+    expect(result.message).toBe('Solicitud creada. Completa el pago para enviarla al conductor.');
+    expect(notificationsService.notifyMembership).toHaveBeenCalled();
+  });
+
+  it('propagates other errors from repository during trip request creation', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+      allowPaypalPayments: true,
+    } as any);
+    repository.createTripRequest.mockRejectedValue(new Error('Prisma error'));
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+      }),
+    ).rejects.toThrow('Prisma error');
+  });
+
+  it('rejects coordinate pair mismatch and custom dropoff for DirectRoute', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+    } as any);
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+        requestedDropoffLatitude: -1.23,
+      }),
+    ).rejects.toThrow(new BadRequestException('Debes enviar latitud y longitud completas para el punto de destino.'));
+
+    await expect(
+      useCase.execute({
+        userId: 'user-2',
+        tripId: 'trip-2',
+        acceptReservationCommitment: true,
+        requestedDropoffLatitude: -1.23,
+        requestedDropoffLongitude: -78.65,
+      }),
+    ).rejects.toThrow(new BadRequestException('Esta ruta no admite desvio ni destinos personalizados.'));
+  });
+
+  it('returns success message when payment provider is Cash or payment info is absent', async () => {
+    const repository = createTripRequestsRepositoryMock();
+    const institutionsRepository = createInstitutionsRepositoryMock();
+    const sanctionsService = createOperationalSanctionsServiceMock();
+    const realtimeEventsService = { publishTripRequestChanged: jest.fn() } as any;
+    const notificationsService = { notifyMembership: jest.fn() } as any;
+    const useCase = new CreateTripRequestUseCase(
+      repository,
+      institutionsRepository,
+      sanctionsService,
+      realtimeEventsService,
+      notificationsService,
+    );
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-2',
+      userId: 'user-2',
+      fullName: 'Pasajero Dos',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+      termsAcceptedAt: new Date(),
+      privacyAcceptedAt: new Date(),
+      safetyRulesAcceptedAt: new Date(),
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-2',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-9',
+      driverFullName: 'Conductor Nueve',
+      status: TripStatus.Published,
+      routeMode: TripRouteMode.DirectRoute,
+      originLabel: 'Ficoa',
+      destinationLabel: 'Izamba',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      seatCount: 4,
+      availableSeats: 2,
+    });
+    repository.findActiveRequestForTripAndPassenger.mockResolvedValue(null);
+    institutionsRepository.getSettings.mockResolvedValue({
+      institutionId: 'institution-1',
+      allowCashPayments: true,
+    } as any);
+    repository.createTripRequest.mockResolvedValue({
+      id: 'request-cash-1',
+      passengerMembershipId: 'membership-2',
+      payment: null,
+    } as any);
+
+    const result = await useCase.execute({
+      userId: 'user-2',
+      tripId: 'trip-2',
+      acceptReservationCommitment: true,
+      paymentProvider: PaymentProvider.Cash,
+    });
+
+    expect(result.message).toBe('Solicitud enviada correctamente.');
+    expect(notificationsService.notifyMembership).toHaveBeenCalled();
   });
 });

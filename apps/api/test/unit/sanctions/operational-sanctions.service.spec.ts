@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import {
   MembershipStatus,
   OperationalSanctionScope,
@@ -596,5 +596,246 @@ describe('OperationalSanctionsService', () => {
         }),
       }),
     );
+  });
+
+  it('records audit when synchronizing and expiring elapsed sanctions', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.expireElapsedSanctions.mockResolvedValue([
+      buildSanctionRecord({ id: 'sanction-expired', status: OperationalSanctionStatus.Expired }),
+    ]);
+    repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
+    repository.getRecentMetrics.mockResolvedValue(buildMetrics());
+    repository.listActiveSanctions.mockResolvedValue([]);
+
+    await service.synchronizeAutomaticSanctions('membership-1');
+
+    expect(auditService.record).toHaveBeenCalledWith({
+      actorUserId: undefined,
+      institutionId: 'institution-1',
+      action: AuditAction.SanctionExpired,
+      entityType: AuditEntityType.UserMembership,
+      entityId: 'membership-1',
+      metadata: expect.objectContaining({
+        sanctionId: 'sanction-expired',
+      }),
+    });
+  });
+
+  it('allows passenger operations when no passenger blocking sanction exists', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.getRecentMetrics.mockResolvedValue(buildMetrics());
+    repository.listActiveSanctions.mockResolvedValue([]);
+
+    await expect(service.assertPassengerOperationsAllowed('membership-1')).resolves.not.toThrow();
+  });
+
+  it('blocks driver operations when an active limited driver sanction exists', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.listActiveSanctions.mockResolvedValue([
+      buildSanctionRecord({
+        id: 'sanction-driver',
+        type: OperationalSanctionType.LimitedDriver,
+        scope: OperationalSanctionScope.Driver,
+        trigger: OperationalSanctionTrigger.LateDriverCancellation,
+        endsAt: new Date('2030-01-08T08:00:00.000Z'),
+      }),
+    ]);
+    repository.getRecentMetrics.mockResolvedValue(buildMetrics());
+
+    await expect(service.assertDriverOperationsAllowed('membership-1')).rejects.toThrow(
+      new ForbiddenException(
+        'Tu membresia tiene una restriccion temporal para operar como conductor hasta 08/01/2030.',
+      ),
+    );
+  });
+
+  it('blocks operations with correct message for suspended and warnings', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.listActiveSanctions.mockResolvedValue([
+      buildSanctionRecord({
+        id: 'sanction-suspended',
+        type: OperationalSanctionType.Suspended,
+        scope: OperationalSanctionScope.All,
+        endsAt: new Date('2030-01-08T08:00:00.000Z'),
+      }),
+    ]);
+    repository.getRecentMetrics.mockResolvedValue(buildMetrics());
+
+    await expect(service.assertPassengerOperationsAllowed('membership-1')).rejects.toThrow(
+      'Tu membresia se encuentra suspendida temporalmente para operar en movilidad hasta 08/01/2030.',
+    );
+  });
+
+  it('throws NotFoundException if manual lift is attempted on non-existent sanction', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.findSanctionDetailById.mockResolvedValue(null);
+
+    await expect(
+      service.liftSanctionManually({
+        sanctionId: 'non-existent',
+        actorUserId: 'admin-1',
+        reviewNote: 'Correccion.',
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws BadRequestException if manual lift is attempted on inactive sanction', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.findSanctionDetailById.mockResolvedValue({
+      ...buildSanctionRecord({ status: OperationalSanctionStatus.Expired }),
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      institutionIsActive: true,
+      membershipStatus: MembershipStatus.Active,
+      membershipUserId: 'user-1',
+      membershipUserFullName: 'Usuario Uno',
+    });
+
+    await expect(
+      service.liftSanctionManually({
+        sanctionId: 'sanction-1',
+        actorUserId: 'admin-1',
+        reviewNote: 'Correccion.',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('handles edge cases in isSuppressedByManualLift, getManualLiftMetadata, getSanctionDurationDays, getDecisionSeverity', async () => {
+    const repository = createSanctionsRepositoryMock();
+    const auditService = { record: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    const service = new OperationalSanctionsService(repository, auditService);
+
+    repository.findInstitutionIdByMembershipId.mockResolvedValue('institution-1');
+    repository.expireElapsedSanctions.mockResolvedValue([]);
+    repository.expireSanction.mockImplementation(async (sanctionId) =>
+      buildSanctionRecord({ id: sanctionId, status: OperationalSanctionStatus.Expired }),
+    );
+    repository.getRecentMetrics.mockResolvedValue(
+      buildMetrics({
+        passengerNoShows: 3,
+      }),
+    );
+    repository.listActiveSanctions.mockResolvedValue([]);
+
+    (
+      repository.listManuallyLiftedAutomaticSanctions as jest.MockedFunction<
+        NonNullable<SanctionsRepository['listManuallyLiftedAutomaticSanctions']>
+      >
+    ).mockResolvedValue([
+      buildSanctionRecord({
+        id: 'lifted-unmatched',
+        type: OperationalSanctionType.LimitedDriver,
+        metadata: {
+          manualLift: {
+            originalEndsAt: '2030-01-08T08:00:00.000Z',
+            suppressedEventCount: 3,
+          },
+        },
+      }),
+      buildSanctionRecord({
+        id: 'lifted-no-manualLift-prop',
+        type: OperationalSanctionType.LimitedPassenger,
+        metadata: {},
+      }),
+      buildSanctionRecord({
+        id: 'lifted-past-endsat',
+        type: OperationalSanctionType.LimitedPassenger,
+        metadata: {
+          manualLift: {
+            originalEndsAt: '2020-01-01T08:00:00.000Z',
+            suppressedEventCount: 3,
+          },
+        },
+      }),
+      buildSanctionRecord({
+        id: 'lifted-bad-manualLift-format',
+        type: OperationalSanctionType.LimitedPassenger,
+        metadata: {
+          manualLift: 'not-an-object',
+        },
+      }),
+    ]);
+
+    repository.createOperationalSanction.mockImplementation(
+      async (input: CreateOperationalSanctionInput) =>
+        buildSanctionRecord({
+          id: 'sanction-new',
+          membershipId: input.membershipId,
+          type: input.type,
+          scope: input.scope,
+          trigger: input.trigger,
+          reason: input.reason,
+          startedAt: input.startedAt,
+          endsAt: null,
+          metadata: input.metadata ?? null,
+        }),
+    );
+
+    const sanctions = await service.synchronizeAutomaticSanctions('membership-1');
+    expect(sanctions).toHaveLength(1);
+
+    const severityDefault = (service as any).getDecisionSeverity('UNKNOWN');
+    expect(severityDefault).toBe(0);
+
+    const severitySuspended = (service as any).getDecisionSeverity(OperationalSanctionType.Suspended);
+    expect(severitySuspended).toBe(3);
+
+    const warningMsg = (service as any).buildBlockingMessage({
+      type: OperationalSanctionType.Warning,
+      scope: OperationalSanctionScope.Passenger,
+      endsAt: null,
+    });
+    expect(warningMsg).toBe('Tu membresia tiene una advertencia activa.');
+
+    const suspendedMsgNull = (service as any).buildBlockingMessage({
+      type: OperationalSanctionType.Suspended,
+      scope: OperationalSanctionScope.All,
+      endsAt: null,
+    });
+    expect(suspendedMsgNull).toBe('Tu membresia se encuentra suspendida temporalmente para operar en movilidad.');
+
+    const limitedDriverMsg = (service as any).buildBlockingMessage({
+      type: OperationalSanctionType.LimitedDriver,
+      scope: OperationalSanctionScope.Driver,
+      endsAt: null,
+    });
+    expect(limitedDriverMsg).toBe('Tu membresia tiene una restriccion temporal para operar como conductor.');
+
+    await expect(service.assertDriverOperationsAllowed('membership-1')).resolves.not.toThrow();
+
+    repository.getRecentMetrics.mockResolvedValue(buildMetrics());
+    repository.listActiveSanctions.mockResolvedValue([
+      buildSanctionRecord({ id: 'sanction-older', startedAt: new Date('2030-01-01T08:00:00.000Z') }),
+      buildSanctionRecord({ id: 'sanction-newer', startedAt: new Date('2030-01-02T08:00:00.000Z') }),
+    ]);
+    const sortedSanctions = await service.synchronizeAutomaticSanctions('membership-1');
+    expect(sortedSanctions[0].id).toBe('sanction-newer');
+    expect(sortedSanctions[1].id).toBe('sanction-older');
+
+    const duration = (service as any).getSanctionDurationDays({
+      endsAt: null,
+    });
+    expect(duration).toBe(Number.MAX_SAFE_INTEGER);
   });
 });

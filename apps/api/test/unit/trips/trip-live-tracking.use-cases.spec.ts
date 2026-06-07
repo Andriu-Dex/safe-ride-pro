@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -257,5 +258,173 @@ describe('Trip live tracking use cases', () => {
         'Solo el conductor propietario puede compartir seguimiento en vivo.',
       ),
     );
+  });
+
+  describe('validation edge cases and uncovered branches', () => {
+    it('handles GetTripLiveTrackingUseCase validations', async () => {
+      const repository = createTripsRepositoryMock();
+      const tripLifecycleMaintenanceService = createTripLifecycleMaintenanceServiceMock();
+      const useCase = new GetTripLiveTrackingUseCase(repository, tripLifecycleMaintenanceService);
+
+      // 1. Membership inactive/missing
+      repository.findDefaultMembershipByUserId.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new ForbiddenException('No tienes una membresia activa para consultar seguimiento.'),
+      );
+
+      // 2. Trip not found
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+      repository.findTripById.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new NotFoundException('El viaje solicitado no existe.'),
+      );
+
+      // 3. Institution mismatch
+      repository.findTripById.mockResolvedValueOnce(buildTrip({ institutionId: 'institution-other' }));
+      await expect(useCase.execute('user-1', 'trip-1')).rejects.toThrow(
+        new NotFoundException('El viaje solicitado no existe.'),
+      );
+
+      // Setup matching institution
+      repository.findTripById.mockResolvedValue(buildTrip({ institutionId: 'institution-1', driverMembershipId: 'membership-driver' }));
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-passenger',
+        institutionId: 'institution-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+
+      // 4. No tracking session found
+      repository.hasAcceptedTripRequest.mockResolvedValueOnce(true);
+      repository.getTripLiveTrackingByTripId.mockResolvedValueOnce(null);
+      await expect(useCase.execute('user-passenger', 'trip-1')).rejects.toThrow(
+        new NotFoundException('No existe una sesion de seguimiento para este viaje.'),
+      );
+    });
+
+    it('handles UpdateTripLiveTrackingUseCase validations', async () => {
+      const repository = createTripsRepositoryMock();
+      const tripLifecycleMaintenanceService = createTripLifecycleMaintenanceServiceMock();
+      const realtimeEventsService = createRealtimeEventsServiceMock();
+      const useCase = new UpdateTripLiveTrackingUseCase(
+        repository,
+        tripLifecycleMaintenanceService,
+        realtimeEventsService,
+      );
+
+      // 1. Membership inactive/missing
+      repository.findDefaultMembershipByUserId.mockResolvedValueOnce(null);
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          tripId: 'trip-1',
+          capturedAt: new Date().toISOString(),
+          latitude: -1.24,
+          longitude: -78.6,
+        }),
+      ).rejects.toThrow(new ForbiddenException('No tienes una membresia activa para compartir ubicacion.'));
+
+      // 2. Trip not found
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+      repository.findTripById.mockResolvedValueOnce(null);
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          tripId: 'trip-1',
+          capturedAt: new Date().toISOString(),
+          latitude: -1.24,
+          longitude: -78.6,
+        }),
+      ).rejects.toThrow(new NotFoundException('El viaje solicitado no existe.'));
+
+      // 3. Institution mismatch
+      repository.findTripById.mockResolvedValueOnce(buildTrip({ institutionId: 'institution-other' }));
+      await expect(
+        useCase.execute({
+          userId: 'user-1',
+          tripId: 'trip-1',
+          capturedAt: new Date().toISOString(),
+          latitude: -1.24,
+          longitude: -78.6,
+        }),
+      ).rejects.toThrow(new NotFoundException('El viaje solicitado no existe.'));
+
+      // 4. Trip not in progress status
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-driver',
+        institutionId: 'institution-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+      repository.findTripById.mockResolvedValueOnce(buildTrip({ status: TripStatus.Published }));
+      await expect(
+        useCase.execute({
+          userId: 'user-driver',
+          tripId: 'trip-1',
+          capturedAt: new Date().toISOString(),
+          latitude: -1.24,
+          longitude: -78.6,
+        }),
+      ).rejects.toThrow(new BadRequestException('Solo puedes compartir ubicacion mientras el viaje esta en curso.'));
+
+      // Setup valid active trip
+      repository.findTripById.mockResolvedValue(buildTrip({ status: TripStatus.InProgress }));
+
+      // 5. Invalid date string
+      await expect(
+        useCase.execute({
+          userId: 'user-driver',
+          tripId: 'trip-1',
+          capturedAt: 'invalid-date-string',
+          latitude: -1.24,
+          longitude: -78.6,
+        }),
+      ).rejects.toThrow(new BadRequestException('La marca temporal del tracking no es valida.'));
+
+      // 6. Tracking from future
+      const futureTime = new Date(Date.now() + 10 * 60_000).toISOString();
+      await expect(
+        useCase.execute({
+          userId: 'user-driver',
+          tripId: 'trip-1',
+          capturedAt: futureTime,
+          latitude: -1.24,
+          longitude: -78.6,
+        }),
+      ).rejects.toThrow(new BadRequestException('La ubicacion reportada no puede venir del futuro.'));
+
+      // 7. Instantiate UpdateTripLiveTrackingUseCase with default realtimeEventsService and test mapping with null dates
+      const defaultUseCase = new UpdateTripLiveTrackingUseCase(
+        repository,
+        tripLifecycleMaintenanceService,
+      );
+      repository.findDefaultMembershipByUserId.mockResolvedValue({
+        id: 'membership-driver',
+        institutionId: 'institution-1',
+        membershipStatus: MembershipStatus.Active,
+      } as any);
+      repository.findTripById.mockResolvedValue(buildTrip({ status: TripStatus.InProgress }));
+      repository.recordTripLiveTrackingPosition.mockResolvedValue(buildTracking({
+        startedAt: null,
+        lastSignalAt: null,
+        endedAt: null,
+      }));
+      repository.findAcceptedPassengerMembershipIds.mockResolvedValue([]);
+
+      const response = await defaultUseCase.execute({
+        userId: 'user-driver',
+        tripId: 'trip-1',
+        capturedAt: new Date().toISOString(),
+        latitude: -1.248,
+        longitude: -78.619,
+      });
+
+      expect(response.startedAt).toBeNull();
+      expect(response.lastSignalAt).toBeNull();
+    });
   });
 });

@@ -261,4 +261,111 @@ describe('SubmitDriverApplicationUseCase', () => {
       actionUrl: '/moderacion?section=drivers',
     });
   });
+
+  it('rejects when the user has no default membership', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        licenseTypeId: 'license-type-1',
+        licenseExpiresAt: '2030-01-01T10:00:00.000Z',
+        identityDocumentFileKey: 'identity-file',
+        licenseDocumentFileKey: 'license-file',
+      }),
+    ).rejects.toThrow(new ForbiddenException('No tienes una membresia activa para solicitar habilitacion como conductor.'));
+  });
+
+  it('rejects when the default membership is inactive', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(
+      buildMembership({ membershipStatus: MembershipStatus.Inactive }),
+    );
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        licenseTypeId: 'license-type-1',
+        licenseExpiresAt: '2030-01-01T10:00:00.000Z',
+        identityDocumentFileKey: 'identity-file',
+        licenseDocumentFileKey: 'license-file',
+      }),
+    ).rejects.toThrow(new ForbiddenException('No tienes una membresia activa para solicitar habilitacion como conductor.'));
+  });
+
+  it('rejects when the driver verification status is suspended', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(
+      buildMembership({ driverVerificationStatus: DriverVerificationStatus.Suspended }),
+    );
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        licenseTypeId: 'license-type-1',
+        licenseExpiresAt: '2030-01-01T10:00:00.000Z',
+        identityDocumentFileKey: 'identity-file',
+        licenseDocumentFileKey: 'license-file',
+      }),
+    ).rejects.toThrow(new ForbiddenException('Tu perfil de conductor se encuentra suspendido.'));
+  });
+
+  it('rejects when the license expiration date is invalid', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(buildMembership());
+
+    await expect(
+      useCase.execute({
+        userId: 'user-1',
+        licenseTypeId: 'license-type-1',
+        licenseExpiresAt: 'invalid-date',
+        identityDocumentFileKey: 'identity-file',
+        licenseDocumentFileKey: 'license-file',
+      }),
+    ).rejects.toThrow(new BadRequestException('La fecha de expiracion de la licencia no es valida.'));
+  });
+
+  it('submits application successfully without notifications service', async () => {
+    const repository = createDriversRepositoryMock();
+    const auditService = {
+      record: jest.fn(),
+    } as unknown as jest.Mocked<AuditService>;
+    const useCase = new SubmitDriverApplicationUseCase(repository, auditService);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue(buildMembership());
+    repository.listInstitutionAdminMembershipIds.mockResolvedValue(['admin-membership-1']);
+    repository.submitDriverApplication.mockImplementation(async (input) => buildDriverProfile(input));
+
+    const response = await useCase.execute({
+      userId: 'user-1',
+      licenseTypeId: 'license-type-1',
+      licenseExpiresAt: '2030-01-01T10:00:00.000Z',
+      identityDocumentFileKey: 'identity-file',
+      licenseDocumentFileKey: 'license-file',
+    });
+
+    expect(response.message).toBe('Tu solicitud de conductor fue enviada y esta pendiente de revision.');
+    expect(repository.submitDriverApplication).toHaveBeenCalled();
+  });
 });
