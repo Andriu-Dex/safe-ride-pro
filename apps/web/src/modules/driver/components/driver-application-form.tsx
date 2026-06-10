@@ -92,7 +92,7 @@ function DocumentUploadCard({
   onPreviewDocument,
   onDownloadDocument,
 }: DocumentUploadCardProps) {
-  const inputId = useId();
+  const inputId = `driver-document-${documentType.toLowerCase()}`;
   const canInteract = !isLocked && !isUploading;
 
   return (

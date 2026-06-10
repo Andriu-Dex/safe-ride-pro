@@ -449,3 +449,64 @@ export async function markReportUnderReview(
     },
   });
 }
+
+export async function requestPasswordReset(email: string): Promise<{ message: string; resetCode?: string }> {
+  return apiRequest<{ message: string; resetCode?: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+  });
+}
+
+export function getResetCodeFromDb(email: string): string {
+  const escapedEmail = email.replace(/'/g, "''");
+  const sql = `SELECT prc."tokenHash" FROM password_reset_codes prc JOIN users u ON prc."userId" = u.id WHERE u.email = '${escapedEmail}' AND prc."usedAt" IS NULL ORDER BY prc."createdAt" DESC LIMIT 1;`;
+
+  const commandResult = spawnSync(
+    'docker',
+    [
+      'compose',
+      '--env-file',
+      '.env.qa',
+      '-f',
+      'docker-compose.qa.yml',
+      'exec',
+      '-T',
+      'postgres',
+      'psql',
+      '-U',
+      qaEnvironment.postgresUser,
+      '-d',
+      qaEnvironment.postgresDatabase,
+      '-t',
+      '-A',
+      '-c',
+      sql,
+    ],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      shell: false,
+    },
+  );
+
+  if (commandResult.status !== 0 || !commandResult.stdout) {
+    throw new Error(`No fue posible consultar el tokenHash de reset: ${commandResult.stderr}`);
+  }
+
+  const hash = commandResult.stdout.trim();
+  if (!hash) {
+    throw new Error(`No se encontro codigo de reset para el email ${email}`);
+  }
+
+  // Brute-force 6-digit code (same approach as email verification)
+  const crypto = require('node:crypto');
+  for (let i = 100_000; i < 1_000_000; i++) {
+    const candidate = i.toString();
+    const computedHash = crypto.createHash('sha256').update(candidate).digest('hex');
+    if (computedHash === hash) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`No fue posible descifrar el codigo de reset para hash: ${hash}`);
+}

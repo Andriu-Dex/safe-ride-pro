@@ -338,14 +338,13 @@ export function TripCreationForm({
 
   const canSubmit = !disabled && !isSubmitting && validationIssues.length === 0;
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    if (disabled || isSubmitting) {
-      event.preventDefault();
-      return;
-    }
+    event.preventDefault();
 
-    if (validationIssues.length > 0) {
-      event.preventDefault();
-      onValidationError?.(validationIssues);
+    if (!canSubmit) {
+      console.log('[TRIP FORM] Validation issues:', validationIssues, values);
+      if (onValidationError) {
+        onValidationError(validationIssues);
+      }
       return;
     }
 

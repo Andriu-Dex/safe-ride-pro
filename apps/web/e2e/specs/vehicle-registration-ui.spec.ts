@@ -52,7 +52,8 @@ test('un conductor aprobado puede registrar un vehiculo por UI', async ({ page }
     mimeType: 'application/pdf',
     buffer: Buffer.from([0]),
   };
-  await page.locator('#vehicle-registration-document').setInputFiles(dummyFile);
+  await page.locator('input[type="file"]').setInputFiles(dummyFile);
+  await expect(page.getByText('Documento cargado')).toBeVisible();
 
   // Registrar vehiculo
   await page.locator('form').getByRole('button', { name: 'Registrar vehiculo' }).click();
