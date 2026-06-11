@@ -120,4 +120,66 @@ describe('buildTripLiveTrackingInsights', () => {
     expect(insights.geoProgressPercentage).toBe(100);
     expect(insights.elapsedSeconds).toBe(1_860);
   });
+
+  it('handles edge cases, null parameters, invalid dates and fallbacks', () => {
+    // 1. All null parameters
+    const insightsNull = buildTripLiveTrackingInsights(null, null, TripStatus.InProgress);
+    expect(insightsNull.routeDistanceMeters).toBeNull();
+    expect(insightsNull.distanceCoveredMeters).toBe(0);
+    expect(insightsNull.distanceRemainingMeters).toBeNull();
+    expect(insightsNull.geoProgressPercentage).toBeNull();
+    expect(insightsNull.elapsedSeconds).toBeNull();
+    expect(insightsNull.sampledPointCount).toBe(0);
+    expect(insightsNull.recentCheckpoints).toEqual([]);
+
+    // 2. Invalid startedAt date
+    const insightsInvalidStart = buildTripLiveTrackingInsights(
+      buildTripDetail(),
+      buildTracking({ startedAt: 'invalid-date' }),
+      TripStatus.InProgress,
+    );
+    expect(insightsInvalidStart.elapsedSeconds).toBeNull();
+
+    // 3. Invalid endedAt date
+    const insightsInvalidEnd = buildTripLiveTrackingInsights(
+      buildTripDetail(),
+      buildTracking({ endedAt: 'invalid-date' }),
+      TripStatus.InProgress,
+    );
+    expect(insightsInvalidEnd.elapsedSeconds).toBeNull();
+
+    // 4. Missing coordinate latitude/longitude in trip detail
+    const insightsMissingCoords = buildTripLiveTrackingInsights(
+      buildTripDetail({ originLatitude: null }),
+      buildTracking({ currentLatitude: null }),
+      TripStatus.InProgress,
+    );
+    expect(insightsMissingCoords.routeDistanceMeters).toBeNull();
+
+    // 5. Empty tracking history but active tracking reference
+    const insightsEmptyHistory = buildTripLiveTrackingInsights(
+      buildTripDetail(),
+      buildTracking({ history: [] }),
+      TripStatus.InProgress,
+    );
+    expect(insightsEmptyHistory.distanceCoveredMeters).toBe(0);
+    expect(insightsEmptyHistory.recentCheckpoints).toEqual([]);
+
+    // 6. clamp progress percentage (progress ratio negative or > 1)
+    const insightsClamped = buildTripLiveTrackingInsights(
+      buildTripDetail({
+        originLatitude: -1.24,
+        originLongitude: -78.61,
+        destinationLatitude: -1.25,
+        destinationLongitude: -78.62,
+      }),
+      buildTracking({
+        currentLatitude: -1.20,
+        currentLongitude: -78.50,
+        history: [],
+      }),
+      TripStatus.InProgress,
+    );
+    expect(insightsClamped.geoProgressPercentage).toBe(0);
+  });
 });

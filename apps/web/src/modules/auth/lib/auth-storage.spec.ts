@@ -65,4 +65,18 @@ describe('auth-storage', () => {
 
     expect(readStoredSession()).toBeNull();
   });
+
+  it('handles window undefined environment', () => {
+    const originalWindow = globalThis.window;
+    // @ts-ignore
+    delete globalThis.window;
+
+    try {
+      expect(readStoredSession()).toBeNull();
+      expect(() => writeStoredSession(TEST_SESSION)).not.toThrow();
+      expect(() => clearStoredSession()).not.toThrow();
+    } finally {
+      globalThis.window = originalWindow;
+    }
+  });
 });

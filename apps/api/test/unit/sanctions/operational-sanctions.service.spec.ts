@@ -798,6 +798,16 @@ describe('OperationalSanctionsService', () => {
     const severityDefault = (service as any).getDecisionSeverity('UNKNOWN');
     expect(severityDefault).toBe(0);
 
+    // Tests for getManualLiftMetadata direct edge cases
+    expect((service as any).getManualLiftMetadata({ manualLift: null })).toBeNull();
+    expect((service as any).getManualLiftMetadata({ manualLift: [] })).toBeNull();
+    expect((service as any).getManualLiftMetadata({ manualLift: { originalEndsAt: 123 } })).toEqual({ originalEndsAt: null, suppressedEventCount: null });
+
+    // Tests for getMetadataNumber
+    expect((service as any).getMetadataNumber(null, 'foo')).toBeNull();
+    expect((service as any).getMetadataNumber({ foo: 'string' }, 'foo')).toBeNull();
+    expect((service as any).getMetadataNumber({ foo: 10 }, 'foo')).toBe(10);
+
     const severitySuspended = (service as any).getDecisionSeverity(OperationalSanctionType.Suspended);
     expect(severitySuspended).toBe(3);
 

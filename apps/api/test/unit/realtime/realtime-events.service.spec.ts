@@ -217,6 +217,22 @@ describe('RealtimeEventsService', () => {
     expect(res1.writtenData).toHaveLength(1);
     expect(res1.writtenData[0]).toContain(REALTIME_TRIP_REQUEST_CHANGED_EVENT);
     expect(res2.writtenData).toHaveLength(0);
+
+    res1.writtenData = [];
+
+    // Trigger an event where neither driver nor passenger matches res1, but institution does
+    service.publishTripRequestChanged({
+      tripId: 'trip-2',
+      requestId: 'req-2',
+      actorUserId: 'actor-other',
+      driverMembershipId: 'membership-stranger-1',
+      passengerMembershipId: 'membership-stranger-2',
+      institutionId: 'institution-1', // Matches user1's institution
+      reason: 'accepted',
+    });
+
+    expect(res1.writtenData).toHaveLength(1);
+    expect(res1.writtenData[0]).toContain(REALTIME_TRIP_REQUEST_CHANGED_EVENT);
   });
 
   it('filters trip changes by institutionId', () => {

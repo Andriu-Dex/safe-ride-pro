@@ -54,4 +54,13 @@ describe('driver-status', () => {
       'Aun no existe',
     );
   });
+
+  it('maps unknown/default driver and license statuses', () => {
+    expect(getDriverStatusLabel('UNKNOWN_STATUS' as any)).toBe('UNKNOWN_STATUS');
+    expect(getDriverStatusTone('UNKNOWN_STATUS' as any)).toBe('neutral');
+    expect(getDriverLicenseStatusLabel('UNKNOWN_STATUS' as any)).toBe('Sin informacion');
+    expect(getDriverLicenseStatusLabel(undefined)).toBe('Sin informacion');
+    expect(getDriverLicenseStatusTone('UNKNOWN_STATUS' as any)).toBe('neutral');
+    expect(getDriverLicenseStatusTone(undefined)).toBe('neutral');
+  });
 });

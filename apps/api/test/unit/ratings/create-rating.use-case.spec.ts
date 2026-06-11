@@ -94,6 +94,54 @@ describe('CreateRatingUseCase', () => {
     });
   });
 
+  it('creates a rating with no comment provided (covers line 99 undefined fallback)', async () => {
+    const repository = createRatingsRepositoryMock();
+    const useCase = new CreateRatingUseCase(repository);
+
+    repository.findDefaultMembershipByUserId.mockResolvedValue({
+      id: 'membership-passenger',
+      userId: 'user-passenger',
+      fullName: 'Pasajero Uno',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      membershipStatus: MembershipStatus.Active,
+    });
+    repository.findTripById.mockResolvedValue({
+      id: 'trip-1',
+      institutionId: 'institution-1',
+      institutionName: 'UTA',
+      status: TripStatus.Completed,
+      driverMembershipId: 'membership-driver',
+      driverUserId: 'user-driver',
+      driverFullName: 'Conductor Uno',
+      originLabel: 'Huachi',
+      destinationLabel: 'Centro',
+      departureAt: new Date('2030-01-01T10:00:00.000Z'),
+      estimatedArrivalAt: new Date('2030-01-01T10:35:00.000Z'),
+      completedAt: new Date('2030-01-01T10:40:00.000Z'),
+      cancelledAt: null,
+    });
+    repository.hasAcceptedTripRequest.mockResolvedValue(true);
+    repository.findRatingByTripAuthorAndTarget.mockResolvedValue(null);
+    repository.createRating.mockImplementation(async (input) => buildCreatedRating(input));
+
+    const response = await useCase.execute({
+      userId: 'user-passenger',
+      tripId: 'trip-1',
+      targetMembershipId: 'membership-driver',
+      score: 5,
+    });
+
+    expect(response.message).toBe('Calificacion registrada correctamente.');
+    expect(repository.createRating).toHaveBeenCalledWith({
+      tripId: 'trip-1',
+      authorMembershipId: 'membership-passenger',
+      targetMembershipId: 'membership-driver',
+      score: 5,
+      comment: undefined,
+    });
+  });
+
   it('rejects a duplicate rating for the same trip and relationship', async () => {
     const repository = createRatingsRepositoryMock();
     const useCase = new CreateRatingUseCase(repository);

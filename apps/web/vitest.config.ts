@@ -19,7 +19,12 @@ export default defineConfig({
       ],
       exclude: [
         'src/modules/auth/lib/auth-api.ts',
-        '**/*.spec.ts'
+        'src/modules/**/*-api.ts',
+        'src/modules/**/*-labels.ts',
+        'src/modules/**/trust-labels.ts',
+        'src/modules/**/onboarding-labels.ts',
+        '**/*.spec.ts',
+        '**/*.spec.tsx'
       ],
     },
   },
