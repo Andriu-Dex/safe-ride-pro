@@ -42,7 +42,7 @@ describe('app-access', () => {
 
     it('returns true when driverVerificationStatus is Approved but effective is not', () => {
       const membership = buildMembership({
-        effectiveDriverVerificationStatus: DriverVerificationStatus.Pending,
+        effectiveDriverVerificationStatus: DriverVerificationStatus.PendingVerification,
         driverVerificationStatus: DriverVerificationStatus.Approved,
       });
       expect(isApprovedDriverMembership(membership)).toBe(true);
@@ -50,8 +50,8 @@ describe('app-access', () => {
 
     it('returns false when neither status is Approved', () => {
       const membership = buildMembership({
-        effectiveDriverVerificationStatus: DriverVerificationStatus.Pending,
-        driverVerificationStatus: DriverVerificationStatus.Pending,
+        effectiveDriverVerificationStatus: DriverVerificationStatus.PendingVerification,
+        driverVerificationStatus: DriverVerificationStatus.PendingVerification,
       });
       expect(isApprovedDriverMembership(membership)).toBe(false);
     });
@@ -87,7 +87,7 @@ describe('app-access', () => {
     it('returns true if any membership is an approved driver', () => {
       const user = {
         memberships: [
-          buildMembership({ driverVerificationStatus: DriverVerificationStatus.Pending }),
+          buildMembership({ driverVerificationStatus: DriverVerificationStatus.PendingVerification }),
           buildMembership({ driverVerificationStatus: DriverVerificationStatus.Approved }),
         ],
       };
@@ -97,7 +97,7 @@ describe('app-access', () => {
     it('returns false if no membership is an approved driver', () => {
       const user = {
         memberships: [
-          buildMembership({ driverVerificationStatus: DriverVerificationStatus.Pending }),
+          buildMembership({ driverVerificationStatus: DriverVerificationStatus.PendingVerification }),
         ],
       };
       expect(canAccessDriverTools(user)).toBe(false);
@@ -118,8 +118,8 @@ describe('app-access', () => {
             effectiveDriverVerificationStatus: DriverVerificationStatus.NotRequested,
           }),
           buildMembership({
-            driverVerificationStatus: DriverVerificationStatus.Pending,
-            effectiveDriverVerificationStatus: DriverVerificationStatus.Pending,
+            driverVerificationStatus: DriverVerificationStatus.PendingVerification,
+            effectiveDriverVerificationStatus: DriverVerificationStatus.PendingVerification,
           }),
         ],
       };

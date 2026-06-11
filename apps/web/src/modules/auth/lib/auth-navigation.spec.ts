@@ -15,7 +15,7 @@ describe('auth-navigation', () => {
   });
 
   afterEach(() => {
-    window.location = originalLocation;
+    window.location = originalLocation as any;
   });
 
   it('redirects to login when window is defined and not on login page', () => {
