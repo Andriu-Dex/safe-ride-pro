@@ -335,6 +335,185 @@ En el ecosistema SafeRidePro se seleccionaron herramientas líderes en la indust
     \item \textbf{Docker y Docker Compose:} Utilizados para instanciar una base de datos PostgreSQL de calidad de QA de forma predecible y desechable, garantizando la repetibilidad de los entornos de prueba~\cite{dockerdocs}.
 \end{itemize}
 
+\subsubsection{Estrategia de Cobertura y Matriz de Trazabilidad}
+
+Para certificar la integridad del sistema SafeRidePro, se estableció una estrategia de verificación bidimensional que asegura cobertura teórica y ejecución automatizada práctica:
+\begin{enumerate}
+    \item \textbf{Diseño de Cobertura Funcional Exhaustiva (72 Casos):} Se diseñó un conjunto completo de 72 casos de prueba (tres por cada uno de los 24 requisitos funcionales del estándar IEEE 830). Esto asegura que todas las condiciones lógicas de aceptación y rechazo estén cubiertas conceptualmente, incluyendo clases de equivalencia y valores límite.
+    \item \textbf{Suite de Ejecución y Automatización (7 Casos Técnicos):} Para la validación física en el entorno de QA, se implementó una suite automatizada compuesta por 7 casos de prueba representativos de alta complejidad técnica. Estos casos ejecutan aserciones dinámicas en el backend (Jest), frontend (Vitest) y flujos de interfaz extremo a extremo (Playwright).
+\end{enumerate}
+
+A continuación, se detalla el \textbf{Resumen de Cobertura de Pruebas por Requisito Funcional} en la Tabla de Cobertura:
+
+\begin{longtable}{|P{1.6cm}|P{4.2cm}|c|P{7.2cm}|}
+\hline
+\rowcolor{gray!15}
+\textbf{Req.} & \textbf{Nombre del Requisito} & \textbf{Casos} & \textbf{Foco de Cobertura Dominante} \\
+\hline
+\endfirsthead
+\hline
+\rowcolor{gray!15}
+\textbf{Req.} & \textbf{Nombre del Requisito} & \textbf{Casos} & \textbf{Foco de Cobertura Dominante} \\
+\hline
+\endhead
+RF-001 & Registro institucional & 3 & Validaciones de dominio (@uta.edu.ec), unicidad de cuentas y datos vacíos. \\
+\hline
+RF-002 & Verificación de correo & 3 & Activación de cuenta por OTP, rechazo de códigos expirados y reenvíos. \\
+\hline
+RF-003 & Inicio de sesión y recuperación & 3 & Flujos de login exitoso, contraseñas erradas y reajuste mediante token. \\
+\hline
+RF-004 & Gestión de perfil & 3 & Consulta de perfil, carga de imagen física y edición de datos obligatorios. \\
+\hline
+RF-005 & Contexto institucional & 3 & Resolución automática de membresía al ingresar y control de menús dinámicos. \\
+\hline
+RF-006 & Solicitud de conductor & 3 & Carga documental obligatoria (licencia, cédula) y gestión de reintentos. \\
+\hline
+RF-007 & Revisión de conductor & 3 & Aprobación y rechazo por administrador con registro de observaciones. \\
+\hline
+RF-008 & Registro de vehículo & 3 & Registro de placas, marca, modelo y carga de matrícula vehicular digital. \\
+\hline
+RF-009 & Gestión de estado del vehículo & 3 & Activación y desactivación lógica del auto y validación de propiedad. \\
+\hline
+RF-010 & Publicación de viaje & 3 & Definición de origen, destino, cupos, ruta e inconsistencias de horarios. \\
+\hline
+RF-011 & Exploración de viajes & 3 & Filtros dinámicos por destino y fecha, y aislamiento interinstitucional. \\
+\hline
+RF-012 & Solicitud de cupo & 3 & Reservas exitosas, bloqueo de duplicados y control de cupos agotados. \\
+\hline
+RF-013 & Gestión de solicitudes & 3 & Aceptación o rechazo por conductor y cancelación por el pasajero solicitante. \\
+\hline
+RF-014 & Inicio de viaje & 3 & Transición a "En Curso" en ventana operativa y cierre automático de pendientes. \\
+\hline
+RF-015 & Abordaje de pasajero & 3 & Registro operativo de pasajero "a bordo" y visibilidad para las partes. \\
+\hline
+RF-016 & Finalización de pasajero & 3 & Registro de pasajero "finalizado" al arribar a destino y resúmenes de viaje. \\
+\hline
+RF-017 & Registro de no-show & 3 & Marcación de ausencias (no-show) y consistencia del estado del viaje. \\
+\hline
+RF-018 & Cierre excepcional del viaje & 3 & Exigencia de nota de justificación ante pasajeros sin resolución final. \\
+\hline
+RF-019 & Seguimiento operativo v1 & 3 & Visualización autorizada de la ruta y actualizaciones de estado en tiempo real. \\
+\hline
+RF-020 & Calificaciones post-viaje & 3 & Asignación de estrellas, comentarios de confianza y control de ventanas de tiempo. \\
+\hline
+RF-021 & Reportes con evidencia & 3 & Generación de quejas/incidentes con soporte de carga de archivos multimedia. \\
+\hline
+RF-022 & Sanciones y apelaciones & 3 & Suspensiones automáticas por cancelaciones recurrentes y flujo de apelaciones. \\
+\hline
+RF-023 & Auditoría administrativa & 3 & Monitoreo del historial de transacciones, sanciones e inspección de reportes. \\
+\hline
+RF-024 & Trazabilidad de eventos & 3 & Grabación inmutable de acciones críticas (logins, inicios, sanciones) en BD. \\
+\hline
+\end{longtable}
+
+Para demostrar la trazabilidad e ingeniería del software, se presenta la \textbf{Matriz de Trazabilidad de Requisitos vs. Pruebas} en la Tabla~\ref{tab:trazabilidad}. Esta matriz muestra cómo cada requisito es cubierto por la suite de casos de prueba diseñados e indica cuáles de ellos cuentan con implementación y validación automatizada en esta práctica:
+
+\begin{longtable}{|P{1.8cm}|P{3.5cm}|P{2.2cm}|P{3.5cm}|P{4.2cm}|}
+\caption{Matriz de Trazabilidad de Requisitos Funcionales vs. Casos de Prueba} \label{tab:trazabilidad} \\
+\hline
+\rowcolor{gray!15}
+\textbf{Req. ID} & \textbf{Requisito} & \textbf{Caso ID} & \textbf{Nivel / Tipo de Prueba} & \textbf{Estado de Automatización / Ejecución} \\
+\hline
+\endfirsthead
+\hline
+\rowcolor{gray!15}
+\textbf{Req. ID} & \textbf{Requisito} & \textbf{Caso ID} & \textbf{Nivel / Tipo de Prueba} & \textbf{Estado de Automatización / Ejecución} \\
+\hline
+\endhead
+\multirow{3}{*}{RF-001} & \multirow{3}{*}{Registro inst.} & CP-001 & Integración (Caja Negra) & Diseñado (Manual / Sistema) \\
+\cline{3-5}
+ & & CP-002 & Componente (Caja Gris) & \textbf{Automatizado (Vitest: CP-UNIT-WEB-06)} \\
+\cline{3-5}
+ & & CP-003 & Integración (Caja Negra) & Diseñado (Manual / Negativo) \\
+\hline
+RF-002 & Verificación OTP & CP-004 a 006 & Integración (Caja Negra) & Diseñado (Manual / Sistema) \\
+\hline
+\multirow{3}{*}{RF-003} & \multirow{3}{*}{Login y recuperac.} & CP-007 & Caso de Uso (Caja Blanca) & \textbf{Automatizado (Jest: CP-UNIT-AUTH-01)} \\
+\cline{3-5}
+ & & CP-008 & Caso de Uso (Caja Blanca) & Diseñado (Manual / Negativo) \\
+\cline{3-5}
+ & & CP-009 & Integración (Caja Negra) & Diseñado (Manual / Sistema) \\
+\hline
+RF-004 & Gestión de perfil & CP-010 a 012 & Integración (Caja Negra) & Diseñado (Manual / Sistema) \\
+\hline
+RF-005 & Contexto inst. & CP-013 a 015 & Sistema (Caja Negra) & Diseñado (Manual / Sistema) \\
+\hline
+\multirow{3}{*}{RF-006} & \multirow{3}{*}{Solicitud conductor} & CP-016 & Flujo E2E (Caja Negra) & \textbf{Automatizado (Playwright: CP-E2E-FLOW-03)} \\
+\cline{3-5}
+ & & CP-017 & Flujo E2E (Caja Negra) & Diseñado (Manual / Negativo) \\
+\cline{3-5}
+ & & CP-018 & Flujo E2E (Caja Negra) & Diseñado (Manual / Reintento) \\
+\hline
+\multirow{3}{*}{RF-007} & \multirow{3}{*}{Revisión conductor} & CP-019 & Flujo E2E (Caja Negra) & \textbf{Automatizado (Playwright: CP-E2E-FLOW-03)} \\
+\cline{3-5}
+ & & CP-020 & Flujo E2E (Caja Negra) & Diseñado (Manual / Negativo) \\
+\cline{3-5}
+ & & CP-021 & Flujo E2E (Caja Negra) & Diseñado (Manual / Permisos) \\
+\hline
+\multirow{3}{*}{RF-008} & \multirow{3}{*}{Registro vehículo} & CP-022 & Caso de Uso (Caja Blanca) & \textbf{Automatizado (Jest: CP-UNIT-VEH-02)} \\
+\cline{3-5}
+ & & CP-023 & Caso de Uso (Caja Blanca) & Diseñado (Manual / Negativo) \\
+\cline{3-5}
+ & & CP-024 & Flujo E2E (Caja Negra) & \textbf{Automatizado (Playwright: CP-E2E-FLOW-03)} \\
+\hline
+RF-009 & Estado del vehículo & CP-025 a 027 & Integración (Caja Negra) & Diseñado (Manual / Control) \\
+\hline
+\multirow{3}{*}{RF-010} & \multirow{3}{*}{Publicar viaje} & CP-028 & Flujo E2E (Caja Negra) & \textbf{Automatizado (Playwright: CP-E2E-FLOW-03)} \\
+\cline{3-5}
+ & & CP-029 & Flujo E2E (Caja Negra) & Diseñado (Manual / Negativo) \\
+\cline{3-5}
+ & & CP-030 & Flujo E2E (Caja Negra) & Diseñado (Manual / Restricciones) \\
+\hline
+RF-011 & Exploración viajes & CP-031 a 033 & Sistema (Caja Negra) & Diseñado (Manual / Filtros) \\
+\hline
+RF-012 & Solicitud de cupo & CP-034 a 036 & Sistema (Caja Negra) & Diseñado (Manual / Capacidad) \\
+\hline
+RF-013 & Gestión solicitudes & CP-037 a 039 & Integración (Caja Negra) & Diseñado (Manual / Transiciones) \\
+\hline
+\multirow{3}{*}{RF-014} & \multirow{3}{*}{Inicio de viaje} & CP-040 & Servicio (Caja Blanca) & \textbf{Automatizado (Jest: CP-UNIT-TRIP-04)} \\
+\cline{3-5}
+ & & CP-041 & Servicio (Caja Blanca) & Diseñado (Manual / Ventana) \\
+\cline{3-5}
+ & & CP-042 & Servicio (Caja Blanca) & Diseñado (Manual / Permisos) \\
+\hline
+RF-015 & Abordaje pasajero & CP-043 a 045 & Integración (Caja Negra) & Diseñado (Manual / Flujo) \\
+\hline
+\multirow{3}{*}{RF-016} & \multirow{3}{*}{Finalizar pasajero} & CP-046 & Servicio (Caja Blanca) & \textbf{Automatizado (Jest: CP-UNIT-TRIP-04)} \\
+\cline{3-5}
+ & & CP-047 & Servicio (Caja Blanca) & Diseñado (Manual / Negativo) \\
+\cline{3-5}
+ & & CP-048 & Sistema (Caja Negra) & Diseñado (Manual / Resumen) \\
+\hline
+RF-017 & Registro no-show & CP-049 a 051 & Integración (Caja Negra) & Diseñado (Manual / Inasistencia) \\
+\hline
+RF-018 & Cierre excepcional & CP-052 a 054 & Sistema (Caja Negra) & Diseñado (Manual / Nota cierre) \\
+\hline
+RF-019 & Seguimiento v1 & CP-055 a 057 & Sistema (Caja Negra) & Diseñado (Manual / Mapas) \\
+\hline
+\multirow{3}{*}{RF-020} & \multirow{3}{*}{Calificación viaje} & CP-058 & Flujo E2E (Caja Negra) & \textbf{Automatizado (Playwright: CP-E2E-FLOW-07)} \\
+\cline{3-5}
+ & & CP-059 & Flujo E2E (Caja Negra) & Diseñado (Manual / Ventana) \\
+\cline{3-5}
+ & & CP-060 & Flujo E2E (Caja Negra) & Diseñado (Manual / Duplicado) \\
+\hline
+\multirow{3}{*}{RF-021} & \multirow{3}{*}{Reportes incidente} & CP-061 & Flujo E2E (Caja Negra) & \textbf{Automatizado (Playwright: CP-E2E-FLOW-07)} \\
+\cline{3-5}
+ & & CP-062 & Flujo E2E (Caja Negra) & Diseñado (Manual / Evidencias) \\
+\cline{3-5}
+ & & CP-063 & Flujo E2E (Caja Negra) & Diseñado (Manual / Elegibilidad) \\
+\hline
+\multirow{3}{*}{RF-022} & \multirow{3}{*}{Sanciones/Apelac.} & CP-064 & Servicio (Caja Blanca) & \textbf{Automatizado (Jest: CP-UNIT-SANC-05)} \\
+\cline{3-5}
+ & & CP-065 & Servicio (Caja Blanca) & Diseñado (Manual / Negativo) \\
+\cline{3-5}
+ & & CP-066 & Integración (Caja Negra) & Diseñado (Manual / Apelación) \\
+\hline
+RF-023 & Auditoría admin. & CP-067 a 069 & Sistema (Caja Negra) & Diseñado (Manual / Panel admin) \\
+\hline
+RF-024 & Trazabilidad eventos & CP-070 a 072 & Integración (Caja Blanca) & Diseñado (Manual / Auditoría log) \\
+\hline
+\end{longtable}
+
 \subsubsection{Diseño de Casos de Prueba (Caja Blanca y Caja Negra)}
 
 Se definieron estrategias diferenciadas de pruebas para cubrir los distintos niveles de la pirámide de pruebas~\cite{istqb2018syllabus}. Para los componentes internos del servidor y lógica de negocio (NestJS), se emplearon pruebas unitarias e integración de \textbf{Caja Blanca} con Jest~\cite{jestdocs}. Para los componentes visuales e interactivos del cliente (Next.js), se diseñaron pruebas unitarias con Vitest y pruebas de sistema/flujo completo de \textbf{Caja Negra} con Playwright~\cite{playwrightdocs}.
@@ -556,6 +735,31 @@ pnpm --filter @saferidepro/api db:seed
 \end{verbatim}
 
 \evidencia{docker_compose_qa.png}{Estructura y despliegue del entorno QA empleando Docker Compose.}
+
+\subsubsection*{Gestión de Riesgos y Mitigaciones Técnicas en el Entorno de QA}
+
+Durante la planificación y ejecución del proceso de pruebas en el entorno de aseguramiento de la calidad (QA), se identificaron riesgos de carácter técnico que podrían comprometer la repetibilidad y estabilidad de las pruebas. La Tabla~\ref{tab:riesgos} resume la matriz de gestión de riesgos y las contramedidas de ingeniería de software implementadas:
+
+\begin{table}[H]
+\centering
+\small
+\caption{Matriz de Gestión de Riesgos Técnicos en el Entorno de QA} \label{tab:riesgos}
+\begin{tabularx}{\linewidth}{|P{3.5cm}|P{2.2cm}|P{3.5cm}|X|}
+\hline
+\rowcolor{gray!15}
+\textbf{Riesgo Técnico} & \textbf{Impacto} & \textbf{Probabilidad} & \textbf{Estrategia de Mitigación Implementada} \\
+\hline
+\textbf{Colisión de puertos} \newline Colisión con el puerto 5432 del motor PostgreSQL de desarrollo o producción local. & Alto \newline (Detiene el servicio de base de datos) & Media & Configuración de un puerto alternativo (\texttt{5433}) en el contenedor Docker \texttt{saferidepro-postgres-qa} y aislamiento mediante archivo de entorno \texttt{.env.qa}. \\
+\hline
+\textbf{Polución de datos} \newline Contaminación o persistencia de estados de pruebas anteriores que alteren resultados futuros. & Crítico \newline (Produce falsos positivos o negativos) & Alta & Ejecución de una rutina automática de inicialización previa (\textit{Pre-test Hook}) que realiza un \texttt{db push} y un repoblamiento de semillas relacionales (\texttt{db seed}) de Prisma en cada ciclo. \\
+\hline
+\textbf{Dependencias de red} \newline Bloqueo por timeout en pruebas E2E por peticiones externas al cargar mapas de Leaflet (OpenStreetMap). & Medio \newline (Provoca caídas en aserciones de Playwright) & Alta & Inyección condicional de la variable global de testing (\texttt{window.\_\_TESTING\_\_}) para conmutar dinámicamente a un componente mock de interfaz sin llamadas de red. \\
+\hline
+\textbf{Persistencia efímera} \newline Lentitud en operaciones de escritura redundantes en disco durante la suite de pruebas transaccionales. & Medio \newline (Incrementa el tiempo de ejecución en CI/CD) & Media & Montaje de volúmenes de base de datos tipo \texttt{tmpfs} (en memoria RAM) dentro de los contenedores Docker Compose de QA, acelerando las escrituras físicas. \\
+\hline
+\end{tabularx}
+\end{table}
+
 
 \subsubsection{Ejecución de las Pruebas y Reportes de Cobertura}
 
@@ -797,6 +1001,35 @@ Se realizó una contrastación entre los resultados reales arrojados por las sui
     \item Los incidentes documentados en la sección anterior fueron corregidos de forma definitiva, lo cual se constató volviendo a correr los tests unitarios y de sistema respectivos, verificando que los errores de autenticación, sobreventa de asientos y bloqueos de interfaz no volvieron a presentarse.
     \item La cobertura global de código se situó por encima del umbral mínimo aceptado de calidad corporativa (80\%), garantizando que las modificaciones futuras del software cuenten con una red de seguridad sólida contra regresiones.
 \end{itemize}
+
+\subsubsection*{Métricas de Calidad y KPIs del Proceso de Pruebas}
+
+Para evaluar de forma cuantitativa el éxito del proceso de pruebas y certificar la preparación para el despliegue del sistema SafeRidePro, se establecieron Indicadores Clave de Rendimiento (KPIs) de calidad. La Tabla~\ref{tab:kpis} detalla la comparación entre los umbrales exigidos en el plan de calidad frente a las métricas reales consolidadas durante la ejecución:
+
+\begin{table}[H]
+\centering
+\small
+\caption{Consolidado de KPIs de Calidad y Métricas de Pruebas} \label{tab:kpis}
+\begin{tabularx}{\linewidth}{|P{4.2cm}|P{3.8cm}|c|c|Y|}
+\hline
+\rowcolor{gray!15}
+\textbf{Métrica / KPI} & \textbf{Fórmula o Criterio} & \textbf{Objetivo} & \textbf{Real Obtenido} & \textbf{Estado del KPI} \\
+\hline
+\textbf{Tasa de Aprobación} & $\frac{\text{Pruebas Exitosas}}{\text{Pruebas Totales}} \times 100$ & 100\% & 100\% & Cumplido \\
+\hline
+\textbf{Cobertura Backend (API)} & Líneas ejecutadas por Jest & $\ge$ 80.0\% & 88.5\% & Excedido (+8.5\%) \\
+\hline
+\textbf{Cobertura Frontend (Web)} & Componentes cubiertos por Vitest & $\ge$ 80.0\% & 81.3\% & Excedido (+1.3\%) \\
+\hline
+\textbf{Efectividad de Defectos} & $\frac{\text{Defectos Corregidos}}{\text{Defectos Detectados}} \times 100$ & 100\% & 100\% (3/3) & Cumplido \\
+\hline
+\textbf{Densidad de Defectos} & $\frac{\text{Defectos Detectados}}{\text{KLOC (Miles de líneas de cód.)}}$ & $<$ 1.5 & 0.42 & Excelente \\
+\hline
+\textbf{Estabilidad de la Suite E2E} & Ejecución exitosa de humo & 100\% & 100\% & Cumplido \\
+\hline
+\end{tabularx}
+\end{table}
+
 
 \subsection{Resultados Obtenidos}
 
