@@ -1,5 +1,5 @@
 # Nombre del archivo principal de LaTeX sin la extensión .tex
-MAIN_FILE = APE6-Paredes_Steven
+MAIN_FILE = APE4-Paredes_Steven
 
 # Compilador LaTeX
 LATEX_COMPILER = pdflatex
