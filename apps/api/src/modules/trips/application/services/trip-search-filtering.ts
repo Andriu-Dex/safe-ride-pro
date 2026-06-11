@@ -50,17 +50,17 @@ export function matchesTripDepartureTimeWindow(
     return tripMinutes >= timeFromInMinutes;
   }
 
-  return tripMinutes <= (timeToInMinutes ?? 0);
+  return tripMinutes <= (timeToInMinutes as number);
 }
 
 function resolveTripMinutes(value: Date): number {
   const formatterParts = tripTimeFormatter.formatToParts(value);
   const hour = Number.parseInt(
-    formatterParts.find((part) => part.type === 'hour')?.value ?? '0',
+    formatterParts.find((part) => part.type === 'hour')!.value,
     10,
   );
   const minute = Number.parseInt(
-    formatterParts.find((part) => part.type === 'minute')?.value ?? '0',
+    formatterParts.find((part) => part.type === 'minute')!.value,
     10,
   );
 

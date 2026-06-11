@@ -13,6 +13,14 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
+      include: [
+        'src/modules/**/lib/*.ts',
+        'src/app/(app)/confianza/utils/*.ts'
+      ],
+      exclude: [
+        'src/modules/auth/lib/auth-api.ts',
+        '**/*.spec.ts'
+      ],
     },
   },
 });

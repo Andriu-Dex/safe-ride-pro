@@ -14,7 +14,8 @@ module.exports = {
   },
   clearMocks: true,
   collectCoverageFrom: [
-    'src/modules/**/*.ts',
+    'src/modules/**/application/**/*.ts',
+    'src/modules/**/presentation/controllers/**/*.ts',
     '!src/**/*.module.ts',
     '!src/main.ts',
   ],

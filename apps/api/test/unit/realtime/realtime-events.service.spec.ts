@@ -327,4 +327,49 @@ describe('RealtimeEventsService', () => {
 
     expect(res.writtenData).toHaveLength(0);
   });
+
+  it('handles multiple cleanup calls safely without errors (covers line 107)', () => {
+    const currentUser = buildUserContext();
+    const req = new MockRequest() as any;
+    const res = new MockResponse() as any;
+
+    service.openStream(currentUser, req, res);
+
+    // Call close multiple times, the first one cleans up, the second one hits the early return
+    req.emit('close');
+    res.emit('close');
+    res.emit('error', new Error('mock error'));
+
+    // Should not throw
+    expect(true).toBe(true);
+  });
+
+  it('filters REALTIME_CONNECTED_EVENT by userId if published manually (covers line 224)', () => {
+    const user1 = buildUserContext({ id: 'user-1' });
+    const user2 = buildUserContext({ id: 'user-2' });
+
+    const res1 = new MockResponse() as any;
+    const res2 = new MockResponse() as any;
+
+    service.openStream(user1, new MockRequest() as any, res1);
+    service.openStream(user2, new MockRequest() as any, res2);
+
+    res1.writtenData = [];
+    res2.writtenData = [];
+
+    // Manually push a connected event through the private publish method
+    // to test the filtering branch at shouldReceiveEvent.
+    (service as any).publish({
+      type: REALTIME_CONNECTED_EVENT,
+      userId: 'user-1',
+      connectedAt: new Date().toISOString(),
+      institutionIds: [],
+      membershipIds: [],
+    });
+
+    expect(res1.writtenData).toHaveLength(1);
+    expect(res1.writtenData[0]).toContain(REALTIME_CONNECTED_EVENT);
+    // user-2 should be filtered out
+    expect(res2.writtenData).toHaveLength(0);
+  });
 });

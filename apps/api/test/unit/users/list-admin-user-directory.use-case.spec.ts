@@ -154,4 +154,54 @@ describe('ListAdminUserDirectoryUseCase', () => {
       }),
     );
   });
+
+  it('allows superadmin to query a specific institution', async () => {
+    const usersRepository = createUsersRepositoryMock();
+    usersRepository.listAdminUserDirectory.mockResolvedValue([]);
+    const useCase = new ListAdminUserDirectoryUseCase(usersRepository);
+
+    await useCase.execute({
+      currentUser: buildCurrentUser(), // is SuperAdmin
+      institutionId: 'institution-2',
+    });
+
+    expect(usersRepository.listAdminUserDirectory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        institutionIds: ['institution-2'],
+      }),
+    );
+  });
+
+  it('resolves accessible institutions automatically for non-superadmin if no institutionId is provided', async () => {
+    const usersRepository = createUsersRepositoryMock();
+    usersRepository.listAdminUserDirectory.mockResolvedValue([]);
+    const useCase = new ListAdminUserDirectoryUseCase(usersRepository);
+
+    const currentUser = buildCurrentUser({
+      globalRole: GlobalUserRole.User,
+      memberships: [
+        {
+          id: 'membership-admin-1',
+          institutionId: 'institution-1',
+          institutionName: 'UTA',
+          institutionIsActive: true,
+          role: InstitutionMembershipRole.InstitutionAdmin,
+          membershipStatus: MembershipStatus.Active,
+          studentCode: 'ADMIN-001',
+          isDefault: true,
+          driverVerificationStatus: DriverVerificationStatus.NotRequested,
+        },
+      ],
+    });
+
+    await useCase.execute({
+      currentUser,
+    });
+
+    expect(usersRepository.listAdminUserDirectory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        institutionIds: ['institution-1'],
+      }),
+    );
+  });
 });

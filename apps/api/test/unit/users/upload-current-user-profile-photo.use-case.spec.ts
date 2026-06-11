@@ -147,4 +147,41 @@ describe('UploadCurrentUserProfilePhotoUseCase', () => {
       }),
     ).rejects.toThrow(new BadRequestException('La foto de perfil no puede superar los 5 MB.'));
   });
+
+  it('uses a default file name if originalname is empty', async () => {
+    const repository = createUsersRepositoryMock();
+    const storageService = createProfileImageStorageServiceMock();
+    const useCase = new UploadCurrentUserProfilePhotoUseCase(repository, storageService);
+    const fileBuffer = Buffer.from('png');
+
+    repository.findProfilePhotoRecordById.mockResolvedValue({
+      userId: 'user-1',
+      profilePhotoUrl: null,
+      profilePhotoStorageProvider: null,
+      profilePhotoStorageKey: null,
+    });
+    storageService.uploadProfileImage.mockResolvedValue({
+      url: 'https://i.imgur.com/new-avatar.png',
+      storageProvider: 'IMGUR',
+      storageKey: 'new-delete-hash',
+    });
+
+    await useCase.execute('user-1', {
+      originalname: '',
+      mimetype: 'image/png',
+      size: 4096,
+      buffer: fileBuffer,
+    });
+
+    expect(storageService.uploadProfileImage).toHaveBeenCalledWith({
+      fileName: 'profile-photo',
+      mimeType: 'image/png',
+      content: fileBuffer,
+      previousImage: {
+        url: null,
+        storageProvider: null,
+        storageKey: null,
+      },
+    });
+  });
 });

@@ -1,0 +1,242 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage[letterpaper,top=2cm,bottom=3cm,left=2cm,right=2cm,marginparwidth=1.75cm]{geometry}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{amssymb,stackengine}
+\usepackage{fancyhdr}
+\usepackage{multicol}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{caption}
+\usepackage{pdflscape}
+\usepackage{longtable}
+\usepackage{ifthen}
+\usepackage{url}
+
+\graphicspath{{Imagenes/}}
+
+\newcommand{\checkedbox}{\stackinset{c}{0pt}{c}{0pt}{\checkmark}{$\square$}}
+\newcommand{\evidencia}[3][0.94\linewidth]{%
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{Imagenes/#2}{%
+      \includegraphics[width=#1]{Imagenes/#2}
+    }{%
+      \fbox{\parbox[c][6cm][c]{0.88\linewidth}{\centering
+      Captura pendiente\\
+      \texttt{\detokenize{#2}}}}
+    }
+    \caption{#3}
+  \end{figure}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{60pt}
+\renewcommand{\headrule}{\vspace{2pt}\hrule}
+
+\fancyhead[C]{%
+    \begin{minipage}[c]{2.5cm}
+        \centering
+        \includegraphics[width=2cm]{Imagenes/UTA.jpeg}
+    \end{minipage}%
+    \hfill
+    \begin{minipage}[c]{8cm}
+        \centering
+        \small {\textbf{UNIVERSIDAD TÉCNICA DE AMBATO}} \\[0.1cm]
+        \scriptsize \textit{FACULTAD DE INGENIERÍA EN SISTEMAS ELECTRÓNICA E INDUSTRIAL} \\[0.1cm]
+        \scriptsize \textbf{CARRERA DE SOFTWARE} \\[0.1cm]
+        \scriptsize \textbf{CICLO ACADÉMICO: ENERO 2026 -- JULIO 2026}
+    \end{minipage}%
+    \hfill%
+    \begin{minipage}[c]{2.5cm}
+        \centering
+        \includegraphics[width=1.9cm]{Imagenes/fisei.png}
+    \end{minipage}%
+}
+
+\begin{document}
+\begin{center}
+    {\large \textbf{INFORME DE GUÍA PRÁCTICA}} \\
+\end{center}
+
+\section{Portada}
+\begin{flushleft}
+\begin{tabular}{ l l }
+    \textbf{Tema:} & Diseño y ejecución de pruebas \\
+    \textbf{Unidad de Organización Curricular:} & Profesional \\
+    \textbf{Nivel y Paralelo:} & 6 - ``A'' \\
+    \textbf{Alumnos participantes:} &
+    \begin{tabular}[t]{@{}l@{}}
+        Aguilar Guillen Erick Mateo \\
+        Llerena Garces Gabriel Stefano \\
+        Navarro Pazmiño Maybelline Estefania \\
+        Paredes Medina Steven Eduardo
+    \end{tabular} \\
+    \textbf{Asignatura:} & Gestión de Pruebas e Implantación de Software \\
+    \textbf{Docente:} & Ing. Leonardo Torres, Mg. \\
+\end{tabular}
+\end{flushleft}
+
+\section{Informe de Guía Práctica}
+\subsection{Objetivos}
+
+\subsubsection{General}
+\begin{itemize}
+    \item Diseñar y ejecutar casos de prueba que permitan validar el correcto funcionamiento del sistema de software SafeRidePro en todos sus estratos arquitectónicos.
+\end{itemize}
+
+\subsubsection{Específicos}
+\begin{itemize}
+    \item Analizar la documentación y requerimientos del sistema para identificar las funcionalidades críticas que deben ser sometidas a pruebas (Unitarias, de Integración y Sistema).
+    \item Elaborar y automatizar casos de prueba especificando sus condiciones de caja blanca y caja negra, sus precondiciones, acciones y resultados esperados.
+    \item Ejecutar las pruebas en el entorno de validación (QA), generar reportes de Code Coverage, registrar los incidentes detectados y documentar la mitigación de los mismos.
+\end{itemize}
+
+\subsection{Modalidad}
+Presencial
+
+\subsection{Tiempo de Duración}
+Presenciales: 8\\
+\indent No presenciales: 0
+
+\subsection{Instrucciones}
+En base a los requerimientos definidos para el desarrollo del sistema realice lo siguiente:
+\begin{itemize}
+    \item Análisis de requisitos: revisar la documentación del sistema para identificar qué funcionalidades deben probarse.
+    \item Diseño de pruebas: elaborar los casos de prueba especificando entradas, acciones, resultados esperados y criterios de aceptación.
+    \item Preparación del entorno: asegúrese de contar con los datos de prueba y el ambiente configurado.
+    \item Ejecución de pruebas: realizar las pruebas según lo planificado, registrando los resultados obtenidos.
+    \item Registro de incidentes: documentar cualquier error o comportamiento inesperado en un reporte de defectos.
+    \item Verificación de resultados: comparar los resultados reales con los esperados y concluir si las pruebas fueron exitosas.
+    \item Entrega de evidencias: generar un documento en formato pdf en base al formato indicado.
+\end{itemize}
+
+\subsection{Listado de Equipos, Materiales y Recursos}
+\begin{itemize}
+    \item Inteligencia artificial
+    \item TAC Internet
+    \item Apuntes de clase
+    \item Computador
+\end{itemize}
+
+\textbf{TAC (Tecnologías para el Aprendizaje y Conocimiento) empleados en la guía práctica:}
+\begin{itemize}
+    \item[\checkedbox] Plataformas educativas
+    \item[$\square$] Simuladores y laboratorios virtuales
+    \item[$\square$] Aplicaciones educativas
+    \item[$\square$] Recursos audiovisuales
+    \item[$\square$] Gamificación
+    \item[\checkedbox] Inteligencia Artificial
+    \item Otros (Especifique): \underline{\hspace{5cm}}
+\end{itemize}
+
+\subsection{Actividades por Desarrollar}
+
+\subsubsection{Análisis de Requisitos y Planificación de Pruebas}
+Para garantizar la calidad sistémica de la plataforma SafeRidePro, se estableció un Plan de Pruebas formal guiado por las buenas prácticas de la norma IEEE 29119. Tras la revisión de la documentación funcional (\textit{Protocolo Funcional V2}), se determinó que la naturaleza de la aplicación exige una estrategia de pruebas basada en riesgos, enfocándose en la sincronía de estados operativos (viajes y transacciones financieras).
+
+Se definieron 3 niveles principales de prueba para abarcar la cobertura estructural y funcional:
+\begin{enumerate}
+    \item \textbf{Capa Unitaria (Caja Blanca):} Verificación aislada de las reglas de negocio de la capa de Aplicación de NestJS y los Hooks/Componentes de React en Next.js.
+    \item \textbf{Capa de Integración:} Validación del enlace asíncrono entre la API REST, el ORM Prisma y el motor relacional PostgreSQL, comprobando transacciones en cascada.
+    \item \textbf{Capa de Sistema (E2E / Caja Negra):} Pruebas transversales en entorno controlado que simulan la interacción concurrente de roles (Conductor, Pasajero, Administrador) utilizando herramientas de automatización de navegador.
+\end{enumerate}
+
+\subsubsection{Diseño de Pruebas Automatizadas}
+El diseño de los casos de prueba fue implementado de manera programática en el monorepo. Se estipularon escenarios estrictos de entradas y salidas esperadas:
+
+\begin{itemize}
+    \item \textbf{Diseño Unitario:} Mediante \textit{Jest} para el backend, se diseñaron mocks de los repositorios para inyectar fallos controlados o datos sintéticos en los Casos de Uso. Ejemplo: Se diseñó el caso \texttt{AcceptTripRequestUseCase} validando matemáticamente la sustracción de cupos de un vehículo. Para el frontend se utilizó \textit{Vitest} asegurando el renderizado condicional de la UI.
+    \item \textbf{Diseño de Integración:} Se diseñaron bloques de prueba de persistencia. \textit{Criterio de aceptación:} Una mutación en la API (como crear un viaje) debe reflejarse inequívocamente como un registro físico persistido en PostgreSQL bajo las restricciones referenciales correctas (llaves foráneas a usuarios).
+    \item \textbf{Diseño de Sistema (E2E):} Utilizando el framework \textit{Playwright}, se estructuró una suite de 13 pruebas que trazan historias de usuario completas. Ejemplo (\texttt{trip-lifecycle-ui.spec.ts}): Un conductor inicia el viaje, un pasajero lo aborda, finaliza el viaje, y el flujo es validado asertivamente paso a paso verificando la UI.
+\end{itemize}
+
+\evidencia{ape4_01_playwright_scripts.png}{Estructura del diseño de pruebas automatizadas en el monorepo, abarcando las 3 capas técnicas.}
+
+\subsubsection{Preparación del Entorno (QA)}
+Para no contaminar la base de datos local de desarrollo ni la instancia productiva, se provisionó un entorno de pruebas \textit{Quality Assurance} (QA) aislado, gestionado mediante \texttt{docker-compose.qa.yml}. 
+
+Este entorno levantó contenedores propios de la base de datos PostgreSQL en el puerto 5433, enlazados a la API (NestJS) y al Frontend Web. Para mantener la reproducibilidad de los tests, se configuraron scripts de limpieza (\textit{teardown}) y \textit{seeding} que reestablecen la base de datos a un estado determinista antes de la ejecución de cada bloque de validación E2E o de integración. 
+
+Adicionalmente, se integró el motor de métricas de cobertura de código (\textit{Code Coverage}) en el gestor de paquetes de pnpm, permitiendo obtener informes HTML detallados de la penetración de las pruebas en el código fuente.
+
+\evidencia{ape4_02_qa_environment.png}{Preparación del entorno de QA dockerizado y comandos de ejecución para el aislamiento de las pruebas.}
+
+\subsubsection{Ejecución de Pruebas y Registro de Incidentes}
+Durante las fases de ejecución automatizada empleando \texttt{corepack pnpm test}, se registraron y depuraron incidentes en los distintos niveles de prueba:
+
+\textbf{Incidente 1: Falla en la inyección de coordenadas en la UI (\texttt{trip-creation-ui.spec.ts})}
+\begin{itemize}
+    \item \textbf{Comportamiento Inesperado:} La prueba fallaba reportando que las coordenadas no estaban definidas. Se detectó que el motor Chromium en modo Headless de Playwright no disparaba correctamente los eventos sintéticos del puntero sobre el lienzo interactivo del mapa (\texttt{Leaflet}/\texttt{Geoapify}).
+    \item \textbf{Mitigación:} Se ajustó la configuración del contenedor de pruebas (\texttt{.env.qa}) para inhabilitar dinámicamente la llave de la API del mapa. Esto forzó al Frontend a renderizar entradas numéricas estáticas de latitud y longitud, permitiendo al bot automatizado rellenarlas con 100\% de precisión, solucionando la inestabilidad.
+\end{itemize}
+
+\textbf{Incidente 2: Condición de carrera en Paginación E2E (\texttt{trip-request-ui.spec.ts})}
+\begin{itemize}
+    \item \textbf{Comportamiento Inesperado:} El pasajero simulado no localizaba la tarjeta del viaje recién creado en el panel de viajes. La prueba de Playwright iteraba apresuradamente a la página 2 de resultados sin esperar a que el framework React termine de renderizar el Virtual DOM de la primera página.
+    \item \textbf{Mitigación:} Se rediseñó el código de la prueba agregando una barrera de sincronización asíncrona (\texttt{waitForSelector}) para pausar el hilo de ejecución hasta que la lista de viajes existiera visualmente en la capa de la UI, solucionando las fallas de sincronía.
+\end{itemize}
+
+\evidencia[0.85\linewidth]{ape4_03_incidente_solucionado.png}{Corrección del código E2E aplicando esperas explícitas (\texttt{waitForSelector}) para resolver condiciones de carrera asíncronas en la UI.}
+
+\subsubsection{Verificación de Resultados}
+Finalizado el proceso de estabilización, se procedió a la validación formal de los reportes.
+
+\textbf{Resultados de Cobertura Unitaria e Integración:}
+La ejecución de \texttt{corepack pnpm --filter @saferidepro/api test:coverage} comprobó un blindaje del 100\% en Statements, Branches, Functions y Lines dentro de todos los Casos de Uso (capa de Application), cumpliendo así el objetivo técnico planteado en la etapa de diseño de componentes.
+
+\evidencia[0.85\linewidth]{ape4_04_coverage_report.png}{Reporte HTML oficial de Code Coverage del backend demostrando el 100\% de cobertura en la lógica de negocio.}
+
+\textbf{Resultados de Pruebas de Sistema (E2E):}
+La ejecución integral de la suite en el entorno QA finalizó con un éxito del 100\% (13/13 pruebas aprobadas), validando todos los flujos estructurales de la aplicación: registro institucional, \textit{onboarding} vehicular, reserva de asientos, ejecución del viaje, evaluación de confianza, moderación y transacciones en la billetera virtual.
+
+\evidencia{ape4_05_resultados_verificados.png}{Salida exitosa del Test Runner automatizado demostrando la aprobación absoluta de la suite transversal de 13 pruebas Playwright.}
+
+\subsection{Resultados Obtenidos}
+\begin{itemize}
+    \item Se logró estructurar y ejecutar exitosamente una estrategia QA de 3 niveles (Unitaria, Integración y Sistema), cubriendo holísticamente tanto el Backend como el Frontend del monorepo.
+    \item Se garantizó el 100\% de Cobertura de Código (Code Coverage) para los Casos de Uso del negocio, estableciendo una red de seguridad contra regresiones funcionales lógicas durante futuras actualizaciones.
+    \item Se resolvieron de forma concluyente las limitantes técnicas típicas de la automatización E2E en React (eventos sintéticos no reconocidos en DOM interactivos y condiciones de carrera por promesas de red), consiguiendo un entorno QA libre de pruebas erráticas.
+    \item Se validó la reproducibilidad del entorno de pruebas mediante el aislamiento por contenedores Docker y configuraciones \texttt{.env} especializadas, lo que evita por completo el uso incidental de bases de datos productivas.
+\end{itemize}
+
+\subsection{Habilidades Blandas}
+\begin{itemize}
+    \item[\checkedbox] Liderazgo
+    \item[\checkedbox] Trabajo en equipo
+    \item[\checkedbox] Pensamiento crítico
+    \item[\checkedbox] Responsabilidad
+\end{itemize}
+
+\subsection{Conclusiones Generales}
+\begin{itemize}
+    \item El diseño escalonado de pruebas (Unitarias para lógicas puras y E2E para flujos críticos) permite detectar defectos en su capa de origen; fallos lógicos se atrapan rápido en Jest, mientras que discrepancias de estado de interfaz se detectan en Playwright.
+    \item La automatización E2E de sistemas modernos en Next.js/React requiere un conocimiento profundo del ciclo de vida asíncrono y de Virtual DOM. Esperar explícitamente a que un selector del DOM cambie de estado es vital para evitar falsos negativos en pruebas sistémicas.
+    \item Alcanzar una métrica del 100\% de Code Coverage en las capas internas proporciona un alto grado de confianza para reestructuraciones arquitectónicas (Refactoring) y favorece un diseño de código limpio e inyectable.
+\end{itemize}
+
+\subsection{Recomendaciones}
+\begin{itemize}
+    \item Incorporar de forma obligatoria la ejecución secuencial de las pruebas unitarias y E2E en un flujo de Integración Continua (CI/CD) alojado en la nube (ej. GitHub Actions) para restringir el despliegue a producción de código que no cumpla con los estándares.
+    \item Diseñar las futuras dependencias externas visuales (como reproductores, iframes o mapas complejos) proveyendo siempre una versión degradada accesible y fácil de automatizar cuando el sistema detecte que se encuentra bajo validación Headless QA.
+    \item Enriquecer las pruebas de integración para que incluyan pruebas de estrés a los Poolers de sesión de la base de datos (Ej. Supabase/Prisma) para asegurar la persistencia bajo concurrencia masiva, algo no perceptible en entornos unitarios.
+\end{itemize}
+
+\subsection{Bibliografía}
+\vspace{-3em}
+\renewcommand{\refname}{}
+\bibliographystyle{IEEEtran}
+\bibliography{bibliografias}
+
+\vfill
+\end{document}

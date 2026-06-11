@@ -696,4 +696,145 @@ describe('WalletService', () => {
       expect(res.topUp.status).toBe(expectedTopUpStatus);
     }
   });
+
+  it('handles capture that results in non-PAID status and preserves providerPaymentLinkId if undefined', async () => {
+    const prisma = createPrismaMock();
+    const provider = createPaymentProviderMock();
+    const service = new WalletService(prisma, provider);
+    const topUp = buildWalletTopUp({
+      status: 'CHECKOUT_READY',
+      providerOrderToken: 'order-1',
+      providerPaymentLinkId: 'existing-link',
+    });
+
+    jest.mocked(prisma.walletTopUp.findFirst).mockResolvedValue(topUp);
+    provider.capturePayment.mockResolvedValue({
+      provider: PaymentProvider.Paypal,
+      providerOrderToken: 'order-1',
+      providerCaptureId: undefined as any, // undefined to hit the fallback
+      providerOrderStatus: 'PROCESSING',
+      providerPaymentStatus: 'PENDING',
+      paidAt: null,
+      expiresAt: null,
+      rawResponse: {},
+    });
+
+    jest.mocked(prisma.$transaction).mockImplementation(async (callback) =>
+      callback({
+        walletTopUp: {
+          findUnique: jest.fn().mockResolvedValue({
+            ...topUp,
+            wallet: wallet,
+          }),
+          update: jest.fn().mockResolvedValue(buildWalletTopUp({
+            status: 'PROCESSING',
+          })),
+        },
+        walletLedgerEntry: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      } as unknown as Prisma.TransactionClient),
+    );
+    jest.mocked(prisma.walletAccount.findUniqueOrThrow).mockResolvedValue(buildWalletAccountWithRelations());
+
+    const response = await service.captureTopUp('user-1', 'top-up-1');
+    expect(response.message).toBe('Recarga actualizada.');
+    expect(response.topUp.status).toBe('PROCESSING');
+  });
+
+  it('handles refresh that results in EXPIRED status (covers failureReason)', async () => {
+    const prisma = createPrismaMock();
+    const provider = createPaymentProviderMock();
+    const service = new WalletService(prisma, provider);
+    const topUp = buildWalletTopUp({
+      status: 'PENDING',
+      providerOrderToken: 'order-1',
+    });
+
+    jest.mocked(prisma.walletTopUp.findFirst).mockResolvedValue(topUp);
+    provider.fetchPaymentStatus.mockResolvedValue({
+      provider: PaymentProvider.Paypal,
+      providerOrderToken: 'order-1',
+      providerCaptureId: null,
+      providerOrderStatus: 'MOCK_EXPIRED',
+      providerPaymentStatus: null,
+      paidAt: null,
+      expiresAt: null,
+      rawResponse: {},
+    });
+
+    jest.mocked(prisma.$transaction).mockImplementation(async (callback) =>
+      callback({
+        walletTopUp: {
+          findUnique: jest.fn().mockResolvedValue({
+            ...topUp,
+            wallet: wallet,
+          }),
+          update: jest.fn().mockResolvedValue(buildWalletTopUp({
+            status: 'EXPIRED',
+          })),
+        },
+        walletLedgerEntry: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      } as unknown as Prisma.TransactionClient),
+    );
+    jest.mocked(prisma.walletAccount.findUniqueOrThrow).mockResolvedValue(buildWalletAccountWithRelations());
+
+    const response = await service.refreshTopUp('user-1', 'top-up-1');
+    expect(response.message).toBe('Recarga actualizada.');
+    expect(response.topUp.status).toBe('EXPIRED');
+  });
+
+  it('handles PAID status with null paidAt falling back to current paidAt or new Date', async () => {
+    const prisma = createPrismaMock();
+    const provider = createPaymentProviderMock();
+    const service = new WalletService(prisma, provider);
+    const topUp = buildWalletTopUp({
+      status: 'CHECKOUT_READY',
+      providerOrderToken: 'order-1',
+      paidAt: null,
+    });
+
+    jest.mocked(prisma.walletTopUp.findFirst).mockResolvedValue(topUp);
+    provider.capturePayment.mockResolvedValue({
+      provider: PaymentProvider.Paypal,
+      providerOrderToken: 'order-1',
+      providerCaptureId: 'capture-1',
+      providerOrderStatus: 'COMPLETED',
+      providerPaymentStatus: 'COMPLETED',
+      paidAt: null, // this will force the ?? new Date() branch
+      expiresAt: null,
+      rawResponse: {},
+    });
+
+    jest.mocked(prisma.$transaction).mockImplementation(async (callback) =>
+      callback({
+        walletTopUp: {
+          findUnique: jest.fn().mockResolvedValue({
+            ...topUp,
+            wallet: wallet,
+          }),
+          update: jest.fn().mockResolvedValue(buildWalletTopUp({
+            status: 'PAID',
+            paidAt: new Date(),
+          })),
+        },
+        walletLedgerEntry: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue(undefined),
+        },
+        walletAccount: {
+          update: jest.fn().mockResolvedValue({
+            ...wallet,
+            availableBalance: decimal(35),
+          }),
+        },
+      } as unknown as Prisma.TransactionClient),
+    );
+    jest.mocked(prisma.walletAccount.findUniqueOrThrow).mockResolvedValue(buildWalletAccountWithRelations());
+
+    const response = await service.captureTopUp('user-1', 'top-up-1');
+    expect(response.topUp.status).toBe('PAID');
+  });
 });

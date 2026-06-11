@@ -258,4 +258,20 @@ describe('UpdateCurrentUserUseCase', () => {
       onboardingCompletedAt: undefined,
     });
   });
+
+  it('normalizes empty phone and profilePhotoUrl strings to null', async () => {
+    const repository = createUsersRepositoryMock();
+    const useCase = new UpdateCurrentUserUseCase(repository);
+    repository.findById.mockResolvedValue(buildUserProfile() as never);
+
+    await useCase.execute('user-1', {
+      phone: '   ',
+      profilePhotoUrl: '   ',
+    });
+
+    expect(repository.updateProfile).toHaveBeenCalledWith('user-1', expect.objectContaining({
+      phone: null,
+      profilePhotoUrl: null,
+    }));
+  });
 });

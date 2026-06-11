@@ -281,4 +281,14 @@ describe('TripLifecycleMaintenanceService', () => {
     expect(filtered).toContain(trip3);
     expect(filtered).not.toContain(trip1);
   });
+
+  it('instantiates successfully using the default RealtimeEventsService', () => {
+    const repository = createTripsRepositoryMock();
+    const service = new TripLifecycleMaintenanceService(
+      repository,
+      createAuditServiceMock(),
+      createSanctionsServiceMock(),
+    );
+    expect(service).toBeDefined();
+  });
 });
